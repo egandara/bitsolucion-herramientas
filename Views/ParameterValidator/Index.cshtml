@@ -12,11 +12,31 @@
 <div class="row mt-4">
     <div class="col-md-8 offset-md-2">
         <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>1. Selecciona tus archivos</strong>
+                <button id="clear-list-button" class="btn btn-sm btn-outline-secondary" style="display: none;">Limpiar Lista</button>
+            </div>
             <div class="card-body">
-                <form asp-action="Validate" method="post" enctype="multipart/form-data">
-                    <div class="mb-3">
-                        <input type="file" name="files" class="form-control" multiple required accept=".ipynb,.zip" />
+                <div id="drop-zone" class="gemini-drop-zone mb-3">
+                    <div>
+                        <svg class="mx-auto h-12 w-12 text-gray-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12a2.25 2.25 0 01-20.25 20.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5a.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clip-rule="evenodd" />
+                        </svg>
+                        <div class="mt-4">
+                            <label for="file-upload" class="btn btn-secondary">
+                                <span>Elegir Archivos</span>
+                                <input id="file-upload" type="file" class="d-none" accept=".py,.ipynb,.zip" multiple>
+                            </label>
+                            <p class="mt-2 text-muted">o arrástralos aquí</p>
+                        </div>
                     </div>
+                </div>
+
+                <div id="file-list-container">
+                </div>
+            </div>
+            <div class="card-footer">
+                <form asp-action="Validate" method="post" enctype="multipart/form-data" id="validation-form">
                     <button type="submit" class="btn btn-primary w-100">Validar Parámetros</button>
                 </form>
             </div>
@@ -31,14 +51,7 @@
         @if (Model.Any())
         {
             <table class="table">
-                <thead>
-                    <tr>
-                        <th>Notebook</th>
-                        <th>Parámetro No Permitido</th>
-                        <th>Línea</th>
-                        <th>Contenido</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Notebook</th><th>Parámetro No Permitido</th><th>Línea</th><th>Contenido</th></tr></thead>
                 <tbody>
                     @foreach (var finding in Model)
                     {
@@ -54,7 +67,94 @@
         }
         else
         {
-            <div class="alert alert-success mt-3">¡Excelente! No se encontraron parámetros no permitidos.</div>
+            <div class="alert alert-success">¡Excelente! No se encontraron parámetros no permitidos.</div>
         }
     </div>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const fileUpload = document.getElementById('file-upload');
+            const dropZone = document.getElementById('drop-zone');
+            const fileListContainer = document.getElementById('file-list-container');
+            const validationForm = document.getElementById('validation-form');
+            const clearListButton = document.getElementById('clear-list-button');
+
+            let fileStore = new DataTransfer();
+
+            // --- Lógica de Manejo de Archivos ---
+            const handleFiles = (files) => {
+                for (const file of files) {
+                    fileStore.items.add(file);
+                }
+                renderFileList();
+            };
+
+            fileUpload.addEventListener('change', (e) => handleFiles(e.target.files));
+            dropZone.addEventListener('dragover', (e) => e.preventDefault());
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                handleFiles(e.dataTransfer.files);
+            });
+
+            function renderFileList() {
+                fileListContainer.innerHTML = '';
+                clearListButton.style.display = 'none';
+
+                if (fileStore.files.length > 0) {
+                    const list = document.createElement('ul');
+                    list.className = 'list-group';
+
+                    Array.from(fileStore.files).forEach((file, index) => {
+                        const listItem = document.createElement('li');
+                        listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        listItem.style.color = 'var(--light-text)';
+                        listItem.style.backgroundColor = 'var(--dark-navy)';
+                        listItem.textContent = file.name;
+
+                        const removeBtn = document.createElement('button');
+                        removeBtn.className = 'btn btn-danger btn-sm';
+                        removeBtn.innerHTML = '&times;';
+                        removeBtn.type = 'button';
+                        removeBtn.onclick = () => removeFile(index);
+
+                        listItem.appendChild(removeBtn);
+                        list.appendChild(listItem);
+                    });
+                    fileListContainer.appendChild(list);
+                    clearListButton.style.display = 'block';
+                }
+            }
+
+            function removeFile(indexToRemove) {
+                const newFiles = new DataTransfer();
+                Array.from(fileStore.files).forEach((file, index) => {
+                    if (index !== indexToRemove) {
+                        newFiles.items.add(file);
+                    }
+                });
+                fileStore = newFiles;
+                renderFileList();
+            }
+
+            clearListButton.addEventListener('click', () => {
+                fileStore = new DataTransfer();
+                fileUpload.value = ''; // Limpia el input de archivo por si acaso
+                renderFileList();
+            });
+
+            // --- Lógica de Envío del Formulario ---
+            validationForm.addEventListener('submit', function(e) {
+                // Adjuntamos los archivos de nuestra lista al formulario justo antes de enviarlo
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.name = 'files';
+                fileInput.files = fileStore.files;
+                fileInput.multiple = true;
+                fileInput.style.display = 'none';
+                this.appendChild(fileInput);
+            });
+        });
+    </script>
 }

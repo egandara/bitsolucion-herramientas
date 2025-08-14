@@ -20,6 +20,8 @@
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.0" />
     <PackageReference Include="QuestPDF" Version="2025.7.0" />
+    <PackageReference Include="Syncfusion.DocIO.Net.Core" Version="30.2.5" />
+    <PackageReference Include="Syncfusion.DocIORenderer.Net.Core" Version="30.2.5" />
     <PackageReference Include="Xceed.Words.NET" Version="5.0.25228.6154" />
   </ItemGroup>
 

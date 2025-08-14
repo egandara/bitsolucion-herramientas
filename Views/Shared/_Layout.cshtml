@@ -32,25 +32,41 @@
                     }
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="standardsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Estándares
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="standardsDropdown">
+                                <li><a class="dropdown-item" asp-controller="Standards" asp-action="Document">Documento de Estándares</a></li>
+                                <li><a class="dropdown-item" asp-controller="Standards" asp-action="Format">Formato de Documentos</a></li>
+                                <li><a class="dropdown-item" asp-controller="Standards" asp-action="Jobs">Documentos de Pruebas Jobs</a></li>
+                                @if (User.IsInRole("Admin"))
+                                {
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" asp-controller="ParameterAdmin" asp-action="Index">Lista de Parámetros Permitidos</a></li>
+                                }
+                            </ul>
+                        </li>
+
                         @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
                         {
                             <li class="nav-item @(currentController == "Home" ? "active" : "")">
-                                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Validador</a>
+                                <a class="nav-link" asp-controller="Home" asp-action="Index">Validador</a>
                             </li>
                         }
                         @if (User.IsInRole("Admin") || User.IsInRole("TempCleanerUser"))
                         {
                             <li class="nav-item @(currentController == "TempTable" ? "active" : "")">
-                                <a class="nav-link" asp-area="" asp-controller="TempTable" asp-action="Index">Limpieza Tmp</a>
+                                <a class="nav-link" asp-controller="TempTable" asp-action="Index">Limpieza Tmp</a>
                             </li>
                         }
                         @if (User.IsInRole("Admin") || User.IsInRole("ParameterValidatorUser"))
                         {
                             <li class="nav-item @(currentController == "ParameterValidator" ? "active" : "")">
-                                <a class="nav-link" asp-area="" asp-controller="ParameterValidator" asp-action="Index">Validador Parámetros</a>
+                                <a class="nav-link" asp-controller="ParameterValidator" asp-action="Index">Validador Parámetros</a>
                             </li>
                         }
-                        @if (User.IsInRole("Admin") || User.IsInRole("GeminiDocUser"))
+                        @if (User.IsInRole("Admin"))
                         {
                             <li class="nav-item @(currentController == "GeminiDoc" ? "active" : "")">
                                 <a class="nav-link" asp-controller="GeminiDoc" asp-action="Index">Documentador Gemini</a>
@@ -59,7 +75,7 @@
                         @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
                         {
                             <li class="nav-item @(currentController == "History" ? "active" : "")">
-                                <a class="nav-link" asp-area="" asp-controller="History" asp-action="Index">Historial</a>
+                                <a class="nav-link" asp-controller="History" asp-action="Index">Historial</a>
                             </li>
                         }
 

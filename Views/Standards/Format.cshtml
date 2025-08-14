@@ -1,0 +1,16 @@
+﻿@{
+    ViewData["Title"] = "Formato de Documentos";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="display-4">@ViewData["Title"]</h1>
+    <div>
+        <a asp-action="DownloadFormatAsDocx" class="btn btn-success">Descargar Estándares</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0" style="height: 80vh;">
+        <embed src="@Url.Action("GetFormatAsPdf")" type="application/pdf" width="100%" height="100%" />
+    </div>
+</div>

@@ -2,6 +2,27 @@
     ViewData["Title"] = "Eliminar Tablas Temporales";
 }
 
+<style>
+    .drop-zone {
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 32px 16px;
+        text-align: center;
+        background-color: #f8f9fa;
+        transition: border-color 0.2s, background-color 0.2s;
+        cursor: pointer;
+    }
+
+        .drop-zone.dragover {
+            border: 2px dashed #007bff;
+            background-color: #f0f8ff;
+        }
+
+    .progress {
+        height: 24px;
+    }
+</style>
+
 <div class="text-center">
     <h1 class="display-4">Generador de Notebook para Eliminar Tablas Temporales</h1>
     <p>Sube uno o más notebooks (.ipynb) o un archivo .zip para detectar las tablas temporales y generar un notebook de limpieza.</p>
@@ -14,15 +35,299 @@
                 <strong>Selecciona los archivos</strong>
             </div>
             <div class="card-body">
-                <form asp-action="Generate" method="post" enctype="multipart/form-data">
-                    <div class="mb-3">
-                        <input type="file" name="files" class="form-control" multiple required accept=".ipynb,.zip" />
+                <!-- Feedback visual -->
+                <div id="feedback-message"></div>
+
+                <!-- Drop zone y selección de archivos -->
+                <div id="drop-zone" class="drop-zone mb-3">
+                    <svg class="mx-auto mb-2" width="48" height="48" fill="#007bff" viewBox="0 0 24 24">
+                        <path d="M19.35 10.04A7.49 7.49 0 005.3 6.16 5.994 5.994 0 006 20h13a5 5 0 00.35-9.96zM16 13h-3v3h-2v-3H8l4-4 4 4z" />
+                    </svg>
+                    <div>
+                        <label for="file-input" class="btn btn-secondary mb-2">
+                            Seleccionar Archivos
+                            <input id="file-input" type="file" class="d-none" accept=".ipynb,.zip" multiple>
+                        </label>
+                        <p class="text-muted mb-0">o arrástralos aquí</p>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">
+                </div>
+
+                <!-- Lista editable de archivos seleccionados -->
+                <div>
+                    <strong>Archivos seleccionados:</strong>
+                    <ul id="file-list" class="list-group mt-2 mb-2">
+                        <li id="empty-list-item" class="list-group-item text-muted">No se han seleccionado archivos.</li>
+                    </ul>
+                    <div class="mb-3 text-end">
+                        <button type="button" id="clear-files-button" class="btn btn-outline-secondary btn-sm" style="display:none;">
+                            Limpiar Lista
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Barra de progreso -->
+                <div class="progress mb-3" id="progressBarContainer" style="display:none;">
+                    <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%;">0%</div>
+                </div>
+
+                <!-- Formulario de envío -->
+                <form id="upload-form" asp-action="Generate" method="post" enctype="multipart/form-data">
+                    <input type="file" name="files" id="hidden-file-input" class="d-none" multiple accept=".ipynb,.zip" />
+                    <button type="submit" class="btn btn-primary w-100" id="submit-button" disabled>
                         Generar Notebook de Limpieza
                     </button>
                 </form>
             </div>
         </div>
+
+        <!-- Historial de notebooks generados -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <strong>Historial de Notebooks Generados</strong>
+            </div>
+            <ul id="history-list" class="list-group list-group-flush"></ul>
+        </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Referencias a elementos
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            const hiddenFileInput = document.getElementById('hidden-file-input');
+            const fileListUl = document.getElementById('file-list');
+            const emptyListItem = document.getElementById('empty-list-item');
+            const clearFilesButton = document.getElementById('clear-files-button');
+            const progressBarContainer = document.getElementById('progressBarContainer');
+            const progressBar = document.getElementById('progressBar');
+            const feedbackMessage = document.getElementById('feedback-message');
+            const uploadForm = document.getElementById('upload-form');
+            const submitButton = document.getElementById('submit-button');
+            const historyList = document.getElementById('history-list');
+
+            let fileStore = new DataTransfer();
+            let notebookHistory = [];
+
+            // --- Feedback al arrastrar archivos ---
+            dropZone.addEventListener('dragover', e => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+            dropZone.addEventListener('drop', e => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                addFilesToStore(e.dataTransfer.files);
+            });
+
+            // Selección de archivos por botón
+            fileInput.addEventListener('change', e => addFilesToStore(e.target.files));
+
+            // Limpiar lista de archivos
+            clearFilesButton.addEventListener('click', function () {
+                fileStore = new DataTransfer();
+                renderFileList();
+            });
+
+            // Añadir archivos a la lista interna
+            function addFilesToStore(files) {
+                if (files.length > 0) {
+                    for (const file of files) {
+                        // Evitar duplicados por nombre y tamaño
+                        let exists = false;
+                        for (let i = 0; i < fileStore.files.length; i++) {
+                            if (file.name === fileStore.files[i].name && file.size === fileStore.files[i].size) {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists) fileStore.items.add(file);
+                    }
+                    renderFileList();
+                }
+            }
+
+            // Renderizar lista de archivos seleccionados
+            function renderFileList() {
+                fileListUl.innerHTML = '';
+                if (fileStore.files.length === 0) {
+                    fileListUl.appendChild(emptyListItem);
+                    clearFilesButton.style.display = 'none';
+                    submitButton.disabled = true;
+                    return;
+                }
+                for (let i = 0; i < fileStore.files.length; i++) {
+                    const file = fileStore.files[i];
+                    const listItem = document.createElement('li');
+                    listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    listItem.textContent = file.name;
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'btn btn-danger btn-sm';
+                    removeBtn.innerHTML = '&times;';
+                    removeBtn.type = 'button';
+                    removeBtn.ariaLabel = 'Eliminar ' + file.name;
+                    removeBtn.addEventListener('click', () => removeFile(i));
+                    listItem.appendChild(removeBtn);
+                    fileListUl.appendChild(listItem);
+                }
+                clearFilesButton.style.display = 'inline-block';
+                submitButton.disabled = false;
+            }
+
+            // Quitar archivo individual
+            function removeFile(indexToRemove) {
+                const newFiles = new DataTransfer();
+                for (let i = 0; i < fileStore.files.length; i++) {
+                    if (i !== indexToRemove) { newFiles.items.add(fileStore.files[i]); }
+                }
+                fileStore = newFiles;
+                renderFileList();
+            }
+
+            // Sincronizar archivos seleccionados con el input oculto del formulario
+            function syncHiddenInput() {
+                // Limpiar el input oculto
+                hiddenFileInput.value = '';
+                // Crear un nuevo DataTransfer para el input oculto
+                const dt = new DataTransfer();
+                for (let i = 0; i < fileStore.files.length; i++) {
+                    dt.items.add(fileStore.files[i]);
+                }
+                hiddenFileInput.files = dt.files;
+            }
+
+            // Al enviar el formulario
+            uploadForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                feedbackMessage.innerHTML = '';
+                progressBarContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+                progressBar.textContent = '0%';
+                submitButton.disabled = true;
+
+                syncHiddenInput();
+
+                // Crear FormData manualmente
+                const formData = new FormData();
+                for (const file of fileStore.files) {
+                    formData.append('files', file);
+                }
+
+                // Simular barra de progreso (ya que fetch no da progreso real en uploads)
+                let progress = 0;
+                const fakeProgress = setInterval(() => {
+                    if (progress < 90) {
+                        progress += 10;
+                        progressBar.style.width = progress + '%';
+                        progressBar.textContent = progress + '%';
+                    }
+                }, 150);
+
+                fetch(uploadForm.action, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(async response => {
+                    clearInterval(fakeProgress);
+                    progressBar.style.width = '100%';
+                    progressBar.textContent = '100%';
+                    progressBarContainer.style.display = 'none';
+                    submitButton.disabled = false;
+
+                    if (response.ok) {
+                        // Espera que el backend devuelva el notebook generado como archivo
+                        const disposition = response.headers.get('Content-Disposition');
+                        let filename = "notebook_limpieza.dbc";
+                        if (disposition && disposition.indexOf('filename=') !== -1) {
+                            filename = disposition.split('filename=')[1].replace(/['"]/g, '');
+                        }
+                        const blob = await response.blob();
+
+                        // Feedback visual de éxito
+                        feedbackMessage.innerHTML = `<div class="alert alert-success mt-2">Notebook de limpieza generado correctamente. <a href="#" id="download-link">Descargar</a></div>`;
+
+                        // Descargar automáticamente y agregar a historial
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        a.style.display = 'none';
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+
+                        // Agregar a historial
+                        notebookHistory.push({ name: filename, blob: blob });
+                        renderHistory();
+
+                        // Permitir descarga desde el mensaje
+                        setTimeout(() => {
+                            const downloadLink = document.getElementById('download-link');
+                            if (downloadLink) {
+                                downloadLink.addEventListener('click', function (ev) {
+                                    ev.preventDefault();
+                                    const url2 = window.URL.createObjectURL(blob);
+                                    const a2 = document.createElement('a');
+                                    a2.href = url2;
+                                    a2.download = filename;
+                                    document.body.appendChild(a2);
+                                    a2.click();
+                                    window.URL.revokeObjectURL(url2);
+                                });
+                            }
+                        }, 100);
+
+                        // Limpiar lista de archivos tras éxito
+                        fileStore = new DataTransfer();
+                        renderFileList();
+                    } else {
+                        // Feedback visual de error
+                        const errorText = await response.text();
+                        feedbackMessage.innerHTML = `<div class="alert alert-danger mt-2">Error al generar el notebook: ${errorText}</div>`;
+                    }
+                })
+                .catch(error => {
+                    clearInterval(fakeProgress);
+                    progressBarContainer.style.display = 'none';
+                    submitButton.disabled = false;
+                    feedbackMessage.innerHTML = `<div class="alert alert-danger mt-2">Error de red: ${error.message}</div>`;
+                });
+            });
+
+            // Renderizar historial de notebooks generados
+            function renderHistory() {
+                historyList.innerHTML = '';
+                if (notebookHistory.length === 0) {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item text-muted';
+                    li.textContent = 'No hay notebooks generados en esta sesión.';
+                    historyList.appendChild(li);
+                    return;
+                }
+                notebookHistory.slice().reverse().forEach((doc, idx) => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    li.textContent = doc.name;
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.className = 'btn btn-link btn-sm';
+                    downloadBtn.textContent = 'Descargar';
+                    downloadBtn.onclick = () => {
+                        const url = window.URL.createObjectURL(doc.blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = doc.name;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                    };
+                    li.appendChild(downloadBtn);
+                    historyList.appendChild(li);
+                });
+            }
+            renderFileList();
+            renderHistory();
+        });
+    </script>
+}
