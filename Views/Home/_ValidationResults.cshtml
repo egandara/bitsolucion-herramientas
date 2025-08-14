@@ -1,0 +1,40 @@
+@model List<Finding>
+
+@if (Model != null && Model.Any())
+{
+    <table id="resultsTable" class="table table-bordered table-striped mt-3">
+        <thead class="thead-dark">
+            <tr>
+                <th>Archivo</th>
+                <th>Tipo de Problema</th>
+                <th>Celda</th>
+                <th>Línea</th>
+                <th>Contenido</th>
+                <th>Detalle</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var finding in Model)
+            {
+                <tr class="clickable-row" 
+                    data-source-code="@Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(finding.CellSourceCode ?? string.Empty))" 
+                    data-line-number="@finding.LineNumber"
+                    style="cursor: pointer;">
+
+                    <td>@finding.FileName</td>
+                    <td><span class="badge bg-warning text-dark">@finding.FindingType</span></td>
+                    <td>@(finding.CellNumber?.ToString() ?? "N/A")</td>
+                    <td>@(finding.LineNumber?.ToString() ?? "N/A")</td>
+                    <td><code>@finding.Content</code></td>
+                    <td>@finding.Details</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <div class="alert alert-success mt-3">
+        No se encontraron problemas en este análisis.
+    </div>
+}

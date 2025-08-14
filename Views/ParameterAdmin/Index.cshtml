@@ -1,0 +1,90 @@
+@model IEnumerable<NotebookValidator.Web.Models.AllowedParameter>
+@{
+    ViewData["Title"] = "Administrar Parámetros Permitidos";
+}
+
+<h1 class="display-4">@ViewData["Title"]</h1>
+<p>Aquí puedes añadir o eliminar los parámetros que se consideran válidos en los notebooks.</p>
+
+<div class="row mt-4">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header">
+                <strong>Añadir Nuevo Parámetro</strong>
+            </div>
+            <div class="card-body">
+                <form asp-action="Create" class="d-flex">
+                    <div class="flex-grow-1 me-2">
+                        <input name="Name" class="form-control" placeholder="Nombre del parámetro" required aria-label="Nombre del nuevo parámetro" />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Añadir</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header">
+                <strong>Parámetros Actuales</strong>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <input type="text" id="parameterSearch" class="form-control" placeholder="Buscar parámetro..." aria-label="Buscar parámetro" />
+                </div>
+
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table" id="parametersTable">
+                        <tbody>
+                            @foreach (var item in Model)
+                            {
+                                <tr>
+                                    <td>@item.Name</td>
+                                    <td class="text-end">
+                                        <form asp-action="Delete" asp-route-id="@item.Id" method="post" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este parámetro?');">
+                                            <button type="submit" class="btn btn-danger btn-sm">Eliminar</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('parameterSearch');
+        const parametersTable = document.getElementById('parametersTable');
+        const tableRows = parametersTable.getElementsByTagName('tr');
+
+        // Escuchamos el evento 'keyup', que se dispara cada vez que el usuario teclea algo.
+        searchInput.addEventListener('keyup', function () {
+            const filterText = searchInput.value.toLowerCase(); // Texto de búsqueda en minúsculas
+
+            // Recorremos todas las filas de la tabla
+            for (let i = 0; i < tableRows.length; i++) {
+                const row = tableRows[i];
+                const parameterNameCell = row.getElementsByTagName('td')[0]; // La primera celda (td) de la fila
+
+                if (parameterNameCell) {
+                    const parameterName = parameterNameCell.textContent || parameterNameCell.innerText;
+                    
+                    // Si el nombre del parámetro incluye el texto del filtro, lo mostramos.
+                    if (parameterName.toLowerCase().indexOf(filterText) > -1) {
+                        row.style.display = ""; // Muestra la fila
+                    } else {
+                        // Si no, lo ocultamos.
+                        row.style.display = "none"; // Oculta la fila
+                    }
+                }
+            }
+        });
+    });
+</script>
+}

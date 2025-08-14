@@ -1,0 +1,43 @@
+@using NotebookValidator.Web.ViewModels
+@model DocumentationViewModel
+@{
+    ViewData["Title"] = "Documentador Automático";
+}
+
+<div class="text-center">
+    <h1 class="display-4">@ViewData["Title"]</h1>
+    <p>Sube un notebook (.ipynb) para generar automáticamente su documentación técnica.</p>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header">
+                <strong>Selecciona el Notebook</strong>
+            </div>
+            <div class="card-body">
+                <form asp-action="GeneratePreview" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <input asp-for="NotebookFile" type="file" class="form-control" required accept=".ipynb" />
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">1. Generar Vista Previa</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.GeneratedMarkdown))
+{
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>Vista Previa del Texto Generado</strong>
+            
+            <a asp-action="DownloadAsDocx" class="btn btn-success">2. Exportar a .docx</a>
+        </div>
+        <div class="card-body">
+            <pre style="white-space: pre-wrap; word-break: break-all; color: var(--light-text);">@Model.GeneratedMarkdown</pre>
+        </div>
+    </div>
+}

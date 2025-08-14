@@ -1,0 +1,28 @@
+@{
+    ViewData["Title"] = "Eliminar Tablas Temporales";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Generador de Notebook para Eliminar Tablas Temporales</h1>
+    <p>Sube uno o más notebooks (.ipynb) o un archivo .zip para detectar las tablas temporales y generar un notebook de limpieza.</p>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header">
+                <strong>Selecciona los archivos</strong>
+            </div>
+            <div class="card-body">
+                <form asp-action="Generate" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <input type="file" name="files" class="form-control" multiple required accept=".ipynb,.zip" />
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        Generar Notebook de Limpieza
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

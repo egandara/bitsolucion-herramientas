@@ -1,0 +1,46 @@
+@using NotebookValidator.Web.Data
+@model IEnumerable<ApplicationUser>
+
+@{
+    ViewData["Title"] = "Administración de Usuarios";
+}
+
+<h1 class="display-4">@ViewData["Title"]</h1>
+<p>Desde aquí puedes ver todos los usuarios registrados y gestionar sus cuotas de análisis y roles de acceso a los módulos.</p>
+
+<div class="table-responsive mt-4">
+    <table class="table">
+        <thead class="thead-dark">
+            <tr>
+                <th>
+                    Correo Electrónico
+                </th>
+                <th>
+                    Créditos Restantes
+                </th>
+                <th class="text-end">
+                    Acciones
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in Model)
+            {
+                <tr>
+                    <td class="align-middle">
+                        @Html.DisplayFor(modelItem => user.Email)
+                    </td>
+                    <td class="align-middle">
+                        @Html.DisplayFor(modelItem => user.AnalysisQuota)
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group" role="group" aria-label="Acciones de usuario">
+                            <a class="btn btn-info btn-sm" asp-action="ManageRoles" asp-route-id="@user.Id">Gestionar Roles</a>
+                            <a class="btn btn-primary btn-sm" asp-action="EditQuota" asp-route-id="@user.Id">Editar Cuota</a>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

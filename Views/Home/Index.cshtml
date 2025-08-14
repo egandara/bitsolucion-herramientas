@@ -1,0 +1,328 @@
+﻿@using NotebookValidator.Web.Services
+@model List<Finding>
+@{
+    ViewData["Title"] = "Validador de Notebooks";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Validador de Notebooks</h1>
+    <p>Sube uno o más archivos (.py, .ipynb, .zip) para buscar malas prácticas.</p>
+</div>
+
+<div class="row mt-4">
+
+    <div class="col-lg-5">
+        <div id="upload-card" class="card h-100 d-flex flex-column">
+            <div class="card-header">
+                <strong>1. Selecciona tus archivos</strong>
+            </div>
+            <div class="card-body d-flex flex-column">
+                <input type="file" id="file-input" multiple class="d-none" accept=".py,.ipynb,.zip" />
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('file-input').click();">
+                    Elegir Archivos...
+                </button>
+                <hr />
+                <strong>Archivos en cola para analizar:</strong>
+                <ul id="file-list" class="list-group mt-2 flex-grow-1">
+                    <li id="empty-list-item" class="list-group-item text-muted">No se han seleccionado archivos.</li>
+                </ul>
+            </div>
+            <div class="card-footer text-end">
+                <button type="button" id="validate-button" class="btn btn-primary">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                    Analizar Archivos
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div id="summary-card" class="card h-100 d-flex flex-column" style="display: none;">
+            <div class="card-header">
+                <strong>2. Resumen del Análisis</strong>
+            </div>
+            <div class="card-body" id="summary-content">
+                </div>
+             <div class="card-footer text-end">
+                <a asp-action="ExportToExcel" asp-controller="Home" id="export-button" class="btn btn-success" style="display: none;">
+                    Exportar a Excel
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="results-container" class="mt-4">
+    @if (Model != null && Model.Any())
+    {
+        @await Html.PartialAsync("_ValidationResults", Model)
+    }
+</div>
+
+<div class="modal fade" id="codeModal" tabindex="-1" aria-labelledby="codeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="codeModalLabel">Contexto del Código</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <pre><code id="code-content" class="language-python"></code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Referencias a elementos del DOM
+        const fileInput = document.getElementById('file-input');
+        const validateButton = document.getElementById('validate-button');
+        const fileListUl = document.getElementById('file-list');
+        const emptyListItem = document.getElementById('empty-list-item');
+        const resultsContainer = document.getElementById('results-container');
+        const uploadCard = document.getElementById('upload-card');
+        let fileStore = new DataTransfer();
+
+        // --- LÓGICA DE MANEJO DE ARCHIVOS ---
+        fileInput.addEventListener('change', e => addFilesToStore(e.target.files));
+        uploadCard.addEventListener('dragover', e => {
+            e.preventDefault();
+            uploadCard.classList.add('drag-over');
+        });
+        uploadCard.addEventListener('dragleave', () => uploadCard.classList.remove('drag-over'));
+        uploadCard.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadCard.classList.remove('drag-over');
+            addFilesToStore(e.dataTransfer.files);
+        });
+        
+        function addFilesToStore(files) {
+            if (files.length > 0) {
+                for (const file of files) { fileStore.items.add(file); }
+                renderFileList();
+            }
+        }
+
+        function renderFileList() {
+            fileListUl.innerHTML = '';
+            if (fileStore.files.length === 0) {
+                fileListUl.appendChild(emptyListItem);
+                return;
+            }
+            for (let i = 0; i < fileStore.files.length; i++) {
+                const file = fileStore.files[i];
+                const listItem = document.createElement('li');
+                listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                listItem.textContent = file.name;
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'btn btn-danger btn-sm';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.type = 'button';
+                removeBtn.ariaLabel = 'Eliminar ' + file.name;
+                removeBtn.addEventListener('click', () => removeFile(i));
+                listItem.appendChild(removeBtn);
+                fileListUl.appendChild(listItem);
+            }
+        }
+
+        function removeFile(indexToRemove) {
+            const newFiles = new DataTransfer();
+            for (let i = 0; i < fileStore.files.length; i++) {
+                if (i !== indexToRemove) { newFiles.items.add(fileStore.files[i]); }
+            }
+            fileStore = newFiles;
+            renderFileList();
+        }
+
+        // --- LÓGICA DE ANÁLISIS ---
+        validateButton.addEventListener('click', function() {
+            if (fileStore.files.length === 0) {
+                alert('Por favor, selecciona al menos un archivo para analizar.');
+                return;
+            }
+            
+            const spinner = this.querySelector('.spinner-border');
+            this.disabled = true;
+            spinner.style.display = 'inline-block';
+            this.childNodes[2].nodeValue = ' Analizando...';
+            
+            const formData = new FormData();
+            for(const file of fileStore.files) { formData.append('files', file); }
+
+            document.getElementById('summary-card').style.display = 'none';
+            document.getElementById('export-button').style.display = 'none';
+            resultsContainer.innerHTML = '<div class="text-center mt-4"><div class="spinner-border" role="status"></div><p>Analizando...</p></div>';
+
+            fetch('/Home/Validate', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if ($.fn.DataTable.isDataTable('#resultsTable')) {
+                    $('#resultsTable').DataTable().destroy();
+                }
+                
+                renderSummary(data.summary);
+                renderResultsTable(data.findings);
+
+                if (data.hasResults) {
+                    document.getElementById('export-button').style.display = 'inline-block';
+                    if (data.findings && data.findings.length > 0 && $.fn.DataTable) {
+                        $('#resultsTable').DataTable({
+                            language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' },
+                            "pageLength": 10
+                        });
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                resultsContainer.innerHTML = '<div class="alert alert-danger">Ocurrió un error al contactar el servidor.</div>';
+            })
+            .finally(() => {
+                this.disabled = false;
+                spinner.style.display = 'none';
+                this.childNodes[2].nodeValue = ' Analizar Archivos';
+            });
+        });
+
+        function renderSummary(summaryData) {
+            const summaryCard = document.getElementById('summary-card');
+            const summaryContent = document.getElementById('summary-content');
+            summaryContent.innerHTML = '';
+            
+            const severityOrder = {
+                "Ruta en duro": 1,
+                "Uso de %sql": 1,
+                "Header Incorrecto": 2,
+                "Variable de Widget no usada": 2,
+                "Importación no Usada": 2,
+                "Footer Faltante": 3,
+                "Footer Incorrecto": 3,
+                "Código posterior al final": 3
+            };
+
+            const criticalProblems = ["Ruta en duro", "Uso de %sql"];
+            const structuralProblems = ["Footer Faltante", "Footer Incorrecto", "Código posterior al final"];
+
+            if (summaryData.hasOwnProperty('Error de Cuota')) {
+                summaryContent.innerHTML = `<div class="alert alert-danger m-3">${summaryData['Error de Cuota']}</div>`;
+            } else if (Object.keys(summaryData).length === 0) {
+                summaryContent.innerHTML = '<div class="alert alert-success m-3">¡Excelente! No se encontraron problemas.</div>';
+            } else {
+                const sortedProblems = Object.entries(summaryData).sort((a, b) => {
+                    const severityA = severityOrder[a[0]] || 99;
+                    const severityB = severityOrder[b[0]] || 99;
+                    if (severityA !== severityB) {
+                        return severityA - severityB;
+                    }
+                    return a[0].localeCompare(b[0]);
+                });
+
+                const ul = document.createElement('ul');
+                ul.className = 'list-group list-group-flush';
+                let totalProblems = 0;
+                
+                for (const [problemType, count] of sortedProblems) {
+                    let badgeClass = "badge bg-warning text-dark rounded-pill";
+                    if (criticalProblems.includes(problemType)) {
+                        badgeClass = "badge bg-danger rounded-pill";
+                    } else if (structuralProblems.includes(problemType)) {
+                        badgeClass = "badge bg-info rounded-pill";
+                    }
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    li.innerHTML = `${problemType} <span class="${badgeClass}">${count}</span>`;
+                    ul.appendChild(li);
+                    totalProblems += count;
+                }
+                
+                const totalDiv = document.createElement('div');
+                totalDiv.className = 'summary-total';
+                totalDiv.innerHTML = `<div class="total-label">Total de Problemas</div><div class="total-value">${totalProblems}</div>`;
+                
+                summaryContent.appendChild(ul);
+                summaryContent.appendChild(totalDiv);
+            }
+            summaryCard.style.display = 'flex';
+        }
+
+        function renderResultsTable(findings) {
+            resultsContainer.innerHTML = ''; 
+            if (!findings || findings.length === 0) {
+                 if (!document.querySelector('#summary-content .alert-danger')) {
+                    resultsContainer.innerHTML = '<div class="alert alert-success mt-3">No se encontraron problemas en los archivos analizados.</div>';
+                 }
+                return;
+            }
+            const table = document.createElement('table');
+            table.id = 'resultsTable';
+            table.className = 'table table-bordered table-striped mt-3';
+            table.innerHTML = `<thead class="thead-dark"><tr><th>Archivo</th><th>Tipo de Problema</th><th>Celda</th><th>Línea</th><th>Contenido</th><th>Detalle</th></tr></thead><tbody></tbody>`;
+            
+            const tbody = table.querySelector('tbody');
+            const criticalProblems = ["Ruta en duro", "Uso de %sql"];
+            const structuralProblems = ["Footer Faltante", "Footer Incorrecto", "Código posterior al final"];
+
+            for (const finding of findings) {
+                let badgeClass = "badge bg-warning text-dark";
+                if (criticalProblems.includes(finding.findingType)) {
+                    badgeClass = "badge bg-danger";
+                } else if (structuralProblems.includes(finding.findingType)) {
+                    badgeClass = "badge bg-info";
+                }
+                
+                const tr = document.createElement('tr');
+                tr.className = 'clickable-row';
+                tr.style.cursor = 'pointer';
+                tr.dataset.sourceCode = btoa(finding.cellSourceCode || '');
+                tr.dataset.lineNumber = finding.lineNumber || '';
+                tr.innerHTML = `
+                    <td>${escapeHtml(finding.fileName || 'N/A')}</td>
+                    <td><span class="${badgeClass}">${escapeHtml(finding.findingType || 'N/A')}</span></td>
+                    <td>${finding.cellNumber || 'N/A'}</td>
+                    <td>${finding.lineNumber || 'N/A'}</td>
+                    <td><code>${escapeHtml(finding.content || '')}</code></td>
+                    <td>${escapeHtml(finding.details || 'N/A')}</td>`;
+                tbody.appendChild(tr);
+            }
+            resultsContainer.appendChild(table);
+        }
+
+        function escapeHtml(text) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return String(text).replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // --- LÓGICA DEL MODAL DE CÓDIGO ---
+        const codeModal = new bootstrap.Modal(document.getElementById('codeModal'));
+        const codeContentEl = document.getElementById('code-content');
+        const codeModalLabel = document.getElementById('codeModalLabel');
+
+        $('#results-container').on('click', '.clickable-row', function () {
+            const row = $(this);
+            const sourceCode = atob(row.data('source-code'));
+            const lineNumber = parseInt(row.data('line-number'));
+            const fileName = row.find('td:eq(0)').text();
+            const findingType = row.find('td:eq(1)').text();
+            
+            codeModalLabel.textContent = `Detalle de "${findingType}" en ${fileName}`;
+            
+            const highlightedHtml = Prism.highlight(sourceCode, Prism.languages.python, 'python');
+            const lines = highlightedHtml.split('\n');
+            
+            if (lineNumber > 0 && lineNumber <= lines.length) {
+                lines[lineNumber - 1] = `<span class="line-highlight">${lines[lineNumber - 1]}</span>`;
+            }
+            
+            codeContentEl.innerHTML = lines.join('\n');
+            
+            codeModal.show();
+        });
+    });
+</script>
+}

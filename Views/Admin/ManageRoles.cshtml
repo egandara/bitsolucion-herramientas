@@ -1,0 +1,45 @@
+@using NotebookValidator.Web.ViewModels
+@model ManageUserRolesViewModel
+
+@{
+    ViewData["Title"] = "Gestionar Roles";
+
+    // Diccionario para traducir los nombres de los roles
+    var traduccionesRoles = new Dictionary<string, string>
+    {
+        { "User", "Usuario General" },
+        { "ValidatorUser", "Acceso al Validador Principal de buenas prácticas" },
+        { "TempCleanerUser", "Acceso a creación de Notebook de Limpieza de tablas temporales" },
+        { "ParameterValidatorUser", "Acceso al Validador de Parámetros Permitidos" },
+        { "GeminiDocUser", "Acceso al Documentador Gemini" }
+    };
+}
+
+<h1 class="display-4">@ViewData["Title"]</h1>
+<h4>Usuario: @Model.UserEmail</h4>
+<hr />
+
+<form method="post">
+    <input asp-for="UserId" type="hidden" />
+    <div class="card">
+        <div class="card-header">
+            <strong>Asignar Roles de Módulo</strong>
+        </div>
+        <div class="card-body">
+            @for (int i = 0; i < Model.Roles.Count; i++)
+            {
+                <div class="form-check m-1">
+                    <input type="hidden" asp-for="Roles[i].RoleName" />
+                    <input asp-for="Roles[i].IsSelected" class="form-check-input" />
+                    <label class="form-check-label" asp-for="Roles[i].IsSelected">
+                        @traduccionesRoles.GetValueOrDefault(Model.Roles[i].RoleName, Model.Roles[i].RoleName)
+                    </label>
+                </div>
+            }
+        </div>
+        <div class="card-footer">
+            <input type="submit" value="Guardar Cambios" class="btn btn-primary" />
+            <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </div>
+</form>

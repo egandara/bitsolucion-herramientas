@@ -1,0 +1,352 @@
+:root {
+    --dark-navy: #07091e;
+    --navy: #112240;
+    --navy-light: #172a45;
+    --light-text: #E6F1FF;
+    --medium-text: #8892B0;
+    --accent-yellow: #FFCA28;
+    --border-color: #233554;
+}
+
+/* --- Layout Principal --- */
+html, body {
+    height: 100%;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--dark-navy);
+    color: var(--light-text);
+    font-family: 'Montserrat', sans-serif;
+}
+
+.main-container {
+    flex-grow: 1; 
+}
+
+/* --- Estilos de Navegación --- */
+.navbar {
+    background-color: var(--navy) !important;
+    border-bottom: 1px solid var(--border-color);
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+.navbar-brand {
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-right: 2rem;
+}
+
+.navbar-brand img {
+    height: 40px !important;
+    width: auto;
+}
+
+.navbar-nav .nav-item {
+    margin: 0 5px;
+}
+
+.navbar-nav .nav-link {
+    padding: 8px 20px;
+    border-radius: 50px;
+    font-weight: 600;
+    color: var(--medium-text);
+    background-color: transparent;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.navbar-nav .nav-link:hover {
+    color: var(--light-text);
+    background-color: var(--navy-light);
+}
+
+.navbar-nav .nav-item.active .nav-link {
+    background-color: var(--accent-yellow);
+    color: var(--dark-navy);
+    border: 2px solid var(--accent-yellow);
+}
+
+/* --- Estilos de Componentes --- */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--light-text);
+    font-weight: 700;
+}
+
+p {
+    color: var(--medium-text);
+}
+
+.card {
+    background-color: var(--navy);
+    border: 1px solid var(--border-color);
+    color: var(--light-text);
+}
+
+.card-header, .card-footer {
+    background-color: transparent;
+    border-bottom: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
+}
+
+.list-group-item {
+    background-color: var(--dark-navy);
+    border: 1px solid var(--border-color);
+    color: var(--light-text);
+}
+
+#file-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+#upload-card.drag-over {
+    border-color: var(--accent-yellow);
+    border-style: dashed;
+    opacity: 0.8;
+}
+
+/* --- Estilos de la Tabla de Resultados --- */
+.table {
+    background-color: var(--navy);
+    color: var(--light-text);
+}
+
+.table th, .table td {
+    border-color: var(--border-color);
+    vertical-align: middle;
+}
+
+.table thead th {
+    background-color: var(--dark-navy);
+    color: var(--light-text);
+    font-weight: 600;
+}
+
+.table code {
+    display: inline-block;
+    width: 100%;
+    box-sizing: border-box;
+    color: #c5d3de;
+    background-color: #081221;
+    padding: 8px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.line-highlight {
+    display: block;
+    background-color: rgba(255, 202, 40, 0.15);
+    border-left: 3px solid var(--accent-yellow);
+    padding-left: 10px;
+    margin-left: -13px;
+}
+
+/* --- Estilos del Panel de Resumen y Dashboard --- */
+.summary-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    margin-top: 1rem;
+    background-color: var(--dark-navy);
+    border-top: 2px solid var(--accent-yellow);
+}
+
+.summary-total .total-label {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--light-text);
+}
+
+.summary-total .total-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--accent-yellow);
+}
+
+.kpi-card {
+    border-left: 4px solid var(--accent-yellow);
+    transition: transform 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+.kpi-card:hover {
+    transform: translateY(-5px);
+    border-left-color: #ffde70;
+}
+
+.kpi-card h5 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--medium-text);
+    margin-bottom: 0.5rem;
+}
+
+.kpi-card p {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--light-text);
+    margin-bottom: 0;
+}
+
+/* --- Estilos de Botones y Badges --- */
+.badge {
+    background-color: var(--accent-yellow) !important;
+    color: var(--dark-navy) !important;
+    font-weight: 600;
+}
+
+.btn {
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+.btn:hover {
+    opacity: 0.9;
+    transform: scale(1.02);
+}
+
+.btn-primary {
+    background-color: var(--accent-yellow);
+    border-color: var(--accent-yellow);
+    color: var(--dark-navy);
+    font-weight: 600;
+}
+
+.btn-secondary {
+    background-color: transparent;
+    border: 1px solid var(--accent-yellow);
+    color: var(--accent-yellow);
+}
+
+.btn-success {
+    background-color: #198754;
+    border-color: #198754;
+    color: white;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+/* --- Estilos de Información de Usuario en Navbar --- */
+.user-info {
+    display: flex;
+    flex-direction: column;
+    text-align: right;
+    line-height: 1.2;
+}
+
+.user-info .user-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.user-info .user-credits {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--medium-text);
+}
+
+/* --- Estilos para la Barra de Desplazamiento --- */
+::-webkit-scrollbar {
+    width: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--dark-navy);
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 20px;
+    border: 3px solid var(--dark-navy);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--navy-light);
+}
+
+/* --- Otros --- */
+a {
+    color: var(--accent-yellow);
+}
+
+a:hover {
+    color: #ffde70;
+}
+
+/* --- Estilos para Badges por Severidad --- */
+
+/* Badge para problemas graves (rojo) */
+.badge.bg-danger {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
+
+/* Badge para advertencias de estructura (azul/informativo) */
+.badge.bg-info {
+    background-color: #0dcaf0 !important;
+    color: white !important;
+}
+
+/* Badge para advertencias (amarillo, el que ya teníamos) */
+.badge.bg-warning {
+    background-color: var(--accent-yellow) !important;
+    color: var(--dark-navy) !important;
+}
+
+/* ==========================================================================
+   CORRECCIÓN PARA LOS BOTONES DEL PANEL DE ADMINISTRACIÓN
+   ========================================================================== */
+
+/* Asegura que la celda de acciones y su contenido sean visibles */
+.table td.text-end {
+    visibility: visible !important;
+    display: table-cell !important;
+}
+
+.btn-group {
+    visibility: visible !important;
+    display: inline-flex !important;
+    opacity: 1 !important;
+}
+
+/* Estilos para el Documentador Gemini */
+.prose-custom { color: #374151; }
+.prose-custom h1, .prose-custom h2, .prose-custom h3 { color: #111827; font-weight: 700; }
+.prose-custom code { background-color: #F3F4F6; color: #4B5563; padding: 2px 4px; border-radius: 4px; }
+.prose-custom pre { background-color: #1F2937; color: #D1D5DB; padding: 1rem; border-radius: 0.5rem; }
+.loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 2rem auto; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* ==========================================================================
+   ESTILOS PARA EL DOCUMENTADOR GEMINI
+   ========================================================================== */
+
+.gemini-drop-zone {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 2.5rem;
+    border: 2px dashed var(--border-color);
+    border-radius: 0.5rem;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.gemini-drop-zone:hover {
+    background-color: var(--navy-light);
+}
+
+.gemini-drop-zone svg {
+    margin: 0 auto;
+    height: 3rem;
+    width: 3rem;
+    color: var(--medium-text);
+}

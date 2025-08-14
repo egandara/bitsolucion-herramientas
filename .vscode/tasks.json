@@ -1,0 +1,32 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "clean",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"clean",
+				"${workspaceFolder}/NotebookValidator.Web.csproj",
+				"-c", "Release",
+				"-o", "${workspaceFolder}/bin/Release/net9.0/publish"
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "publish-release",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"publish",
+				"${workspaceFolder}",
+				"--configuration",
+				"Release",
+				"/property:GenerateFullPaths=true",
+				"/consoleloggerparameters:NoSummary"
+			],
+			"problemMatcher": "$msCompile",
+			"dependsOn": "clean"
+		}
+	]
+}

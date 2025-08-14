@@ -1,0 +1,100 @@
+@using NotebookValidator.Web.ViewModels
+@model AdminDashboardViewModel
+@{ 
+    ViewData["Title"] = "Dashboard Global"; 
+}
+
+<h1 class="display-4">@ViewData["Title"]</h1>
+<p>Resumen de actividad de toda la plataforma.</p>
+
+<form asp-action="Index" method="get" class="row g-3 align-items-center mb-4">
+    <div class="col-auto">
+        <label for="startDate" class="form-label">Desde</label>
+        <input type="date" class="form-control" id="startDate" name="startDate" value="@Model.StartDate?.ToString("yyyy-MM-dd")">
+    </div>
+    <div class="col-auto">
+        <label for="endDate" class="form-label">Hasta</label>
+        <input type="date" class="form-control" id="endDate" name="endDate" value="@Model.EndDate?.ToString("yyyy-MM-dd")">
+    </div>
+    <div class="col-auto mt-auto">
+        <button type="submit" class="btn btn-primary">Filtrar</button>
+        <a asp-action="Index" class="btn btn-secondary">Limpiar</a>
+    </div>
+</form>
+
+
+<div class="row">
+    <div class="col-md-3 mb-3"><div class="card kpi-card"><div class="card-body"><h5>Total de Usuarios</h5><p>@Model.TotalUsers</p></div></div></div>
+    <div class="col-md-3 mb-3"><div class="card kpi-card"><div class="card-body"><h5>Análisis Totales (Filtrados)</h5><p>@Model.TotalAnalyses</p></div></div></div>
+    <div class="col-md-3 mb-3"><div class="card kpi-card"><div class="card-body"><h5>Problemas Totales (Filtrados)</h5><p>@Model.TotalProblemsFound</p></div></div></div>
+    <div class="col-md-3 mb-3"><div class="card kpi-card"><div class="card-body"><h5>Usuario Más Activo (Filtrado)</h5><p>@Model.MostActiveUser</p></div></div></div>
+</div>
+
+<hr class="my-4" />
+
+<div class="row mt-4">
+    <div class="col-lg-4">
+        <h3>Distribución de Problemas</h3>
+        <canvas id="globalProblemsChart"></canvas>
+    </div>
+
+    <div class="col-lg-8">
+        <h3>Últimos 10 Análisis (Filtrados)</h3>
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Usuario</th><th>Fecha</th><th>Archivos</th><th>Problemas</th><th></th></tr></thead>
+                <tbody>
+                    @foreach(var run in Model.RecentAnalyses)
+                    {
+                        <tr>
+                            <td>@run.User?.Email</td>
+                            <td>@run.AnalysisTimestamp.ToString("g")</td>
+                            <td>@run.TotalFilesAnalyzed</td>
+                            <td>@run.TotalProblemsFound</td>
+                            <td><a asp-controller="History" asp-action="Details" asp-route-id="@run.Id">Ver Detalles</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const chartData = @Html.Raw(Json.Serialize(Model.ProblemTypeCounts));
+        const labels = Object.keys(chartData);
+        const data = Object.values(chartData);
+
+        const ctx = document.getElementById('globalProblemsChart');
+        if (ctx && data.length > 0) {
+            new Chart(ctx.getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Número de Problemas',
+                        data: data,
+                        backgroundColor: [
+                            'rgba(220, 53, 69, 0.8)',   // Rojo
+                            'rgba(255, 202, 40, 0.8)', // Amarillo
+                            'rgba(13, 110, 253, 0.8)',  // Azul
+                            'rgba(25, 135, 84, 0.8)',   // Verde
+                            'rgba(136, 146, 176, 0.8)'  // Gris
+                        ],
+                        borderColor: '#0A192F',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top', labels: { color: '#E6F1FF' } }
+                    }
+                }
+            });
+        }
+    });
+</script>
+}

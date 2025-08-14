@@ -1,0 +1,21 @@
+# Dependencies
+**/[Bb]in/
+**/[Oo]bj/
+
+# Visual Studio temporary files
+.vs/
+*.user
+*.suo
+
+# User secrets
+secrets.json
+
+# Build results
+[Bb]uild/
+[Rr]elease/
+
+# Local database files
+*.db
+
+# Rider files
+.idea/

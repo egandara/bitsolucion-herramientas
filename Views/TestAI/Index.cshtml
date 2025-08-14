@@ -1,0 +1,40 @@
+@{
+    ViewData["Title"] = "Probador de Conexión con IA";
+}
+
+<h1 class="display-4">@ViewData["Title"]</h1>
+<p>
+    Usa este módulo para enviar un prompt simple a la API de IA y verificar que la conexión
+    y la configuración (clave de API, Endpoint, etc.) estén funcionando correctamente.
+</p>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <strong>Enviar Prompt de Prueba</strong>
+            </div>
+            <div class="card-body">
+                <form asp-action="SendTestPrompt" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label for="prompt" class="form-label">Texto a Enviar:</label>
+                        <textarea name="prompt" class="form-control" rows="4">Hola, preséntate brevemente.</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Enviar a IA</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <strong>Respuesta de la API</strong>
+            </div>
+            <div class="card-body">
+                <p>La respuesta cruda de la API aparecerá aquí:</p>
+                <pre style="white-space: pre-wrap; word-break: break-all; color: var(--light-text);"><code>@ViewBag.ApiResponse</code></pre>
+            </div>
+        </div>
+    </div>
+</div>

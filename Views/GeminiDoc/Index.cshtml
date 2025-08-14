@@ -1,0 +1,289 @@
+@{
+    ViewData["Title"] = "Documentador Automático con IA";
+    // Leemos el archivo de prompt en el servidor y lo guardamos en una variable de C#
+    var promptTemplateString = System.IO.File.ReadAllText("wwwroot/prompt.txt");
+}
+
+<header class="text-center mb-4">
+    <h1 class="display-4">@ViewData["Title"]</h1>
+    <p class="mt-2 text-lg" style="color: var(--medium-text);">Sube tus notebooks de Databricks y la IA generará la documentación técnica completa.</p>
+</header>
+
+<div class="row">
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <strong>Subir Notebooks</strong>
+            </div>
+            <div class="card-body">
+                <div id="drop-zone" class="gemini-drop-zone">
+                    <div>
+                        <svg class="mx-auto h-12 w-12 text-gray-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12a2.25 2.25 0 01-20.25 20.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5a.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clip-rule="evenodd" />
+                        </svg>
+                        <div class="mt-4">
+                            <label for="file-upload" class="btn btn-secondary">
+                                <span>Sube uno o más archivos</span>
+                                <input id="file-upload" type="file" class="d-none" accept=".py,.ipynb" multiple>
+                            </label>
+                            <p class="mt-2 style="color: #6c757d;">o arrástralos aquí</p>
+                        </div>
+                    </div>
+                </div>
+                <div id="fileListContainer" class="mt-3 card-body">
+                    </div>
+            </div>
+            <div class="card-footer">
+                <button id="generateButton" class="btn btn-primary w-100">
+                    <span id="buttonText">Generar Documentación</span>
+                    <div id="buttonSpinner" class="spinner-border spinner-border-sm" style="display: none;" role="status"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>Documentación Generada por IA</strong>
+                <button id="exportButton" class="btn btn-success" style="display: none;">Exportar a .docx</button>
+            </div>
+            <div id="documentationOutput" class="card-body" style="min-height: 500px; max-height: 600px; overflow-y: auto;">
+                <p class="text-muted">La documentación aparecerá aquí...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script type="module">
+    import { GoogleGenerativeAI } from "https://esm.run/@@google/generative-ai";
+
+    // --- Referencias a Elementos del DOM ---
+    const generateButton = document.getElementById('generateButton');
+    const buttonText = document.getElementById('buttonText');
+    const buttonSpinner = document.getElementById('buttonSpinner');
+    const documentationOutput = document.getElementById('documentationOutput');
+    const fileUpload = document.getElementById('file-upload');
+    const fileListContainer = document.getElementById('fileListContainer');
+    const dropZone = document.getElementById('drop-zone');
+    const exportButton = document.getElementById('exportButton');
+    
+    let notebooksContent = [];
+    let lastGeneratedMarkdown = "";
+    let lastFileName = "";
+
+    // --- Lógica de Carga de Archivos ---
+    const handleFiles = async (files) => {
+        if (!files || files.length === 0) return;
+        
+        const readPromises = Array.from(files).map(file => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    let content = e.target.result;
+                    if (file.name.endsWith('.ipynb')) {
+                        try {
+                            const notebookJson = JSON.parse(content);
+                            content = notebookJson.cells
+                                .filter(cell => cell.cell_type === 'code' && cell.source.length > 0)
+                                .map((cell, index) => `# Celda de Código [${index + 1}]:\n` + cell.source.join(''))
+                                .join('\n\n---\n\n');
+                        } catch { reject(new Error(`Error al leer ${file.name}.`)); return; }
+                    }
+                    resolve({ name: file.name, content: content });
+                };
+                reader.onerror = () => reject(new Error(`Hubo un error al leer el archivo ${file.name}.`));
+                reader.readAsText(file);
+            });
+        });
+
+        try {
+            const newNotebooks = await Promise.all(readPromises);
+            notebooksContent.push(...newNotebooks);
+            renderFileList();
+        } catch (error) {
+            documentationOutput.innerHTML = `<p class="text-danger">${error.message}</p>`;
+        }
+    };
+    
+    function renderFileList() {
+        fileListContainer.innerHTML = '';
+        if (notebooksContent.length > 0) {
+            notebooksContent.sort((a, b) => a.name.localeCompare(b.name));
+            
+            const list = document.createElement('ul');
+            list.className = 'list-group';
+            
+            notebooksContent.forEach((notebook, index) => {
+                const listItem = document.createElement('li');
+                listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                listItem.style.color = 'var(--light-text)';
+                listItem.style.backgroundColor = 'var(--dark-navy)';
+                listItem.textContent = notebook.name;
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'btn btn-danger btn-sm';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.type = 'button';
+                removeBtn.onclick = () => removeFile(index);
+                listItem.appendChild(removeBtn);
+                list.appendChild(listItem);
+            });
+            fileListContainer.appendChild(list);
+        }
+    }
+
+    function removeFile(indexToRemove) {
+        notebooksContent.splice(indexToRemove, 1);
+        renderFileList();
+    }
+    
+    fileUpload.addEventListener('change', (event) => handleFiles(event.target.files));
+    dropZone.addEventListener('dragover', (e) => e.preventDefault());
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        handleFiles(e.dataTransfer.files);
+    });
+
+    generateButton.addEventListener('click', async () => {
+        if (notebooksContent.length === 0) {
+            documentationOutput.innerHTML = '<p class="text-danger">Por favor, sube uno o más archivos.</p>';
+            return;
+        }
+
+        buttonText.style.display = 'none';
+        buttonSpinner.style.display = 'inline-block';
+        generateButton.disabled = true;
+        exportButton.style.display = 'none';
+        
+        const notebookNames = notebooksContent.map(n => n.name);
+        
+        try {
+            let allDocumentation = [];
+            documentationOutput.innerHTML = `<div class="d-flex justify-content-center"><div class="spinner-border" role="status"></div></div><p class="text-center style="color: #6c757d;">Generando introducción...</p>`;
+            const intro = await generateSummarySection('Introducción', notebookNames);
+            allDocumentation.push(intro);
+
+            for (let i = 0; i < notebooksContent.length; i++) {
+                const notebook = notebooksContent[i];
+                documentationOutput.innerHTML = `<div class="d-flex justify-content-center"><div class="spinner-border" role="status"></div></div><p class="text-center style="color: #6c757d;">Generando documentación para <strong>${notebook.name}</strong> (${i + 1}/${notebooksContent.length})...</p>`;
+                const documentation = await generateDocumentationWithAI(notebook.content, notebook.name);
+                allDocumentation.push(documentation);
+            }
+            
+            const finalDocumentation = allDocumentation.join('\n\n---\n\n');
+            documentationOutput.innerHTML = marked.parse(finalDocumentation);
+
+            lastGeneratedMarkdown = finalDocumentation;
+            lastFileName = notebookNames.length > 0 ? notebookNames[0].replace(/\.[^/.]+$/, "") : "documento";
+            exportButton.style.display = 'block';
+
+        } catch (error) {
+            console.error("Error generando documentación:", error);
+            documentationOutput.innerHTML = `<p class="text-danger">Hubo un error al generar la documentación.<br><br>Detalle: ${error.message}</p>`;
+        } finally {
+            buttonText.style.display = 'inline';
+            buttonSpinner.style.display = 'none';
+            generateButton.disabled = false;
+        }
+    });
+
+    exportButton.addEventListener('click', async () => {
+        if (!lastGeneratedMarkdown) {
+            alert("No hay documentación para exportar.");
+            return;
+        }
+        try {
+            const response = await fetch('@Url.Action("ExportToDocx", "GeminiDoc")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                body: JSON.stringify({ 
+                    markdownContent: lastGeneratedMarkdown, 
+                    notebookName: lastFileName 
+                })
+            });
+
+            if (!response.ok) { throw new Error(await response.text()); }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${lastFileName}_documentacion_gemini.docx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            alert("Hubo un error al exportar el documento: " + error.message);
+        }
+    });
+
+    async function callGeminiAPI(prompt) {
+        const API_KEY = "AIzaSyD0RsVwbMR7rAjSptn2iNg3yCCC2lBd-1M";
+        const genAI = new GoogleGenerativeAI(API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
+        const result = await model.generateContent(prompt);
+        return (await result.response).text();
+    }
+
+    async function generateSummarySection(sectionType, notebookNames) {
+        let prompt = `Actúa como un experto documentador técnico. Basado en la siguiente lista de notebooks, escribe una sección de 'Introducción' para un documento técnico que los engloba. Los notebooks son procesados en este orden: ${notebookNames.join(', ')}. Explica que el documento describe un flujo de trabajo cohesivo, el propósito general del conjunto de notebooks, y cómo cada uno contribuye al proceso general. La introducción debe ser profesional y concisa.`; // Tu prompt de resumen
+        const summary = await callGeminiAPI(prompt);
+        return `\n# ${sectionType}\n\n${summary}`;
+    }
+    
+    async function generateDocumentationWithAI(code, notebookName) {
+    // El prompt se define aquí como una plantilla de texto de JavaScript (usando `)
+    const promptTemplate = `# CONTEXTO Y PERSONA
+Eres un arquitecto de datos senior y un experto documentador técnico con amplia experiencia en Databricks, PySpark y SQL. Tu audiencia es un nuevo desarrollador que necesita entender este notebook rápidamente para poder mantenerlo. Tu tono debe ser profesional, claro y técnico.
+
+# TAREA PRINCIPAL
+Tu tarea es generar una documentación técnica completa y precisa en formato Markdown para el siguiente código de un notebook de Databricks que te proporcionaré. El nombre del notebook es '${notebookName}'.
+
+# ESTRUCTURA DE LA DOCUMENTACIÓN (OBLIGATORIA)
+La documentación debe seguir estrictamente las siguientes secciones y formato, haciendo un ciclo idéntico para cada notebook:
+
+### ${notebookName}
+
+#### 1. Resumen General
+*Un párrafo conciso (2-4 frases) que describa el propósito de negocio y el objetivo técnico del notebook.*
+
+#### 2. Librerías y Dependencias
+*Una lista de las librerías importantes utilizadas y una breve descripción de su rol.*
+
+#### 3. Lógica Paso a Paso
+*Narra el flujo del proceso de principio a fin, describiendo el propósito de cada celda o grupo lógico de celdas.*
+
+#### 4. Descripción Detallada de Lógicas SQL
+*Esta es la sección más importante. Realiza un análisis técnico profundo de CADA consulta SQL o transformación PySpark significativa. NO OMITAS NI RESUMAS NINGUNA CONSULTA. Para cada una:*
+*- **Cita la consulta completa** dentro de un bloque de código SQL.
+*- **Explica en detalle** la lógica: qué tablas se unen, qué filtros se aplican, qué campos se calculan, etc.
+*- **No omitas ninguna consulta**. Si hay consultas complejas, desglosa su lógica en pasos más pequeños.
+
+#### 5. Entradas (Inputs)
+*Genera una lista de las **tablas o archivos de origen** que el notebook lee.*
+
+#### 6. Salidas (Outputs)
+*Genera una lista de las **tablas o archivos finales** que el notebook crea o modifica.*
+
+# REGLAS ADICIONALES
+- Basa tu análisis **únicamente** en el código proporcionado.
+- Evita frases introductorias como ""Claro, aquí tienes la documentación"".
+-No incluyas placeholders como "[Explicación detallada...]". Genera el texto completo para cada sección.
+-Evita referirte a ti mismo o a la IA.
+-Asegúrate de que el formato Markdown sea correcto y consistente.
+---
+
+-Finalmente, cuando termines el ciclo de notebooks, genera una conclusión breve que resuma el flujo de trabajo completo y su propósito, dádonde sentido al análisis que generaste. No indiques que la añadirás o algo similar, simplemente incorpora la conclusión textualmente.
+CÓDIGO DEL NOTEBOOK:
+    ${code}`;
+
+        // La llamada a la API de Gemini usa este prompt
+        return await callGeminiAPI(promptTemplate);
+    }
+</script>
+}

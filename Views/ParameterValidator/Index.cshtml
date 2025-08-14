@@ -1,0 +1,60 @@
+@using NotebookValidator.Web.Services
+@model List<ParameterFinding>
+@{
+    ViewData["Title"] = "Validador de Parámetros";
+}
+
+<div class="text-center">
+    <h1 class="display-4">@ViewData["Title"]</h1>
+    <p>Sube notebooks para validar que todos los parámetros de widgets estén en la lista de permitidos.</p>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-body">
+                <form asp-action="Validate" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <input type="file" name="files" class="form-control" multiple required accept=".ipynb,.zip" />
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Validar Parámetros</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model != null)
+{
+    <div class="mt-4">
+        <h3>Resultados de la Validación</h3>
+        @if (Model.Any())
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Notebook</th>
+                        <th>Parámetro No Permitido</th>
+                        <th>Línea</th>
+                        <th>Contenido</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var finding in Model)
+                    {
+                        <tr>
+                            <td>@finding.NotebookName</td>
+                            <td><code>@finding.ParameterName</code></td>
+                            <td>@finding.LineNumber</td>
+                            <td><code>@finding.Content</code></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="alert alert-success mt-3">¡Excelente! No se encontraron parámetros no permitidos.</div>
+        }
+    </div>
+}

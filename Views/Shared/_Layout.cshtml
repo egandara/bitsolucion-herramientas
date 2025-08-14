@@ -1,0 +1,90 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Validador Bit Solución</title>
+    
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet" />
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/NotebookValidator.Web.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm border-bottom box-shadow">
+            <div class="container">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    <img src="~/img/Bit-solucion-logo-menu.png" alt="Logo Bit Solución" />
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    @{
+                        var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+                    }
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+                        @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+                        {
+                            <li class="nav-item @(currentController == "Home" ? "active" : "")">
+                                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Validador</a>
+                            </li>
+                        }
+                        @if (User.IsInRole("Admin") || User.IsInRole("TempCleanerUser"))
+                        {
+                            <li class="nav-item @(currentController == "TempTable" ? "active" : "")">
+                                <a class="nav-link" asp-area="" asp-controller="TempTable" asp-action="Index">Limpieza Tmp</a>
+                            </li>
+                        }
+                        @if (User.IsInRole("Admin") || User.IsInRole("ParameterValidatorUser"))
+                        {
+                            <li class="nav-item @(currentController == "ParameterValidator" ? "active" : "")">
+                                <a class="nav-link" asp-area="" asp-controller="ParameterValidator" asp-action="Index">Validador Parámetros</a>
+                            </li>
+                        }
+                        @if (User.IsInRole("Admin") || User.IsInRole("GeminiDocUser"))
+                        {
+                            <li class="nav-item @(currentController == "GeminiDoc" ? "active" : "")">
+                                <a class="nav-link" asp-controller="GeminiDoc" asp-action="Index">Documentador Gemini</a>
+                            </li>
+                        }
+                        @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+                        {
+                            <li class="nav-item @(currentController == "History" ? "active" : "")">
+                                <a class="nav-link" asp-area="" asp-controller="History" asp-action="Index">Historial</a>
+                            </li>
+                        }
+
+                    </ul>
+                    <partial name="_LoginPartial" />
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container mt-4">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

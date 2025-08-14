@@ -1,0 +1,92 @@
+@model NotebookValidator.Web.ViewModels.HistoryDashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard de Historial";
+}
+
+<h1 class="display-4">@ViewData["Title"]</h1>
+<p>Aquí puedes ver un resumen y el detalle de todos los análisis que has realizado.</p>
+
+<div class="row mt-4">
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body"><h5>Análisis Realizados</h5><p>@Model.TotalAnalyses</p></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body"><h5>Archivos Analizados</h5><p>@Model.TotalFilesAnalyzed</p></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body"><h5>Problemas Encontrados</h5><p>@Model.TotalProblemsFound</p></div></div></div>
+    <div class="col-md-3"><div class="card kpi-card"><div class="card-body"><h5>Problema Más Común</h5><p>@Model.MostCommonProblem</p></div></div></div>
+</div>
+
+<hr class="my-4" />
+
+<div class="row mt-4">
+    <div class="col-lg-4">
+        <h3>Distribución de Problemas</h3>
+        <canvas id="problemsChart"></canvas>
+    </div>
+
+    <div class="col-lg-8">
+        <h3>Historial Detallado</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Archivos</th>
+                    <th>Problemas</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach(var run in Model.AnalysisRuns)
+                {
+                    <tr>
+                        <td>@run.AnalysisTimestamp.ToString("g")</td>
+                        <td>@run.TotalFilesAnalyzed</td>
+                        <td>@run.TotalProblemsFound</td>
+                        <td><a asp-action="Details" asp-route-id="@run.Id">Ver Detalles</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Obtenemos los datos para el gráfico que pasamos desde el controlador
+        const chartData = @Html.Raw(Json.Serialize(Model.ProblemTypeCounts));
+        
+        const labels = Object.keys(chartData);
+        const data = Object.values(chartData);
+
+        const ctx = document.getElementById('problemsChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut', // Tipo de gráfico: doughnut, pie, bar, etc.
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Número de Problemas',
+                    data: data,
+                    backgroundColor: [ // Paleta de colores
+                        'rgba(255, 202, 40, 0.8)', // Amarillo
+                        'rgba(23, 42, 69, 0.8)',   // Azul Navy
+                        'rgba(136, 146, 176, 0.8)', // Gris
+                        'rgba(255, 99, 132, 0.8)',
+                        'rgba(54, 162, 235, 0.8)',
+                    ],
+                    borderColor: '#0A192F',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            color: '#E6F1FF' // Color del texto de la leyenda
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+}
