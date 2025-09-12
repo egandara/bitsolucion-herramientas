@@ -58,6 +58,7 @@ namespace NotebookValidator.Web.Services
                     
                     findings.AddRange(ValidateHardcodedPaths(code, originalFileName, cellNumber, code));
                     findings.AddRange(ValidateSqlCommands(code, originalFileName, cellNumber, code));
+                    findings.AddRange(ValidateHardcodedDatabases(code, originalFileName, cellNumber, code));
                 }
             }
 
@@ -327,6 +328,33 @@ namespace NotebookValidator.Web.Services
                         fileName,
                         "Ruta en duro",
                         "Posible ruta en duro encontrada.",
+                        cellNumber,
+                        i + 1,
+                        line.Trim(),
+                        cellSourceCode
+                    );
+                }
+            }
+        }
+        private IEnumerable<Finding> ValidateHardcodedDatabases(string code, string fileName, int cellNumber, string cellSourceCode)
+        {
+            // Busca patrones como: from dsr_plt_bcitemp_db.tmp_salida_mtz_b1 o join otro_db.tabla
+            var dbPattern = new Regex(@"\b(from|join)\s+([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)", RegexOptions.IgnoreCase);
+            var lines = code.Split('\n');
+            for (int i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                if (line.TrimStart().StartsWith("#")) continue; // Ignora comentarios
+                var matches = dbPattern.Matches(line);
+                foreach (Match match in matches)
+                {
+                    var dbName = match.Groups[2].Value;
+                    var tableName = match.Groups[3].Value;
+                    // Puedes ajustar aquí si quieres excluir ciertos nombres permitidos
+                    yield return new Finding(
+                        fileName,
+                        "Base de datos hardcodeada",
+                        $"Se detectó el uso explícito de base de datos/tablas: '{dbName}.{tableName}'.",
                         cellNumber,
                         i + 1,
                         line.Trim(),

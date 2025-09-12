@@ -28,9 +28,6 @@
                 </ul>
             </div>
             <div class="card-footer text-end">
-                <button type="button" id="clear-files-button" class="btn btn-outline-secondary me-2">
-                    Limpiar Lista
-                </button>
                 <button type="button" id="validate-button" class="btn btn-primary">
                     <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
                     Analizar Archivos
@@ -83,7 +80,6 @@
             // Referencias a elementos del DOM
             const fileInput = document.getElementById('file-input');
             const validateButton = document.getElementById('validate-button');
-            const clearFilesButton = document.getElementById('clear-files-button');
             const fileListUl = document.getElementById('file-list');
             const emptyListItem = document.getElementById('empty-list-item');
             const resultsContainer = document.getElementById('results-container');
@@ -101,11 +97,6 @@
                 e.preventDefault();
                 uploadCard.classList.remove('drag-over');
                 addFilesToStore(e.dataTransfer.files);
-            });
-
-            clearFilesButton.addEventListener('click', function () {
-                fileStore = new DataTransfer();
-                renderFileList();
             });
 
             function addFilesToStore(files) {
@@ -207,6 +198,8 @@
                 const severityOrder = {
                     "Ruta en duro": 1,
                     "Uso de %sql": 1,
+                    "Base de datos en duro": 1, // <-- AÑADIDO AQUÍ
+                    "Base de datos hardcodeada": 1,
                     "Header Incorrecto": 2,
                     "Variable de Widget no usada": 2,
                     "Importación no Usada": 2,
@@ -215,7 +208,7 @@
                     "Código posterior al final": 3
                 };
 
-                const criticalProblems = ["Ruta en duro", "Uso de %sql"];
+                const criticalProblems = ["Ruta en duro", "Uso de %sql", "Base de datos en duro", "Base de datos hardcodeada"]; // <-- AÑADIDO AQUÍ
                 const structuralProblems = ["Footer Faltante", "Footer Incorrecto", "Código posterior al final"];
 
                 if (summaryData.hasOwnProperty('Error de Cuota')) {
@@ -274,7 +267,7 @@
                 table.innerHTML = `<thead class="thead-dark"><tr><th>Archivo</th><th>Tipo de Problema</th><th>Celda</th><th>Línea</th><th>Contenido</th><th>Detalle</th></tr></thead><tbody></tbody>`;
 
                 const tbody = table.querySelector('tbody');
-                const criticalProblems = ["Ruta en duro", "Uso de %sql"];
+                const criticalProblems = ["Ruta en duro", "Uso de %sql", "Base de datos en duro"]; // <-- AÑADIDO AQUÍ
                 const structuralProblems = ["Footer Faltante", "Footer Incorrecto", "Código posterior al final"];
 
                 for (const finding of findings) {
