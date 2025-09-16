@@ -28,6 +28,9 @@
                 </ul>
             </div>
             <div class="card-footer text-end">
+                <button type="button" id="clear-files-button" class="btn btn-outline-secondary me-2">
+                    Limpiar Lista
+                </button>
                 <button type="button" id="validate-button" class="btn btn-primary">
                     <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
                     Analizar Archivos
@@ -35,6 +38,7 @@
             </div>
         </div>
     </div>
+
 
     <div class="col-lg-7">
         <div id="summary-card" class="card h-100 d-flex flex-column" style="display: none;">
@@ -62,6 +66,7 @@
 <div class="modal fade" id="codeModal" tabindex="-1" aria-labelledby="codeModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
+
             <div class="modal-header">
                 <h5 class="modal-title" id="codeModalLabel">Contexto del Código</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -69,6 +74,7 @@
             <div class="modal-body">
                 <pre><code id="code-content" class="language-python"></code></pre>
             </div>
+
         </div>
     </div>
 </div>
@@ -80,11 +86,24 @@
             // Referencias a elementos del DOM
             const fileInput = document.getElementById('file-input');
             const validateButton = document.getElementById('validate-button');
+            const clearFilesButton = document.getElementById('clear-files-button');
             const fileListUl = document.getElementById('file-list');
             const emptyListItem = document.getElementById('empty-list-item');
             const resultsContainer = document.getElementById('results-container');
             const uploadCard = document.getElementById('upload-card');
+            const summaryContent = document.getElementById('summary-content'); // <- Referencia añadida
             let fileStore = new DataTransfer();
+
+            const criticalProblems = [
+                "Ruta en duro",
+                "Uso de %sql",
+                "Base de datos hardcodeada"
+            ];
+            const structuralProblems = [
+                "Footer Faltante",
+                "Footer Incorrecto",
+                "Código posterior al final"
+            ];
 
             // --- LÓGICA DE MANEJO DE ARCHIVOS ---
             fileInput.addEventListener('change', e => addFilesToStore(e.target.files));
@@ -98,7 +117,10 @@
                 uploadCard.classList.remove('drag-over');
                 addFilesToStore(e.dataTransfer.files);
             });
-
+            clearFilesButton.addEventListener('click', function () {
+                fileStore = new DataTransfer();
+                renderFileList();
+            });
             function addFilesToStore(files) {
                 if (files.length > 0) {
                     for (const file of files) { fileStore.items.add(file); }
@@ -156,6 +178,7 @@
                 document.getElementById('export-button').style.display = 'none';
                 resultsContainer.innerHTML = '<div class="text-center mt-4"><div class="spinner-border" role="status"></div><p>Analizando...</p></div>';
 
+
                 fetch('/Home/Validate', {
                     method: 'POST',
                     body: formData
@@ -190,26 +213,35 @@
                 });
             });
 
+            // --- NUEVA SECCIÓN: LÓGICA DEL FILTRO INTERACTIVO ---
+            summaryContent.addEventListener('click', function (e) {
+                // Busca el elemento padre (li o div.summary-total) que tenga el atributo 'data-filter'
+                const filterTarget = e.target.closest('[data-filter]');
+
+                if (!filterTarget) return; // Si hizo clic en un espacio vacío, no hace nada
+
+                const filterValue = filterTarget.dataset.filter;
+                const dataTable = $('#resultsTable').DataTable();
+
+                if (dataTable) {
+                    // Columna 1 es "Tipo de Problema" (índice 0 es "Archivo")
+                    // .search(filterValue) aplica el filtro
+                    // .draw() redibuja la tabla
+                    dataTable.column(1).search(filterValue).draw();
+                }
+            });
+            // --- FIN DE LA NUEVA SECCIÓN ---
+
+
             function renderSummary(summaryData) {
                 const summaryCard = document.getElementById('summary-card');
-                const summaryContent = document.getElementById('summary-content');
-                summaryContent.innerHTML = '';
+                summaryContent.innerHTML = ''; // Usa la variable global
 
                 const severityOrder = {
-                    "Ruta en duro": 1,
-                    "Uso de %sql": 1,
-                    "Base de datos en duro": 1, // <-- AÑADIDO AQUÍ
-                    "Base de datos hardcodeada": 1,
-                    "Header Incorrecto": 2,
-                    "Variable de Widget no usada": 2,
-                    "Importación no Usada": 2,
-                    "Footer Faltante": 3,
-                    "Footer Incorrecto": 3,
-                    "Código posterior al final": 3
+                    "Ruta en duro": 1, "Uso de %sql": 1, "Base de datos hardcodeada": 1,
+                    "Header Incorrecto": 2, "Variable de Widget no usada": 2, "Importación no Usada": 2,
+                    "Footer Faltante": 3, "Footer Incorrecto": 3, "Código posterior al final": 3
                 };
-
-                const criticalProblems = ["Ruta en duro", "Uso de %sql", "Base de datos en duro", "Base de datos hardcodeada"]; // <-- AÑADIDO AQUÍ
-                const structuralProblems = ["Footer Faltante", "Footer Incorrecto", "Código posterior al final"];
 
                 if (summaryData.hasOwnProperty('Error de Cuota')) {
                     summaryContent.innerHTML = `<div class="alert alert-danger m-3">${summaryData['Error de Cuota']}</div>`;
@@ -219,9 +251,7 @@
                     const sortedProblems = Object.entries(summaryData).sort((a, b) => {
                         const severityA = severityOrder[a[0]] || 99;
                         const severityB = severityOrder[b[0]] || 99;
-                        if (severityA !== severityB) {
-                            return severityA - severityB;
-                        }
+                        if (severityA !== severityB) { return severityA - severityB; }
                         return a[0].localeCompare(b[0]);
                     });
 
@@ -238,6 +268,13 @@
                         }
                         const li = document.createElement('li');
                         li.className = 'list-group-item d-flex justify-content-between align-items-center';
+
+                        // --- MODIFICACIONES PARA FILTRO ---
+                        li.style.cursor = 'pointer'; // 1. Cambia el cursor
+                        li.dataset.filter = problemType; // 2. Añade el 'data-filter'
+                        li.title = `Filtrar por "${problemType}"`; // 3. (Opcional) Título
+                        // ----------------------------------
+
                         li.innerHTML = `${problemType} <span class="${badgeClass}">${count}</span>`;
                         ul.appendChild(li);
                         totalProblems += count;
@@ -245,6 +282,13 @@
 
                     const totalDiv = document.createElement('div');
                     totalDiv.className = 'summary-total';
+
+                    // --- MODIFICACIONES PARA FILTRO (Limpiar) ---
+                    totalDiv.style.cursor = 'pointer'; // 1. Cambia el cursor
+                    totalDiv.dataset.filter = ''; // 2. 'data-filter' vacío para limpiar
+                    totalDiv.title = 'Clic para limpiar filtro y ver todo'; // 3. (Opcional) Título
+                    // ----------------------------------
+
                     totalDiv.innerHTML = `<div class="total-label">Total de Problemas</div><div class="total-value">${totalProblems}</div>`;
 
                     summaryContent.appendChild(ul);
@@ -267,8 +311,6 @@
                 table.innerHTML = `<thead class="thead-dark"><tr><th>Archivo</th><th>Tipo de Problema</th><th>Celda</th><th>Línea</th><th>Contenido</th><th>Detalle</th></tr></thead><tbody></tbody>`;
 
                 const tbody = table.querySelector('tbody');
-                const criticalProblems = ["Ruta en duro", "Uso de %sql", "Base de datos en duro"]; // <-- AÑADIDO AQUÍ
-                const structuralProblems = ["Footer Faltante", "Footer Incorrecto", "Código posterior al final"];
 
                 for (const finding of findings) {
                     let badgeClass = "badge bg-warning text-dark";
@@ -318,11 +360,10 @@
                 const lines = highlightedHtml.split('\n');
 
                 if (lineNumber > 0 && lineNumber <= lines.length) {
-                    lines[lineNumber - 1] = `<span class="line-highlight">${lines[lineNumber - 1]}</span>`;
+                     lines[lineNumber - 1] = `<span class="line-highlight">${lines[lineNumber - 1]}</span>`;
                 }
 
                 codeContentEl.innerHTML = lines.join('\n');
-
                 codeModal.show();
             });
         });

@@ -55,16 +55,16 @@ namespace NotebookValidator.Web.Services
                 if (cell.CellType == "code")
                 {
                     var code = string.Join("\n", cell.Source);
-                    
+
                     findings.AddRange(ValidateHardcodedPaths(code, originalFileName, cellNumber, code));
                     findings.AddRange(ValidateSqlCommands(code, originalFileName, cellNumber, code));
-                    findings.AddRange(ValidateHardcodedDatabases(code, originalFileName, cellNumber, code));
+                    findings.AddRange(ValidateHardcodedDatabases(code, originalFileName, cellNumber, code)); // <- Tu regla
                 }
             }
 
             return findings;
         }
-        
+
         // --- MÉTODOS DE VALIDACIÓN ---
 
         private IEnumerable<Finding> ValidateHeader(List<Cell> cells, string originalFileName)
@@ -136,16 +136,16 @@ namespace NotebookValidator.Web.Services
 
             if (cells.Count > exitCellIndex + 1)
             {
-                 var extraCell = cells[exitCellIndex + 1];
-                 var extraCellContent = string.Join("\n", extraCell.Source);
-                 yield return new Finding(
-                    fileName,
-                    "Código posterior al final",
-                    "Se encontró una celda después de 'dbutils.notebook.exit', lo cual no está permitido.",
-                    exitCellIndex + 2,
-                    Content: extraCellContent.Split('\n').FirstOrDefault()?.Trim(),
-                    CellSourceCode: extraCellContent
-                );
+                var extraCell = cells[exitCellIndex + 1];
+                var extraCellContent = string.Join("\n", extraCell.Source);
+                yield return new Finding(
+                   fileName,
+                   "Código posterior al final",
+                   "Se encontró una celda después de 'dbutils.notebook.exit', lo cual no está permitido.",
+                   exitCellIndex + 2,
+                   Content: extraCellContent.Split('\n').FirstOrDefault()?.Trim(),
+                   CellSourceCode: extraCellContent
+               );
             }
         }
 
@@ -179,7 +179,7 @@ namespace NotebookValidator.Web.Services
                     }
                 }
             }
-            
+
             foreach (var import in imports)
             {
                 bool isUsed = false;
@@ -300,13 +300,19 @@ namespace NotebookValidator.Web.Services
             {
                 var line = lines[i];
                 var trimmedLine = line.Trim();
+
+                // --- MODIFICACIÓN: AÑADIDO PARA IGNORAR IMPORTS ---
                 if (trimmedLine.StartsWith("#") ||
                     trimmedLine.ToUpper().Contains("COMMENT") ||
                     trimmedLine.Contains("dbutils.notebook.exit") ||
-                    trimmedLine.StartsWith("print(", StringComparison.OrdinalIgnoreCase))
+                    trimmedLine.StartsWith("print(", StringComparison.OrdinalIgnoreCase) ||
+                    trimmedLine.StartsWith("import", StringComparison.OrdinalIgnoreCase) ||
+                    trimmedLine.StartsWith("from", StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
+                // --- FIN DE LA MODIFICACIÓN ---
+
                 foreach (Match match in hardcodedPathRegex.Matches(line))
                 {
                     var foundPath = match.Value;
@@ -344,7 +350,17 @@ namespace NotebookValidator.Web.Services
             for (int i = 0; i < lines.Length; i++)
             {
                 var line = lines[i];
-                if (line.TrimStart().StartsWith("#")) continue; // Ignora comentarios
+                var trimmedLine = line.TrimStart(); // <- Modificado
+
+                // --- MODIFICACIÓN: AÑADIDO PARA IGNORAR IMPORTS Y COMENTARIOS ---
+                if (trimmedLine.StartsWith("#") ||
+                    trimmedLine.StartsWith("import", StringComparison.OrdinalIgnoreCase) ||
+                    trimmedLine.StartsWith("from", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue; // Ignora comentarios, imports 'from' e imports 'import'
+                }
+                // --- FIN DE LA MODIFICACIÓN ---
+
                 var matches = dbPattern.Matches(line);
                 foreach (Match match in matches)
                 {
