@@ -1,57 +1,67 @@
 @using Microsoft.AspNetCore.Identity
 @using NotebookValidator.Web.Data
-
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
 
 <ul class="navbar-nav">
-@if (SignInManager.IsSignedIn(User))
-{
-    var currentUser = await UserManager.GetUserAsync(User);
-
-    // --- NUEVO MENÚ DESPLEGABLE PARA ADMINISTRADORES ---
-    // Este bloque solo será visible si el usuario tiene el rol "Admin".
-    @if (User.IsInRole("Admin"))
+    @if (SignInManager.IsSignedIn(User))
     {
+        var user = await UserManager.GetUserAsync(User);
+        var quota = user?.AnalysisQuota ?? 0;
+
         <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                Administración
+            <a class="nav-link dropdown-toggle topbar-user-toggle" href="#" id="navbarDropdownUser" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-person-circle"></i>
+                <span>¡Hola, @user.UserName!</span>
             </a>
-            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="adminDropdown">
-                <li><a class="dropdown-item" asp-controller="AdminDashboard" asp-action="Index">Dashboard Global</a></li>
+
+            <ul class="dropdown-menu dropdown-menu-end topbar-dropdown-menu" aria-labelledby="navbarDropdownUser">
+
+                <li>
+                    <span class="dropdown-item-text">
+                        <i class="bi bi-coin"></i>
+                        Créditos: <span class="fw-bold" style="color: var(--accent-yellow);">@quota</span>
+                    </span>
+                </li>
+
+                <li>
+                    <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">
+                        <i class="bi bi-gear"></i> Gestionar cuenta
+                    </a>
+                </li>
+
+                @if (User.IsInRole("Admin"))
+                {
+                    <li>
+                        <a class="dropdown-item" asp-controller="AdminDashboard" asp-action="Index">
+                            <i class="bi bi-speedometer2"></i> Administración
+                        </a>
+                    </li>
+                }
+
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" asp-controller="Admin" asp-action="Index">Gestionar Usuarios</a></li>
-                <li><a class="dropdown-item" asp-controller="ParameterAdmin" asp-action="Index">Gestionar Parámetros</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" asp-controller="TestAI" asp-action="Index">Probar Conexión IA</a></li>
+
+                <li>
+                    <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
+                        <button type="submit" class="dropdown-item">
+                            <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                        </button>
+                    </form>
+                </li>
             </ul>
         </li>
     }
-
-    <li class="nav-item">
-        <a id="manage" class="nav-link" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">
-            <div class="user-info">
-                @if (currentUser != null)
-                {
-                    <span class="user-name">Hola @currentUser.UserName!</span>
-                    <span class="user-credits">Créditos restantes: @currentUser.AnalysisQuota</span>
-                }
-            </div>
-        </a>
-    </li>
-    <li class="nav-item">
-        <form id="logoutForm" class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
-            <button id="logout" type="submit" class="nav-link btn btn-link">Cerrar sesión</button>
-        </form>
-    </li>
-}
-else
-{
-    <li class="nav-item">
-        <a class="nav-link" id="register" asp-area="Identity" asp-page="/Account/Register">Registro</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" id="login" asp-area="Identity" asp-page="/Account/Login">Acceso</a>
-    </li>
-}
+    else
+    {
+        <li class="nav-item">
+            <a class="nav-link topbar-user-toggle" asp-area="Identity" asp-page="/Account/Register">
+                <i class="bi bi-person-plus"></i> <span>Registrarse</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link topbar-user-toggle" asp-area="Identity" asp-page="/Account/Login">
+                <i class="bi bi-box-arrow-in-right"></i> <span>Ingresar</span>
+            </a>
+        </li>
+    }
 </ul>
