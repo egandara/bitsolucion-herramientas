@@ -1,4 +1,6 @@
+using NotebookValidator.Web.Data;
 using NotebookValidator.Web.Models;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,6 +17,17 @@ namespace NotebookValidator.Web.Services
 
     public class NotebookValidatorService
     {
+        // --- INYECCIÓN DE DEPENDENCIA ---
+        private readonly ApplicationDbContext _context;
+        private List<ValidationRule> _dynamicRules; // Caché de reglas
+
+        // --- CONSTRUCTOR MODIFICADO ---
+        public NotebookValidatorService(ApplicationDbContext context)
+        {
+            _context = context;
+            _dynamicRules = new List<ValidationRule>();
+        }
+
         public async Task<List<Finding>> AnalyzeNotebookAsync(string filePath, string originalFileName)
         {
             var findings = new List<Finding>();
@@ -37,11 +50,14 @@ namespace NotebookValidator.Web.Services
             }
             catch (Exception e)
             {
-                findings.Add(new Finding(originalFileName, "Error de Lectura", $"No se pudo leer o procesar el archivo: {e.Message}"));
+                findings.Add(new Finding(originalFileName, "Error de Lectura", $"No se pudo leer o procesar el archivo: {e.Message}", Severity: "Critical"));
                 return findings;
             }
 
-            // Validaciones a nivel de NOTEBOOK COMPLETO
+            // --- CARGA DINÁMICA DE REGLAS ---
+            _dynamicRules = await _context.ValidationRules.Where(r => r.IsEnabled).ToListAsync();
+
+            // Validaciones ESTRUCTURALES (Hard-coded, se mantienen)
             findings.AddRange(ValidateHeader(notebook.Cells, originalFileName));
             findings.AddRange(ValidateUnusedWidgetVariables(notebook.Cells, originalFileName));
             findings.AddRange(ValidateUnusedImports(notebook.Cells, originalFileName));
@@ -56,16 +72,15 @@ namespace NotebookValidator.Web.Services
                 {
                     var code = string.Join("\n", cell.Source);
 
-                    findings.AddRange(ValidateHardcodedPaths(code, originalFileName, cellNumber, code));
-                    findings.AddRange(ValidateSqlCommands(code, originalFileName, cellNumber, code));
-                    findings.AddRange(ValidateHardcodedDatabases(code, originalFileName, cellNumber, code)); // <- Tu regla
+                    // --- APLICA LAS REGLAS DINÁMICAS (REEMPLAZA LOS MÉTODOS ANTIGUOS) ---
+                    findings.AddRange(ApplyDynamicCellRules(code, originalFileName, cellNumber, code));
                 }
             }
 
             return findings;
         }
 
-        // --- MÉTODOS DE VALIDACIÓN ---
+        // --- MÉTODOS DE VALIDACIÓN ESTRUCTURAL (AÑADIMOS SEVERIDAD) ---
 
         private IEnumerable<Finding> ValidateHeader(List<Cell> cells, string originalFileName)
         {
@@ -87,7 +102,8 @@ namespace NotebookValidator.Web.Services
                     CellNumber: 1,
                     LineNumber: null,
                     Content: firstCellContent.Split('\n').FirstOrDefault()?.Trim(),
-                    CellSourceCode: firstCellContent
+                    CellSourceCode: firstCellContent,
+                    Severity: "Warning" // <-- SEVERIDAD AÑADIDA
                 );
             }
         }
@@ -108,7 +124,7 @@ namespace NotebookValidator.Web.Services
 
             if (finalMessageIndex == -1)
             {
-                yield return new Finding(fileName, "Footer Faltante", "No se encontró la celda Markdown con 'Mensaje Final' al final del notebook.");
+                yield return new Finding(fileName, "Footer Faltante", "No se encontró la celda Markdown con 'Mensaje Final' al final del notebook.", Severity: "Info");
                 yield break;
             }
 
@@ -116,7 +132,7 @@ namespace NotebookValidator.Web.Services
 
             if (exitCellIndex >= cells.Count)
             {
-                yield return new Finding(fileName, "Footer Incorrecto", "Falta la celda de código con 'dbutils.notebook.exit' después del Mensaje Final.", exitCellIndex);
+                yield return new Finding(fileName, "Footer Incorrecto", "Falta la celda de código con 'dbutils.notebook.exit' después del Mensaje Final.", exitCellIndex, Severity: "Info");
                 yield break;
             }
 
@@ -130,7 +146,8 @@ namespace NotebookValidator.Web.Services
                     "La celda siguiente al 'Mensaje Final' no es de código o no contiene 'dbutils.notebook.exit'.",
                     exitCellIndex + 1,
                     Content: exitCellContent.Split('\n').FirstOrDefault()?.Trim(),
-                    CellSourceCode: exitCellContent
+                    CellSourceCode: exitCellContent,
+                    Severity: "Info"
                 );
             }
 
@@ -144,7 +161,8 @@ namespace NotebookValidator.Web.Services
                    "Se encontró una celda después de 'dbutils.notebook.exit', lo cual no está permitido.",
                    exitCellIndex + 2,
                    Content: extraCellContent.Split('\n').FirstOrDefault()?.Trim(),
-                   CellSourceCode: extraCellContent
+                   CellSourceCode: extraCellContent,
+                   Severity: "Info"
                );
             }
         }
@@ -207,7 +225,8 @@ namespace NotebookValidator.Web.Services
                         import.CellIndex + 1,
                         import.LineIndex + 1,
                         import.Content,
-                        string.Join("\n", allCodeByCell[import.CellIndex])
+                        string.Join("\n", allCodeByCell[import.CellIndex]),
+                        Severity: "Warning" // <-- SEVERIDAD AÑADIDA
                     );
                 }
             }
@@ -265,119 +284,88 @@ namespace NotebookValidator.Web.Services
                         decl.CellIndex + 1,
                         decl.LineIndex + 1,
                         decl.Content,
-                        string.Join("\n", cellCodeMap[decl.CellIndex])
+                        string.Join("\n", cellCodeMap[decl.CellIndex]),
+                        Severity: "Warning" // <-- SEVERIDAD AÑADIDA
                     );
                 }
             }
         }
 
-        private IEnumerable<Finding> ValidateSqlCommands(string code, string fileName, int cellNumber, string cellSourceCode)
+        // --- MÉTODO DINÁMICO (CORRECCIÓN CS1631) ---
+        private IEnumerable<Finding> ApplyDynamicCellRules(string code, string fileName, int cellNumber, string cellSourceCode)
         {
-            var sqlMagicRegex = new Regex(@"^\s*%%?sql", RegexOptions.IgnoreCase);
-            var lines = code.Split('\n');
-            for (int i = 0; i < lines.Length; i++)
+            // --- PASO 1: Lista para errores de reglas ---
+            var errorFindings = new List<Finding>();
+            var compiledRules = new List<(ValidationRule rule, Regex regex)>();
+
+            foreach (var rule in _dynamicRules)
             {
-                if (sqlMagicRegex.IsMatch(lines[i]))
+                try
                 {
-                    yield return new Finding(
+                    // Intenta compilar el Regex
+                    var regex = new Regex(rule.RegexPattern, RegexOptions.IgnoreCase);
+                    compiledRules.Add((rule, regex));
+                }
+                catch (Exception ex)
+                {
+                    // --- CORRECCIÓN ---
+                    // No usamos 'yield return' aquí. Lo añadimos a una lista.
+                    errorFindings.Add(new Finding(
                         fileName,
-                        "Uso de %sql",
-                        "El comando mágico SQL debe ser reemplazado por spark.sql() o quitado.",
+                        "Error de Regla",
+                        $"La regla '{rule.RuleName}' (ID: {rule.Id}) tiene un patrón Regex inválido: {ex.Message}",
                         cellNumber,
-                        i + 1,
-                        lines[i].Trim(),
-                        cellSourceCode
-                    );
+                        Severity: "Critical"
+                    ));
                 }
             }
-        }
 
-        private IEnumerable<Finding> ValidateHardcodedPaths(string code, string fileName, int cellNumber, string cellSourceCode)
-        {
-            var hardcodedPathRegex = new Regex(@"(""|').*(\/|\\).*(""|')");
+            // --- PASO 2: Aplicar los Regex compilados a cada línea ---
             var lines = code.Split('\n');
             for (int i = 0; i < lines.Length; i++)
             {
                 var line = lines[i];
                 var trimmedLine = line.Trim();
 
-                // --- MODIFICACIÓN: AÑADIDO PARA IGNORAR IMPORTS ---
+                // Optimización: Ignorar líneas de comentario o importación
                 if (trimmedLine.StartsWith("#") ||
-                    trimmedLine.ToUpper().Contains("COMMENT") ||
-                    trimmedLine.Contains("dbutils.notebook.exit") ||
-                    trimmedLine.StartsWith("print(", StringComparison.OrdinalIgnoreCase) ||
                     trimmedLine.StartsWith("import", StringComparison.OrdinalIgnoreCase) ||
                     trimmedLine.StartsWith("from", StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
-                // --- FIN DE LA MODIFICACIÓN ---
 
-                foreach (Match match in hardcodedPathRegex.Matches(line))
+                // Itera por las reglas que SÍ compilaron
+                foreach (var (rule, regex) in compiledRules)
                 {
-                    var foundPath = match.Value;
-                    int slashCount = foundPath.Count(c => c == '/' || c == '\\');
-                    if (slashCount <= 1)
+                    // Esta sección ya NO está en un try...catch
+                    if (regex.IsMatch(line))
                     {
-                        continue;
+                        // Este 'yield return' es legal
+                        yield return new Finding(
+                            fileName,
+                            rule.RuleName,
+                            rule.DetailsMessage,
+                            cellNumber,
+                            i + 1,
+                            line.Trim(),
+                            cellSourceCode,
+                            rule.Severity
+                        );
                     }
-                    var cleanPath = foundPath.Trim('"', '\'');
-                    if (cleanPath.StartsWith("C/C", StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-                    if (foundPath.Contains('+') || cleanPath.StartsWith("http"))
-                    {
-                        continue;
-                    }
-                    yield return new Finding(
-                        fileName,
-                        "Ruta en duro",
-                        "Posible ruta en duro encontrada.",
-                        cellNumber,
-                        i + 1,
-                        line.Trim(),
-                        cellSourceCode
-                    );
                 }
             }
-        }
-        private IEnumerable<Finding> ValidateHardcodedDatabases(string code, string fileName, int cellNumber, string cellSourceCode)
-        {
-            // Busca patrones como: from dsr_plt_bcitemp_db.tmp_salida_mtz_b1 o join otro_db.tabla
-            var dbPattern = new Regex(@"\b(from|join)\s+([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)", RegexOptions.IgnoreCase);
-            var lines = code.Split('\n');
-            for (int i = 0; i < lines.Length; i++)
+
+            // --- PASO 3: Devolver todos los errores de reglas al final ---
+            foreach (var error in errorFindings)
             {
-                var line = lines[i];
-                var trimmedLine = line.TrimStart(); // <- Modificado
-
-                // --- MODIFICACIÓN: AÑADIDO PARA IGNORAR IMPORTS Y COMENTARIOS ---
-                if (trimmedLine.StartsWith("#") ||
-                    trimmedLine.StartsWith("import", StringComparison.OrdinalIgnoreCase) ||
-                    trimmedLine.StartsWith("from", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue; // Ignora comentarios, imports 'from' e imports 'import'
-                }
-                // --- FIN DE LA MODIFICACIÓN ---
-
-                var matches = dbPattern.Matches(line);
-                foreach (Match match in matches)
-                {
-                    var dbName = match.Groups[2].Value;
-                    var tableName = match.Groups[3].Value;
-                    // Puedes ajustar aquí si quieres excluir ciertos nombres permitidos
-                    yield return new Finding(
-                        fileName,
-                        "Base de datos hardcodeada",
-                        $"Se detectó el uso explícito de base de datos/tablas: '{dbName}.{tableName}'.",
-                        cellNumber,
-                        i + 1,
-                        line.Trim(),
-                        cellSourceCode
-                    );
-                }
+                yield return error;
             }
         }
+
+        // --- MÉTODOS DE VALIDACIÓN OBSOLETOS (ELIMINADOS) ---
+        // private IEnumerable<Finding> ValidateSqlCommands(...)
+        // private IEnumerable<Finding> ValidateHardcodedPaths(...)
+        // private IEnumerable<Finding> ValidateHardcodedDatabases(...)
     }
 }

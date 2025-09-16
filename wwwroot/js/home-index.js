@@ -10,16 +10,17 @@
     const summaryContent = document.getElementById('summary-content');
     let fileStore = new DataTransfer();
 
-    const criticalProblems = [
-        "Ruta en duro",
-        "Uso de %sql",
-        "Base de datos hardcodeada"
-    ];
-    const structuralProblems = [
-        "Footer Faltante",
-        "Footer Incorrecto",
-        "Código posterior al final"
-    ];
+    // --- FUNCIÓN HELPER (NUEVA) ---
+    function getBadgeClass(severity) {
+        if (severity === "Critical") {
+            return "badge bg-danger rounded-pill";
+        }
+        if (severity === "Info") {
+            return "badge bg-info rounded-pill";
+        }
+        // Default es "Warning"
+        return "badge bg-warning text-dark rounded-pill";
+    }
 
     // --- LÓGICA DE MANEJO DE ARCHIVOS ---
     fileInput.addEventListener('change', e => addFilesToStore(e.target.files));
@@ -149,9 +150,9 @@
         summaryContent.innerHTML = '';
 
         const severityOrder = {
-            "Ruta en duro": 1, "Uso de %sql": 1, "Base de datos hardcodeada": 1,
-            "Header Incorrecto": 2, "Variable de Widget no usada": 2, "Importación no Usada": 2,
-            "Footer Faltante": 3, "Footer Incorrecto": 3, "Código posterior al final": 3
+            "Critical": 1,
+            "Warning": 2,
+            "Info": 3
         };
 
         if (summaryData.hasOwnProperty('Error de Cuota')) {
@@ -159,10 +160,15 @@
         } else if (Object.keys(summaryData).length === 0) {
             summaryContent.innerHTML = '<div class="alert alert-success m-3">¡Excelente! No se encontraron problemas.</div>';
         } else {
+
+            // --- ORDENAMIENTO (CORREGIDO A camelCase) ---
             const sortedProblems = Object.entries(summaryData).sort((a, b) => {
-                const severityA = severityOrder[a[0]] || 99;
-                const severityB = severityOrder[b[0]] || 99;
-                if (severityA !== severityB) { return severityA - severityB; }
+                const severityA = severityOrder[a[1].severity] || 99; // <-- Corregido a .severity
+                const severityB = severityOrder[b[1].severity] || 99; // <-- Corregido a .severity
+
+                if (severityA !== severityB) {
+                    return severityA - severityB;
+                }
                 return a[0].localeCompare(b[0]);
             });
 
@@ -170,28 +176,24 @@
             ul.className = 'list-group list-group-flush';
             let totalProblems = 0;
 
-            for (const [problemType, count] of sortedProblems) {
-                let badgeClass = "badge bg-warning text-dark rounded-pill";
-                if (criticalProblems.includes(problemType)) {
-                    badgeClass = "badge bg-danger rounded-pill";
-                } else if (structuralProblems.includes(problemType)) {
-                    badgeClass = "badge bg-info rounded-pill";
-                }
+            // --- BUCLE FOR (CORREGIDO A camelCase) ---
+            for (const [problemType, data] of sortedProblems) { // data es { count, severity }
+
+                let badgeClass = getBadgeClass(data.severity); // <-- Corregido a .severity
+
                 const li = document.createElement('li');
                 li.className = 'list-group-item d-flex justify-content-between align-items-center';
-
                 li.style.cursor = 'pointer';
                 li.dataset.filter = problemType;
                 li.title = `Filtrar por "${problemType}"`;
 
-                li.innerHTML = `${problemType} <span class="${badgeClass}">${count}</span>`;
+                li.innerHTML = `${problemType} <span class="${badgeClass}">${data.count}</span>`; // <-- Corregido a .count
                 ul.appendChild(li);
-                totalProblems += count;
+                totalProblems += data.count; // <-- Corregido a .count
             }
 
             const totalDiv = document.createElement('div');
             totalDiv.className = 'summary-total';
-
             totalDiv.style.cursor = 'pointer';
             totalDiv.dataset.filter = '';
             totalDiv.title = 'Clic para limpiar filtro y ver todo';
@@ -220,10 +222,12 @@
         const tbody = table.querySelector('tbody');
 
         for (const finding of findings) {
-            let badgeClass = "badge bg-warning text-dark";
-            if (criticalProblems.includes(finding.findingType)) {
+
+            // Esta lógica ya era camelCase y estaba correcta
+            let badgeClass = "badge bg-warning text-dark"; // Default
+            if (finding.severity === "Critical") {
                 badgeClass = "badge bg-danger";
-            } else if (structuralProblems.includes(finding.findingType)) {
+            } else if (finding.severity === "Info") {
                 badgeClass = "badge bg-info";
             }
 
@@ -232,6 +236,8 @@
             tr.style.cursor = 'pointer';
             tr.dataset.sourceCode = btoa(finding.cellSourceCode || '');
             tr.dataset.lineNumber = finding.lineNumber || '';
+
+            // Esta lógica ya era camelCase y estaba correcta
             tr.innerHTML = `
                 <td>${escapeHtml(finding.fileName || 'N/A')}</td>
                 <td><span class="${badgeClass}">${escapeHtml(finding.findingType || 'N/A')}</span></td>

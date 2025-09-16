@@ -24,7 +24,10 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.R
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
 builder.Services.AddControllersWithViews();
-builder.Services.AddScoped<NotebookValidatorService>();
+builder.Services.AddScoped<NotebookValidatorService>(sp =>
+    new NotebookValidatorService(
+        sp.GetRequiredService<ApplicationDbContext>())
+);
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<TempTableService>();
 builder.Services.AddScoped<ParameterValidationService>();

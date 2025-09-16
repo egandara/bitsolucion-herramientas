@@ -114,6 +114,11 @@
                         <i class="bi bi-people"></i> <span>Gestionar Usuarios</span>
                     </a>
                 </li>
+                <li class="nav-item @(currentController == "ValidationRuleAdmin" ? "active" : "")">
+                    <a class="nav-link" asp-controller="ValidationRuleAdmin" asp-action="Index">
+                        <i class="bi bi-pencil-ruler"></i> <span>Admin Reglas Validador</span>
+                    </a>
+                </li>
             }
         </ul>
         <hr class="sidebar-divider mt-auto">

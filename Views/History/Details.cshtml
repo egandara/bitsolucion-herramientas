@@ -1,20 +1,137 @@
 @model List<Finding>
-@{ 
-    ViewData["Title"] = "Detalles del Análisis"; 
+@using NotebookValidator.Web.Models  @{
+    ViewData["Title"] = "Detalle de Análisis";
+    var analysisRun = (AnalysisRun)ViewBag.AnalysisRun; // Esta línea ahora compilará
 }
 
-<div class="results-header mb-3">
-    <div>
-        <a asp-action="Index" class="btn btn-secondary btn-sm">← Volver al Historial</a>
-        <h3 class="mt-2">@ViewData["Title"]</h3>
+<h1 class="display-5">Detalle del Análisis <span class="text-muted fs-4">(ID: @analysisRun.Id)</span></h1>
+<p class="lead">Revisión realizada por <strong class="text-warning">@analysisRun.User.Email</strong> el @analysisRun.AnalysisTimestamp.ToLongDateString()</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card kpi-card h-100">
+            <div class="card-body">
+                <h5>Total Archivos Analizados</h5>
+                <p>@analysisRun.TotalFilesAnalyzed</p>
+            </div>
+        </div>
     </div>
-    
-    <div class="btn-group">
-        <a asp-action="ExportHistoryToExcel" asp-route-id="@ViewBag.AnalysisRunId" class="btn btn-success">
-            Exportar a Excel
-        </a>
-        <a asp-action="DownloadHistoryAsPdf" asp-route-id="@ViewBag.AnalysisRunId" class="btn btn-danger">Descargar PDF</a>
+    <div class="col-md-4">
+        <div class="card kpi-card h-100">
+            <div class="card-body">
+                <h5>Total Problemas Encontrados</h5>
+                <p>@analysisRun.TotalProblemsFound</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card kpi-card h-100">
+            <div class="card-body">
+                <h5>Fecha de Análisis</h5>
+                <p class="fs-4">@analysisRun.AnalysisTimestamp.ToString("g")</p>
+            </div>
+        </div>
     </div>
 </div>
 
-<partial name="_ValidationResults" model="Model" />
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3>Resultados Detallados</h3>
+
+        <a asp-action="ExportToExcel" asp-controller="Home" asp-route-analysisId="@analysisRun.Id" class="btn btn-success">
+            <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+        </a>
+    </div>
+    <div class="card-body">
+
+        @if (Model == null || !Model.Any())
+        {
+            <div class="alert alert-success">No se encontraron problemas en este análisis.</div>
+        }
+        else
+        {
+            <table id="resultsTable" class="table table-bordered table-striped mt-3" style="width:100%">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>Archivo</th>
+                        <th>Tipo de Problema</th>
+                        <th>Celda</th>
+                        <th>Línea</th>
+                        <th>Contenido</th>
+                        <th>Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var finding in Model)
+                    {
+                        var badgeClass = "badge bg-warning text-dark";
+                        if (finding.Severity == "Critical") { badgeClass = "badge bg-danger"; }
+                        else if (finding.Severity == "Info") { badgeClass = "badge bg-info"; }
+
+                        <tr class="clickable-row" style="cursor: pointer;"
+                            data-source-code="@(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(finding.CellSourceCode ?? "")))"
+                            data-line-number="@finding.LineNumber">
+                            <td>@finding.FileName</td>
+                            <td><span class="@badgeClass">@finding.FindingType</span></td>
+                            <td>@finding.CellNumber</td>
+                            <td>@finding.LineNumber</td>
+                            <td><code>@finding.Content</code></td>
+                            <td>@finding.Details</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+<div class="modal fade" id="codeModal" tabindex="-1" aria-labelledby="codeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="codeModalLabel">Contexto del Código</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <pre><code id="code-content" class="language-python"></code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('#resultsTable').DataTable({
+                language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' },
+                "pageLength": 10
+            });
+
+            const codeModal = new bootstrap.Modal(document.getElementById('codeModal'));
+            const codeContentEl = document.getElementById('code-content');
+            const codeModalLabel = document.getElementById('codeModalLabel');
+
+            $('#resultsTable').on('click', '.clickable-row', function () {
+                const row = $(this);
+                const sourceCode = atob(row.data('source-code'));
+                const lineNumber = parseInt(row.data('line-number'));
+                const fileName = row.find('td:eq(0)').text();
+                const findingType = row.find('td:eq(1)').text();
+
+                codeModalLabel.textContent = `Detalle de "${findingType}" en ${fileName}`;
+
+                const highlightedHtml = Prism.highlight(sourceCode, Prism.languages.python, 'python');
+                const lines = highlightedHtml.split('\n');
+
+                if (lineNumber > 0 && lineNumber <= lines.length) {
+                    lines[lineNumber - 1] = `<span class="line-highlight">${lines[lineNumber - 1]}</span>`;
+                }
+
+                codeContentEl.innerHTML = lines.join('\n');
+                codeModal.show();
+            });
+        });
+    </script>
+}

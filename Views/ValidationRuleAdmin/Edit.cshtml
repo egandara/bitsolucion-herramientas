@@ -1,0 +1,52 @@
+﻿@model NotebookValidator.Web.Models.ValidationRule
+
+@{
+    ViewData["Title"] = "Editar Regla";
+    var severities = new SelectList(new[] { "Warning", "Critical", "Info" });
+}
+
+<h1>@ViewData["Title"]</h1>
+<hr />
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+
+            <div class="mb-3">
+                <label asp-for="RuleName" class="form-label"></label>
+                <input asp-for="RuleName" class="form-control" />
+                <span asp-validation-for="RuleName" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="DetailsMessage" class="form-label"></label>
+                <textarea asp-for="DetailsMessage" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="DetailsMessage" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="RegexPattern" class="form-label"></label>
+                <input asp-for="RegexPattern" class="form-control" />
+                <span asp-validation-for="RegexPattern" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Severity" class="form-label"></label>
+                <select asp-for="Severity" class="form-select" asp-items="severities"></select>
+                <span asp-validation-for="Severity" class="text-danger"></span>
+            </div>
+            <div class="mb-3 form-check">
+                <input class="form-check-input" type="checkbox" asp-for="IsEnabled" />
+                <label class="form-check-label" asp-for="IsEnabled"></label>
+            </div>
+            <div class="mb-3">
+                <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+                <input type="submit" value="Guardar" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

@@ -5,5 +5,6 @@ public record Finding(
     int? CellNumber = null,
     int? LineNumber = null,
     string? Content = null,
-    string? CellSourceCode = null
+    string? CellSourceCode = null,
+    string Severity = "Warning" // <-- AÑADE ESTA LÍNEA (con "Warning" como default)
 );

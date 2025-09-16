@@ -121,8 +121,13 @@ namespace NotebookValidator.Web.Controllers
                 await _context.SaveChangesAsync();
 
                 // 6. Preparar y devolver la respuesta JSON.
-                var summaryData = allFindings.GroupBy(f => f.FindingType).ToDictionary(g => g.Key, g => g.Count());
-                
+                var summaryData = allFindings
+                    .GroupBy(f => new { f.FindingType, f.Severity })
+                    .ToDictionary(
+                        g => g.Key.FindingType,
+                        g => new { Count = g.Count(), Severity = g.Key.Severity }
+                    );
+
                 HttpContext.Session.SetString("ValidationResults", JsonSerializer.Serialize(allFindings));
                 
                 return Json(new { summary = summaryData, findings = allFindings, hasResults = allFindings.Any() });
@@ -135,18 +140,63 @@ namespace NotebookValidator.Web.Controllers
                 }
             }
         }
-        
-        public async Task<IActionResult> ExportToExcel()
+
+        public async Task<IActionResult> ExportToExcel(int? analysisId)
         {
             var jsonResults = HttpContext.Session.GetString("ValidationResults");
-            if (string.IsNullOrEmpty(jsonResults)) { return RedirectToAction("Index"); }
+            if (string.IsNullOrEmpty(jsonResults))
+            {
+                // Si la sesión está vacía, no podemos hacer nada.
+                return RedirectToAction("Index");
+            }
 
             var findings = JsonSerializer.Deserialize<List<Finding>>(jsonResults);
             var user = await _userManager.GetUserAsync(User);
-            var lastAnalysis = await _context.AnalysisRuns
-                .Where(r => r.UserId == user.Id)
-                .OrderByDescending(r => r.AnalysisTimestamp)
-                .FirstOrDefaultAsync();
+            AnalysisRun analysisRunToExport = null;
+
+            if (analysisId.HasValue)
+            {
+                // --- LÓGICA NUEVA: Exportando desde el Historial ---
+                // Busca el reporte específico que se está viendo.
+                analysisRunToExport = await _context.AnalysisRuns
+                    .Include(r => r.User) // Incluimos el usuario para obtener su email
+                    .FirstOrDefaultAsync(r => r.Id == analysisId.Value);
+
+                // Comprobación de seguridad: (Opcional) Un admin puede exportar todo.
+                // Si no es admin, verifica que sea su propio reporte.
+                bool isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
+                if (!isAdmin && analysisRunToExport.UserId != user.Id)
+                {
+                    return Unauthorized("No tienes permiso para exportar este reporte.");
+                }
+            }
+            else
+            {
+                // --- LÓGICA ORIGINAL: Exportando desde Home/Index ---
+                // Busca el último reporte del usuario actual.
+                analysisRunToExport = await _context.AnalysisRuns
+                    .Where(r => r.UserId == user.Id)
+                    .OrderByDescending(r => r.AnalysisTimestamp)
+                    .FirstOrDefaultAsync();
+
+                // Asignamos el usuario actual (ya que es su propio reporte)
+                if (analysisRunToExport != null)
+                {
+                    analysisRunToExport.User = user;
+                }
+            }
+
+            if (analysisRunToExport == null)
+            {
+                // Si por alguna razón no encontramos un reporte (ej. usuario nuevo sin análisis),
+                // creamos uno temporal solo para el encabezado.
+                analysisRunToExport = new AnalysisRun
+                {
+                    Id = 0,
+                    User = user,
+                    AnalysisTimestamp = DateTime.Now
+                };
+            }
 
             using (var workbook = new XLWorkbook())
             {
@@ -163,22 +213,24 @@ namespace NotebookValidator.Web.Controllers
                 worksheet.Cell("C2").Style.Font.Bold = true;
                 worksheet.Cell("C2").Style.Font.FontSize = 16;
                 worksheet.Range("C2:F2").Merge();
-                if (lastAnalysis != null)
-                {
-                    worksheet.Cell("C4").Value = "Análisis ID:";
-                    worksheet.Cell("D4").Value = lastAnalysis.Id;
-                    worksheet.Cell("C5").Value = "Usuario:";
-                    worksheet.Cell("D5").Value = user.Email;
-                    worksheet.Cell("C6").Value = "Fecha:";
-                    worksheet.Cell("D6").Value = lastAnalysis.AnalysisTimestamp.ToString("g");
-                }
+
+                // --- USA LOS DATOS DEL REPORTE CORRECTO ---
+                worksheet.Cell("C4").Value = "Análisis ID:";
+                worksheet.Cell("D4").Value = analysisRunToExport.Id;
+                worksheet.Cell("C5").Value = "Usuario:";
+                worksheet.Cell("D5").Value = analysisRunToExport.User.Email;
+                worksheet.Cell("C6").Value = "Fecha:";
+                worksheet.Cell("D6").Value = analysisRunToExport.AnalysisTimestamp.ToString("g");
 
                 // Tabla de Resumen
                 var summaryHeaderRow = 11;
                 worksheet.Cell("A9").Value = "Resumen por Archivo y Tipo de Problema";
                 worksheet.Cell("A9").Style.Font.Bold = true;
+
+                // Usamos los 'findings' de la sesión (que son los correctos)
                 var allProblemTypes = findings.Select(f => f.FindingType).Distinct().OrderBy(t => t).ToList();
                 var allFiles = findings.Select(f => f.FileName).Distinct().OrderBy(f => f).ToList();
+
                 worksheet.Cell(summaryHeaderRow, 1).Value = "Notebook Analizado";
                 for (int i = 0; i < allProblemTypes.Count; i++)
                 {
@@ -206,8 +258,19 @@ namespace NotebookValidator.Web.Controllers
                 var detailsHeaderRow = summaryHeaderRow + allFiles.Count + 3;
                 worksheet.Cell(detailsHeaderRow, 1).Value = "Resultados Detallados";
                 worksheet.Cell(detailsHeaderRow, 1).Style.Font.Bold = true;
-                worksheet.Cell(detailsHeaderRow + 2, 1).InsertTable(findings);
 
+                // Creamos una versión "plana" de los findings para la tabla, excluyendo el código fuente
+                var findingsForTable = findings.Select(f => new {
+                    f.FileName,
+                    f.FindingType,
+                    f.Severity,
+                    f.CellNumber,
+                    f.LineNumber,
+                    f.Content,
+                    f.Details
+                }).ToList();
+
+                worksheet.Cell(detailsHeaderRow + 2, 1).InsertTable(findingsForTable);
                 worksheet.Columns().AdjustToContents();
 
                 using (var stream = new MemoryStream())

@@ -1,0 +1,38 @@
+﻿@model IEnumerable<NotebookValidator.Web.Models.ValidationRule>
+
+@{
+    ViewData["Title"] = "Administrar Reglas de Validación";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">Crear Nueva Regla</a>
+</p>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>@Html.DisplayNameFor(model => model.RuleName)</th>
+            <th>@Html.DisplayNameFor(model => model.RegexPattern)</th>
+            <th>@Html.DisplayNameFor(model => model.Severity)</th>
+            <th>@Html.DisplayNameFor(model => model.IsEnabled)</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@Html.DisplayFor(modelItem => item.RuleName)</td>
+                <td><code>@Html.DisplayFor(modelItem => item.RegexPattern)</code></td>
+                <td>@Html.DisplayFor(modelItem => item.Severity)</td>
+                <td>@Html.DisplayFor(modelItem => item.IsEnabled)</td>
+                <td class="text-end">
+                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-secondary">Editar</a>
+                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">Eliminar</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
