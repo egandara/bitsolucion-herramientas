@@ -61,14 +61,45 @@ namespace NotebookValidator.Web.Controllers
             return View(viewModel);
         }
 
+        [HttpGet]
         public async Task<IActionResult> Details(int id)
         {
-            var userId = _userManager.GetUserId(User);
-            var analysisRun = await _context.AnalysisRuns.FirstOrDefaultAsync(r => r.Id == id && r.UserId == userId);
-            if (analysisRun == null) return NotFound();
-            
-            ViewBag.AnalysisRunId = id;
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            // Comprobar si el usuario es Administrador
+            var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
+
+            // Empezar la consulta base
+            var query = _context.AnalysisRuns.Include(r => r.User).AsQueryable();
+
+            // Si NO es admin, aplicar el filtro de seguridad
+            if (!isAdmin)
+            {
+                query = query.Where(r => r.UserId == user.Id);
+            }
+
+            // Buscar el análisis por ID (ya sea filtrado por usuario o no)
+            var analysisRun = await query.FirstOrDefaultAsync(r => r.Id == id);
+
+            if (analysisRun == null)
+            {
+                // Esto se activará si el ID no existe, o si un usuario normal
+                // intenta ver un reporte que no es suyo.
+                return NotFound();
+            }
+
             var findings = JsonSerializer.Deserialize<List<Finding>>(analysisRun.ResultsJson);
+            if (findings == null)
+            {
+                findings = new List<Finding>();
+            }
+
+            // Almacenar en sesión para el botón de exportar
+            HttpContext.Session.SetString("ValidationResults", analysisRun.ResultsJson);
+
+            ViewBag.AnalysisRun = analysisRun;
+
             return View(findings);
         }
 
