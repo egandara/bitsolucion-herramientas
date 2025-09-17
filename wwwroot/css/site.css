@@ -641,3 +641,28 @@ a {
             width: 100%;
             text-align: left;
         }
+
+/* ========================================= */
+/* ==   ESTILOS PARA MODERNIZAR TARJETAS  == */
+/* ========================================= */
+
+/* Estilo base para todas las tarjetas de la aplicación */
+.card {
+    /* Bordes más suaves y redondeados */
+    border-radius: 0.75rem; /* 12px */
+    /* Reemplaza el borde por defecto por uno más sutil */
+    border: 1px solid #e9ecef;
+    /* La sombra principal para dar el efecto "flotante" */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    /* Una transición suave para el efecto hover */
+    transition: box-shadow 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+    /* Efecto visual cuando el usuario pasa el mouse sobre la tarjeta */
+    .card:hover {
+        /* Aumenta la sombra para que parezca que se "eleva" */
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        /* Mueve la tarjeta ligeramente hacia arriba para reforzar el efecto de elevación */
+        transform: translateY(-3px);
+    }
+

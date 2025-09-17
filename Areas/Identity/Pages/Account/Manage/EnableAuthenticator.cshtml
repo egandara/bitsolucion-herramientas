@@ -1,0 +1,74 @@
+﻿@page
+@model EnableAuthenticatorModel
+@{
+    ViewData["Title"] = "Configurar aplicación de autenticación";
+    ViewData["ActivePage"] = ManageNavPages.TwoFactorAuthentication;
+}
+
+<partial name="_StatusMessage" for="StatusMessage" />
+
+<h3>@ViewData["Title"]</h3>
+
+<div class="card">
+    <div class="card-body">
+        <p>Para usar una aplicación de autenticación, sigue los siguientes pasos:</p>
+        <ol class="list-group list-group-numbered">
+            <li class="list-group-item">
+                <p class="fw-bold mb-1">Paso 1: Descarga una aplicación de 2FA</p>
+                <p class="mb-0">
+                    Descarga una aplicación de autenticación de dos factores como Microsoft Authenticator para
+                    <a href="https://go.microsoft.com/fwlink/?Linkid=825072">Windows Phone</a>,
+                    <a href="https://go.microsoft.com/fwlink/?Linkid=825073">Android</a>,
+                    <a href="https://go.microsoft.com/fwlink/?Linkid=825074">iOS</a> o
+                    Google Authenticator para
+                    <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2&amp;hl=en">Android</a> y
+                    <a href="https://itunes.apple.com/us/app/google-authenticator/id388497605?mt=8">iOS</a>.
+                </p>
+            </li>
+
+            <li class="list-group-item">
+                <p class="fw-bold mb-1">Paso 2: Escanea el Código QR</p>
+                <p>
+                    Escanea el siguiente código QR o introduce esta clave <code>@Model.SharedKey</code> en tu aplicación de autenticación. Los espacios no importan.
+                </p>
+                <div class="d-flex justify-content-center my-3">
+                    <div id="qrCode"></div>
+                </div>
+                <div id="qrCodeData" data-url="@Html.Raw(@Model.AuthenticatorUri)"></div>
+            </li>
+
+            <li class="list-group-item">
+                <p class="fw-bold mb-1">Paso 3: Verifica el código</p>
+                <p>
+                    Una vez que hayas escaneado el código QR o introducido la clave, la aplicación te proporcionará un código único. Introduce ese código en el campo de abajo.
+                </p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <form id="send-code" method="post">
+                            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                            <div class="form-floating mb-3">
+                                <input asp-for="Input.Code" class="form-control" autocomplete="off" />
+                                <label asp-for="Input.Code" class="control-label form-label">Código de Verificación</label>
+                                <span asp-validation-for="Input.Code" class="text-danger"></span>
+                            </div>
+                            <button type="submit" class="w-100 btn btn-primary">Verificar</button>
+                        </form>
+                    </div>
+                </div>
+            </li>
+        </ol>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script type="text/javascript">
+        // El script se mantiene igual, pero ahora dibuja el QR dentro de la tarjeta
+        new QRCode(document.getElementById("qrCode"),
+            {
+                text: document.getElementById("qrCodeData").getAttribute("data-url"),
+                width: 200, // Aumentamos un poco el tamaño para mejor lectura
+                height: 200
+            });
+    </script>
+}
