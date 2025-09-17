@@ -21,6 +21,11 @@
     .progress {
         height: 24px;
     }
+
+    #file-list {
+        max-height: 160px;
+        overflow-y: auto;
+    }
 </style>
 
 <div class="text-center">
@@ -34,11 +39,10 @@
             <div class="card-header">
                 <strong>Selecciona los archivos</strong>
             </div>
+
             <div class="card-body">
-                <!-- Feedback visual -->
                 <div id="feedback-message"></div>
 
-                <!-- Drop zone y selección de archivos -->
                 <div id="drop-zone" class="drop-zone mb-3">
                     <svg class="mx-auto mb-2" width="48" height="48" fill="#007bff" viewBox="0 0 24 24">
                         <path d="M19.35 10.04A7.49 7.49 0 005.3 6.16 5.994 5.994 0 006 20h13a5 5 0 00.35-9.96zM16 13h-3v3h-2v-3H8l4-4 4 4z" />
@@ -52,7 +56,6 @@
                     </div>
                 </div>
 
-                <!-- Lista editable de archivos seleccionados -->
                 <div>
                     <strong>Archivos seleccionados:</strong>
                     <ul id="file-list" class="list-group mt-2 mb-2">
@@ -65,14 +68,24 @@
                     </div>
                 </div>
 
-                <!-- Barra de progreso -->
                 <div class="progress mb-3" id="progressBarContainer" style="display:none;">
                     <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%;">0%</div>
                 </div>
 
-                <!-- Formulario de envío -->
                 <form id="upload-form" asp-action="Generate" method="post" enctype="multipart/form-data">
                     <input type="file" name="files" id="hidden-file-input" class="d-none" multiple accept=".ipynb,.zip" />
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="platinum_temp_db" class="form-label fw-bold">01 DB Platinum Temp:</label>
+                            <input type="text" id="platinum_temp_db" name="platinum_temp_db" class="form-control" value="platinum_temp_dbW">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="db_location_platinum_temp" class="form-label fw-bold">02 Location Platinum Temp DB:</label>
+                            <input type="text" id="db_location_platinum_temp" name="db_location_platinum_temp" class="form-control" value="db_location_platinum_tempW">
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn btn-primary w-100" id="submit-button" disabled>
                         Generar Notebook de Limpieza
                     </button>
@@ -80,7 +93,6 @@
             </div>
         </div>
 
-        <!-- Historial de notebooks generados -->
         <div class="card mt-4">
             <div class="card-header">
                 <strong>Historial de Notebooks Generados</strong>
@@ -128,6 +140,7 @@
             // Limpiar lista de archivos
             clearFilesButton.addEventListener('click', function () {
                 fileStore = new DataTransfer();
+                fileInput.value = ''; // [BUG FIX 1] Resetea el input para permitir re-seleccionar mismos archivos
                 renderFileList();
             });
 
@@ -135,7 +148,6 @@
             function addFilesToStore(files) {
                 if (files.length > 0) {
                     for (const file of files) {
-                        // Evitar duplicados por nombre y tamaño
                         let exists = false;
                         for (let i = 0; i < fileStore.files.length; i++) {
                             if (file.name === fileStore.files[i].name && file.size === fileStore.files[i].size) {
@@ -145,13 +157,17 @@
                         }
                         if (!exists) fileStore.items.add(file);
                     }
-                    renderFileList();
+
+                    // [BUG FIX 2] Usa setTimeout(0) para asegurar que fileStore.files.length se actualice
+                    // antes de que renderFileList() intente leerlo.
+                    setTimeout(renderFileList, 0);
                 }
             }
 
             // Renderizar lista de archivos seleccionados
             function renderFileList() {
                 fileListUl.innerHTML = '';
+                // Esta lógica ahora se ejecuta después de que fileStore.files.length es correcto:
                 if (fileStore.files.length === 0) {
                     fileListUl.appendChild(emptyListItem);
                     clearFilesButton.style.display = 'none';
@@ -173,24 +189,24 @@
                     fileListUl.appendChild(listItem);
                 }
                 clearFilesButton.style.display = 'inline-block';
-                submitButton.disabled = false;
+                submitButton.disabled = false; // <-- Esto ahora se habilitará correctamente
             }
 
             // Quitar archivo individual
             function removeFile(indexToRemove) {
                 const newFiles = new DataTransfer();
                 for (let i = 0; i < fileStore.files.length; i++) {
-                    if (i !== indexToRemove) { newFiles.items.add(fileStore.files[i]); }
+                    if (i !== indexToRemove) { newFiles.items.add(fileStore.files[i]);
+                    }
                 }
                 fileStore = newFiles;
+                fileInput.value = ''; // [BUG FIX 3] Resetea el input
                 renderFileList();
             }
 
             // Sincronizar archivos seleccionados con el input oculto del formulario
             function syncHiddenInput() {
-                // Limpiar el input oculto
                 hiddenFileInput.value = '';
-                // Crear un nuevo DataTransfer para el input oculto
                 const dt = new DataTransfer();
                 for (let i = 0; i < fileStore.files.length; i++) {
                     dt.items.add(fileStore.files[i]);
@@ -209,13 +225,16 @@
 
                 syncHiddenInput();
 
-                // Crear FormData manualmente
                 const formData = new FormData();
+
                 for (const file of fileStore.files) {
                     formData.append('files', file);
                 }
 
-                // Simular barra de progreso (ya que fetch no da progreso real en uploads)
+                // Añade los valores de los widgets al FormData
+                formData.append('platinum_temp_db', document.getElementById('platinum_temp_db').value);
+                formData.append('db_location_platinum_temp', document.getElementById('db_location_platinum_temp').value);
+
                 let progress = 0;
                 const fakeProgress = setInterval(() => {
                     if (progress < 90) {
@@ -237,18 +256,21 @@
                     submitButton.disabled = false;
 
                     if (response.ok) {
-                        // Espera que el backend devuelva el notebook generado como archivo
                         const disposition = response.headers.get('Content-Disposition');
-                        let filename = "notebook_limpieza.dbc";
-                        if (disposition && disposition.indexOf('filename=') !== -1) {
-                            filename = disposition.split('filename=')[1].replace(/['"]/g, '');
-                        }
-                        const blob = await response.blob();
+                        let filename = "notebook_limpieza.ipynb";
 
-                        // Feedback visual de éxito
+                        if (disposition && disposition.indexOf('filename=') !== -1) {
+                            const match = disposition.match(/filename\*?=['"]?(?:UTF-8'')?([^;"']+)['"]?/);
+                            if (match && match[1]) {
+                                filename = decodeURIComponent(match[1]);
+                            } else {
+                                filename = disposition.split('filename=')[1].split(';')[0].replace(/["']/g, '');
+                            }
+                        }
+
+                        const blob = await response.blob();
                         feedbackMessage.innerHTML = `<div class="alert alert-success mt-2">Notebook de limpieza generado correctamente. <a href="#" id="download-link">Descargar</a></div>`;
 
-                        // Descargar automáticamente y agregar a historial
                         const url = window.URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
@@ -258,11 +280,9 @@
                         a.click();
                         window.URL.revokeObjectURL(url);
 
-                        // Agregar a historial
                         notebookHistory.push({ name: filename, blob: blob });
                         renderHistory();
 
-                        // Permitir descarga desde el mensaje
                         setTimeout(() => {
                             const downloadLink = document.getElementById('download-link');
                             if (downloadLink) {
@@ -279,11 +299,10 @@
                             }
                         }, 100);
 
-                        // Limpiar lista de archivos tras éxito
                         fileStore = new DataTransfer();
+                        fileInput.value = ''; // [BUG FIX 4] Resetea el input
                         renderFileList();
                     } else {
-                        // Feedback visual de error
                         const errorText = await response.text();
                         feedbackMessage.innerHTML = `<div class="alert alert-danger mt-2">Error al generar el notebook: ${errorText}</div>`;
                     }
@@ -306,10 +325,11 @@
                     historyList.appendChild(li);
                     return;
                 }
-                notebookHistory.slice().reverse().forEach((doc, idx) => {
+                notebookHistory.slice().reverse().forEach((doc) => {
                     const li = document.createElement('li');
                     li.className = 'list-group-item d-flex justify-content-between align-items-center';
                     li.textContent = doc.name;
+
                     const downloadBtn = document.createElement('button');
                     downloadBtn.className = 'btn btn-link btn-sm';
                     downloadBtn.textContent = 'Descargar';
@@ -322,6 +342,7 @@
                         a.click();
                         window.URL.revokeObjectURL(url);
                     };
+
                     li.appendChild(downloadBtn);
                     historyList.appendChild(li);
                 });

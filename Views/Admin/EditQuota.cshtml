@@ -1,20 +1,42 @@
 @model NotebookValidator.Web.Data.ApplicationUser
-@{ ViewData["Title"] = "Editar Cuota"; }
+@{
+    ViewData["Title"] = "Editar Cuota";
+}
 
-<h1>@ViewData["Title"]</h1>
-<h4>Usuario: @Model.Email</h4>
-<hr />
 <div class="row">
-    <div class="col-md-4">
-        <form asp-action="EditQuota">
-            <input type="hidden" asp-for="Id" />
-            <div class="form-group">
-                <label asp-for="AnalysisQuota" class="control-label">Cuota de Análisis</label>
-                <input asp-for="AnalysisQuota" class="form-control" />
+    <div class="col-md-6">
+
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h4 class="mb-0">@ViewData["Title"]</h4>
             </div>
-            <div class="form-group mt-3">
-                <input type="submit" value="Guardar" class="btn btn-primary" />
+            <div class="card-body">
+                <h5 class="card-subtitle mb-3 text-muted">Usuario: @Model.Email</h5>
+                <hr />
+
+                <form asp-action="EditQuota">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <input type="hidden" asp-for="Id" />
+
+                    <div class="mb-3">
+                        <label asp-for="AnalysisQuota" class="control-label">Cuota de Análisis</label>
+                        <input asp-for="AnalysisQuota" class="form-control" />
+                        <span asp-validation-for="AnalysisQuota" class="text-danger"></span>
+                    </div>
+
+                    <div class="mt-4">
+                        <input type="submit" value="Guardar" class="btn btn-primary" />
+                        <a asp-action="Index" class="btn btn-outline-secondary ms-2">Volver a la lista</a>
+                    </div>
+                </form>
             </div>
-        </form>
+        </div>
+
     </div>
 </div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
