@@ -104,5 +104,55 @@ namespace NotebookValidator.Web.Controllers
             TempData["ToastMessage"] = $"Roles de {user.Email} actualizados.";
             return RedirectToAction("Index");
         }
+
+        // GET: Muestra la confirmación para reiniciar la contraseña
+        [HttpGet]
+        public async Task<IActionResult> ResetPassword(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                return NotFound();
+            }
+            return View(user);
+        }
+
+        // POST: Ejecuta el reinicio de la contraseña
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetPasswordConfirmed(string Id) // <-- Nombre corregido
+        {
+            var user = await _userManager.FindByIdAsync(Id);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            // Generar una contraseña temporal segura
+            var temporaryPassword = Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Substring(0, 10) + "aA1!";
+
+            // Reiniciar la contraseña del usuario
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var result = await _userManager.ResetPasswordAsync(user, token, temporaryPassword);
+
+            if (result.Succeeded)
+            {
+                // Marcar al usuario para que deba cambiar la contraseña en el próximo inicio de sesión
+                user.MustChangePassword = true;
+                await _userManager.UpdateAsync(user);
+
+                // Mostrar la contraseña temporal al administrador
+                ViewBag.TemporaryPassword = temporaryPassword;
+                ViewBag.UserName = user.UserName;
+                return View("ResetPasswordSuccess");
+            }
+
+            // Si hay un error, mostrarlo
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError(string.Empty, error.Description);
+            }
+            return View("ResetPassword", user); // <-- Corregido para devolver el modelo correcto
+        }
     }
 }

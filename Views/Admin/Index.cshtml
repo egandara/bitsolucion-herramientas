@@ -37,6 +37,7 @@
                         <div class="btn-group" role="group" aria-label="Acciones de usuario">
                             <a class="btn btn-info btn-sm" asp-action="ManageRoles" asp-route-id="@user.Id">Gestionar Roles</a>
                             <a class="btn btn-primary btn-sm" asp-action="EditQuota" asp-route-id="@user.Id">Editar Cuota</a>
+                            <a asp-action="ResetPassword" asp-route-userId="@user.Id" class="btn btn-warning btn-sm">Reiniciar Contraseña</a>
                         </div>
                     </td>
                 </tr>

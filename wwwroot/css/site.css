@@ -666,3 +666,15 @@ a {
         transform: translateY(-3px);
     }
 
+/* ======================================================= */
+/* ==   CORRECCIÓN COLOR ETIQUETAS FLOTANTES (INPUTS)   == */
+/* ======================================================= */
+
+/*
+  Esta regla apunta a las etiquetas (<label>) que están dentro
+  de un contenedor con la clase .form-floating y les asigna
+  un color de texto gris estándar para que sean visibles.
+*/
+.form-floating > label {
+    color: #092238; /* Color gris estándar de Bootstrap para placeholders */
+}

@@ -8,6 +8,7 @@ using NotebookValidator.Web.Services;
 using System;
 using QuestPDF.Infrastructure;
 using Syncfusion.Licensing;
+using NotebookValidator.Web.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("Ngo9BigBOggjHTQxAR8/V1JEaF1cWWhBYVF3WmFZfVtgd19FY1ZQQWY/P1ZhSXxWdk1iXX5bc3dUQ2laU019XEI=");
@@ -57,6 +58,7 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<ForcePasswordChangeMiddleware>();
 app.UseSession();
 
 app.MapControllerRoute(
