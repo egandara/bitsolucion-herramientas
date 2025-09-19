@@ -14,5 +14,9 @@ namespace NotebookValidator.Web.ViewModels
         public Dictionary<string, int> ProblemTypeCounts { get; set; } = new(); // Esta es la propiedad que faltaba
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
+
+        // Propiedad nueva SÓLO para los colores del gráfico
+        public Dictionary<string, string> ProblemTypeSeverities { get; set; }
+
     }
 }

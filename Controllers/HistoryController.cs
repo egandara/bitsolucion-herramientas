@@ -40,15 +40,25 @@ namespace NotebookValidator.Web.Controllers
                 .Where(r => r.UserId == userId)
                 .OrderByDescending(r => r.AnalysisTimestamp)
                 .ToListAsync();
+
             var allFindings = userHistory
                 .SelectMany(run => JsonSerializer.Deserialize<List<Finding>>(run.ResultsJson) ?? new List<Finding>())
                 .ToList();
+
             var problemTypeCounts = allFindings
                 .GroupBy(f => f.FindingType)
                 .ToDictionary(g => g.Key, g => g.Count());
-            var mostCommonProblem = problemTypeCounts.Any() 
-                ? problemTypeCounts.OrderByDescending(kvp => kvp.Value).First().Key 
+
+            // --- INICIO DEL CÓDIGO AÑADIDO PARA COLORES ---
+            var problemTypeSeverities = allFindings
+                .GroupBy(f => f.FindingType)
+                .ToDictionary(g => g.Key, g => g.FirstOrDefault()?.Severity ?? "Info");
+            // --- FIN DEL CÓDIGO AÑADIDO ---
+
+            var mostCommonProblem = problemTypeCounts.Any()
+                ? problemTypeCounts.OrderByDescending(kvp => kvp.Value).First().Key
                 : "N/A";
+
             var viewModel = new HistoryDashboardViewModel
             {
                 TotalAnalyses = userHistory.Count,
@@ -56,8 +66,10 @@ namespace NotebookValidator.Web.Controllers
                 TotalProblemsFound = userHistory.Sum(r => r.TotalProblemsFound),
                 MostCommonProblem = mostCommonProblem,
                 ProblemTypeCounts = problemTypeCounts,
+                ProblemTypeSeverities = problemTypeSeverities, // Se asigna la nueva propiedad
                 AnalysisRuns = userHistory
             };
+
             return View(viewModel);
         }
 
@@ -211,7 +223,7 @@ namespace NotebookValidator.Web.Controllers
 
             return File(pdfBytes, "application/pdf", fileName);
         }
-        
+
         private void ComposeHeader(IContainer container, AnalysisRun run, string logoPath)
         {
             var navyColor = "#112240";
@@ -240,7 +252,7 @@ namespace NotebookValidator.Web.Controllers
             container.PaddingVertical(20).Column(column =>
             {
                 column.Item().PaddingBottom(10).Text("Resultados Detallados").SemiBold().FontSize(14);
-                
+
                 if (findings == null || !findings.Any())
                 {
                     column.Item().Text("No se encontraron problemas en este análisis.");
@@ -271,7 +283,7 @@ namespace NotebookValidator.Web.Controllers
                     foreach (var item in findings)
                     {
                         var bgColor = index % 2 == 0 ? rowColor1 : rowColor2;
-                        
+
                         table.Cell().Background(bgColor).Padding(5).Text(item.FileName);
                         table.Cell().Background(bgColor).Padding(5).Text(item.FindingType);
                         table.Cell().Background(bgColor).Padding(5).Text(item.CellNumber?.ToString() ?? "N/A").AlignCenter();

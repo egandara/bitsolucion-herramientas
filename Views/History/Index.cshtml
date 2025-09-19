@@ -3,9 +3,7 @@
     ViewData["Title"] = "Dashboard de Historial";
 }
 
-<!-- Bootstrap Icons CDN -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-<!-- DataTables CSS CDN -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
 
 <style>
@@ -96,12 +94,24 @@
 <hr class="my-4" />
 
 <div class="row mt-4">
-    <div class="col-lg-4 mb-4">
-        <h3>Distribución de Problemas</h3>
-        <canvas id="problemsChart"></canvas>
+    <div class="col-lg-5 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h3 class="card-title">Distribución de Problemas</h3>
+            </div>
+            <div class="card-body" style="position: relative; height: 300px;">
+                @if (Model.ProblemTypeCounts.Any())
+                {
+                    <canvas id="problemsChart"></canvas>
+                }
+                else
+                {
+                    <p class="text-center text-muted mt-5">No hay datos de problemas para mostrar.</p>
+                }
+            </div>
+        </div>
     </div>
-
-    <div class="col-lg-8">
+    <div class="col-lg-7">
         <h3>Historial Detallado</h3>
         <table id="historyTable" class="table table-striped table-hover align-middle">
             <thead>
@@ -138,10 +148,8 @@
 </div>
 
 @section Scripts {
-    <!-- jQuery y DataTables JS CDN -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-    <!-- Chart.js (debe estar ya incluido en tu _Layout, si no, añade el CDN aquí) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         $(document).ready(function () {
@@ -156,12 +164,36 @@
         });
 
         document.addEventListener('DOMContentLoaded', function () {
-            // Obtenemos los datos para el gráfico que pasamos desde el controlador
-            const chartData = @Html.Raw(Json.Serialize(Model.ProblemTypeCounts));
-            const labels = Object.keys(chartData);
-            const data = Object.values(chartData);
+            const chartElement = document.getElementById('problemsChart');
+            if (!chartElement) return;
 
-            const ctx = document.getElementById('problemsChart').getContext('2d');
+            const ctx = chartElement.getContext('2d');
+
+            const distribution = @Html.Raw(Json.Serialize(Model.ProblemTypeCounts));
+            const severities = @Html.Raw(Json.Serialize(Model.ProblemTypeSeverities));
+
+            const labels = Object.keys(distribution);
+            const data = Object.values(distribution);
+
+            const criticalColors = ['#B91C1C', '#DC2626', '#F87171'];
+            const warningColors = ['#D97706', '#F59E0B', '#FBBF24'];
+            const infoColors = ['#2563EB', '#3B82F6', '#60A5FA'];
+
+            let criticalIndex = 0, warningIndex = 0, infoIndex = 0;
+
+            const backgroundColors = labels.map(label => {
+                const severity = severities[label];
+                switch (severity) {
+                    case 'Critical':
+                        return criticalColors[criticalIndex++ % criticalColors.length];
+                    case 'Warning':
+                        return warningColors[warningIndex++ % warningColors.length];
+                    case 'Info':
+                    default:
+                        return infoColors[infoIndex++ % infoColors.length];
+                }
+            });
+
             new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -169,30 +201,25 @@
                     datasets: [{
                         label: 'Número de Problemas',
                         data: data,
-                        backgroundColor: [
-                            'rgba(255, 202, 40, 0.8)',
-                            'rgba(23, 42, 69, 0.8)',
-                            'rgba(136, 146, 176, 0.8)',
-                            'rgba(255, 99, 132, 0.8)',
-                            'rgba(54, 162, 235, 0.8)',
-                            'rgba(40, 167, 69, 0.8)',
-                            'rgba(255, 193, 7, 0.8)'
-                        ],
+                        backgroundColor: backgroundColors,
                         borderColor: '#0A192F',
                         borderWidth: 2
                     }]
                 },
+                // --- INICIO DE CAMBIOS EN JAVASCRIPT ---
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            position: 'top',
+                            position: 'right', // Mueve la leyenda a la derecha
                             labels: {
                                 color: '#E6F1FF'
                             }
                         }
                     }
                 }
+                // --- FIN DE CAMBIOS EN JAVASCRIPT ---
             });
         });
     </script>

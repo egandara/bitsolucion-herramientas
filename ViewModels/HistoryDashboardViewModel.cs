@@ -17,5 +17,8 @@ namespace NotebookValidator.Web.ViewModels
 
         // Para la tabla de historial que ya existía
         public List<AnalysisRun> AnalysisRuns { get; set; } = new();
+
+        // Propiedad nueva SÓLO para los colores del gráfico
+        public Dictionary<string, string> ProblemTypeSeverities { get; set; } = new();
     }
 }

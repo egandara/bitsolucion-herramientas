@@ -22,7 +22,7 @@ html {
 body {
     background-color: var(--dark-navy);
     color: var(--light-text);
-    font-family: 'Montserrat', sans-serif;
+    font-family: 'Montserrat', sans-serif; /* Se mantiene para el texto general */
     transition: margin-left 0.3s ease;
 }
 
@@ -116,15 +116,27 @@ body {
             transition: opacity 0.3s ease;
         }
 
+        .sidebar-nav .nav-link i {
+            font-size: 1.2rem;
+            margin-right: 1rem;
+            width: 20px;
+            text-align: center;
+            transition: all 0.3s ease; /* Asegúrate de que la transición esté aquí */
+        }
+
         .sidebar-nav .nav-link:hover {
             color: var(--light-text);
             background-color: var(--navy-light);
         }
 
+        .sidebar-nav .nav-link:hover i {
+            transform: scale(1.1); /* Agranda ligeramente el icono */
+        }
     .sidebar-nav .nav-item.active .nav-link {
-        background-color: var(--accent-yellow);
-        color: var(--dark-navy);
-        border: 2px solid var(--accent-yellow);
+        background-color: var(--navy-light); /* Un fondo sutil para el estado activo */
+        color: var(--accent-yellow);
+        border-left: 4px solid var(--accent-yellow); /* Borde izquierdo como indicador */
+        border-radius: 0; /* Opcional: para un look más plano en el borde */
     }
 
     /* Submenús */
@@ -164,6 +176,8 @@ body {
     display: flex;
     flex-direction: column;
     transition: margin-left 0.3s ease;
+    background-color: #0a192f;
+    animation: fadeIn 0.5s ease-in-out;
 }
 
 /* Tu estilo .navbar se aplica a .top-bar */
@@ -250,6 +264,7 @@ body.sidebar-collapsed .sidebar-nav .nav-link[data-bs-toggle="collapse"]::after 
 /* --- Estilos de Componentes (Tus originales, sin cambios) --- */
 h1, h2, h3, h4, h5, h6 {
     color: var(--light-text);
+    font-family: 'Poppins', sans-serif; /* Nueva fuente para encabezados */
     font-weight: 700;
 }
 
@@ -433,8 +448,9 @@ p {
 }
 
     .user-info .user-name {
-        font-size: 0.9rem;
+        font-size: 0.95rem; /* Un poco más grande */
         font-weight: 600;
+        color: var(--light-text); /* Color más brillante */
     }
 
     .user-info .user-credits {
@@ -677,4 +693,103 @@ a {
 */
 .form-floating > label {
     color: #092238; /* Color gris estándar de Bootstrap para placeholders */
+}
+
+/* ========================================= */
+/* ==   ESTILOS TARJETAS DE ESTADÍSTICAS  == */
+/* ========================================= */
+
+.stat-card {
+    border: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+    .stat-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+    }
+
+.main-content {
+    margin-left: var(--sidebar-width);
+    padding-top: var(--topbar-height);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: margin-left 0.3s ease;
+    background-color: #0a192f; /* Un azul marino un poco más claro que --dark-navy */
+}
+
+/* --- Animación para el contenido --- */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- Estilos para Formularios --- */
+.form-control {
+    background-color: var(--navy-light);
+    border: 1px solid var(--border-color);
+    color: var(--light-text);
+    border-radius: 0.5rem;
+}
+
+    .form-control:focus {
+        background-color: var(--navy-light);
+        color: var(--light-text);
+        border-color: var(--accent-yellow);
+        box-shadow: 0 0 0 3px rgba(255, 202, 40, 0.25); /* Sombra de color de acento */
+    }
+
+.form-floating > label {
+    color: var(--medium-text);
+}
+
+/* ======================================================= */
+/* == CORRECCIÓN COLOR AUTOCOMPLETADO DE INPUTS (CHROME) == */
+/* ======================================================= */
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    /* Anula el color de texto por defecto del navegador */
+    -webkit-text-fill-color: var(--light-text) !important;
+    /* Truco para anular el color de fondo por defecto del navegador */
+    box-shadow: 0 0 0 30px var(--navy-light) inset !important;
+    /* Mantiene la transición suave */
+    transition: background-color 5000s ease-in-out 0s;
+
+}
+
+/* ======================================================= */
+/* ==   CORRECCIÓN COLOR INPUTS DESHABILITADOS          == */
+/* ======================================================= */
+
+.form-control:disabled,
+.form-control[readonly] {
+    background-color: var(--dark-navy); /* Fondo un poco más oscuro para diferenciarlo */
+    color: var(--medium-text); /* Color de texto visible pero atenuado */
+    opacity: 0.7; /* Opacidad para dar aspecto de inactivo */
+}
+
+/* ======================================================= */
+/* ==   DEFINICIÓN DE TEMA CLARO (LIGHT MODE)           == */
+/* ======================================================= */
+
+body.light-theme {
+    --dark-navy: #f8f9fa; /* Fondo principal muy claro */
+    --navy: #ffffff; /* Fondo de tarjetas y sidebar */
+    --navy-light: #f1f3f5; /* Hover y fondos sutiles */
+    --light-text: #212529; /* Texto principal oscuro */
+    --medium-text: #6c757d; /* Texto secundario gris */
+    --accent-yellow: #f59f00; /* Un acento naranja/amarillo más visible en claro */
+    --border-color: #dee2e6; /* Bordes grises claros */
 }

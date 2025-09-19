@@ -32,6 +32,7 @@ builder.Services.AddScoped<NotebookValidatorService>(sp =>
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<TempTableService>();
 builder.Services.AddScoped<ParameterValidationService>();
+builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<TestAIService>();
 builder.Services.AddScoped<DocumentationService>();
 builder.Services.AddScoped<WordExportService>();

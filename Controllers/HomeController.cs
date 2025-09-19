@@ -26,17 +26,20 @@ namespace NotebookValidator.Web.Controllers
         private readonly IWebHostEnvironment _hostEnvironment;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ApplicationDbContext _context;
+        private readonly AuditService _auditService;
 
         public HomeController(
             NotebookValidatorService validatorService,
             IWebHostEnvironment hostEnvironment,
             UserManager<ApplicationUser> userManager,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            AuditService auditService)
         {
             _validatorService = validatorService;
             _hostEnvironment = hostEnvironment;
             _userManager = userManager;
             _context = context;
+            _auditService = auditService;
         }
 
         [HttpGet]
@@ -89,10 +92,11 @@ namespace NotebookValidator.Web.Controllers
                 // 2. Verificar la cuota.
                 if (user.AnalysisQuota < notebooksToProcess.Count)
                 {
-                    return Json(new { 
-                        summary = new Dictionary<string, string> { {"Error de Cuota", $"Créditos insuficientes ({user.AnalysisQuota}) para analizar {notebooksToProcess.Count} archivos."} }, 
+                    return Json(new
+                    {
+                        summary = new Dictionary<string, string> { { "Error de Cuota", $"Créditos insuficientes ({user.AnalysisQuota}) para analizar {notebooksToProcess.Count} archivos." } },
                         findings = new List<Finding>(),
-                        hasResults = true 
+                        hasResults = true
                     });
                 }
 
@@ -114,11 +118,17 @@ namespace NotebookValidator.Web.Controllers
                     UserId = user.Id,
                     AnalysisTimestamp = DateTime.Now,
                     TotalFilesAnalyzed = notebooksToProcess.Count,
-                    TotalProblemsFound = allFindings.Count,
+                    TotalProblemsFound = allFindings.Count, // <-- Usamos esta propiedad
                     ResultsJson = JsonSerializer.Serialize(allFindings)
                 };
                 _context.AnalysisRuns.Add(analysisRun);
                 await _context.SaveChangesAsync();
+
+                // === INICIO REGISTRO DE AUDITORÍA (AÑADIR AQUÍ) ===
+                var fileNamesForAudit = string.Join(", ", files.Select(f => f.FileName));
+                var details = $"Ejecutó Validador de Notebooks para los archivos: [{fileNamesForAudit}]. Hallazgos: {analysisRun.TotalProblemsFound}.";
+                await _auditService.LogActionAsync(user.Id, "NotebookValidation", details, analysisRun.Id.ToString());
+                // === FIN REGISTRO DE AUDITORÍA ===
 
                 // 6. Preparar y devolver la respuesta JSON.
                 var summaryData = allFindings
@@ -129,7 +139,7 @@ namespace NotebookValidator.Web.Controllers
                     );
 
                 HttpContext.Session.SetString("ValidationResults", JsonSerializer.Serialize(allFindings));
-                
+
                 return Json(new { summary = summaryData, findings = allFindings, hasResults = allFindings.Any() });
             }
             finally

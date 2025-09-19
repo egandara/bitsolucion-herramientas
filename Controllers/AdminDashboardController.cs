@@ -45,7 +45,13 @@ namespace NotebookValidator.Web.Controllers
             var problemTypeCounts = allFindings
                 .GroupBy(f => f.FindingType)
                 .ToDictionary(g => g.Key, g => g.Count());
-            
+
+            // --- INICIO DEL CÓDIGO AÑADIDO PARA COLORES ---
+            var problemTypeSeverities = allFindings
+                .GroupBy(f => f.FindingType)
+                .ToDictionary(g => g.Key, g => g.FirstOrDefault()?.Severity ?? "Info");
+            // --- FIN DEL CÓDIGO AÑADIDO PARA COLORES ---
+
             var analysesPerUser = filteredAnalyses
                 .Where(r => r.User != null)
                 .GroupBy(r => r.User.Email)
@@ -63,6 +69,7 @@ namespace NotebookValidator.Web.Controllers
                 MostActiveUser = mostActiveUser,
                 RecentAnalyses = filteredAnalyses.OrderByDescending(r => r.AnalysisTimestamp).Take(10).ToList(),
                 ProblemTypeCounts = problemTypeCounts,
+                ProblemTypeSeverities = problemTypeSeverities, // Asignamos la nueva propiedad
                 StartDate = startDate,
                 EndDate = endDate
             };

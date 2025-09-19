@@ -1,100 +1,190 @@
 @using NotebookValidator.Web.ViewModels
 @model AdminDashboardViewModel
-@{ 
-    ViewData["Title"] = "Dashboard Global"; 
+@{
+    ViewData["Title"] = "Dashboard de Administrador";
 }
 
-<h1 class="display-4">@ViewData["Title"]</h1>
-<p>Resumen de actividad de toda la plataforma.</p>
+<h1 class="mb-4">@ViewData["Title"]</h1>
 
-<form asp-action="Index" method="get" class="row g-3 align-items-center mb-4">
-    <div class="col-auto">
-        <label for="startDate" class="form-label">Desde</label>
-        <input type="date" class="form-control" id="startDate" name="startDate" value="@Model.StartDate?.ToString("yyyy-MM-dd")">
-    </div>
-    <div class="col-auto">
-        <label for="endDate" class="form-label">Hasta</label>
-        <input type="date" class="form-control" id="endDate" name="endDate" value="@Model.EndDate?.ToString("yyyy-MM-dd")">
-    </div>
-    <div class="col-auto mt-auto">
-        <button type="submit" class="btn btn-primary">Filtrar</button>
-        <a asp-action="Index" class="btn btn-secondary">Limpiar</a>
+<form method="get" asp-action="Index">
+    <div class="row g-3 align-items-center mb-4">
+        <div class="col-auto">
+            <label for="startDate" class="col-form-label">Fecha Inicio</label>
+        </div>
+        <div class="col-auto">
+            <input type="date" id="startDate" name="startDate" class="form-control" value="@(Model.StartDate?.ToString("yyyy-MM-dd"))">
+        </div>
+        <div class="col-auto">
+            <label for="endDate" class="col-form-label">Fecha Fin</label>
+        </div>
+        <div class="col-auto">
+            <input type="date" id="endDate" name="endDate" class="form-control" value="@(Model.EndDate?.ToString("yyyy-MM-dd"))">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+        </div>
     </div>
 </form>
 
 
 <div class="row">
-    <div class="col-md-3 mb-3"><div class="card kpi-card"><div class="card-body"><h5>Total de Usuarios</h5><p>@Model.TotalUsers</p></div></div></div>
-    <div class="col-md-3 mb-3"><div class="card kpi-card"><div class="card-body"><h5>Análisis Totales (Filtrados)</h5><p>@Model.TotalAnalyses</p></div></div></div>
-    <div class="col-md-3 mb-3"><div class="card kpi-card"><div class="card-body"><h5>Problemas Totales (Filtrados)</h5><p>@Model.TotalProblemsFound</p></div></div></div>
-    <div class="col-md-3 mb-3"><div class="card kpi-card"><div class="card-body"><h5>Usuario Más Activo (Filtrado)</h5><p>@Model.MostActiveUser</p></div></div></div>
-</div>
-
-<hr class="my-4" />
-
-<div class="row mt-4">
-    <div class="col-lg-4">
-        <h3>Distribución de Problemas</h3>
-        <canvas id="globalProblemsChart"></canvas>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card stat-card text-white bg-info h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="card-title mb-0">@Model.TotalAnalyses</h3>
+                        <p class="card-text">Análisis Realizados</p>
+                    </div>
+                    <div class="fs-1 opacity-50">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-
-    <div class="col-lg-8">
-        <h3>Últimos 10 Análisis (Filtrados)</h3>
-        <div class="table-responsive">
-            <table class="table">
-                <thead><tr><th>Usuario</th><th>Fecha</th><th>Archivos</th><th>Problemas</th><th></th></tr></thead>
-                <tbody>
-                    @foreach(var run in Model.RecentAnalyses)
-                    {
-                        <tr>
-                            <td>@run.User?.Email</td>
-                            <td>@run.AnalysisTimestamp.ToString("g")</td>
-                            <td>@run.TotalFilesAnalyzed</td>
-                            <td>@run.TotalProblemsFound</td>
-                            <td><a asp-controller="History" asp-action="Details" asp-route-id="@run.Id">Ver Detalles</a></td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card stat-card text-white bg-success h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="card-title mb-0">@Model.TotalProblemsFound</h3>
+                        <p class="card-text">Problemas Encontrados</p>
+                    </div>
+                    <div class="fs-1 opacity-50">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card stat-card text-dark bg-warning h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="card-title mb-0">@Model.TotalUsers</h3>
+                        <p class="card-text">Usuarios Registrados</p>
+                    </div>
+                    <div class="fs-1 opacity-50">
+                        <i class="fas fa-users"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card stat-card text-white bg-danger h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="card-title mb-0">@Model.MostActiveUser</h3>
+                        <p class="card-text">Usuario Más Activo</p>
+                    </div>
+                    <div class="fs-1 opacity-50">
+                        <i class="fas fa-star"></i>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-@section Scripts {
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const chartData = @Html.Raw(Json.Serialize(Model.ProblemTypeCounts));
-        const labels = Object.keys(chartData);
-        const data = Object.values(chartData);
+<div class="row mt-4">
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header">
+                <h3 class="card-title">Distribución de Problemas</h3>
+            </div>
+            <div class="card-body" style="position: relative; height: 400px;">
+                @if (Model.ProblemTypeCounts.Any())
+                {
+                    <canvas id="problemTypeChart"></canvas>
+                }
+                else
+                {
+                    <p class="text-center text-muted">No hay datos de problemas para mostrar en el período seleccionado.</p>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header">
+                <h3 class="card-title">Análisis Recientes</h3>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    @foreach (var run in Model.RecentAnalyses)
+                    {
+                        <li class="list-group-item">
+                            <a asp-controller="History" asp-action="Details" asp-route-id="@run.Id">Análisis #@run.Id</a>
+                            <small class="text-muted d-block">Por: @run.User.Email - @run.AnalysisTimestamp.ToString("g")</small>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
 
-        const ctx = document.getElementById('globalProblemsChart');
-        if (ctx && data.length > 0) {
-            new Chart(ctx.getContext('2d'), {
-                type: 'pie',
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const chartElement = document.getElementById('problemTypeChart');
+            if (!chartElement) return;
+
+            const ctx = chartElement.getContext('2d');
+
+            const distribution = @Html.Raw(Json.Serialize(Model.ProblemTypeCounts));
+            const severities = @Html.Raw(Json.Serialize(Model.ProblemTypeSeverities));
+
+            const labels = Object.keys(distribution);
+            const data = Object.values(distribution);
+
+            const criticalColors = ['#B91C1C', '#DC2626', '#F87171'];
+            const warningColors = ['#D97706', '#F59E0B', '#FBBF24'];
+            const infoColors = ['#2563EB', '#3B82F6', '#60A5FA'];
+
+            let criticalIndex = 0, warningIndex = 0, infoIndex = 0;
+
+            const backgroundColors = labels.map(label => {
+                const severity = severities[label];
+                switch (severity) {
+                    case 'Critical':
+                        return criticalColors[criticalIndex++ % criticalColors.length];
+                    case 'Warning':
+                        return warningColors[warningIndex++ % warningColors.length];
+                    case 'Info':
+                    default:
+                        return infoColors[infoIndex++ % infoColors.length];
+                }
+            });
+
+            const myChart = new Chart(ctx, {
+                type: 'doughnut',
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Número de Problemas',
+                        label: 'Distribución de Problemas',
                         data: data,
-                        backgroundColor: [
-                            'rgba(220, 53, 69, 0.8)',   // Rojo
-                            'rgba(255, 202, 40, 0.8)', // Amarillo
-                            'rgba(13, 110, 253, 0.8)',  // Azul
-                            'rgba(25, 135, 84, 0.8)',   // Verde
-                            'rgba(136, 146, 176, 0.8)'  // Gris
-                        ],
-                        borderColor: '#0A192F',
+                        backgroundColor: backgroundColors,
+                        borderColor: '#ffffff',
                         borderWidth: 2
                     }]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'top', labels: { color: '#E6F1FF' } }
+                        legend: {
+                            position: 'right',
+                        }
                     }
                 }
             });
-        }
-    });
-</script>
+        });
+    </script>
 }

@@ -3,10 +3,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NotebookValidator.Web.Data;
+using NotebookValidator.Web.Services;
 using NotebookValidator.Web.ViewModels;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using static SkiaSharp.HarfBuzz.SKShaper;
 
 namespace NotebookValidator.Web.Controllers
 {
@@ -15,11 +17,13 @@ namespace NotebookValidator.Web.Controllers
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly AuditService _auditService;
 
-        public AdminController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+        public AdminController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, Services.AuditService auditService)
         {
             _userManager = userManager;
             _roleManager = roleManager;
+            _auditService = auditService;
         }
 
         public async Task<IActionResult> Index()
@@ -92,16 +96,51 @@ namespace NotebookValidator.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ManageRoles(ManageUserRolesViewModel model)
         {
+            var adminUser = await _userManager.GetUserAsync(User); // Obtenemos el admin que realiza la acción
             var user = await _userManager.FindByIdAsync(model.UserId);
             if (user == null) return NotFound();
 
-            var roles = await _userManager.GetRolesAsync(user);
-            await _userManager.RemoveFromRolesAsync(user, roles); // Quitamos todos los roles para empezar de cero
+            var oldRoles = await _userManager.GetRolesAsync(user);
+            var selectedRoles = model.Roles.Where(r => r.IsSelected).Select(r => r.RoleName);
 
-            // Añadimos los roles seleccionados en el formulario
-            await _userManager.AddToRolesAsync(user, model.Roles.Where(r => r.IsSelected).Select(r => r.RoleName));
+            var result = await _userManager.RemoveFromRolesAsync(user, oldRoles);
+            result = await _userManager.AddToRolesAsync(user, selectedRoles);
 
-            TempData["ToastMessage"] = $"Roles de {user.Email} actualizados.";
+            if (user == null)
+            {
+                TempData["ToastrMessage"] = "El usuario no fue encontrado.";
+                TempData["ToastrType"] = "error";
+                return NotFound();
+            }
+
+            // Primero, quitamos todos los roles actuales del usuario.
+            var currentRoles = await _userManager.GetRolesAsync(user);
+            var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+
+            if (!removeResult.Succeeded)
+            {
+                TempData["ToastrMessage"] = "Error al remover los roles actuales del usuario.";
+                TempData["ToastrType"] = "error";
+                return RedirectToAction("Index");
+            }
+
+            // Luego, añadimos solo los roles que fueron seleccionados en el formulario.
+            var addResult = await _userManager.AddToRolesAsync(user, selectedRoles);
+
+            if (addResult.Succeeded)
+            {
+                var details = $"Roles de '{user.Email}' cambiados de [{string.Join(", ", oldRoles)}] a [{string.Join(", ", selectedRoles)}].";
+                await _auditService.LogActionAsync(adminUser.Id, "UserRolesChanged", details, user.Id);
+
+                TempData["ToastrMessage"] = $"Los roles para el usuario {user.Email} han sido actualizados correctamente.";
+                TempData["ToastrType"] = "success";
+            }
+            else
+            {
+                TempData["ToastrMessage"] = "Ocurrió un error al actualizar los roles del usuario.";
+                TempData["ToastrType"] = "error";
+            }
+
             return RedirectToAction("Index");
         }
 
