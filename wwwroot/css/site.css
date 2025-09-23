@@ -793,3 +793,22 @@ body.light-theme {
     --accent-yellow: #f59f00; /* Un acento naranja/amarillo más visible en claro */
     --border-color: #dee2e6; /* Bordes grises claros */
 }
+
+/* ======================================================= */
+/* ==   SOLUCIÓN FINAL: FORZAR COLOR EN DASHBOARD       == */
+/* ======================================================= */
+
+/*
+  Esta regla es súper específica: apunta a cualquier elemento
+  con la clase .text-muted que esté DENTRO de un .list-group-item.
+  El !important asegura que esta regla gane siempre.
+*/
+.list-group-item .text-muted {
+    color: var(--medium-text) !important;
+    opacity: 0.9 !important;
+}
+
+/* Ajuste para el modo claro, para que no sea demasiado oscuro */
+body.light-theme .list-group-item .text-muted {
+    color: #6c757d !important; /* Un gris estándar para modo claro */
+}
