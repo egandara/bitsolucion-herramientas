@@ -36,6 +36,7 @@ builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<TestAIService>();
 builder.Services.AddScoped<DocumentationService>();
 builder.Services.AddScoped<WordExportService>();
+builder.Services.AddScoped<JobTransformationService>();
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {

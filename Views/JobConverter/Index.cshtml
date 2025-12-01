@@ -1,0 +1,56 @@
+﻿@{
+    ViewData["Title"] = "Generador de Jobs Multi-Ambiente";
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-dark text-white">
+            <h3><i class="bi bi-shuffle"></i> Transformador de Jobs Databricks</h3>
+        </div>
+
+        <div class="card-body bg-primary text-white">
+
+            <p class="text-white fs-5">
+                Sube el JSON de <strong>Desarrollo</strong>. El sistema aplicará las reglas de renombrado (rutas, parámetros `dsr_` -> `crt_`/`prd_`, cuentas de almacenamiento) y aplicará la configuración de Spark que definas abajo.
+            </p>
+
+            <form asp-action="Convert" method="post" enctype="multipart/form-data">
+
+                <div class="mb-4">
+                    <label for="jsonFile" class="form-label fw-bold text-white">Archivo JSON (Dev)</label>
+                    <input class="form-control" type="file" id="jsonFile" name="jsonFile" accept=".json" required>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="certSparkConf" class="form-label fw-bold text-white">Spark Config (Certificación)</label>
+                        <textarea class="form-control font-monospace small" id="certSparkConf" name="certSparkConf" rows="8" placeholder='{
+  "spark.hadoop.fs.azure.account.oauth2.client.secret": "{{secrets/bciadlssecrets/qa_secret}}",
+  "spark.master": "local[*, 4]"
+}'></textarea>
+                        <div class="form-text text-white-50">
+                            Pega el objeto JSON correspondiente a <code>spark_conf</code> para QA.
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="prodSparkConf" class="form-label fw-bold text-white">Spark Config (Producción)</label>
+                        <textarea class="form-control font-monospace small" id="prodSparkConf" name="prodSparkConf" rows="8" placeholder='{
+  "spark.hadoop.fs.azure.account.oauth2.client.secret": "{{secrets/bciadlssecrets/prod_secret}}",
+  "spark.databricks.cluster.profile": "serverless"
+}'></textarea>
+                        <div class="form-text text-white-50">
+                            Pega el objeto JSON correspondiente a <code>spark_conf</code> para PROD.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 mt-3">
+                    <button type="submit" class="btn btn-light btn-lg fw-bold text-primary">
+                        <i class="bi bi-file-earmark-zip"></i> Generar Archivos
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
