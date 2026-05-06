@@ -13,9 +13,11 @@ namespace NotebookValidator.Web.Services
 {
     public class TempTableService
     {
-        private static readonly Regex TempTableRegex = new Regex(@"\+\s*platinum_temp_dbX\s*\+\s*['""]+\.([a-zA-Z0-9_]+)", RegexOptions.IgnoreCase);
+        // Sólo detecta tablas creadas dentro de la misma celda en una sentencia CREATE TABLE
+        private static readonly Regex CreateTableWithDbVarRegex = new Regex(
+            @"CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?[\s\S]{0,800}?(?:\+\s*(?:platinum_temp_dbX|db_plat_tempX)\s*\+\s*['""]{1,3}\s*\.\s*|(?:\+\s*(?:platinum_temp_dbX|db_plat_tempX)\s*\+\s*['""]\s*\+\s*['""]\s*\.\s*)|(?:\b(?:platinum_temp_dbX|db_plat_tempX)\s*\.\s*))([A-Za-z0-9_]+)",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
-        // 1. Modificar la firma del método
         public async Task<string> GenerateDeletionNotebookAsync(
             IFormFileCollection files,
             string baseFileName,
@@ -28,7 +30,6 @@ namespace NotebookValidator.Web.Services
 
             try
             {
-                // 1. (Lógica de extracción de archivos - Sin cambios)
                 foreach (var file in files)
                 {
                     var tempFilePath = Path.Combine(tempDirectory, file.FileName);
@@ -54,11 +55,9 @@ namespace NotebookValidator.Web.Services
                     }
                 }
 
-                // 2. (Lógica de análisis - Sin cambios)
-                var tempTableNames = new HashSet<string>();
+                var tempTableNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var content in allNotebooksContent)
                 {
-                    // Manejar posible JSON inválido
                     try
                     {
                         var notebook = JsonSerializer.Deserialize<Notebook>(content, new JsonSerializerOptions { AllowTrailingCommas = true });
@@ -68,8 +67,11 @@ namespace NotebookValidator.Web.Services
                         {
                             if (cell.CellType == "code")
                             {
-                                var code = string.Join("", cell.Source);
-                                var matches = TempTableRegex.Matches(code);
+                                // Unimos con espacio para mantener separadores sin perder palabras por saltos de línea
+                                var code = string.Join(" ", cell.Source);
+
+                                // Extraemos sólo tablas que aparecen en una sentencia CREATE TABLE en la misma celda
+                                var matches = CreateTableWithDbVarRegex.Matches(code);
                                 foreach (Match match in matches)
                                 {
                                     if (match.Groups.Count > 1)
@@ -82,12 +84,10 @@ namespace NotebookValidator.Web.Services
                     }
                     catch (JsonException ex)
                     {
-                        // Ignorar este notebook, pero loggear el error sería ideal
                         Console.WriteLine($"Error al deserializar notebook: {ex.Message}");
                     }
                 }
 
-                // 3. Generar el nuevo notebook de salida con los nuevos parámetros
                 return BuildOutputNotebook(
                     tempTableNames.ToList(),
                     baseFileName,
@@ -104,7 +104,6 @@ namespace NotebookValidator.Web.Services
             }
         }
 
-        // 2. Modificar la firma de BuildOutputNotebook
         private string BuildOutputNotebook(
             List<string> tableNames,
             string baseFileName,
@@ -119,25 +118,21 @@ namespace NotebookValidator.Web.Services
                 nbformat_minor = 0
             };
 
-            // 3. [MODIFICADO] Añadir celda de título usando el baseFileName
             notebook.cells.Add(CreateMarkdownCell($"# {baseFileName}"));
 
-            // 4. [MODIFICADO] Añadir celdas de widgets usando los parámetros
             notebook.cells.Add(CreateMarkdownCell("## Captura de Variables"));
             notebook.cells.Add(CreateCodeCell(
                 "dbutils.widgets.removeAll()\n\n" +
-                // Los nombres (1er param) son fijos, los default (2do param) son los valores de la UI
                 $"dbutils.widgets.text(\"platinum_temp_dbW\", \"{platinumTempDb}\", \"01 DB Platinum Temp:\")\n" +
                 $"dbutils.widgets.text(\"db_location_platinum_tempW\", \"{dbLocationPlatinumTemp}\", \"02 Location Platinum Temp DB:\")"
             ));
 
-            // 5. (Resto de las celdas - Sin cambios)
             notebook.cells.Add(CreateCodeCell("platinum_temp_dbX = dbutils.widgets.get(\"platinum_temp_dbW\")\nspark.conf.set(\"bci.platinum_temp_dbX\", platinum_temp_dbX)\n\ndb_location_platinum_temp_X = dbutils.widgets.get(\"db_location_platinum_tempW\")\nspark.conf.set(\"bci.db_location_platinum_temp_X\", db_location_platinum_temp_X)"));
             notebook.cells.Add(CreateMarkdownCell("## Funciones"));
             notebook.cells.Add(CreateCodeCell("def sql_safe(query):\n  try:\n    print (\"sqlSafe: query -> \" + query)\n    return spark.sql(query)\n  except Exception as e:\n    dbutils.notebook.exit(\"{\\\"coderror\\\":\\\"20001\\\", \\\"msgerror\\\":\\\"Error grave procesado consulta -> \"+str(e)+\"\\\"}\")"));
             notebook.cells.Add(CreateMarkdownCell("## Eliminacion Tablas Temporales"));
 
-            foreach (var tableName in tableNames.OrderBy(t => t)) // Ordenar para consistencia
+            foreach (var tableName in tableNames.OrderBy(t => t))
             {
                 var safeTableNamePart = new string(tableName.Where(char.IsLetterOrDigit).ToArray());
                 var variableName = $"paso_tb_del_{safeTableNamePart.Substring(0, Math.Min(safeTableNamePart.Length, 20))}";
@@ -154,7 +149,6 @@ namespace NotebookValidator.Web.Services
             return JsonSerializer.Serialize(notebook, new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
         }
 
-        // (Métodos ayudantes CreateMarkdownCell y CreateCodeCell - Sin cambios)
         private object CreateMarkdownCell(string source)
         {
             return new { cell_type = "markdown", metadata = new { }, source = source.Split('\n') };

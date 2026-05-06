@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using NotebookValidator.Web.Data;
+using NotebookValidator.Web.Services; // <--- 1. Referencia al servicio de Auditoría
 
 namespace NotebookValidator.Web.Areas.Identity.Pages.Account
 {
@@ -26,14 +27,15 @@ namespace NotebookValidator.Web.Areas.Identity.Pages.Account
         private readonly IEmailSender _emailSender;
         private readonly IUserStore<ApplicationUser> _userStore;
         private readonly IUserEmailStore<ApplicationUser> _emailStore;
-
+        private readonly AuditService _auditService; // <--- 2. Variable para el servicio
 
         public RegisterModel(
             UserManager<ApplicationUser> userManager,
             IUserStore<ApplicationUser> userStore,
             SignInManager<ApplicationUser> signInManager,
             ILogger<RegisterModel> logger,
-            IEmailSender emailSender)
+            IEmailSender emailSender,
+            AuditService auditService) // <--- 3. Inyección en el constructor
         {
             _userManager = userManager;
             _userStore = userStore;
@@ -41,6 +43,7 @@ namespace NotebookValidator.Web.Areas.Identity.Pages.Account
             _signInManager = signInManager;
             _logger = logger;
             _emailSender = emailSender;
+            _auditService = auditService; // <--- 4. Asignación
         }
 
         [BindProperty]
@@ -81,9 +84,10 @@ namespace NotebookValidator.Web.Areas.Identity.Pages.Account
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
             if (ModelState.IsValid)
             {
-                var user = new ApplicationUser { 
-                    UserName = Input.Email, 
-                    Email = Input.Email, 
+                var user = new ApplicationUser
+                {
+                    UserName = Input.Email,
+                    Email = Input.Email,
                     AnalysisQuota = 10 // Asignación de la cuota por defecto a nuevos usuarios
                 };
 
@@ -94,7 +98,11 @@ namespace NotebookValidator.Web.Areas.Identity.Pages.Account
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("El usuario creó una nueva cuenta con contraseña.");
-                    
+
+                    // <--- 5. REGISTRO EN AUDITORÍA
+                    // Usamos user.Id (que se generó al crear el usuario) tanto para el usuario que hace la acción como para la entidad afectada.
+                    await _auditService.LogActionAsync(user.Id, "Registro", "Usuario registrado exitosamente.", user.Id);
+
                     // Asignar el rol "User" por defecto
                     await _userManager.AddToRoleAsync(user, "User");
 
@@ -107,8 +115,7 @@ namespace NotebookValidator.Web.Areas.Identity.Pages.Account
                         values: new { area = "Identity", userId = userId, code = code, returnUrl = returnUrl },
                         protocol: Request.Scheme);
 
-                    // Esta línea es para enviar un email de confirmación, que puede estar deshabilitada en la configuración.
-                    // Si no tienes un servicio de email configurado, simplemente no hará nada.
+                    // Esta línea es para enviar un email de confirmación
                     await _emailSender.SendEmailAsync(Input.Email, "Confirma tu correo electrónico",
                         $"Por favor, confirme su cuenta mediante <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>haciendo clic aquí</a>.");
 
