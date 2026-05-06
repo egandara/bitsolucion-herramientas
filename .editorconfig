@@ -1,0 +1,66 @@
+root = true
+
+# General
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Indentation
+indent_style = space
+indent_size = 4
+tab_width = 4
+
+# C# files
+[*.{cs,cshtml}]
+# Use 4 spaces
+indent_style = space
+indent_size = 4
+
+# Encoding and file header
+charset = utf-8
+
+# C# specific code style (dotnet analyzers)
+[*.cs]
+# Prefer expression-bodied members when concise
+csharp_style_expression_bodied_methods = true:suggestion
+csharp_style_expression_bodied_constructors = false:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+
+# var usage
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+
+# Null-checking
+dotnet_style_prefer_is_null_check_over_reference_equality_method = true:suggestion
+
+# Accessibility modifiers
+dotnet_style_require_accessibility_modifiers = always:error
+
+# Naming conventions
+dotnet_naming_rule.private_fields_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore.style = underscore_style
+dotnet_naming_rule.private_fields_underscore.severity = suggestion
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_style.underscore_style.required_prefix = _
+dotnet_naming_style.underscore_style.capitalization = camel_case
+
+# File headers (optional)
+file_header_template = """// Copyright (c) YOUR_COMPANY. All rights reserved.
+"""
+
+# Razor pages specific
+[*.cshtml]
+trim_trailing_whitespace = false
+
+# Generated code
+[**/obj/**]
+generated_code = true
+
+[**/bin/**]
+generated_code = true

@@ -16,6 +16,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace NotebookValidator.Web.Controllers
 {
@@ -27,19 +28,22 @@ namespace NotebookValidator.Web.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ApplicationDbContext _context;
         private readonly AuditService _auditService;
+        private readonly ILogger<HomeController> _logger;
 
         public HomeController(
             NotebookValidatorService validatorService,
             IWebHostEnvironment hostEnvironment,
             UserManager<ApplicationUser> userManager,
             ApplicationDbContext context,
-            AuditService auditService)
+            AuditService auditService,
+            ILogger<HomeController> logger)
         {
             _validatorService = validatorService;
             _hostEnvironment = hostEnvironment;
             _userManager = userManager;
             _context = context;
             _auditService = auditService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -64,14 +68,15 @@ namespace NotebookValidator.Web.Controllers
             Directory.CreateDirectory(tempDirectory);
 
             try
-            {
+            {   
                 // 1. Descomprimir ZIPs y crear una lista plana de todos los notebooks.
                 foreach (var file in files)
                 {
-                    var tempFilePath = Path.Combine(tempDirectory, file.FileName);
+                    var safeFileName = Path.GetFileName(file.FileName);
+                    var tempFilePath = Path.Combine(tempDirectory, safeFileName);
                     using (var stream = new FileStream(tempFilePath, FileMode.Create)) { await file.CopyToAsync(stream); }
 
-                    if (Path.GetExtension(file.FileName).Equals(".zip", StringComparison.OrdinalIgnoreCase))
+                    if (Path.GetExtension(safeFileName).Equals(".zip", StringComparison.OrdinalIgnoreCase))
                     {
                         var extractPath = Path.Combine(tempDirectory, Guid.NewGuid().ToString());
                         Directory.CreateDirectory(extractPath);
@@ -83,9 +88,9 @@ namespace NotebookValidator.Web.Controllers
                             notebooksToProcess.Add((notebookPath, Path.GetFileName(notebookPath)));
                         }
                     }
-                    else if (file.FileName.EndsWith(".py") || file.FileName.EndsWith(".ipynb"))
+                    else if (safeFileName.EndsWith(".py") || safeFileName.EndsWith(".ipynb"))
                     {
-                        notebooksToProcess.Add((tempFilePath, file.FileName));
+                        notebooksToProcess.Add((tempFilePath, safeFileName));
                     }
                 }
 
@@ -118,17 +123,16 @@ namespace NotebookValidator.Web.Controllers
                     UserId = user.Id,
                     AnalysisTimestamp = DateTime.Now,
                     TotalFilesAnalyzed = notebooksToProcess.Count,
-                    TotalProblemsFound = allFindings.Count, // <-- Usamos esta propiedad
+                    TotalProblemsFound = allFindings.Count,
                     ResultsJson = JsonSerializer.Serialize(allFindings)
                 };
                 _context.AnalysisRuns.Add(analysisRun);
                 await _context.SaveChangesAsync();
 
-                // === INICIO REGISTRO DE AUDITORÍA (AÑADIR AQUÍ) ===
+                // Registro de auditoría
                 var fileNamesForAudit = string.Join(", ", files.Select(f => f.FileName));
                 var details = $"Ejecutó Validador de Notebooks para los archivos: [{fileNamesForAudit}]. Hallazgos: {analysisRun.TotalProblemsFound}.";
                 await _auditService.LogActionAsync(user.Id, "NotebookValidation", details, analysisRun.Id.ToString());
-                // === FIN REGISTRO DE AUDITORÍA ===
 
                 // 6. Preparar y devolver la respuesta JSON.
                 var summaryData = allFindings
@@ -142,11 +146,30 @@ namespace NotebookValidator.Web.Controllers
 
                 return Json(new { summary = summaryData, findings = allFindings, hasResults = allFindings.Any() });
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al procesar Validate: {Message}", ex.Message);
+                // Devolver estructura JSON consistente para que el cliente la pueda mostrar
+                return Json(new
+                {
+                    summary = new Dictionary<string, int>(),
+                    findings = new List<Finding>(),
+                    hasResults = false,
+                    error = "Ocurrió un error en el servidor durante el análisis. Revisa los logs del servidor."
+                });
+            }
             finally
             {
-                if (Directory.Exists(tempDirectory))
+                try
                 {
-                    Directory.Delete(tempDirectory, recursive: true);
+                    if (Directory.Exists(tempDirectory))
+                    {
+                        Directory.Delete(tempDirectory, recursive: true);
+                    }
+                }
+                catch (Exception ex2)
+                {
+                    _logger.LogWarning(ex2, "No se pudo eliminar el directorio temporal {TempDir}", tempDirectory);
                 }
             }
         }
@@ -156,7 +179,6 @@ namespace NotebookValidator.Web.Controllers
             var jsonResults = HttpContext.Session.GetString("ValidationResults");
             if (string.IsNullOrEmpty(jsonResults))
             {
-                // Si la sesión está vacía, no podemos hacer nada.
                 return RedirectToAction("Index");
             }
 
@@ -166,14 +188,10 @@ namespace NotebookValidator.Web.Controllers
 
             if (analysisId.HasValue)
             {
-                // --- LÓGICA NUEVA: Exportando desde el Historial ---
-                // Busca el reporte específico que se está viendo.
                 analysisRunToExport = await _context.AnalysisRuns
-                    .Include(r => r.User) // Incluimos el usuario para obtener su email
+                    .Include(r => r.User)
                     .FirstOrDefaultAsync(r => r.Id == analysisId.Value);
 
-                // Comprobación de seguridad: (Opcional) Un admin puede exportar todo.
-                // Si no es admin, verifica que sea su propio reporte.
                 bool isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
                 if (!isAdmin && analysisRunToExport.UserId != user.Id)
                 {
@@ -182,14 +200,11 @@ namespace NotebookValidator.Web.Controllers
             }
             else
             {
-                // --- LÓGICA ORIGINAL: Exportando desde Home/Index ---
-                // Busca el último reporte del usuario actual.
                 analysisRunToExport = await _context.AnalysisRuns
                     .Where(r => r.UserId == user.Id)
                     .OrderByDescending(r => r.AnalysisTimestamp)
                     .FirstOrDefaultAsync();
 
-                // Asignamos el usuario actual (ya que es su propio reporte)
                 if (analysisRunToExport != null)
                 {
                     analysisRunToExport.User = user;
@@ -198,8 +213,6 @@ namespace NotebookValidator.Web.Controllers
 
             if (analysisRunToExport == null)
             {
-                // Si por alguna razón no encontramos un reporte (ej. usuario nuevo sin análisis),
-                // creamos uno temporal solo para el encabezado.
                 analysisRunToExport = new AnalysisRun
                 {
                     Id = 0,
@@ -212,7 +225,6 @@ namespace NotebookValidator.Web.Controllers
             {
                 var worksheet = workbook.Worksheets.Add("Reporte de Validación");
 
-                // Encabezado
                 var logoPath = Path.Combine(_hostEnvironment.WebRootPath, "img", "Bit-solucion-logo-menu.png");
                 if (System.IO.File.Exists(logoPath))
                 {
@@ -224,7 +236,6 @@ namespace NotebookValidator.Web.Controllers
                 worksheet.Cell("C2").Style.Font.FontSize = 16;
                 worksheet.Range("C2:F2").Merge();
 
-                // --- USA LOS DATOS DEL REPORTE CORRECTO ---
                 worksheet.Cell("C4").Value = "Análisis ID:";
                 worksheet.Cell("D4").Value = analysisRunToExport.Id;
                 worksheet.Cell("C5").Value = "Usuario:";
@@ -232,12 +243,10 @@ namespace NotebookValidator.Web.Controllers
                 worksheet.Cell("C6").Value = "Fecha:";
                 worksheet.Cell("D6").Value = analysisRunToExport.AnalysisTimestamp.ToString("g");
 
-                // Tabla de Resumen
                 var summaryHeaderRow = 11;
                 worksheet.Cell("A9").Value = "Resumen por Archivo y Tipo de Problema";
                 worksheet.Cell("A9").Style.Font.Bold = true;
 
-                // Usamos los 'findings' de la sesión (que son los correctos)
                 var allProblemTypes = findings.Select(f => f.FindingType).Distinct().OrderBy(t => t).ToList();
                 var allFiles = findings.Select(f => f.FileName).Distinct().OrderBy(f => f).ToList();
 
@@ -264,12 +273,10 @@ namespace NotebookValidator.Web.Controllers
                 summaryHeader.Style.Fill.BackgroundColor = XLColor.FromHtml("#0A192F");
                 summaryHeader.Style.Font.FontColor = XLColor.White;
 
-                // Tabla de Detalles
                 var detailsHeaderRow = summaryHeaderRow + allFiles.Count + 3;
                 worksheet.Cell(detailsHeaderRow, 1).Value = "Resultados Detallados";
                 worksheet.Cell(detailsHeaderRow, 1).Style.Font.Bold = true;
 
-                // Creamos una versión "plana" de los findings para la tabla, excluyendo el código fuente
                 var findingsForTable = findings.Select(f => new {
                     f.FileName,
                     f.FindingType,
