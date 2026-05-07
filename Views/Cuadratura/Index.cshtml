@@ -1,0 +1,84 @@
+@{
+    ViewData["Title"] = "Cuadratura de Datos";
+}
+
+<style>
+    .custom-placeholder::placeholder {
+        color: #adb5bd !important;
+        opacity: 1;
+    }
+
+    /* NUEVO: Estilo para la pantalla de carga */
+    #loadingOverlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(15, 23, 42, 0.85); /* Fondo oscuro semitransparente */
+        z-index: 10000;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(4px); /* Efecto de desenfoque moderno */
+    }
+</style>
+
+<div class="container-fluid">
+    <h2 class="text-white mb-4">Cuadrar Archivos de Datos</h2>
+
+    <div class="card bg-dark border-light">
+        <div class="card-body">
+            <h5 class="card-title text-white">1. Selecciona tus archivos para comparar</h5>
+
+            <form id="formCargaArchivos" asp-controller="Cuadratura" asp-action="CargarArchivos" method="post" enctype="multipart/form-data">
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <label class="text-white font-weight-bold">Archivo Origen 1 (Excel / CSV / TXT / DAT)</label>
+                        <input type="file" name="archivo1" class="form-control mb-2" accept=".csv, .xlsx, .xls, .txt, .dat" required />
+
+                        <input type="text" name="alias1" class="form-control mb-2 bg-dark text-white border-secondary custom-placeholder" placeholder="Alias (Ej: Banco) - Opcional" />
+
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" name="tieneEncabezados1" value="true" id="chkEncabezado1" checked>
+                            <label class="form-check-label text-white small" for="chkEncabezado1">El archivo contiene encabezados en la fila 1</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-white font-weight-bold">Archivo Origen 2 (Excel / CSV / TXT / DAT)</label>
+                        <input type="file" name="archivo2" class="form-control mb-2" accept=".csv, .xlsx, .xls, .txt, .dat" required />
+
+                        <input type="text" name="alias2" class="form-control mb-2 bg-dark text-white border-secondary custom-placeholder" placeholder="Alias (Ej: Migración) - Opcional" />
+
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" name="tieneEncabezados2" value="true" id="chkEncabezado2" checked>
+                            <label class="form-check-label text-white small" for="chkEncabezado2">El archivo contiene encabezados en la fila 1</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-warning text-dark font-weight-bold">
+                        Analizar Columnas e Inferir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="loadingOverlay">
+    <div class="spinner-border text-warning mb-3" style="width: 4rem; height: 4rem; border-width: 0.3em;" role="status"></div>
+    <h3 class="text-white fw-bold">Leyendo archivos...</h3>
+    <p class="text-light fs-5">Analizando columnas e infiriendo similitudes. Por favor espera.</p>
+</div>
+
+<script>
+    document.getElementById('formCargaArchivos').addEventListener('submit', function (e) {
+        // Solo muestra el spinner si los campos requeridos (archivos) están llenos
+        if (this.checkValidity()) {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+    });
+</script>

@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Validador Bit Solución</title>
-    
+
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet" />
@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-    
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="~/NotebookValidator.Web.styles.css" asp-append-version="true" />
 </head>
 <body>
-    
+
     <div class="sidebar">
         <div class="sidebar-brand">
             <a class="d-flex align-items-center" asp-controller="Home" asp-action="Index">
@@ -34,7 +34,7 @@
         <ul class="sidebar-nav">
             @{
                 var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
-                
+
                 // --- MODIFICACIÓN: Lógica para agrupar Validador + Historial ---
                 var isValidatorSectionActive = (currentController == "Home" || currentController == "History");
             }
@@ -45,7 +45,7 @@
                     <a class="nav-link @(isValidatorSectionActive ? "" : "collapsed")" data-bs-toggle="collapse" href="#validator-collapse" role="button" aria-expanded="@(isValidatorSectionActive.ToString().ToLower())">
                         <i class="bi bi-file-earmark-check"></i> <span>Validador Notebooks</span>
                     </a>
-                    
+
                     <div class="collapse @(isValidatorSectionActive ? "show" : "")" id="validator-collapse">
                         <ul class="nav-sub-menu">
                             <li class="nav-item @(currentController == "Home" ? "active" : "")">
@@ -58,11 +58,24 @@
                     </div>
                 </li>
             }
+
             @if (User.IsInRole("Admin") || User.IsInRole("ParameterValidatorUser"))
             {
                 <li class="nav-item @(currentController == "ParameterValidator" ? "active" : "")">
                     <a class="nav-link" asp-controller="ParameterValidator" asp-action="Index">
                         <i class="bi bi-filetype-py"></i> <span>Validador Parámetros</span>
+                    </a>
+                </li>
+            }
+
+            @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+            {
+                /* CORRECCIÓN: La clase active se movió al LI para que resalte igual que los demás */
+                <li class="nav-item @(currentController == "Cuadratura" ? "active" : "")">
+                    <a class="nav-link"
+                       asp-controller="Cuadratura"
+                       asp-action="Index">
+                        <i class="bi bi-table"></i> <span>Cuadratura de Datos</span>
                     </a>
                 </li>
             }
@@ -103,7 +116,7 @@
                         <li><a class="nav-link" asp-controller="Standards" asp-action="Document">Documento de Estándares</a></li>
                         <li><a class="nav-link" asp-controller="Standards" asp-action="Format">Formato de Documentos</a></li>
                         <li><a class="nav-link" asp-controller="Standards" asp-action="Jobs">Documentos de Pruebas Jobs</a></li>
-                        
+
                         @if (User.IsInRole("Admin"))
                         {
                             <li><hr class="dropdown-divider" style="border-top: 1px solid var(--border-color);"></li>
@@ -142,19 +155,19 @@
     </div>
 
     <div class="main-content">
-        
+
         <nav class="navbar top-bar">
             <div class="container-fluid">
                 <button class="btn btn-outline-secondary" id="sidebar-toggle" type="button">
                     <i class="bi bi-list"></i>
                 </button>
-                
+
                 <div class="ms-auto">
                     <partial name="_LoginPartial" />
                 </div>
             </div>
         </nav>
-        
+
         <main role="main" class="p-4">
             @RenderBody()
         </main>

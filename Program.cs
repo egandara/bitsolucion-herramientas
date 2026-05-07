@@ -3,14 +3,20 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using NotebookValidator.Web.Data;
+using NotebookValidator.Web.Middleware;
 using NotebookValidator.Web.Services;
-using System;
 using QuestPDF.Infrastructure;
 using Syncfusion.Licensing;
-using NotebookValidator.Web.Middleware;
+using System;
+using NotebookValidator.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// --- NUEVO: Registrar soporte para lectura de Excel (requerido por ExcelDataReader) ---
+System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
 Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("Ngo9BigBOggjHTQxAR8/V1JEaF1cWWhBYVF3WmFZfVtgd19FY1ZQQWY/P1ZhSXxWdk1iXX5bc3dUQ2laU019XEI=");
 
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
@@ -37,6 +43,10 @@ builder.Services.AddScoped<TestAIService>();
 builder.Services.AddScoped<DocumentationService>();
 builder.Services.AddScoped<WordExportService>();
 builder.Services.AddScoped<JobTransformationService>();
+
+// --- NUEVO: Inyectar el servicio de Cuadratura ---
+builder.Services.AddScoped<ICuadraturaService, CuadraturaService>();
+
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {

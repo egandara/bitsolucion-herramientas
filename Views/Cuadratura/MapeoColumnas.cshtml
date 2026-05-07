@@ -1,0 +1,200 @@
+@model NotebookValidator.Web.Models.MapeoColumnasViewModel
+@{
+    ViewData["Title"] = "Mapeo de Columnas";
+}
+
+<style>
+    #loadingOverlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(15, 23, 42, 0.85);
+        z-index: 10000;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(4px);
+    }
+</style>
+
+<div class="container-fluid">
+    <h2 class="text-white mb-4">2. Configurar Cuadratura</h2>
+
+    <form asp-action="EjecutarCuadratura" method="post" id="formCuadratura">
+        <input type="hidden" name="TempPathArchivo1" value="@Model.TempPathArchivo1" />
+        <input type="hidden" name="TempPathArchivo2" value="@Model.TempPathArchivo2" />
+        <input type="hidden" name="TieneEncabezados1" value="@Model.TieneEncabezados1.ToString().ToLower()" />
+        <input type="hidden" name="TieneEncabezados2" value="@Model.TieneEncabezados2.ToString().ToLower()" />
+        <input type="hidden" name="AliasArchivo1" value="@Model.AliasArchivo1" />
+        <input type="hidden" name="AliasArchivo2" value="@Model.AliasArchivo2" />
+
+        <div class="card bg-dark border-light mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-white mb-3"><i class="fas fa-key text-warning"></i> Selecciona los campos a cruzar (Llave Primaria)</h5>
+                <p class="text-light small">Mantén presionada la tecla CTRL para seleccionar más de una columna y crear una llave compuesta.</p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="text-white font-weight-bold">Llaves en @Model.AliasArchivo1:</label>
+                        <select name="LlaveArchivo1" class="form-select bg-dark text-white" multiple size="12" required>
+                            @foreach (var col in Model.ColumnasArchivo1)
+                            {
+                                <option value="@col">@col</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-white font-weight-bold">Llaves en @Model.AliasArchivo2:</label>
+                        <select name="LlaveArchivo2" class="form-select bg-dark text-white" multiple size="12" required>
+                            @foreach (var col in Model.ColumnasArchivo2)
+                            {
+                                <option value="@col">@col</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-dark border-light mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-white border-bottom border-secondary pb-2">Columnas a Comparar</h5>
+                <p class="text-info small fw-bold mb-1"><i class="fas fa-magic"></i> Hemos precargado solo las similitudes de campos que detectamos como numéricos.</p>
+                <p class="text-light small">Puedes definir una tolerancia decimal para omitir diferencias minúsculas, o usar el botón inferior para agregar manualmente campos de texto u otros si lo necesitas.</p>
+
+                <table class="table table-dark table-sm mt-3" id="tablaMapeo">
+                    <thead>
+                        <tr>
+                            <th style="width: 35%;">Columna @Model.AliasArchivo1</th>
+                            <th style="width: 35%;">Columna @Model.AliasArchivo2</th>
+                            <th style="width: 20%;">Tolerancia (Opcional)</th>
+                            <th style="width: 10%;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mapeoBody">
+                        @foreach (var sug in Model.Sugerencias)
+                        {
+                            <tr>
+                                <td>
+                                    <select name="ColsComparar1" class="form-select bg-dark text-white border-secondary">
+                                        <option value="">-- Ignorar / No comparar --</option>
+                                        @foreach (var c in Model.ColumnasArchivo1)
+                                        {
+                                            @if (c == sug.ColumnaArchivo1)
+                                            {
+                                                <option value="@c" selected>@c</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@c">@c</option>
+                                            }
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="ColsComparar2" class="form-select bg-dark text-white border-secondary">
+                                        <option value="">-- Ignorar / No comparar --</option>
+                                        @foreach (var c in Model.ColumnasArchivo2)
+                                        {
+                                            @if (c == sug.ColumnaArchivo2)
+                                            {
+                                                <option value="@c" selected>@c</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@c">@c</option>
+                                            }
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" step="any" name="Tolerancias" class="form-control bg-dark text-white border-secondary" placeholder="Ej: 0.5" value="" title="Dejar en blanco para cruce exacto" />
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="eliminarFila(this)"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <button type="button" class="btn btn-outline-info btn-sm mt-2" onclick="agregarFila()">+ Añadir columna a comparar</button>
+            </div>
+        </div>
+
+        <div class="card bg-dark border-info mb-4">
+            <div class="card-body">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="ModoAgrupacion" value="true" id="switchAgrupacion">
+                    <label class="form-check-label text-info font-weight-bold" for="switchAgrupacion">
+                        <i class="fas fa-layer-group"></i> ACTIVAR MODO AGRUPACIÓN (SUMARIZAR)
+                    </label>
+                </div>
+                <p class="text-light small mt-2">Suma todos los valores que tengan la misma llave antes de comparar. Útil para archivos detallados vs resúmenes.</p>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-warning text-dark font-weight-bold btn-lg">Ejecutar Cuadratura Final</button>
+            <a asp-action="Index" class="btn btn-outline-light ms-2 btn-lg">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<table style="display:none;">
+    <tr id="filaPlantilla">
+        <td>
+            <select name="ColsComparar1" class="form-select bg-dark text-white border-secondary">
+                <option value="">-- Selecciona columna --</option>
+                @foreach (var c in Model.ColumnasArchivo1)
+                {
+                    <option value="@c">@c</option>
+                }
+            </select>
+        </td>
+        <td>
+            <select name="ColsComparar2" class="form-select bg-dark text-white border-secondary">
+                <option value="">-- Selecciona columna --</option>
+                @foreach (var c in Model.ColumnasArchivo2)
+                {
+                    <option value="@c">@c</option>
+                }
+            </select>
+        </td>
+        <td>
+            <input type="number" step="any" name="Tolerancias" class="form-control bg-dark text-white border-secondary" placeholder="Ej: 0.5" value="" title="Dejar en blanco para cruce exacto" />
+        </td>
+        <td>
+            <button type="button" class="btn btn-danger btn-sm" onclick="eliminarFila(this)"><i class="fas fa-trash"></i></button>
+        </td>
+    </tr>
+</table>
+
+<div id="loadingOverlay">
+    <div class="spinner-border text-warning mb-3" style="width: 4rem; height: 4rem; border-width: 0.3em;" role="status"></div>
+    <h3 class="text-white fw-bold">Cruzando Registros...</h3>
+    <p class="text-light fs-5">Esto puede tomar unos segundos dependiendo del tamaño de los archivos.</p>
+</div>
+
+<script>
+    function agregarFila() {
+        var tbody = document.getElementById('mapeoBody');
+        var template = document.getElementById('filaPlantilla');
+        var clone = template.cloneNode(true);
+        clone.removeAttribute('id');
+        tbody.appendChild(clone);
+    }
+
+    function eliminarFila(btn) {
+        var row = btn.closest('tr');
+        row.parentNode.removeChild(row);
+    }
+
+    // Listener para mostrar el spinner
+    document.getElementById('formCuadratura').addEventListener('submit', function (e) {
+        if (this.checkValidity()) {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+    });
+</script>
