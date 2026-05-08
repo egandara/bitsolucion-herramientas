@@ -12,13 +12,11 @@ namespace NotebookValidator.Web.Models
         public List<string> HuerfanosArchivo1 { get; set; } = new();
         public List<string> HuerfanosArchivo2 { get; set; } = new();
 
-        // Estadísticas para Modo Agrupación
         public bool EsModoAgrupacion { get; set; }
         public int TotalOriginal1 { get; set; }
         public int TotalOriginal2 { get; set; }
         public int TotalAgrupado1 { get; set; }
         public int TotalAgrupado2 { get; set; }
-        // NUEVO: Para mostrar las llaves de agrupación
         public List<string> LlavesAgrupacion { get; set; } = new();
     }
 
@@ -49,6 +47,11 @@ namespace NotebookValidator.Web.Models
     {
         public string AliasArchivo1 { get; set; } = "Archivo 1";
         public string AliasArchivo2 { get; set; } = "Archivo 2";
+
+        // NUEVAS: Guardan la hoja seleccionada por el usuario
+        public string HojaArchivo1 { get; set; }
+        public string HojaArchivo2 { get; set; }
+
         public List<string> ColumnasArchivo1 { get; set; } = new();
         public List<string> ColumnasArchivo2 { get; set; } = new();
         public List<SugerenciaMapeo> Sugerencias { get; set; } = new();

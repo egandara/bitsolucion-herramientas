@@ -10,6 +10,7 @@ using NotebookValidator.Web.Models;
 using System;
 using System.Text.Json;
 using System.Globalization;
+using ExcelDataReader;
 
 namespace NotebookValidator.Web.Controllers
 {
@@ -24,8 +25,27 @@ namespace NotebookValidator.Web.Controllers
 
         public IActionResult Index() => View();
 
+        // NUEVO: Extrae las hojas de forma ultrarápida al soltar el archivo
         [HttpPost]
-        public async Task<IActionResult> CargarArchivos(IFormFile archivo1, IFormFile archivo2, string alias1, string alias2, bool tieneEncabezados1 = false, bool tieneEncabezados2 = false)
+        public IActionResult ObtenerHojasExcel(IFormFile archivo)
+        {
+            if (archivo == null || archivo.Length == 0) return Json(new string[0]);
+            var ext = Path.GetExtension(archivo.FileName).ToLower();
+            if (ext == ".csv" || ext == ".txt" || ext == ".dat") return Json(new[] { "Única" });
+
+            try
+            {
+                using var stream = archivo.OpenReadStream();
+                using var reader = ExcelReaderFactory.CreateReader(stream);
+                var hojas = new List<string>();
+                do { hojas.Add(reader.Name); } while (reader.NextResult());
+                return Json(hojas);
+            }
+            catch { return Json(new string[0]); }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CargarArchivos(IFormFile archivo1, IFormFile archivo2, string alias1, string alias2, bool tieneEncabezados1 = false, bool tieneEncabezados2 = false, string hoja1 = null, string hoja2 = null)
         {
             if (archivo1 == null || archivo2 == null) return View("Index");
             var ext1 = Path.GetExtension(archivo1.FileName); var ext2 = Path.GetExtension(archivo2.FileName);
@@ -35,8 +55,9 @@ namespace NotebookValidator.Web.Controllers
             using (var stream = new FileStream(tempPath1, FileMode.Create)) await archivo1.CopyToAsync(stream);
             using (var stream = new FileStream(tempPath2, FileMode.Create)) await archivo2.CopyToAsync(stream);
 
-            DataTable dt1 = _cuadraturaService.LeerExcel(tempPath1, tieneEncabezados1);
-            DataTable dt2 = _cuadraturaService.LeerExcel(tempPath2, tieneEncabezados2);
+            // Pasamos los nombres de las hojas seleccionadas
+            DataTable dt1 = _cuadraturaService.LeerExcel(tempPath1, tieneEncabezados1, hoja1);
+            DataTable dt2 = _cuadraturaService.LeerExcel(tempPath2, tieneEncabezados2, hoja2);
 
             var distinct1 = new Dictionary<string, int>();
             foreach (DataColumn col in dt1.Columns)
@@ -58,6 +79,8 @@ namespace NotebookValidator.Web.Controllers
             {
                 AliasArchivo1 = string.IsNullOrWhiteSpace(alias1) ? "Archivo 1" : alias1,
                 AliasArchivo2 = string.IsNullOrWhiteSpace(alias2) ? "Archivo 2" : alias2,
+                HojaArchivo1 = hoja1,
+                HojaArchivo2 = hoja2,
                 ColumnasArchivo1 = dt1.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList(),
                 ColumnasArchivo2 = dt2.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList(),
                 Sugerencias = _cuadraturaService.InferirColumnas(dt1, dt2),
@@ -72,10 +95,10 @@ namespace NotebookValidator.Web.Controllers
         }
 
         [HttpPost]
-        public IActionResult ObtenerPrevisualizacion(string tempPath, bool tieneEncabezados)
+        public IActionResult ObtenerPrevisualizacion(string tempPath, bool tieneEncabezados, string nombreHoja)
         {
             if (string.IsNullOrEmpty(tempPath) || !System.IO.File.Exists(tempPath)) return BadRequest();
-            DataTable dt = _cuadraturaService.LeerExcel(tempPath, tieneEncabezados);
+            DataTable dt = _cuadraturaService.LeerExcel(tempPath, tieneEncabezados, nombreHoja);
 
             var headers = dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
             var rows = new List<List<string>>();
@@ -89,10 +112,10 @@ namespace NotebookValidator.Web.Controllers
         }
 
         [HttpPost]
-        public IActionResult EjecutarCuadratura(string TempPathArchivo1, string TempPathArchivo2, string AliasArchivo1, string AliasArchivo2, bool TieneEncabezados1, bool TieneEncabezados2, bool ModoAgrupacion, List<string> LlaveArchivo1, List<string> LlaveArchivo2, List<string> ColsComparar1, List<string> ColsComparar2, List<string> Tolerancias)
+        public IActionResult EjecutarCuadratura(string TempPathArchivo1, string TempPathArchivo2, string AliasArchivo1, string AliasArchivo2, bool TieneEncabezados1, bool TieneEncabezados2, string HojaArchivo1, string HojaArchivo2, bool ModoAgrupacion, List<string> LlaveArchivo1, List<string> LlaveArchivo2, List<string> ColsComparar1, List<string> ColsComparar2, List<string> Tolerancias)
         {
-            DataTable dt1 = _cuadraturaService.LeerExcel(TempPathArchivo1, TieneEncabezados1);
-            DataTable dt2 = _cuadraturaService.LeerExcel(TempPathArchivo2, TieneEncabezados2);
+            DataTable dt1 = _cuadraturaService.LeerExcel(TempPathArchivo1, TieneEncabezados1, HojaArchivo1);
+            DataTable dt2 = _cuadraturaService.LeerExcel(TempPathArchivo2, TieneEncabezados2, HojaArchivo2);
 
             int countOriginal1 = dt1.Rows.Count;
             int countOriginal2 = dt2.Rows.Count;
@@ -133,7 +156,6 @@ namespace NotebookValidator.Web.Controllers
             resultados.AliasArchivo2 = string.IsNullOrWhiteSpace(AliasArchivo2) ? "Archivo 2" : AliasArchivo2;
 
             resultados.EsModoAgrupacion = ModoAgrupacion;
-            // NUEVO: Guardamos las llaves en el modelo
             resultados.LlavesAgrupacion = LlaveArchivo1 ?? new List<string>();
             resultados.TotalOriginal1 = countOriginal1;
             resultados.TotalOriginal2 = countOriginal2;

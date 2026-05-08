@@ -3,7 +3,6 @@
 }
 
 <style>
-    /* STEPPER */
     /* STEPPER MODERNO Y ELEGANTE */
     .stepper {
         display: flex;
@@ -13,7 +12,6 @@
         padding: 0 10%;
     }
 
-        /* Línea de fondo tenue */
         .stepper::before {
             content: "";
             position: absolute;
@@ -26,7 +24,6 @@
             border-radius: 5px;
         }
 
-    /* Contenedor transparente */
     .step {
         z-index: 2;
         display: flex;
@@ -36,7 +33,6 @@
         width: 120px;
     }
 
-    /* Círculo inactivo por defecto */
     .step-circle {
         width: 48px;
         height: 48px;
@@ -49,7 +45,7 @@
         margin-bottom: 12px;
         font-weight: bold;
         font-size: 1.2rem;
-        border: 6px solid #0f172a; /* Borde grueso para cortar la línea */
+        border: 6px solid #0f172a;
         transition: all 0.3s ease;
     }
 
@@ -62,7 +58,6 @@
         transition: all 0.3s ease;
     }
 
-    /* Estado: Completado (Check verde) */
     .step.completed .step-circle {
         background: #198754;
         color: white;
@@ -74,7 +69,6 @@
         color: #198754;
     }
 
-    /* Estado: Activo (Número actual amarillo) */
     .step.active .step-circle {
         background: #ffc107;
         color: #000;
@@ -114,7 +108,7 @@
             margin: 0;
             color: #ffffff !important;
         }
-    /* Forzado a blanco */
+
     .file-name-display {
         color: #ffc107;
         font-weight: bold;
@@ -122,7 +116,6 @@
         display: none;
     }
 
-    /* FIX PLACEHOLDERS Y TEXTOS */
     .custom-placeholder::placeholder {
         color: #adb5bd !important;
         opacity: 1;
@@ -169,6 +162,12 @@
                             <div id="name1" class="file-name-display"></div>
                             <input type="file" id="file1" name="archivo1" hidden accept=".csv, .xlsx, .xls, .txt, .dat" required />
                         </div>
+
+                        <div class="mt-3 bg-dark border border-secondary rounded p-2" id="hojasContainer1" style="display:none;">
+                            <label class="text-white small fw-bold mb-1"><i class="bi bi-table text-info me-1"></i>Hoja a procesar:</label>
+                            <select name="hoja1" id="hoja1" class="form-select form-select-sm bg-dark text-white border-secondary"></select>
+                        </div>
+
                         <input type="text" name="alias1" class="form-control mt-3 bg-dark text-white border-secondary custom-placeholder" placeholder="Alias (Ej: Banco) - Opcional" />
                         <div class="form-check mt-3">
                             <input class="form-check-input" type="checkbox" name="tieneEncabezados1" value="true" id="chk1" checked>
@@ -188,6 +187,12 @@
                             <div id="name2" class="file-name-display"></div>
                             <input type="file" id="file2" name="archivo2" hidden accept=".csv, .xlsx, .xls, .txt, .dat" required />
                         </div>
+
+                        <div class="mt-3 bg-dark border border-secondary rounded p-2" id="hojasContainer2" style="display:none;">
+                            <label class="text-white small fw-bold mb-1"><i class="bi bi-table text-info me-1"></i>Hoja a procesar:</label>
+                            <select name="hoja2" id="hoja2" class="form-select form-select-sm bg-dark text-white border-secondary"></select>
+                        </div>
+
                         <input type="text" name="alias2" class="form-control mt-3 bg-dark text-white border-secondary custom-placeholder" placeholder="Alias (Ej: Sistema) - Opcional" />
                         <div class="form-check mt-3">
                             <input class="form-check-input" type="checkbox" name="tieneEncabezados2" value="true" id="chk2" checked>
@@ -213,7 +218,7 @@
 </div>
 
 <script>
-    function setupDropZone(inputId, zoneId, displayId) {
+    function setupDropZone(inputId, zoneId, displayId, selectContainerId, selectId) {
         const input = document.getElementById(inputId);
         const zone = document.getElementById(zoneId);
         const display = document.getElementById(displayId);
@@ -225,22 +230,49 @@
             zone.classList.remove('dragover');
             if (e.dataTransfer.files.length) {
                 input.files = e.dataTransfer.files;
-                updateName();
+                updateNameAndFetchSheets();
             }
         });
-        input.addEventListener('change', updateName);
+        input.addEventListener('change', updateNameAndFetchSheets);
 
-        function updateName() {
+        function updateNameAndFetchSheets() {
             if (input.files.length) {
-                display.innerText = "📄 " + input.files[0].name;
+                const file = input.files[0];
+                display.innerText = "📄 " + file.name;
                 display.style.display = 'block';
                 zone.querySelector('p').style.display = 'none';
+
+                // AJAX: Buscamos las hojas del Excel
+                const formData = new FormData();
+                formData.append("archivo", file);
+
+                fetch('@Url.Action("ObtenerHojasExcel", "Cuadratura")', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(r => r.json())
+                .then(hojas => {
+                    const select = document.getElementById(selectId);
+                    const container = document.getElementById(selectContainerId);
+                    select.innerHTML = '';
+
+                    if(hojas.length > 0 && hojas[0] !== "Única") {
+                        hojas.forEach(h => {
+                            select.innerHTML += `<option value="${h}">${h}</option>`;
+                        });
+                        // Mostramos el selector con un pequeño efecto visual
+                        container.style.display = 'block';
+                        container.classList.add('animate__animated', 'animate__fadeInDown');
+                    } else {
+                        container.style.display = 'none';
+                    }
+                });
             }
         }
     }
 
-    setupDropZone('file1', 'dropZone1', 'name1');
-    setupDropZone('file2', 'dropZone2', 'name2');
+    setupDropZone('file1', 'dropZone1', 'name1', 'hojasContainer1', 'hoja1');
+    setupDropZone('file2', 'dropZone2', 'name2', 'hojasContainer2', 'hoja2');
 
     document.getElementById('formCargaArchivos').addEventListener('submit', function () {
         if (this.checkValidity()) document.getElementById('loadingOverlay').style.display = 'flex';

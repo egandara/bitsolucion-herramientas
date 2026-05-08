@@ -1,5 +1,4 @@
 using ExcelDataReader;
-using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -13,7 +12,7 @@ namespace NotebookValidator.Web.Services
 {
     public interface ICuadraturaService
     {
-        DataTable LeerExcel(string rutaArchivo, bool tieneEncabezados);
+        DataTable LeerExcel(string rutaArchivo, bool tieneEncabezados, string nombreHoja = null);
         DataTable AgruparDataTable(DataTable dt, List<string> llaves, List<string> columnasValores);
         List<SugerenciaMapeo> InferirColumnas(DataTable dt1, DataTable dt2);
         ResultadoCuadratura CompararDatos(DataTable dt1, DataTable dt2, List<string> llavesCol1, List<string> llavesCol2, List<string> columnasAComparar1, List<string> columnasAComparar2, List<double> tolerancias);
@@ -22,7 +21,7 @@ namespace NotebookValidator.Web.Services
 
     public class CuadraturaService : ICuadraturaService
     {
-        public DataTable LeerExcel(string rutaArchivo, bool tieneEncabezados)
+        public DataTable LeerExcel(string rutaArchivo, bool tieneEncabezados, string nombreHoja = null)
         {
             using var stream = File.OpenRead(rutaArchivo);
             string extension = Path.GetExtension(rutaArchivo).ToLower();
@@ -40,7 +39,16 @@ namespace NotebookValidator.Web.Services
             }
 
             var ds = reader.AsDataSet(new ExcelDataSetConfiguration() { ConfigureDataTable = (_) => new ExcelDataTableConfiguration() { UseHeaderRow = tieneEncabezados } });
-            var dt = ds.Tables.Count > 0 ? ds.Tables[0] : new DataTable();
+
+            DataTable dt = new DataTable();
+            if (ds.Tables.Count > 0)
+            {
+                // Si mandaron el nombre de la hoja y existe, usamos esa. Si no, usamos la primera por defecto.
+                if (!string.IsNullOrEmpty(nombreHoja) && ds.Tables.Contains(nombreHoja))
+                    dt = ds.Tables[nombreHoja];
+                else
+                    dt = ds.Tables[0];
+            }
 
             if (!tieneEncabezados && dt.Columns.Count > 0)
                 for (int i = 0; i < dt.Columns.Count; i++) dt.Columns[i].ColumnName = $"Columna_{i + 1}";
@@ -90,23 +98,19 @@ namespace NotebookValidator.Web.Services
             return dtResumen;
         }
 
-        // --- CORRECCIÓN: INFERENCIA INTELIGENTE DE COLUMNAS ---
         public List<SugerenciaMapeo> InferirColumnas(DataTable dt1, DataTable dt2)
         {
             var sugerencias = new List<SugerenciaMapeo>();
             var cols1 = dt1.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
             var cols2 = dt2.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
 
-            // Lista de palabras clave para EXCLUIR de la comparación automática (Categorías, fechas, IDs)
             var exclusionKeywords = new List<string> { "seg_", "tramo", "clasificacion", "banco", "prestamo", "periodo", "matriz", "fecha", "estado", "tipo", "id", "sucursal", "rut", "dv" };
 
             foreach (var c1 in cols1)
             {
                 string c1Lower = c1.ToLower();
-                // Ignorar columnas categóricas
                 if (exclusionKeywords.Any(k => c1Lower.Contains(k))) continue;
 
-                // 1. Priorizar COINCIDENCIA EXACTA por sobre la similitud (Evita que PI_A se cruce con PDI_A)
                 var exactMatch = cols2.FirstOrDefault(c => c.Equals(c1, StringComparison.OrdinalIgnoreCase));
                 if (exactMatch != null)
                 {
@@ -114,7 +118,6 @@ namespace NotebookValidator.Web.Services
                     continue;
                 }
 
-                // 2. Si no hay coincidencia exacta, buscar por similitud alta (> 85%)
                 string bestMatch = null;
                 int maxSimilitud = 0;
 
@@ -127,7 +130,6 @@ namespace NotebookValidator.Web.Services
                     int maxLen = Math.Max(c1.Length, c2.Length);
                     int similitud = maxLen == 0 ? 100 : (int)((1.0 - (double)distancia / maxLen) * 100);
 
-                    // Aumentamos a 85% para ser más estrictos y evitar falsos positivos
                     if (similitud >= 85 && similitud > maxSimilitud)
                     {
                         maxSimilitud = similitud;

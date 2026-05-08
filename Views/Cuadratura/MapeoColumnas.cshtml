@@ -4,7 +4,7 @@
 }
 
 <style>
-    /* Estilos Stepper */
+    /* STEPPER MODERNO Y ELEGANTE */
     .stepper {
         display: flex;
         justify-content: space-between;
@@ -107,10 +107,12 @@
         backdrop-filter: blur(4px);
     }
 
-    /* ESTILOS MODO AGRUPACIÓN */
+    /* CORRECCIÓN: RESALTADO MODO AGRUPACIÓN */
     .agrupacion-highlight {
         border: 2px solid #0dcaf0 !important;
-        background-color: rgba(13, 202, 240, 0.1) !important;
+        box-shadow: inset 0 0 8px rgba(13, 202, 240, 0.2) !important;
+        background-color: #212529 !important; /* Mantenemos el fondo oscuro */
+        color: #0dcaf0 !important; /* Texto en cian para indicar el modo activo */
     }
 
     .key-active-label {
@@ -151,6 +153,8 @@
         <input type="hidden" name="TieneEncabezados2" value="@Model.TieneEncabezados2.ToString().ToLower()" />
         @Html.HiddenFor(m => m.AliasArchivo1)
         @Html.HiddenFor(m => m.AliasArchivo2)
+        <input type="hidden" name="HojaArchivo1" value="@Model.HojaArchivo1" />
+        <input type="hidden" name="HojaArchivo2" value="@Model.HojaArchivo2" />
 
         <div class="card bg-dark border-secondary mb-4 shadow-sm">
             <div class="card-header border-secondary d-flex justify-content-between align-items-center">
@@ -165,8 +169,8 @@
                 <div class="row g-4">
                     <div class="col-md-6">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <label class="text-white small fw-bold">Columnas en @Model.AliasArchivo1</label>
-                            <button type="button" class="btn btn-link btn-sm text-info p-0" onclick="preview('@Model.TempPathArchivo1.Replace("\\", "\\\\")', @Model.TieneEncabezados1.ToString().ToLower())"><i class="bi bi-eye"></i> Ver muestra</button>
+                            <label class="text-white small fw-bold">Columnas en @Model.AliasArchivo1 @(!string.IsNullOrEmpty(Model.HojaArchivo1) ? $" (Hoja: {Model.HojaArchivo1})" : "")</label>
+                            <button type="button" class="btn btn-link btn-sm text-info p-0" onclick="preview('@Model.TempPathArchivo1.Replace("\\", "\\\\")', @Model.TieneEncabezados1.ToString().ToLower(), '@Model.HojaArchivo1')"><i class="bi bi-eye"></i> Ver muestra</button>
                         </div>
                         <div class="border border-secondary rounded p-3 custom-scrollbar" style="max-height: 250px; overflow-y:auto; background: #0f172a;">
                             @foreach (var col in Model.ColumnasArchivo1)
@@ -182,8 +186,8 @@
                     </div>
                     <div class="col-md-6">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <label class="text-white small fw-bold">Columnas en @Model.AliasArchivo2</label>
-                            <button type="button" class="btn btn-link btn-sm text-info p-0" onclick="preview('@Model.TempPathArchivo2.Replace("\\", "\\\\")', @Model.TieneEncabezados2.ToString().ToLower())"><i class="bi bi-eye"></i> Ver muestra</button>
+                            <label class="text-white small fw-bold">Columnas en @Model.AliasArchivo2 @(!string.IsNullOrEmpty(Model.HojaArchivo2) ? $" (Hoja: {Model.HojaArchivo2})" : "")</label>
+                            <button type="button" class="btn btn-link btn-sm text-info p-0" onclick="preview('@Model.TempPathArchivo2.Replace("\\", "\\\\")', @Model.TieneEncabezados2.ToString().ToLower(), '@Model.HojaArchivo2')"><i class="bi bi-eye"></i> Ver muestra</button>
                         </div>
                         <div class="border border-secondary rounded p-3 custom-scrollbar" style="max-height: 250px; overflow-y:auto; background: #0f172a;">
                             @foreach (var col in Model.ColumnasArchivo2)
@@ -269,6 +273,31 @@
     </form>
 </div>
 
+<template id="rowTemplateHtml">
+    <tr>
+        <td>
+            <select name="ColsComparar1" class="form-select bg-dark text-white border-secondary">
+                <option value="">-- Ignorar --</option>
+                @foreach (var c in Model.ColumnasArchivo1)
+                {
+                    <option value="@c">@c</option>
+                }
+            </select>
+        </td>
+        <td>
+            <select name="ColsComparar2" class="form-select bg-dark text-white border-secondary">
+                <option value="">-- Ignorar --</option>
+                @foreach (var c in Model.ColumnasArchivo2)
+                {
+                    <option value="@c">@c</option>
+                }
+            </select>
+        </td>
+        <td><input type="number" step="any" name="Tolerancias" class="form-control bg-dark text-white border-secondary custom-placeholder" placeholder="Ej: 0.01" /></td>
+        <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm rounded-circle" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+    </tr>
+</template>
+
 <div class="modal fade" id="previewModal" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content bg-dark border-secondary">
@@ -286,24 +315,19 @@
 <div id="loadingOverlay"><div class="spinner-border text-warning mb-3" style="width: 4rem; height: 4rem;"></div><h3 class="text-white fw-bold">Cruzando Registros...</h3></div>
 
 <script>
-    // Variable global para guardar una fila en blanco "plantilla"
-    let rowTemplate = null;
-
     document.addEventListener("DOMContentLoaded", function() {
-        // Guardamos una copia limpia de la primera fila al cargar la página
         const body = document.getElementById('mapeoBody');
-        if(body.rows.length > 0) {
-            rowTemplate = body.rows[0].cloneNode(true);
-            rowTemplate.querySelectorAll('select').forEach(s => s.value = "");
-            rowTemplate.querySelector('input').value = "";
+        if(body.rows.length === 0) {
+            agregarFila();
         }
     });
 
-    function preview(path, headers) {
+    function preview(path, headers, sheet) {
+        let sheetParam = sheet ? `&nombreHoja=${encodeURIComponent(sheet)}` : '';
         fetch('@Url.Action("ObtenerPrevisualizacion", "Cuadratura")', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `tempPath=${encodeURIComponent(path)}&tieneEncabezados=${headers}`
+            body: `tempPath=${encodeURIComponent(path)}&tieneEncabezados=${headers}${sheetParam}`
         })
         .then(r => r.json()).then(data => {
             document.getElementById('previewHead').innerHTML = '<tr>' + data.headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
@@ -314,28 +338,17 @@
 
     function agregarFila() {
         const body = document.getElementById('mapeoBody');
-        let row;
-
-        // Usamos la plantilla guardada para evitar errores si el usuario borró todas las filas previas
-        if (rowTemplate) {
-            row = rowTemplate.cloneNode(true);
-        } else if (body.rows.length > 0) {
-            row = body.rows[0].cloneNode(true);
-            row.querySelectorAll('select').forEach(s => s.value = "");
-            row.querySelector('input').value = "";
-        } else {
-            return;
-        }
+        const template = document.getElementById('rowTemplateHtml');
+        const clone = template.content.cloneNode(true);
+        const row = clone.querySelector('tr');
 
         body.appendChild(row);
 
-        // Re-aplicar clases si el modo está activo
         if(document.getElementById('swAgrup').checked) {
             row.querySelectorAll('select, input').forEach(el => el.classList.add('agrupacion-highlight'));
         }
     }
 
-    // --- NUEVO: FUNCIONALIDADES DE LIMPIEZA ---
     document.getElementById("btnClearKeys").addEventListener("click", function() {
         document.querySelectorAll('.key-checkbox-1, .key-checkbox-2').forEach(chk => chk.checked = false);
         toastr.info("Selección de llaves primarias eliminada.");
@@ -343,23 +356,11 @@
 
     document.getElementById("btnClearMapeo").addEventListener("click", function() {
         const body = document.getElementById('mapeoBody');
-        body.innerHTML = ''; // Borra todas las filas actuales
-
-        // Inserta al menos una fila en blanco usando la plantilla
-        if(rowTemplate) {
-            const row = rowTemplate.cloneNode(true);
-            body.appendChild(row);
-
-            // Mantiene el color si el modo agrupación está activo
-            if(document.getElementById('swAgrup').checked) {
-                row.querySelectorAll('select, input').forEach(el => el.classList.add('agrupacion-highlight'));
-            }
-        }
+        body.innerHTML = '';
+        agregarFila();
         toastr.info("Mapeo de columnas a comparar eliminado.");
     });
-    // ------------------------------------------
 
-    // LOGICA VISUAL MODO AGRUPACION Y CONTEO DISTINTOS
     document.getElementById('swAgrup').addEventListener('change', function() {
         const activo = this.checked;
         const h1 = document.getElementById('headerCol1');
