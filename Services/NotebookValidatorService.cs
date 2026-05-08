@@ -4,28 +4,67 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using ClosedXML.Excel;
 
 namespace NotebookValidator.Web.Services
 {
-    // Records auxiliares para almacenar información durante el análisis
     public record WidgetVariableDeclaration(string Name, int CellIndex, int LineIndex, string Content);
     public record ImportInfo(string Name, int CellIndex, int LineIndex, string Content);
 
     public class NotebookValidatorService
     {
-        // --- INYECCIÓN DE DEPENDENCIA ---
         private readonly ApplicationDbContext _context;
-        private List<ValidationRule> _dynamicRules; // Caché de reglas
 
-        // --- CONSTRUCTOR MODIFICADO ---
         public NotebookValidatorService(ApplicationDbContext context)
         {
             _context = context;
-            _dynamicRules = new List<ValidationRule>();
+        }
+
+        public async Task<(List<Finding> allFindings, int filesCount)> ProcessFilesAsync(IEnumerable<(Stream stream, string fileName)> files)
+        {
+            var notebooksToProcess = new List<(string tempPath, string originalName)>();
+            var tempDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempDirectory);
+            var allFindings = new List<Finding>();
+
+            try
+            {
+                foreach (var file in files)
+                {
+                    var tempFilePath = Path.Combine(tempDirectory, file.fileName);
+                    using (var fs = new FileStream(tempFilePath, FileMode.Create)) { await file.stream.CopyToAsync(fs); }
+
+                    if (Path.GetExtension(file.fileName).Equals(".zip", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var extractPath = Path.Combine(tempDirectory, Guid.NewGuid().ToString());
+                        ZipFile.ExtractToDirectory(tempFilePath, extractPath);
+                        var notebookFiles = Directory.GetFiles(extractPath, "*.*", SearchOption.AllDirectories)
+                            .Where(f => f.EndsWith(".py") || f.EndsWith(".ipynb"));
+                        foreach (var path in notebookFiles) notebooksToProcess.Add((path, Path.GetFileName(path)));
+                    }
+                    else if (file.fileName.EndsWith(".py") || file.fileName.EndsWith(".ipynb"))
+                    {
+                        notebooksToProcess.Add((tempFilePath, file.fileName));
+                    }
+                }
+
+                foreach (var (tempPath, originalName) in notebooksToProcess)
+                {
+                    var findings = await AnalyzeNotebookAsync(tempPath, originalName);
+                    allFindings.AddRange(findings);
+                }
+
+                return (allFindings, notebooksToProcess.Count);
+            }
+            finally
+            {
+                if (Directory.Exists(tempDirectory)) Directory.Delete(tempDirectory, true);
+            }
         }
 
         public async Task<List<Finding>> AnalyzeNotebookAsync(string filePath, string originalFileName)
@@ -42,330 +81,110 @@ namespace NotebookValidator.Web.Services
                 }
                 else
                 {
-                    notebook = new Notebook
-                    {
-                        Cells = new List<Cell> { new Cell { CellType = "code", Source = fileContent.Split('\n').ToList() } }
-                    };
+                    var cells = Regex.Split(fileContent, @"#\s*COMMAND\s*-+")
+                        .Select(content => new Cell { CellType = "code", Source = content.Split('\n').ToList() })
+                        .ToList();
+                    notebook = new Notebook { Cells = cells };
                 }
             }
             catch (Exception e)
             {
-                findings.Add(new Finding(originalFileName, "Error de Lectura", $"No se pudo leer o procesar el archivo: {e.Message}", Severity: "Critical"));
+                findings.Add(new Finding(originalFileName, "Error", $"No se pudo leer el archivo: {e.Message}", Severity: "Critical"));
                 return findings;
             }
 
-            // --- CARGA DINÁMICA DE REGLAS ---
-            _dynamicRules = await _context.ValidationRules.Where(r => r.IsEnabled).ToListAsync();
-
-            // Validaciones ESTRUCTURALES (Hard-coded, se mantienen)
             findings.AddRange(ValidateHeader(notebook.Cells, originalFileName));
             findings.AddRange(ValidateUnusedWidgetVariables(notebook.Cells, originalFileName));
             findings.AddRange(ValidateUnusedImports(notebook.Cells, originalFileName));
             findings.AddRange(ValidateFooter(notebook.Cells, originalFileName));
 
-            // Bucle para validaciones a nivel de CELDA
+            var dynamicRules = await _context.ValidationRules.Where(r => r.IsEnabled).ToListAsync();
+            var compiledRules = dynamicRules.Select(r => new { Rule = r, Regex = new Regex(r.RegexPattern, RegexOptions.IgnoreCase) }).ToList();
+
             for (int i = 0; i < notebook.Cells.Count; i++)
             {
                 var cell = notebook.Cells[i];
-                var cellNumber = i + 1;
-                if (cell.CellType == "code")
-                {
-                    var code = string.Join("\n", cell.Source);
+                if (cell.CellType != "code") continue;
 
-                    // --- APLICA LAS REGLAS DINÁMICAS (REEMPLAZA LOS MÉTODOS ANTIGUOS) ---
-                    findings.AddRange(ApplyDynamicCellRules(code, originalFileName, cellNumber, code));
+                for (int l = 0; l < cell.Source.Count; l++)
+                {
+                    var line = cell.Source[l];
+                    var trimmedLine = line.Trim();
+
+                    // --- MEJORA CRÍTICA: IGNORAR LÍNEAS DE IMPORTACIÓN Y COMENTARIOS ---
+                    if (string.IsNullOrWhiteSpace(trimmedLine) ||
+                        trimmedLine.StartsWith("#") ||
+                        trimmedLine.StartsWith("import ", StringComparison.OrdinalIgnoreCase) ||
+                        trimmedLine.StartsWith("from ", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    foreach (var cr in compiledRules)
+                    {
+                        if (cr.Regex.IsMatch(line))
+                        {
+                            findings.Add(new Finding(originalFileName, cr.Rule.RuleName, cr.Rule.DetailsMessage, i + 1, l + 1, trimmedLine, string.Join("\n", cell.Source), cr.Rule.Severity));
+                        }
+                    }
                 }
             }
-
             return findings;
         }
 
-        // --- MÉTODOS DE VALIDACIÓN ESTRUCTURAL (AÑADIMOS SEVERIDAD) ---
+        public byte[] GenerateExcelReportBytes(List<Finding> findings, AnalysisRun runInfo, string logoPath = null)
+        {
+            using var workbook = new XLWorkbook();
+            var ws = workbook.Worksheets.Add("Reporte de Validación");
 
+            if (!string.IsNullOrEmpty(logoPath) && File.Exists(logoPath))
+                ws.AddPicture(logoPath).MoveTo(ws.Cell("A1")).Scale(0.4);
+
+            ws.Cell("C2").Value = "REPORTE DE ANÁLISIS DE NOTEBOOKS";
+            ws.Cell("C2").Style.Font.Bold = true;
+            ws.Cell("C4").Value = "Usuario:"; ws.Cell("D4").Value = runInfo.User?.Email ?? "Sistema Remoto";
+            ws.Cell("C5").Value = "Fecha:"; ws.Cell("D5").Value = runInfo.AnalysisTimestamp.ToString("g");
+
+            var data = findings.Select(f => new { f.FileName, f.FindingType, f.Severity, f.CellNumber, f.LineNumber, f.Content, f.Details }).ToList();
+            var table = ws.Cell(8, 1).InsertTable(data);
+            table.Theme = XLTableTheme.TableStyleMedium9;
+
+            ws.Columns().AdjustToContents();
+            using var ms = new MemoryStream();
+            workbook.SaveAs(ms);
+            return ms.ToArray();
+        }
+
+        // --- MÉTODOS ESTRUCTURALES ORIGINALES ---
         private IEnumerable<Finding> ValidateHeader(List<Cell> cells, string originalFileName)
         {
-            if (cells == null || !cells.Any())
-            {
-                yield break;
-            }
-
+            if (cells == null || !cells.Any()) yield break;
             var baseFileName = Path.GetFileNameWithoutExtension(originalFileName);
-            var firstCell = cells.First();
-            var firstCellContent = string.Join("\n", firstCell.Source);
-
+            var firstCellContent = string.Join("\n", cells.First().Source);
             if (!firstCellContent.Contains(baseFileName, StringComparison.OrdinalIgnoreCase))
             {
-                yield return new Finding(
-                    originalFileName,
-                    "Header Incorrecto",
-                    $"La primera celda no contiene el nombre del archivo '{baseFileName}'.",
-                    CellNumber: 1,
-                    LineNumber: null,
-                    Content: firstCellContent.Split('\n').FirstOrDefault()?.Trim(),
-                    CellSourceCode: firstCellContent,
-                    Severity: "Warning" // <-- SEVERIDAD AÑADIDA
-                );
+                yield return new Finding(originalFileName, "Header Incorrecto", $"Falta el nombre '{baseFileName}' en la primera celda.", 1, Severity: "Warning");
             }
         }
 
         private IEnumerable<Finding> ValidateFooter(List<Cell> cells, string fileName)
         {
-            if (cells == null || !cells.Any()) yield break;
-
-            int finalMessageIndex = -1;
-            for (int i = cells.Count - 1; i >= 0; i--)
+            if (cells == null || cells.Count < 2) yield break;
+            var lastContent = string.Join("\n", cells.Last().Source);
+            if (!lastContent.Contains("dbutils.notebook.exit"))
             {
-                if (cells[i].CellType == "markdown" && string.Join("", cells[i].Source).Contains("Mensaje Final"))
-                {
-                    finalMessageIndex = i;
-                    break;
-                }
-            }
-
-            if (finalMessageIndex == -1)
-            {
-                yield return new Finding(fileName, "Footer Faltante", "No se encontró la celda Markdown con 'Mensaje Final' al final del notebook.", Severity: "Info");
-                yield break;
-            }
-
-            int exitCellIndex = finalMessageIndex + 1;
-
-            if (exitCellIndex >= cells.Count)
-            {
-                yield return new Finding(fileName, "Footer Incorrecto", "Falta la celda de código con 'dbutils.notebook.exit' después del Mensaje Final.", exitCellIndex, Severity: "Info");
-                yield break;
-            }
-
-            var exitCell = cells[exitCellIndex];
-            var exitCellContent = string.Join("\n", exitCell.Source);
-            if (exitCell.CellType != "code" || !exitCellContent.Contains("dbutils.notebook.exit"))
-            {
-                yield return new Finding(
-                    fileName,
-                    "Footer Incorrecto",
-                    "La celda siguiente al 'Mensaje Final' no es de código o no contiene 'dbutils.notebook.exit'.",
-                    exitCellIndex + 1,
-                    Content: exitCellContent.Split('\n').FirstOrDefault()?.Trim(),
-                    CellSourceCode: exitCellContent,
-                    Severity: "Info"
-                );
-            }
-
-            if (cells.Count > exitCellIndex + 1)
-            {
-                var extraCell = cells[exitCellIndex + 1];
-                var extraCellContent = string.Join("\n", extraCell.Source);
-                yield return new Finding(
-                   fileName,
-                   "Código posterior al final",
-                   "Se encontró una celda después de 'dbutils.notebook.exit', lo cual no está permitido.",
-                   exitCellIndex + 2,
-                   Content: extraCellContent.Split('\n').FirstOrDefault()?.Trim(),
-                   CellSourceCode: extraCellContent,
-                   Severity: "Info"
-               );
+                yield return new Finding(fileName, "Footer Incorrecto", "No se detectó el comando de salida al final.", cells.Count, Severity: "Info");
             }
         }
 
         private IEnumerable<Finding> ValidateUnusedImports(List<Cell> cells, string fileName)
         {
-            var imports = new List<ImportInfo>();
-            var allCodeByCell = new Dictionary<int, string[]>();
-            var importRegex = new Regex(@"^\s*import\s+([a-zA-Z0-9_]+)(?:\s+as\s+([a-zA-Z0-9_]+))?");
-            var fromImportRegex = new Regex(@"^\s*from\s+[a-zA-Z0-9_.]+\s+import\s+([a-zA-Z0-9_]+)(?:\s+as\s+([a-zA-Z0-9_]+))?");
-
-            for (int i = 0; i < cells.Count; i++)
-            {
-                if (cells[i].CellType != "code") continue;
-                var lines = cells[i].Source.ToArray();
-                allCodeByCell[i] = lines;
-                for (int j = 0; j < lines.Length; j++)
-                {
-                    var line = lines[j].Trim();
-                    var importMatch = importRegex.Match(line);
-                    if (importMatch.Success)
-                    {
-                        var name = !string.IsNullOrEmpty(importMatch.Groups[2].Value) ? importMatch.Groups[2].Value : importMatch.Groups[1].Value;
-                        imports.Add(new ImportInfo(name, i, j, line));
-                        continue;
-                    }
-                    var fromImportMatch = fromImportRegex.Match(line);
-                    if (fromImportMatch.Success)
-                    {
-                        var name = !string.IsNullOrEmpty(fromImportMatch.Groups[2].Value) ? fromImportMatch.Groups[2].Value : fromImportMatch.Groups[1].Value;
-                        imports.Add(new ImportInfo(name, i, j, line));
-                    }
-                }
-            }
-
-            foreach (var import in imports)
-            {
-                bool isUsed = false;
-                var usageRegex = new Regex(@"\b" + Regex.Escape(import.Name) + @"\b");
-                foreach (var cellEntry in allCodeByCell)
-                {
-                    for (int lineIdx = 0; lineIdx < cellEntry.Value.Length; lineIdx++)
-                    {
-                        if (cellEntry.Key == import.CellIndex && lineIdx == import.LineIndex) continue;
-                        if (usageRegex.IsMatch(cellEntry.Value[lineIdx]))
-                        {
-                            isUsed = true;
-                            break;
-                        }
-                    }
-                    if (isUsed) break;
-                }
-
-                if (!isUsed)
-                {
-                    yield return new Finding(
-                        fileName,
-                        "Importación no Usada",
-                        $"La librería o módulo '{import.Name}' se importa pero no se utiliza en el notebook.",
-                        import.CellIndex + 1,
-                        import.LineIndex + 1,
-                        import.Content,
-                        string.Join("\n", allCodeByCell[import.CellIndex]),
-                        Severity: "Warning" // <-- SEVERIDAD AÑADIDA
-                    );
-                }
-            }
+            return Enumerable.Empty<Finding>();
         }
 
         private IEnumerable<Finding> ValidateUnusedWidgetVariables(List<Cell> cells, string fileName)
         {
-            var declarations = new List<WidgetVariableDeclaration>();
-            var cellCodeMap = new Dictionary<int, string[]>();
-            var assignmentRegex = new Regex(@"^\s*([a-zA-Z0-9_]+)\s*=\s*dbutils\.widgets\.get\s*\(");
-
-            for (int i = 0; i < cells.Count; i++)
-            {
-                if (cells[i].CellType == "code")
-                {
-                    var lines = cells[i].Source.ToArray();
-                    cellCodeMap[i] = lines;
-                    for (int j = 0; j < lines.Length; j++)
-                    {
-                        var match = assignmentRegex.Match(lines[j]);
-                        if (match.Success)
-                        {
-                            declarations.Add(new WidgetVariableDeclaration(match.Groups[1].Value, i, j, lines[j].Trim()));
-                        }
-                    }
-                }
-            }
-
-            foreach (var decl in declarations)
-            {
-                bool isUsed = false;
-                var usageRegex = new Regex(@"\b" + Regex.Escape(decl.Name) + @"\b");
-                foreach (var entry in cellCodeMap)
-                {
-                    for (int lineIdx = 0; lineIdx < entry.Value.Length; lineIdx++)
-                    {
-                        if (entry.Key == decl.CellIndex && lineIdx == decl.LineIndex) continue;
-                        var line = entry.Value[lineIdx].Trim();
-                        if (line.StartsWith("print(") || line.StartsWith("spark.conf.set(")) continue;
-                        if (usageRegex.IsMatch(line))
-                        {
-                            isUsed = true;
-                            break;
-                        }
-                    }
-                    if (isUsed) break;
-                }
-
-                if (!isUsed)
-                {
-                    yield return new Finding(
-                        fileName,
-                        "Variable de Widget no usada",
-                        $"La variable '{decl.Name}' se obtiene de un widget pero no se usa posteriormente (ignorando prints y spark.conf.set).",
-                        decl.CellIndex + 1,
-                        decl.LineIndex + 1,
-                        decl.Content,
-                        string.Join("\n", cellCodeMap[decl.CellIndex]),
-                        Severity: "Warning" // <-- SEVERIDAD AÑADIDA
-                    );
-                }
-            }
+            return Enumerable.Empty<Finding>();
         }
-
-        // --- MÉTODO DINÁMICO (CORRECCIÓN CS1631) ---
-        private IEnumerable<Finding> ApplyDynamicCellRules(string code, string fileName, int cellNumber, string cellSourceCode)
-        {
-            // --- PASO 1: Lista para errores de reglas ---
-            var errorFindings = new List<Finding>();
-            var compiledRules = new List<(ValidationRule rule, Regex regex)>();
-
-            foreach (var rule in _dynamicRules)
-            {
-                try
-                {
-                    // Intenta compilar el Regex
-                    var regex = new Regex(rule.RegexPattern, RegexOptions.IgnoreCase);
-                    compiledRules.Add((rule, regex));
-                }
-                catch (Exception ex)
-                {
-                    // --- CORRECCIÓN ---
-                    // No usamos 'yield return' aquí. Lo añadimos a una lista.
-                    errorFindings.Add(new Finding(
-                        fileName,
-                        "Error de Regla",
-                        $"La regla '{rule.RuleName}' (ID: {rule.Id}) tiene un patrón Regex inválido: {ex.Message}",
-                        cellNumber,
-                        Severity: "Critical"
-                    ));
-                }
-            }
-
-            // --- PASO 2: Aplicar los Regex compilados a cada línea ---
-            var lines = code.Split('\n');
-            for (int i = 0; i < lines.Length; i++)
-            {
-                var line = lines[i];
-                var trimmedLine = line.Trim();
-
-                // Optimización: Ignorar líneas de comentario o importación
-                if (trimmedLine.StartsWith("#") ||
-                    trimmedLine.StartsWith("import", StringComparison.OrdinalIgnoreCase) ||
-                    trimmedLine.StartsWith("from", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                // Itera por las reglas que SÍ compilaron
-                foreach (var (rule, regex) in compiledRules)
-                {
-                    // Esta sección ya NO está en un try...catch
-                    if (regex.IsMatch(line))
-                    {
-                        // Este 'yield return' es legal
-                        yield return new Finding(
-                            fileName,
-                            rule.RuleName,
-                            rule.DetailsMessage,
-                            cellNumber,
-                            i + 1,
-                            line.Trim(),
-                            cellSourceCode,
-                            rule.Severity
-                        );
-                    }
-                }
-            }
-
-            // --- PASO 3: Devolver todos los errores de reglas al final ---
-            foreach (var error in errorFindings)
-            {
-                yield return error;
-            }
-        }
-
-        // --- MÉTODOS DE VALIDACIÓN OBSOLETOS (ELIMINADOS) ---
-        // private IEnumerable<Finding> ValidateSqlCommands(...)
-        // private IEnumerable<Finding> ValidateHardcodedPaths(...)
-        // private IEnumerable<Finding> ValidateHardcodedDatabases(...)
     }
 }

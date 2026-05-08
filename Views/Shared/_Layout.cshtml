@@ -34,8 +34,6 @@
         <ul class="sidebar-nav">
             @{
                 var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
-
-                // --- MODIFICACIÓN: Lógica para agrupar Validador + Historial ---
                 var isValidatorSectionActive = (currentController == "Home" || currentController == "History");
             }
 
@@ -70,12 +68,18 @@
 
             @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
             {
-                /* CORRECCIÓN: La clase active se movió al LI para que resalte igual que los demás */
                 <li class="nav-item @(currentController == "Cuadratura" ? "active" : "")">
-                    <a class="nav-link"
-                       asp-controller="Cuadratura"
-                       asp-action="Index">
+                    <a class="nav-link" asp-controller="Cuadratura" asp-action="Index">
                         <i class="bi bi-table"></i> <span>Cuadratura de Datos</span>
+                    </a>
+                </li>
+            }
+
+            @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+            {
+                <li class="nav-item @(currentController == "DataProfiling" ? "active" : "")">
+                    <a class="nav-link" asp-area="" asp-controller="DataProfiling" asp-action="Index">
+                        <i class="bi bi-bar-chart-steps"></i> <span>Perfilamiento de Datos</span>
                     </a>
                 </li>
             }
@@ -83,7 +87,7 @@
             @if (User.IsInRole("Admin") || User.IsInRole("TempCleanerUser"))
             {
                 <li class="nav-item @(currentController == "TempTable" ? "active" : "")">
-                    <a class="nav-link" asp-controller="TempTable" asp-action="Index">
+                    <a class="nav-link" asp-area="" asp-controller="TempTable" asp-action="Index">
                         <i class="bi bi-trash"></i> <span>Limpieza Tmp</span>
                     </a>
                 </li>
@@ -188,21 +192,18 @@
 
     <script>
         $(document).ready(function () {
-            // Buscamos si el controlador nos envió un mensaje
             const message = '@TempData["ToastrMessage"]';
-            const type = '@TempData["ToastrType"]'; // success, info, warning, error
+            const type = '@TempData["ToastrType"]';
 
             if (message) {
-                // Configuramos las opciones del toast
                 toastr.options = {
-                    "closeButton": true,       // Muestra un botón para cerrar
-                    "progressBar": true,       // Muestra una barra de progreso
-                    "positionClass": "toast-bottom-right", // Posición en la pantalla
+                    "closeButton": true,
+                    "progressBar": true,
+                    "positionClass": "toast-bottom-right",
                     "preventDuplicates": true,
-                    "timeOut": "5000"          // Duración de la notificación en ms
+                    "timeOut": "5000"
                 };
 
-                // Mostramos la notificación según el tipo
                 toastr[type](message);
             }
         });

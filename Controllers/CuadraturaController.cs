@@ -54,6 +54,23 @@ namespace NotebookValidator.Web.Controllers
         }
 
         [HttpPost]
+        public IActionResult ObtenerPrevisualizacion(string tempPath, bool tieneEncabezados)
+        {
+            if (string.IsNullOrEmpty(tempPath) || !System.IO.File.Exists(tempPath)) return BadRequest();
+            DataTable dt = _cuadraturaService.LeerExcel(tempPath, tieneEncabezados);
+
+            var headers = dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
+            var rows = new List<List<string>>();
+
+            foreach (DataRow row in dt.AsEnumerable().Take(5))
+            {
+                rows.Add(row.ItemArray.Select(i => i?.ToString() ?? "").ToList());
+            }
+
+            return Json(new { headers, rows });
+        }
+
+        [HttpPost]
         public IActionResult EjecutarCuadratura(string TempPathArchivo1, string TempPathArchivo2, string AliasArchivo1, string AliasArchivo2, bool TieneEncabezados1, bool TieneEncabezados2, bool ModoAgrupacion, List<string> LlaveArchivo1, List<string> LlaveArchivo2, List<string> ColsComparar1, List<string> ColsComparar2, List<string> Tolerancias)
         {
             DataTable dt1 = _cuadraturaService.LeerExcel(TempPathArchivo1, TieneEncabezados1);
@@ -93,25 +110,38 @@ namespace NotebookValidator.Web.Controllers
 
             var resultados = _cuadraturaService.CompararDatos(dt1, dt2, LlaveArchivo1, LlaveArchivo2, validCols1, validCols2, validTols);
 
-            // Asignamos los Alias al resultado final
             resultados.AliasArchivo1 = string.IsNullOrWhiteSpace(AliasArchivo1) ? "Archivo 1" : AliasArchivo1;
             resultados.AliasArchivo2 = string.IsNullOrWhiteSpace(AliasArchivo2) ? "Archivo 2" : AliasArchivo2;
 
             if (System.IO.File.Exists(TempPathArchivo1)) System.IO.File.Delete(TempPathArchivo1);
             if (System.IO.File.Exists(TempPathArchivo2)) System.IO.File.Delete(TempPathArchivo2);
 
+            // Guardar resultado temporal para exportación
+            string exportId = Guid.NewGuid().ToString();
+            string tempJsonPath = Path.Combine(Path.GetTempPath(), exportId + ".json");
+            System.IO.File.WriteAllText(tempJsonPath, JsonSerializer.Serialize(resultados));
+            ViewBag.ExportId = exportId;
+
             return View("Resultados", resultados);
         }
 
         [HttpPost]
-        public IActionResult ExportarExcel(string jsonResultado)
+        public IActionResult ExportarExcel(string exportId)
         {
-            if (string.IsNullOrEmpty(jsonResultado)) return RedirectToAction("Index");
+            if (string.IsNullOrEmpty(exportId)) return RedirectToAction("Index");
+            string tempJsonPath = Path.Combine(Path.GetTempPath(), exportId + ".json");
+            if (!System.IO.File.Exists(tempJsonPath)) return RedirectToAction("Index");
 
-            var resultado = JsonSerializer.Deserialize<ResultadoCuadratura>(jsonResultado);
-            var archivo = _cuadraturaService.GenerarExcelReporte(resultado);
+            try
+            {
+                var jsonResultado = System.IO.File.ReadAllText(tempJsonPath);
+                var resultado = JsonSerializer.Deserialize<ResultadoCuadratura>(jsonResultado);
+                var archivo = _cuadraturaService.GenerarExcelReporte(resultado);
+                System.IO.File.Delete(tempJsonPath);
 
-            return File(archivo, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Reporte_Cuadratura_{DateTime.Now:yyyyMMddHHmm}.xlsx");
+                return File(archivo, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Reporte_Cuadratura_{DateTime.Now:yyyyMMddHHmm}.xlsx");
+            }
+            catch { return RedirectToAction("Index"); }
         }
     }
 }

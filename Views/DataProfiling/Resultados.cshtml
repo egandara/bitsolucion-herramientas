@@ -1,0 +1,195 @@
+@model NotebookValidator.Web.Models.DataProfileResult
+@{
+    ViewData["Title"] = "Resultados del Perfilamiento";
+}
+
+<style>
+    .text-muted-light {
+        color: #adb5bd !important;
+    }
+
+    .bg-dark-subtle {
+        background-color: rgba(255, 255, 255, 0.03) !important;
+    }
+
+    .pulse-danger {
+        box-shadow: 0 0 0 rgba(220, 53, 69, 0.4);
+        animation: pulse 2s infinite;
+    }
+
+    @@keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+        }
+
+        70% {
+            box-shadow: 0 0 0 6px rgba(220, 53, 69, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+        }
+    }
+</style>
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-white"><i class="bi bi-bar-chart-steps text-warning me-2"></i> Radiografía de Datos</h2>
+        <a asp-action="Index" class="btn btn-outline-light"><i class="bi bi-arrow-left"></i> Analizar otro archivo</a>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-dark text-white border-secondary h-100">
+                <div class="card-body text-center">
+                    <h5 class="text-muted-light">Archivo Analizado</h5>
+                    <h4 class="text-warning text-break">@Model.FileName</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-dark text-white border-secondary h-100">
+                <div class="card-body text-center">
+                    <h5 class="text-muted-light">Total de Filas</h5>
+                    <h2 class="text-white">@Model.TotalRows.ToString("N0")</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-dark text-white border-secondary h-100">
+                <div class="card-body text-center">
+                    <h5 class="text-muted-light">Total de Columnas</h5>
+                    <h2 class="text-white">@Model.TotalColumns</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h4 class="text-white mb-3 border-bottom border-warning pb-2">Análisis de Columnas</h4>
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+        @foreach (var col in Model.ColumnProfiles)
+        {
+            <div class="col">
+                <div class="card bg-dark text-white border-secondary h-100 shadow-sm position-relative @(col.IsPII ? "border-danger" : "")">
+
+                    <div class="card-header border-secondary d-flex justify-content-between align-items-center bg-dark-subtle">
+                        <h5 class="mb-0 text-truncate" title="@col.ColumnName" style="max-width: 50%;">@col.ColumnName</h5>
+                        <div>
+                            @{
+                                // --- NUEVO: Lógica de colores para Entero vs Decimal ---
+                                var badgeClass = "";
+                                var badgeStyle = "";
+                                if (col.InferredDataType == "Entero") { badgeClass = "bg-primary"; }
+                                else if (col.InferredDataType == "Decimal") { badgeClass = "text-white"; badgeStyle = "background-color: #6f42c1;"; } // Morado elegante
+                                else if (col.InferredDataType == "Fecha") { badgeClass = "bg-success"; }
+                                else { badgeClass = "bg-info text-dark"; }
+
+                                var healthBadge = col.HealthStatus == "Óptima" ? "bg-success" : (col.HealthStatus == "Advertencia" ? "bg-warning text-dark" : "bg-danger");
+                                var healthIcon = col.HealthStatus == "Óptima" ? "bi-check-circle" : (col.HealthStatus == "Advertencia" ? "bi-exclamation-triangle" : "bi-x-octagon");
+                            }
+                            <span class="badge @badgeClass fs-7" style="@badgeStyle">@col.InferredDataType</span>
+                            <span class="badge @healthBadge fs-7 ms-1" title="Calidad del Dato"><i class="bi @healthIcon"></i></span>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+
+                        @if (col.IsPII)
+                        {
+                            <div class="alert alert-danger bg-danger text-white border-0 py-2 mb-3 pulse-danger text-center fw-bold" role="alert" style="font-size: 0.85rem;">
+                                <i class="bi bi-shield-lock-fill me-1"></i> DATO SENSIBLE (PII): @col.PIIType
+                            </div>
+                        }
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted-light small">Nulos / Vacíos</span>
+                                <span class="small fw-bold @(col.NullPercentage > 0 ? "text-danger" : "text-success")">@col.NullPercentage% (@col.NullOrEmptyCount)</span>
+                            </div>
+                            <div class="progress" style="height: 6px; background-color: #343a40;">
+                                <div class="progress-bar @(col.NullPercentage > 20 ? "bg-danger" : (col.NullPercentage > 0 ? "bg-warning" : "bg-success"))"
+                                     role="progressbar" style="width: @col.NullPercentage.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <span class="text-muted-light small d-block mb-1">Valores Únicos</span>
+                            <span class="fs-5 fw-bold">@col.UniqueValuesCount.ToString("N0") <span class="fs-6 text-muted-light fw-normal">(@col.UniquePercentage%)</span></span>
+                        </div>
+
+                        <div class="row mb-3 bg-dark-subtle p-2 rounded mx-0 border border-secondary" style="font-size: 0.85rem;">
+                            @if (col.InferredDataType == "Entero" || col.InferredDataType == "Decimal")
+                            {
+                                <div class="col-6">
+                                    <span class="text-muted-light d-block mb-1">Valores en Cero (0)</span>
+                                    <span class="fw-bold @(col.ZeroCount > 0 ? "text-warning" : "text-success")">
+                                        <i class="bi @(col.ZeroCount > 0 ? "bi-exclamation-circle" : "bi-check2")"></i> @col.ZeroCount.ToString("N0")
+                                    </span>
+                                </div>
+                                <div class="col-6">
+                                    <span class="text-muted-light d-block mb-1">Valores Negativos</span>
+                                    <span class="fw-bold @(col.NegativeCount > 0 ? "text-danger" : "text-success")">
+                                        <i class="bi @(col.NegativeCount > 0 ? "bi-x-circle" : "bi-check2")"></i> @col.NegativeCount.ToString("N0")
+                                    </span>
+                                </div>
+                            }
+                            else if (col.InferredDataType == "Texto")
+                            {
+                                <div class="col-12 text-center">
+                                    <span class="text-muted-light d-inline-block me-2">Filas con solo espacios en blanco (" "):</span>
+                                    <span class="fw-bold @(col.WhitespaceCount > 0 ? "text-warning" : "text-success")">
+                                        <i class="bi @(col.WhitespaceCount > 0 ? "bi-exclamation-triangle" : "bi-check-all")"></i> @col.WhitespaceCount.ToString("N0")
+                                    </span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="col-12 text-center text-muted-light small fst-italic">
+                                    No hay alertas específicas para fechas.
+                                </div>
+                            }
+                        </div>
+
+                        <hr class="border-secondary">
+
+                        <div class="row mb-3 text-center">
+                            <div class="col-4">
+                                <div class="text-muted-light mb-1" style="font-size: 0.70rem;"><i class="bi bi-arrow-down-circle text-info"></i> MÍNIMO</div>
+                                <div class="small text-truncate" title="@col.MinValue">@col.MinValue</div>
+                            </div>
+                            <div class="col-4 border-start border-end border-secondary">
+                                <div class="text-muted-light mb-1" style="font-size: 0.70rem;"><i class="bi bi-bullseye text-warning"></i> PROMEDIO</div>
+                                <div class="small text-warning fw-bold">@(col.Average.HasValue? col.Average.Value.ToString("N2") : "-")</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-muted-light mb-1" style="font-size: 0.70rem;"><i class="bi bi-arrow-up-circle text-danger"></i> MÁXIMO</div>
+                                <div class="small text-truncate" title="@col.MaxValue">@col.MaxValue</div>
+                            </div>
+                        </div>
+
+                        @if (col.TopValues.Any())
+                        {
+                            <div class="bg-black p-3 rounded">
+                                <div class="text-muted-light mb-2" style="font-size: 0.75rem;"><i class="bi bi-bar-chart-line text-warning me-1"></i> TOP VALORES</div>
+
+                                @foreach (var val in col.TopValues)
+                                {
+                                    <div class="mb-2">
+                                        <div class="d-flex justify-content-between align-items-end mb-1" style="font-size: 0.8rem;">
+                                            <span class="text-light text-truncate pe-2" style="max-width: 60%; font-family: monospace;" title="@val.Value">@val.Value</span>
+                                            <span class="text-muted-light" style="font-size: 0.75rem;">@val.Count <small>(@val.Percentage%)</small></span>
+                                        </div>
+                                        <div class="progress" style="height: 4px; background-color: #343a40;">
+                                            <div class="progress-bar bg-warning" role="progressbar" style="width: @val.Percentage.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

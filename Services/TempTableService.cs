@@ -13,9 +13,14 @@ namespace NotebookValidator.Web.Services
 {
     public class TempTableService
     {
+        // 1. [NUEVO] Definimos una lista flexible de variaciones para el nombre de la variable de base de datos.
+        // Esto atrapará: db_platinum_tmpX, platinum_temp_dbX, db_plat_temp_X, etc.
+        private const string DbVars = @"(?:platinum_temp_db|db_plat_temp|db_platinum_tmp|db_platinum_temp|platinum_tmp_db|db_plat_tmp)_?X?";
+
+        // 2. [ACTUALIZADO] Usamos interpolación ($"") para inyectar las variaciones en el Regex.
         // Sólo detecta tablas creadas dentro de la misma celda en una sentencia CREATE TABLE
         private static readonly Regex CreateTableWithDbVarRegex = new Regex(
-            @"CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?[\s\S]{0,800}?(?:\+\s*(?:platinum_temp_dbX|db_plat_tempX)\s*\+\s*['""]{1,3}\s*\.\s*|(?:\+\s*(?:platinum_temp_dbX|db_plat_tempX)\s*\+\s*['""]\s*\+\s*['""]\s*\.\s*)|(?:\b(?:platinum_temp_dbX|db_plat_tempX)\s*\.\s*))([A-Za-z0-9_]+)",
+            $@"CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?[\s\S]{{0,800}}?(?:\+\s*{DbVars}\s*\+\s*['""]{{1,3}}\s*\.\s*|(?:\+\s*{DbVars}\s*\+\s*['""]\s*\+\s*['""]\s*\.\s*)|(?:\b{DbVars}\s*\.\s*))([A-Za-z0-9_]+)",
             RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
         public async Task<string> GenerateDeletionNotebookAsync(

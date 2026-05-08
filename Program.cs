@@ -30,6 +30,8 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.R
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
+builder.Services.AddHostedService<EmailBotBackgroundService>();
+builder.Services.AddScoped<DataProfilingService>();
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<NotebookValidatorService>(sp =>
     new NotebookValidatorService(

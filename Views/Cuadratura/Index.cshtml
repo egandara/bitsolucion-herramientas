@@ -3,12 +3,135 @@
 }
 
 <style>
+    /* STEPPER */
+    /* STEPPER MODERNO Y ELEGANTE */
+    .stepper {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 50px;
+        position: relative;
+        padding: 0 10%;
+    }
+
+        /* Línea de fondo tenue */
+        .stepper::before {
+            content: "";
+            position: absolute;
+            top: 22px;
+            left: 10%;
+            width: 80%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 1;
+            border-radius: 5px;
+        }
+
+    /* Contenedor transparente */
+    .step {
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: transparent !important;
+        width: 120px;
+    }
+
+    /* Círculo inactivo por defecto */
+    .step-circle {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #1e293b;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
+        font-weight: bold;
+        font-size: 1.2rem;
+        border: 6px solid #0f172a; /* Borde grueso para cortar la línea */
+        transition: all 0.3s ease;
+    }
+
+    .step-label {
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+    }
+
+    /* Estado: Completado (Check verde) */
+    .step.completed .step-circle {
+        background: #198754;
+        color: white;
+        border-color: #0f172a;
+        box-shadow: 0 0 15px rgba(25, 135, 84, 0.3);
+    }
+
+    .step.completed .step-label {
+        color: #198754;
+    }
+
+    /* Estado: Activo (Número actual amarillo) */
+    .step.active .step-circle {
+        background: #ffc107;
+        color: #000;
+        border-color: #0f172a;
+        box-shadow: 0 0 20px rgba(255, 193, 7, 0.4);
+        transform: scale(1.15);
+    }
+
+    .step.active .step-label {
+        color: #ffc107;
+        text-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
+    }
+
+    /* DRAG & DROP */
+    .drop-zone {
+        border: 2px dashed #495057;
+        border-radius: 12px;
+        padding: 30px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: rgba(255,255,255,0.02);
+    }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #ffc107;
+            background: rgba(255,193,7,0.05);
+        }
+
+        .drop-zone i {
+            font-size: 2.5rem;
+            color: #ffc107;
+            margin-bottom: 10px;
+        }
+
+        .drop-zone p {
+            margin: 0;
+            color: #ffffff !important;
+        }
+    /* Forzado a blanco */
+    .file-name-display {
+        color: #ffc107;
+        font-weight: bold;
+        margin-top: 10px;
+        display: none;
+    }
+
+    /* FIX PLACEHOLDERS Y TEXTOS */
     .custom-placeholder::placeholder {
         color: #adb5bd !important;
         opacity: 1;
     }
 
-    /* NUEVO: Estilo para la pantalla de carga */
+    .form-check-label {
+        color: #ffffff !important;
+    }
+
     #loadingOverlay {
         display: none;
         position: fixed;
@@ -16,69 +139,110 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background-color: rgba(15, 23, 42, 0.85); /* Fondo oscuro semitransparente */
+        background-color: rgba(15, 23, 42, 0.85);
         z-index: 10000;
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        backdrop-filter: blur(4px); /* Efecto de desenfoque moderno */
+        backdrop-filter: blur(4px);
     }
 </style>
 
-<div class="container-fluid">
-    <h2 class="text-white mb-4">Cuadrar Archivos de Datos</h2>
-
-    <div class="card bg-dark border-light">
-        <div class="card-body">
-            <h5 class="card-title text-white">1. Selecciona tus archivos para comparar</h5>
-
-            <form id="formCargaArchivos" asp-controller="Cuadratura" asp-action="CargarArchivos" method="post" enctype="multipart/form-data">
-                <div class="row mt-3">
-                    <div class="col-md-6">
-                        <label class="text-white font-weight-bold">Archivo Origen 1 (Excel / CSV / TXT / DAT)</label>
-                        <input type="file" name="archivo1" class="form-control mb-2" accept=".csv, .xlsx, .xls, .txt, .dat" required />
-
-                        <input type="text" name="alias1" class="form-control mb-2 bg-dark text-white border-secondary custom-placeholder" placeholder="Alias (Ej: Banco) - Opcional" />
-
-                        <div class="form-check mt-2">
-                            <input class="form-check-input" type="checkbox" name="tieneEncabezados1" value="true" id="chkEncabezado1" checked>
-                            <label class="form-check-label text-white small" for="chkEncabezado1">El archivo contiene encabezados en la fila 1</label>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="text-white font-weight-bold">Archivo Origen 2 (Excel / CSV / TXT / DAT)</label>
-                        <input type="file" name="archivo2" class="form-control mb-2" accept=".csv, .xlsx, .xls, .txt, .dat" required />
-
-                        <input type="text" name="alias2" class="form-control mb-2 bg-dark text-white border-secondary custom-placeholder" placeholder="Alias (Ej: Migración) - Opcional" />
-
-                        <div class="form-check mt-2">
-                            <input class="form-check-input" type="checkbox" name="tieneEncabezados2" value="true" id="chkEncabezado2" checked>
-                            <label class="form-check-label text-white small" for="chkEncabezado2">El archivo contiene encabezados en la fila 1</label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-4">
-                    <button type="submit" class="btn btn-warning text-dark font-weight-bold">
-                        Analizar Columnas e Inferir
-                    </button>
-                </div>
-            </form>
-        </div>
+<div class="container py-4">
+    <div class="stepper mb-4">
+        <div class="step active"><div class="step-circle">1</div><div class="step-label">Carga</div></div>
+        <div class="step"><div class="step-circle">2</div><div class="step-label">Mapeo</div></div>
+        <div class="step"><div class="step-circle">3</div><div class="step-label">Resultados</div></div>
     </div>
+
+    <h2 class="text-white mb-4 text-center fw-bold">Nueva Cuadratura de Archivos</h2>
+
+    <form id="formCargaArchivos" asp-action="CargarArchivos" method="post" enctype="multipart/form-data">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card bg-dark border-secondary h-100 shadow">
+                    <div class="card-body">
+                        <label class="text-white fw-bold mb-3 fs-5">Origen Datos A</label>
+                        <div class="drop-zone" onclick="document.getElementById('file1').click()" id="dropZone1">
+                            <i class="bi bi-cloud-arrow-up"></i>
+                            <p>Arrastra el archivo o haz clic aquí</p>
+                            <div id="name1" class="file-name-display"></div>
+                            <input type="file" id="file1" name="archivo1" hidden accept=".csv, .xlsx, .xls, .txt, .dat" required />
+                        </div>
+                        <input type="text" name="alias1" class="form-control mt-3 bg-dark text-white border-secondary custom-placeholder" placeholder="Alias (Ej: Banco) - Opcional" />
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="checkbox" name="tieneEncabezados1" value="true" id="chk1" checked>
+                            <label class="form-check-label small" for="chk1">El archivo contiene encabezados</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card bg-dark border-secondary h-100 shadow">
+                    <div class="card-body">
+                        <label class="text-white fw-bold mb-3 fs-5">Origen Datos B</label>
+                        <div class="drop-zone" onclick="document.getElementById('file2').click()" id="dropZone2">
+                            <i class="bi bi-cloud-arrow-up"></i>
+                            <p>Arrastra el archivo o haz clic aquí</p>
+                            <div id="name2" class="file-name-display"></div>
+                            <input type="file" id="file2" name="archivo2" hidden accept=".csv, .xlsx, .xls, .txt, .dat" required />
+                        </div>
+                        <input type="text" name="alias2" class="form-control mt-3 bg-dark text-white border-secondary custom-placeholder" placeholder="Alias (Ej: Sistema) - Opcional" />
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="checkbox" name="tieneEncabezados2" value="true" id="chk2" checked>
+                            <label class="form-check-label small" for="chk2">El archivo contiene encabezados</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-5">
+            <button type="submit" class="btn btn-warning btn-lg px-5 fw-bold shadow text-dark">
+                Analizar y Mapear <i class="bi bi-arrow-right-circle ms-2"></i>
+            </button>
+        </div>
+    </form>
 </div>
 
 <div id="loadingOverlay">
-    <div class="spinner-border text-warning mb-3" style="width: 4rem; height: 4rem; border-width: 0.3em;" role="status"></div>
-    <h3 class="text-white fw-bold">Leyendo archivos...</h3>
-    <p class="text-light fs-5">Analizando columnas e infiriendo similitudes. Por favor espera.</p>
+    <div class="spinner-border text-warning mb-3" style="width: 4rem; height: 4rem;" role="status"></div>
+    <h3 class="text-white fw-bold">Analizando archivos...</h3>
+    <p class="text-light">Infiriendo similitudes. Por favor espera.</p>
 </div>
 
 <script>
-    document.getElementById('formCargaArchivos').addEventListener('submit', function (e) {
-        // Solo muestra el spinner si los campos requeridos (archivos) están llenos
-        if (this.checkValidity()) {
-            document.getElementById('loadingOverlay').style.display = 'flex';
+    function setupDropZone(inputId, zoneId, displayId) {
+        const input = document.getElementById(inputId);
+        const zone = document.getElementById(zoneId);
+        const display = document.getElementById(displayId);
+
+        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+        zone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            zone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                input.files = e.dataTransfer.files;
+                updateName();
+            }
+        });
+        input.addEventListener('change', updateName);
+
+        function updateName() {
+            if (input.files.length) {
+                display.innerText = "📄 " + input.files[0].name;
+                display.style.display = 'block';
+                zone.querySelector('p').style.display = 'none';
+            }
         }
+    }
+
+    setupDropZone('file1', 'dropZone1', 'name1');
+    setupDropZone('file2', 'dropZone2', 'name2');
+
+    document.getElementById('formCargaArchivos').addEventListener('submit', function () {
+        if (this.checkValidity()) document.getElementById('loadingOverlay').style.display = 'flex';
     });
 </script>

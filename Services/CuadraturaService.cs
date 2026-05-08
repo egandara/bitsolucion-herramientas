@@ -31,253 +31,240 @@ namespace NotebookValidator.Web.Services
 
             if (esArchivoPlano)
             {
-                var configuracionCsv = new ExcelReaderConfiguration() { AutodetectSeparators = new char[] { ',', ';', '\t', '|', '~', '^' } };
-                reader = ExcelReaderFactory.CreateCsvReader(stream, configuracionCsv);
+                var configCsv = new ExcelReaderConfiguration() { AutodetectSeparators = new char[] { ',', ';', '\t', '|' } };
+                reader = ExcelReaderFactory.CreateCsvReader(stream, configCsv);
             }
-            else reader = ExcelReaderFactory.CreateReader(stream);
+            else
+            {
+                reader = ExcelReaderFactory.CreateReader(stream);
+            }
 
-            var result = reader.AsDataSet(new ExcelDataSetConfiguration() { ConfigureDataTable = (_) => new ExcelDataTableConfiguration() { UseHeaderRow = tieneEncabezados } });
-            var dt = result.Tables.Count > 0 ? result.Tables[0] : new DataTable();
+            var ds = reader.AsDataSet(new ExcelDataSetConfiguration() { ConfigureDataTable = (_) => new ExcelDataTableConfiguration() { UseHeaderRow = tieneEncabezados } });
+            var dt = ds.Tables.Count > 0 ? ds.Tables[0] : new DataTable();
 
             if (!tieneEncabezados && dt.Columns.Count > 0)
-                for (int i = 0; i < dt.Columns.Count; i++) dt.Columns[i].ColumnName = $"columna_{i + 1}";
+                for (int i = 0; i < dt.Columns.Count; i++) dt.Columns[i].ColumnName = $"Columna_{i + 1}";
 
             return dt;
         }
 
         public DataTable AgruparDataTable(DataTable dt, List<string> llaves, List<string> columnasValores)
         {
+            if (dt == null || dt.Rows.Count == 0) return dt;
+
             DataTable dtResumen = new DataTable();
             foreach (var col in llaves) dtResumen.Columns.Add(col, typeof(string));
-            foreach (var col in columnasValores) dtResumen.Columns.Add(col, typeof(double));
 
-            var query = dt.AsEnumerable()
-                .GroupBy(row => string.Join("|", llaves.Select(k => row[k]?.ToString()?.Trim() ?? "")))
-                .Select(g => {
-                    DataRow newRow = dtResumen.NewRow();
-                    var primeraFila = g.First();
-                    foreach (var col in llaves) newRow[col] = primeraFila[col];
-                    foreach (var col in columnasValores)
+            var columnasParaSumar = new List<string>();
+            foreach (var colName in columnasValores)
+            {
+                if (dt.Columns.Contains(colName) && !dtResumen.Columns.Contains(colName))
+                {
+                    dtResumen.Columns.Add(colName, typeof(double));
+                    columnasParaSumar.Add(colName);
+                }
+            }
+
+            var agrupado = dt.AsEnumerable().GroupBy(row => string.Join("|", llaves.Select(k => row[k]?.ToString()?.Trim() ?? "")));
+
+            foreach (var grupo in agrupado)
+            {
+                DataRow nuevaFila = dtResumen.NewRow();
+                var primeraFila = grupo.First();
+
+                foreach (var col in llaves) nuevaFila[col] = primeraFila[col]?.ToString() ?? "";
+
+                foreach (var col in columnasParaSumar)
+                {
+                    double suma = 0;
+                    foreach (var fila in grupo)
                     {
-                        newRow[col] = g.Sum(r => {
-                            double.TryParse(r[col]?.ToString().Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
-                            return val;
-                        });
+                        string valRaw = fila[col]?.ToString() ?? "0";
+                        if (double.TryParse(valRaw.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double n))
+                            suma += n;
                     }
-                    return newRow;
-                });
-
-            foreach (var r in query) dtResumen.Rows.Add(r);
+                    nuevaFila[col] = suma;
+                }
+                dtResumen.Rows.Add(nuevaFila);
+            }
             return dtResumen;
         }
 
+        // --- CORRECCIÓN: INFERENCIA INTELIGENTE DE COLUMNAS ---
         public List<SugerenciaMapeo> InferirColumnas(DataTable dt1, DataTable dt2)
         {
             var sugerencias = new List<SugerenciaMapeo>();
-            if (dt1 == null || dt2 == null || dt1.Columns.Count == 0 || dt2.Columns.Count == 0) return sugerencias;
-            var columnasDt2 = dt2.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
+            var cols1 = dt1.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
+            var cols2 = dt2.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
 
-            foreach (DataColumn col1 in dt1.Columns)
+            // Lista de palabras clave para EXCLUIR de la comparación automática (Categorías, fechas, IDs)
+            var exclusionKeywords = new List<string> { "seg_", "tramo", "clasificacion", "banco", "prestamo", "periodo", "matriz", "fecha", "estado", "tipo", "id", "sucursal", "rut", "dv" };
+
+            foreach (var c1 in cols1)
             {
-                if (!EsColumnaNumerica(dt1, col1)) continue;
+                string c1Lower = c1.ToLower();
+                // Ignorar columnas categóricas
+                if (exclusionKeywords.Any(k => c1Lower.Contains(k))) continue;
 
-                string mejorCoincidencia = string.Empty;
-                int menorDistancia = int.MaxValue;
-                foreach (var col2Name in columnasDt2)
+                // 1. Priorizar COINCIDENCIA EXACTA por sobre la similitud (Evita que PI_A se cruce con PDI_A)
+                var exactMatch = cols2.FirstOrDefault(c => c.Equals(c1, StringComparison.OrdinalIgnoreCase));
+                if (exactMatch != null)
                 {
-                    int distancia = CalcularLevenshtein(col1.ColumnName.ToLower(), col2Name.ToLower());
-                    if (distancia < menorDistancia) { menorDistancia = distancia; mejorCoincidencia = col2Name; }
+                    sugerencias.Add(new SugerenciaMapeo { ColumnaArchivo1 = c1, ColumnaArchivo2 = exactMatch, PorcentajeSimilitud = 100 });
+                    continue;
                 }
-                int longitudMax = Math.Max(col1.ColumnName.Length, mejorCoincidencia.Length);
-                int similitud = (int)((1.0 - ((double)menorDistancia / longitudMax)) * 100);
 
-                if (similitud > 60)
+                // 2. Si no hay coincidencia exacta, buscar por similitud alta (> 85%)
+                string bestMatch = null;
+                int maxSimilitud = 0;
+
+                foreach (var c2 in cols2)
                 {
-                    DataColumn col2Obj = dt2.Columns[mejorCoincidencia];
-                    if (EsColumnaNumerica(dt2, col2Obj))
+                    string c2Lower = c2.ToLower();
+                    if (exclusionKeywords.Any(k => c2Lower.Contains(k))) continue;
+
+                    int distancia = CalcularLevenshtein(c1Lower, c2Lower);
+                    int maxLen = Math.Max(c1.Length, c2.Length);
+                    int similitud = maxLen == 0 ? 100 : (int)((1.0 - (double)distancia / maxLen) * 100);
+
+                    // Aumentamos a 85% para ser más estrictos y evitar falsos positivos
+                    if (similitud >= 85 && similitud > maxSimilitud)
                     {
-                        sugerencias.Add(new SugerenciaMapeo { ColumnaArchivo1 = col1.ColumnName, ColumnaArchivo2 = mejorCoincidencia, PorcentajeSimilitud = similitud });
+                        maxSimilitud = similitud;
+                        bestMatch = c2;
                     }
+                }
+
+                if (bestMatch != null)
+                {
+                    sugerencias.Add(new SugerenciaMapeo { ColumnaArchivo1 = c1, ColumnaArchivo2 = bestMatch, PorcentajeSimilitud = maxSimilitud });
                 }
             }
-            return sugerencias;
-        }
-
-        private bool EsColumnaNumerica(DataTable dt, DataColumn col)
-        {
-            var type = col.DataType;
-            if (type == typeof(int) || type == typeof(double) || type == typeof(decimal) || type == typeof(float) || type == typeof(long) || type == typeof(short))
-                return true;
-
-            int numProbados = 0;
-            int numNumericos = 0;
-
-            foreach (DataRow row in dt.Rows)
-            {
-                var val = row[col]?.ToString()?.Trim();
-                if (!string.IsNullOrEmpty(val))
-                {
-                    numProbados++;
-                    string numParse = val.Replace(",", ".");
-                    if (double.TryParse(numParse, NumberStyles.Any, CultureInfo.InvariantCulture, out _))
-                    {
-                        numNumericos++;
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
-                if (numProbados >= 5) break;
-            }
-
-            return numProbados > 0 && numProbados == numNumericos;
+            return sugerencias.OrderByDescending(s => s.PorcentajeSimilitud).ToList();
         }
 
         public ResultadoCuadratura CompararDatos(DataTable dt1, DataTable dt2, List<string> llavesCol1, List<string> llavesCol2, List<string> columnasAComparar1, List<string> columnasAComparar2, List<double> tolerancias)
         {
             var resultado = new ResultadoCuadratura();
-            var diccionarioArchivo2 = new Dictionary<string, DataRow>();
-            if (dt1 == null || dt2 == null) return resultado;
+            var dict2 = new Dictionary<string, DataRow>();
 
             foreach (DataRow row in dt2.Rows)
             {
-                var llave = ConstruirLlaveCompuesta(row, llavesCol2);
-                if (!string.IsNullOrEmpty(llave) && !diccionarioArchivo2.ContainsKey(llave)) diccionarioArchivo2.Add(llave, row);
+                string key = string.Join("|", llavesCol2.Select(k => row[k]?.ToString()?.Trim() ?? ""));
+                if (!dict2.ContainsKey(key)) dict2.Add(key, row);
             }
 
-            foreach (DataRow fila1 in dt1.Rows)
-            {
-                var llave1 = ConstruirLlaveCompuesta(fila1, llavesCol1);
-                if (string.IsNullOrEmpty(llave1)) continue;
+            var llavesProcesadasArchivo2 = new HashSet<string>();
 
-                if (diccionarioArchivo2.TryGetValue(llave1, out DataRow fila2))
+            foreach (DataRow row1 in dt1.Rows)
+            {
+                string key1 = string.Join("|", llavesCol1.Select(k => row1[k]?.ToString()?.Trim() ?? ""));
+
+                if (dict2.TryGetValue(key1, out DataRow row2))
                 {
-                    bool esMatchExacto = true;
+                    llavesProcesadasArchivo2.Add(key1);
+                    bool hayDiferencia = false;
+                    List<string> detallesFila = new List<string>();
+
                     for (int i = 0; i < columnasAComparar1.Count; i++)
                     {
-                        var val1Raw = fila1[columnasAComparar1[i]]?.ToString()?.Trim() ?? "";
-                        var val2Raw = fila2[columnasAComparar2[i]]?.ToString()?.Trim() ?? "";
-                        double toleranciaActual = tolerancias[i];
+                        string val1 = row1[columnasAComparar1[i]]?.ToString()?.Trim() ?? "";
+                        string val2 = row2[columnasAComparar2[i]]?.ToString()?.Trim() ?? "";
+                        double tol = (tolerancias.Count > i) ? tolerancias[i] : 0;
 
-                        if (!SonValoresEquivalentes(val1Raw, val2Raw, toleranciaActual))
+                        if (!SonValoresIguales(val1, val2, tol))
                         {
-                            esMatchExacto = false;
-                            string difTexto = "N/A";
-                            double? difNumerica = null; // NUEVO: Extraemos el valor numérico
-
-                            if (double.TryParse(val1Raw.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double n1) &&
-                                double.TryParse(val2Raw.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double n2))
+                            double diffNum = 0;
+                            if (double.TryParse(val1.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double n1) &&
+                                double.TryParse(val2.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double n2))
                             {
-                                difNumerica = n1 - n2;
-                                difTexto = difNumerica.Value.ToString("N4", CultureInfo.CurrentCulture);
+                                diffNum = n1 - n2;
                             }
 
                             resultado.RegistrosConDiferencias.Add(new DiferenciaRegistro
                             {
-                                LlaveIdentificadora = llave1.Replace("||", " - "),
+                                LlaveIdentificadora = key1,
                                 ColumnaConFalla = columnasAComparar1[i],
-                                ValorArchivo1 = val1Raw,
-                                ValorArchivo2 = val2Raw,
-                                Diferencia = difTexto,
-                                DiferenciaNumerica = difNumerica // NUEVO: Guardamos para stats
+                                ValorArchivo1 = val1,
+                                ValorArchivo2 = val2,
+                                Diferencia = (diffNum != 0) ? diffNum.ToString("N4") : "Distinto",
+                                DiferenciaNumerica = diffNum
                             });
+                            hayDiferencia = true;
+                        }
+                        else
+                        {
+                            detallesFila.Add($"{columnasAComparar1[i]}: {val1}");
                         }
                     }
-                    if (esMatchExacto)
+
+                    if (!hayDiferencia)
                     {
                         resultado.TotalCoincidenciasExactas++;
-                        resultado.RegistrosCuadrados.Add(new RegistroCuadrado { LlaveIdentificadora = llave1.Replace("||", " - "), DetalleValores = "Match Perfecto" });
+                        resultado.RegistrosCuadrados.Add(new RegistroCuadrado
+                        {
+                            LlaveIdentificadora = key1,
+                            DetalleValores = string.Join(" | ", detallesFila)
+                        });
                     }
-                    diccionarioArchivo2.Remove(llave1);
                 }
-                else resultado.HuerfanosArchivo1.Add(llave1.Replace("||", " - "));
+                else
+                {
+                    resultado.HuerfanosArchivo1.Add(key1);
+                }
             }
-            resultado.HuerfanosArchivo2 = diccionarioArchivo2.Keys.Select(k => k.Replace("||", " - ")).ToList();
+
+            foreach (var key2 in dict2.Keys)
+            {
+                if (!llavesProcesadasArchivo2.Contains(key2))
+                {
+                    resultado.HuerfanosArchivo2.Add(key2);
+                }
+            }
+
             return resultado;
         }
 
         public byte[] GenerarExcelReporte(ResultadoCuadratura resultado)
         {
-            using (var workbook = new XLWorkbook())
+            using var workbook = new XLWorkbook();
+
+            var ws1 = workbook.Worksheets.Add("Diferencias");
+            ws1.Cell(1, 1).Value = "Llave Primaria";
+            ws1.Cell(1, 2).Value = "Columna";
+            ws1.Cell(1, 3).Value = resultado.AliasArchivo1;
+            ws1.Cell(1, 4).Value = resultado.AliasArchivo2;
+            ws1.Cell(1, 5).Value = "Diferencia";
+
+            for (int i = 0; i < resultado.RegistrosConDiferencias.Count; i++)
             {
-                var wsDif = workbook.Worksheets.Add("Diferencias");
-                wsDif.Cell(1, 1).Value = "Llave Identificadora";
-                wsDif.Cell(1, 2).Value = "Columna";
-                wsDif.Cell(1, 3).Value = $"Valor {resultado.AliasArchivo1}";
-                wsDif.Cell(1, 4).Value = $"Valor {resultado.AliasArchivo2}";
-                wsDif.Cell(1, 5).Value = "Diferencia";
-
-                wsDif.Range("A1:E1").Style.Font.Bold = true;
-                wsDif.Range("A1:E1").Style.Fill.BackgroundColor = XLColor.Yellow;
-
-                for (int i = 0; i < resultado.RegistrosConDiferencias.Count; i++)
-                {
-                    var item = resultado.RegistrosConDiferencias[i];
-                    wsDif.Cell(i + 2, 1).Value = item.LlaveIdentificadora;
-                    wsDif.Cell(i + 2, 2).Value = item.ColumnaConFalla;
-                    wsDif.Cell(i + 2, 3).Value = item.ValorArchivo1;
-                    wsDif.Cell(i + 2, 4).Value = item.ValorArchivo2;
-                    wsDif.Cell(i + 2, 5).Value = item.Diferencia;
-                }
-                wsDif.Columns().AdjustToContents();
-
-                var wsH = workbook.Worksheets.Add("Huérfanos");
-                wsH.Cell(1, 1).Value = "Origen"; wsH.Cell(1, 2).Value = "Llave";
-                wsH.Range("A1:B1").Style.Font.Bold = true; wsH.Range("A1:B1").Style.Fill.BackgroundColor = XLColor.LightCoral;
-
-                int row = 2;
-                foreach (var h in resultado.HuerfanosArchivo1) { wsH.Cell(row, 1).Value = $"Sólo en {resultado.AliasArchivo1}"; wsH.Cell(row++, 2).Value = h; }
-                foreach (var h in resultado.HuerfanosArchivo2) { wsH.Cell(row, 1).Value = $"Sólo en {resultado.AliasArchivo2}"; wsH.Cell(row++, 2).Value = h; }
-                wsH.Columns().AdjustToContents();
-
-                var wsR = workbook.Worksheets.Add("Resumen");
-                wsR.Cell(1, 1).Value = "Métrica"; wsR.Cell(1, 2).Value = "Valor";
-                wsR.Range("A1:B1").Style.Font.Bold = true; wsR.Range("A1:B1").Style.Fill.BackgroundColor = XLColor.LightGray;
-                wsR.Cell(2, 1).Value = "Coincidencias Exactas"; wsR.Cell(2, 2).Value = resultado.TotalCoincidenciasExactas;
-                wsR.Cell(3, 1).Value = "Registros con Diferencias (Únicos)"; wsR.Cell(3, 2).Value = resultado.RegistrosConDiferencias.Select(d => d.LlaveIdentificadora).Distinct().Count();
-                wsR.Cell(4, 1).Value = "Huérfanos Totales"; wsR.Cell(4, 2).Value = resultado.HuerfanosArchivo1.Count + resultado.HuerfanosArchivo2.Count;
-
-                // NUEVO: ESTADÍSTICAS POR CAMPO EN EXCEL
-                int rRow = 6;
-                wsR.Cell(rRow, 1).Value = "--- IMPACTO ESTADÍSTICO POR CAMPO ---";
-                wsR.Range(rRow, 1, rRow, 4).Merge().Style.Font.Bold = true;
-                wsR.Range(rRow, 1, rRow, 4).Style.Fill.BackgroundColor = XLColor.LightBlue;
-                rRow++;
-                wsR.Cell(rRow, 1).Value = "Campo";
-                wsR.Cell(rRow, 2).Value = "Cantidad Errores";
-                wsR.Cell(rRow, 3).Value = "Suma Neta (Con signos)";
-                wsR.Cell(rRow, 4).Value = "Riesgo Absoluto (Solo positivos)";
-                wsR.Range(rRow, 1, rRow, 4).Style.Font.Bold = true;
-                rRow++;
-
-                var gruposEstadistica = resultado.RegistrosConDiferencias.GroupBy(d => d.ColumnaConFalla);
-                foreach (var g in gruposEstadistica)
-                {
-                    wsR.Cell(rRow, 1).Value = g.Key;
-                    wsR.Cell(rRow, 2).Value = g.Count();
-                    wsR.Cell(rRow, 3).Value = g.Sum(x => x.DiferenciaNumerica ?? 0).ToString("N4");
-                    wsR.Cell(rRow, 4).Value = g.Sum(x => Math.Abs(x.DiferenciaNumerica ?? 0)).ToString("N4");
-                    rRow++;
-                }
-
-                wsR.Columns().AdjustToContents();
-
-                using (var stream = new MemoryStream()) { workbook.SaveAs(stream); return stream.ToArray(); }
+                var reg = resultado.RegistrosConDiferencias[i];
+                ws1.Cell(i + 2, 1).Value = reg.LlaveIdentificadora;
+                ws1.Cell(i + 2, 2).Value = reg.ColumnaConFalla;
+                ws1.Cell(i + 2, 3).Value = reg.ValorArchivo1;
+                ws1.Cell(i + 2, 4).Value = reg.ValorArchivo2;
+                ws1.Cell(i + 2, 5).Value = reg.Diferencia;
             }
+            ws1.Columns().AdjustToContents();
+
+            var ws2 = workbook.Worksheets.Add("Huérfanos");
+            ws2.Cell(1, 1).Value = "Origen";
+            ws2.Cell(1, 2).Value = "Llave Primaria";
+            int rowH = 2;
+            foreach (var h in resultado.HuerfanosArchivo1) { ws2.Cell(rowH, 1).Value = resultado.AliasArchivo1; ws2.Cell(rowH, 2).Value = h; rowH++; }
+            foreach (var h in resultado.HuerfanosArchivo2) { ws2.Cell(rowH, 1).Value = resultado.AliasArchivo2; ws2.Cell(rowH, 2).Value = h; rowH++; }
+            ws2.Columns().AdjustToContents();
+
+            using var ms = new MemoryStream();
+            workbook.SaveAs(ms);
+            return ms.ToArray();
         }
 
-        private string ConstruirLlaveCompuesta(DataRow row, List<string> columnasLlave)
+        private bool SonValoresIguales(string val1, string val2, double tolerancia)
         {
-            var valores = new List<string>();
-            foreach (var col in columnasLlave) valores.Add(row[col]?.ToString()?.Trim() ?? "");
-            return string.Join("||", valores);
-        }
-
-        private bool SonValoresEquivalentes(string val1, string val2, double tolerancia)
-        {
-            if (string.Equals(val1, val2, StringComparison.OrdinalIgnoreCase)) return true;
+            if (val1 == val2) return true;
             if (string.IsNullOrEmpty(val1) || string.IsNullOrEmpty(val2)) return false;
+
             string numParse1 = val1.Replace(",", ".");
             string numParse2 = val2.Replace(",", ".");
 
@@ -287,7 +274,9 @@ namespace NotebookValidator.Web.Services
                 return Math.Abs(n1 - n2) <= tolerancia;
             }
 
-            if (DateTime.TryParse(val1, out DateTime fecha1) && DateTime.TryParse(val2, out DateTime fecha2)) return fecha1.Date == fecha2.Date;
+            if (DateTime.TryParse(val1, out DateTime fecha1) && DateTime.TryParse(val2, out DateTime fecha2))
+                return fecha1.Date == fecha2.Date;
+
             return false;
         }
 
@@ -303,7 +292,7 @@ namespace NotebookValidator.Web.Services
                 for (int j = 0; j < t.Length; j++)
                 {
                     int cost = (s[i] == t[j]) ? 0 : 1;
-                    v1[j + 1] = Math.Min(Math.Min(v1[j] + 1, v0[j + 1] + 1), v0[j] + cost);
+                    v1[j + 1] = Math.Min(v1[j] + 1, Math.Min(v0[j + 1] + 1, v0[j] + cost));
                 }
                 for (int j = 0; j < v0.Length; j++) v0[j] = v1[j];
             }
