@@ -38,6 +38,22 @@ namespace NotebookValidator.Web.Controllers
             DataTable dt1 = _cuadraturaService.LeerExcel(tempPath1, tieneEncabezados1);
             DataTable dt2 = _cuadraturaService.LeerExcel(tempPath2, tieneEncabezados2);
 
+            var distinct1 = new Dictionary<string, int>();
+            foreach (DataColumn col in dt1.Columns)
+            {
+                var uniqueVals = new HashSet<string>();
+                foreach (DataRow row in dt1.Rows) uniqueVals.Add(row[col]?.ToString() ?? "");
+                distinct1[col.ColumnName] = uniqueVals.Count;
+            }
+
+            var distinct2 = new Dictionary<string, int>();
+            foreach (DataColumn col in dt2.Columns)
+            {
+                var uniqueVals = new HashSet<string>();
+                foreach (DataRow row in dt2.Rows) uniqueVals.Add(row[col]?.ToString() ?? "");
+                distinct2[col.ColumnName] = uniqueVals.Count;
+            }
+
             var viewModel = new MapeoColumnasViewModel
             {
                 AliasArchivo1 = string.IsNullOrWhiteSpace(alias1) ? "Archivo 1" : alias1,
@@ -48,7 +64,9 @@ namespace NotebookValidator.Web.Controllers
                 TempPathArchivo1 = tempPath1,
                 TempPathArchivo2 = tempPath2,
                 TieneEncabezados1 = tieneEncabezados1,
-                TieneEncabezados2 = tieneEncabezados2
+                TieneEncabezados2 = tieneEncabezados2,
+                DistinctCountsArchivo1 = distinct1,
+                DistinctCountsArchivo2 = distinct2
             };
             return View("MapeoColumnas", viewModel);
         }
@@ -76,6 +94,9 @@ namespace NotebookValidator.Web.Controllers
             DataTable dt1 = _cuadraturaService.LeerExcel(TempPathArchivo1, TieneEncabezados1);
             DataTable dt2 = _cuadraturaService.LeerExcel(TempPathArchivo2, TieneEncabezados2);
 
+            int countOriginal1 = dt1.Rows.Count;
+            int countOriginal2 = dt2.Rows.Count;
+
             var validCols1 = new List<string>();
             var validCols2 = new List<string>();
             var validTols = new List<double>();
@@ -93,9 +114,7 @@ namespace NotebookValidator.Web.Controllers
                         if (Tolerancias != null && Tolerancias.Count > i && !string.IsNullOrWhiteSpace(Tolerancias[i]))
                         {
                             if (double.TryParse(Tolerancias[i].Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedTol))
-                            {
                                 tol = parsedTol;
-                            }
                         }
                         validTols.Add(tol);
                     }
@@ -113,10 +132,17 @@ namespace NotebookValidator.Web.Controllers
             resultados.AliasArchivo1 = string.IsNullOrWhiteSpace(AliasArchivo1) ? "Archivo 1" : AliasArchivo1;
             resultados.AliasArchivo2 = string.IsNullOrWhiteSpace(AliasArchivo2) ? "Archivo 2" : AliasArchivo2;
 
+            resultados.EsModoAgrupacion = ModoAgrupacion;
+            // NUEVO: Guardamos las llaves en el modelo
+            resultados.LlavesAgrupacion = LlaveArchivo1 ?? new List<string>();
+            resultados.TotalOriginal1 = countOriginal1;
+            resultados.TotalOriginal2 = countOriginal2;
+            resultados.TotalAgrupado1 = dt1.Rows.Count;
+            resultados.TotalAgrupado2 = dt2.Rows.Count;
+
             if (System.IO.File.Exists(TempPathArchivo1)) System.IO.File.Delete(TempPathArchivo1);
             if (System.IO.File.Exists(TempPathArchivo2)) System.IO.File.Delete(TempPathArchivo2);
 
-            // Guardar resultado temporal para exportación
             string exportId = Guid.NewGuid().ToString();
             string tempJsonPath = Path.Combine(Path.GetTempPath(), exportId + ".json");
             System.IO.File.WriteAllText(tempJsonPath, JsonSerializer.Serialize(resultados));

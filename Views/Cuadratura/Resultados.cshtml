@@ -9,7 +9,6 @@
     int totalHuerfanos = Model.HuerfanosArchivo1.Count + Model.HuerfanosArchivo2.Count;
     int total = totalCuadrados + totalDiferencias + totalHuerfanos;
 
-    // Cálculos de porcentajes
     double pctCuadrados = total > 0 ? Math.Round((double)totalCuadrados / total * 100, 2) : 0;
     double pctDiferencias = total > 0 ? Math.Round((double)totalDiferencias / total * 100, 2) : 0;
     double pctHuerfanos = total > 0 ? Math.Round((double)totalHuerfanos / total * 100, 2) : 0;
@@ -21,7 +20,7 @@
 }
 
 <style>
-    /* STEPPER MODERNO Y ELEGANTE */
+    /* Estilos Stepper y Dashboard */
     .stepper {
         display: flex;
         justify-content: space-between;
@@ -100,7 +99,6 @@
         text-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
     }
 
-    /* NAVEGACIÓN Y TABS */
     .nav-tabs {
         border-bottom: 1px solid #495057;
     }
@@ -123,7 +121,6 @@
                 border-bottom: 2px solid #ffc107 !important;
             }
 
-    /* ACORDEONES */
     .accordion-button {
         background-color: #212529 !important;
         color: white !important;
@@ -141,7 +138,6 @@
             filter: invert(1);
         }
 
-    /* ESTILOS DEL DASHBOARD ORIGINAL RESTAURADO */
     .stat-bar {
         border-radius: 6px;
         padding: 15px 25px;
@@ -197,6 +193,19 @@
         gap: 8px;
     }
 
+    /* NUEVO BADGE: Etiqueta color Cyan para la agrupación */
+    .badge-agrupacion {
+        background-color: #0dcaf0;
+        color: #000;
+        font-weight: bold;
+        font-size: 0.95rem;
+        border-radius: 6px;
+        padding: 6px 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
     .custom-placeholder::placeholder {
         color: #adb5bd !important;
         opacity: 1;
@@ -222,6 +231,26 @@
         </div>
     </div>
 
+    @if (Model.EsModoAgrupacion)
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="card bg-dark border-info text-info">
+                    <div class="card-body py-2 d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-layers me-2"></i> <strong>@Model.AliasArchivo1:</strong> @Model.TotalOriginal1 registros resumidos en <strong>@Model.TotalAgrupado1</strong></span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card bg-dark border-info text-info">
+                    <div class="card-body py-2 d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-layers me-2"></i> <strong>@Model.AliasArchivo2:</strong> @Model.TotalOriginal2 registros resumidos en <strong>@Model.TotalAgrupado2</strong></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
     <div class="row mb-4">
         <div class="col-md-5">
             <div class="card bg-dark border-secondary h-100 shadow-sm">
@@ -233,34 +262,32 @@
         </div>
         <div class="col-md-7 d-flex flex-column justify-content-between">
             <div class="stat-bar stat-bar-green flex-grow-1">
-                <div class="stat-bar-left">
-                    <h2>@totalCuadrados</h2>
-                    <span>Registros cuadrados exactos</span>
-                </div>
-                <div class="stat-bar-right">
-                    <h2>@pctCuadrados.ToString("0.##")%</h2>
-                </div>
+                <div class="stat-bar-left"><h2>@totalCuadrados</h2><span>Registros cuadrados exactos</span></div>
+                <div class="stat-bar-right"><h2>@pctCuadrados.ToString("0.##")%</h2></div>
             </div>
             <div class="stat-bar stat-bar-yellow flex-grow-1">
-                <div class="stat-bar-left">
-                    <h2>@totalDiferencias</h2>
-                    <span>Match de llave con diferencias</span>
-                </div>
-                <div class="stat-bar-right">
-                    <h2>@pctDiferencias.ToString("0.##")%</h2>
-                </div>
+                <div class="stat-bar-left"><h2>@totalDiferencias</h2><span>Match de llave con diferencias</span></div>
+                <div class="stat-bar-right"><h2>@pctDiferencias.ToString("0.##")%</h2></div>
             </div>
             <div class="stat-bar stat-bar-red flex-grow-1 mb-0">
-                <div class="stat-bar-left">
-                    <h2>@totalHuerfanos</h2>
-                    <span>Registros huérfanos</span>
-                </div>
-                <div class="stat-bar-right">
-                    <h2>@pctHuerfanos.ToString("0.##")%</h2>
-                </div>
+                <div class="stat-bar-left"><h2>@totalHuerfanos</h2><span>Registros huérfanos</span></div>
+                <div class="stat-bar-right"><h2>@pctHuerfanos.ToString("0.##")%</h2></div>
             </div>
         </div>
     </div>
+
+    @if (Model.EsModoAgrupacion && Model.LlavesAgrupacion.Any())
+    {
+        <div class="card bg-dark border-info mb-3 shadow-sm" style="border-width: 1px;">
+            <div class="card-body py-3 d-flex align-items-center flex-wrap gap-3">
+                <span class="text-white fw-bold fs-6"><i class="bi bi-key-fill text-info me-2"></i>Agrupado por las llaves:</span>
+                @foreach (var llave in Model.LlavesAgrupacion)
+                {
+                    <span class="badge-agrupacion shadow-sm">@llave</span>
+                }
+            </div>
+        </div>
+    }
 
     @if (diferenciasAgrupadas.Any())
     {
@@ -269,9 +296,7 @@
                 <span class="text-white fw-bold fs-6">Campos con diferencias:</span>
                 @foreach (var grupo in diferenciasAgrupadas)
                 {
-                    <span class="badge-diferencia shadow-sm">
-                        @grupo.Key <span>@grupo.Count()</span>
-                    </span>
+                    <span class="badge-diferencia shadow-sm">@grupo.Key <span>@grupo.Count()</span></span>
                 }
             </div>
         </div>
@@ -285,7 +310,6 @@
 
     <div class="tab-content bg-dark border border-secondary p-3 rounded shadow">
         <div class="tab-pane fade show active" id="tDif">
-
             <div class="mb-4 d-flex align-items-center bg-dark p-3 rounded border border-info shadow-sm">
                 <label class="text-white fw-bold me-3 mb-0">Ocultar diferencias menores o iguales a:</label>
                 <input type="number" id="globalTolerance" class="form-control bg-dark border-info w-25 custom-placeholder text-white" placeholder="Escribe un valor..." />
@@ -357,7 +381,7 @@
                     <tbody>
                         @foreach (var r in Model.RegistrosCuadrados)
                         {
-                            <tr><td class="text-white"><code>@r.LlaveIdentificadora</code></td><td><span class="badge bg-success text-white">OK</span></td><td class="small text-muted">@r.DetalleValores</td></tr>
+                            <tr><td class="text-white"><code>@r.LlaveIdentificadora</code></td><td><span class="badge bg-success text-white">OK</span></td><td class="small" style="color: #adb5bd !important;">@r.DetalleValores</td></tr>
                         }
                     </tbody>
                 </table>
@@ -374,17 +398,14 @@
 
     <script>
         $(document).ready(function() {
-            // Inicializar DataTables
             $('.table-diferencias, #tableCuadrados').DataTable({
                 "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" },
                 "pageLength": 10
             });
 
-            // Ajustar columnas de DataTables al abrir un Acordeón o Pestaña
             $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function () { $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust(); });
             $('.accordion-button').on('click', function() { setTimeout(() => { $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust(); }, 200); });
 
-            // Lógica del Filtro de Tolerancia en Vivo
             $.fn.dataTable.ext.search.push(function(settings, data, dataIndex, rowData, counter) {
                 if (!settings.nTable.classList.contains('table-diferencias')) return true;
                 let tolStr = $('#globalTolerance').val();
@@ -399,20 +420,13 @@
 
             $('#globalTolerance').on('keyup change', function() { $('.table-diferencias').DataTable().draw(); });
 
-            // Configuración del Gráfico (Tipo anillo con leyenda inferior)
             new Chart(document.getElementById('chartResultados').getContext('2d'), {
                 type: 'doughnut',
                 data: {
                     labels: ['Cuadrados', 'Diferencias', 'Huérfanos'],
                     datasets: [{ data: [@totalCuadrados, @totalDiferencias, @totalHuerfanos], backgroundColor: ['#198754', '#ffc107', '#dc3545'], borderWidth: 0 }]
                 },
-                options: {
-                    cutout: '70%', /* Anillo más delgado */
-                    plugins: {
-                        legend: { position: 'bottom', labels: { color: '#fff', padding: 20 } }
-                    },
-                    maintainAspectRatio: false
-                }
+                options: { cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: '#fff', padding: 20 } } }, maintainAspectRatio: false }
             });
         });
     </script>

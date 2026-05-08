@@ -11,6 +11,15 @@ namespace NotebookValidator.Web.Models
         public List<DiferenciaRegistro> RegistrosConDiferencias { get; set; } = new();
         public List<string> HuerfanosArchivo1 { get; set; } = new();
         public List<string> HuerfanosArchivo2 { get; set; } = new();
+
+        // Estadísticas para Modo Agrupación
+        public bool EsModoAgrupacion { get; set; }
+        public int TotalOriginal1 { get; set; }
+        public int TotalOriginal2 { get; set; }
+        public int TotalAgrupado1 { get; set; }
+        public int TotalAgrupado2 { get; set; }
+        // NUEVO: Para mostrar las llaves de agrupación
+        public List<string> LlavesAgrupacion { get; set; } = new();
     }
 
     public class RegistroCuadrado
@@ -26,8 +35,6 @@ namespace NotebookValidator.Web.Models
         public string ValorArchivo1 { get; set; }
         public string ValorArchivo2 { get; set; }
         public string Diferencia { get; set; }
-
-        // NUEVO: Guardamos el valor numérico puro para poder hacer sumatorias y filtros dinámicos
         public double? DiferenciaNumerica { get; set; }
     }
 
@@ -49,6 +56,8 @@ namespace NotebookValidator.Web.Models
         public string TempPathArchivo2 { get; set; } = string.Empty;
         public bool TieneEncabezados1 { get; set; }
         public bool TieneEncabezados2 { get; set; }
-        public bool ModoAgrupacion { get; set; }
+
+        public Dictionary<string, int> DistinctCountsArchivo1 { get; set; } = new();
+        public Dictionary<string, int> DistinctCountsArchivo2 { get; set; } = new();
     }
 }
