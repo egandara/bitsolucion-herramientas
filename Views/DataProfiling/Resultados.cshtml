@@ -93,6 +93,72 @@
         padding-right: 0.5rem;
     }
 
+    /* Estilos para el colapsable de Duplicados */
+    .collapse-toggle {
+        border-bottom: 1px solid rgba(255,193,7,0.12);
+        background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+    }
+
+    .collapse-toggler {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        border: none;
+        background: transparent;
+        color: inherit;
+        width: 100%;
+        text-align: left;
+        padding: 0;
+    }
+
+    .collapse-toggler .collapse-chevron {
+        transition: transform 0.18s ease;
+        font-size: 1.05rem;
+        color: #ffc107;
+    }
+
+    /* Cuando el botón NO tiene la clase .collapsed significa que está abierto */
+    .collapse-toggler:not(.collapsed) .collapse-chevron {
+        transform: rotate(90deg);
+    }
+
+    .collapse-hint {
+        font-size: 0.82rem;
+        color: #adb5bd;
+        margin-top: 2px;
+    }
+
+    /* Efecto hover para el encabezado colapsable */
+    .collapse-toggle:hover {
+        background: rgba(255, 193, 7, 0.1) !important;
+        border-color: rgba(255, 193, 7, 0.5) !important;
+        transition: all 0.3s ease;
+    }
+
+    /* Estilo del texto de ayuda */
+    .collapse-hint {
+        font-size: 0.85rem;
+        font-weight: 500;
+        opacity: 0.8;
+    }
+
+    /* Animación del ícono */
+    .collapse-toggler .collapse-chevron {
+        transition: transform 0.3s ease;
+        margin-right: 10px;
+    }
+
+    /* Rotación del ícono cuando está abierto */
+    .collapse-toggler:not(.collapsed) .collapse-chevron {
+        transform: rotate(90deg);
+    }
+
+    /* Quitar bordes de enfoque del botón invisible */
+    .collapse-toggler:focus {
+        box-shadow: none;
+        outline: none;
+    }
+
     @@media (max-width:768px) {
         .columns-grid {
             grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -205,66 +271,91 @@
 
     <h4 class="text-white mb-3 border-bottom border-warning pb-2">Búsqueda de Duplicados</h4>
 
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-dark text-white border-secondary p-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <strong>Opcional: Buscar filas duplicadas</strong>
-                    <small class="text-muted-light">Selecciona una o más columnas como llave principal o marca "Comparar filas completas".</small>
-                </div>
+    <div class="collapse-toggle mb-3 p-2 rounded" style="cursor: pointer; background: rgba(255, 193, 7, 0.05); border: 1px solid rgba(255, 193, 7, 0.2);"
+         onclick="document.getElementById('btnToggleCollapse').click()">
 
-                <form asp-action="FindDuplicates" asp-controller="DataProfiling" method="post" class="row g-2">
-                    <input type="hidden" name="tempFileName" value="@Model.TempFileName" />
-                    <input type="hidden" name="hasHeaders" value="@Model.HasHeaders.ToString().ToLower()" />
-                    <input type="hidden" name="fileSize" value="@Model.FileSizeFormatted" />
-                    <input type="hidden" name="processingTime" value="@Model.ProcessingTimeFormatted" />
+        <button id="btnToggleCollapse" class="collapse-toggler collapsed" type="button"
+                data-bs-toggle="collapse" data-bs-target="#collapseDuplicates"
+                aria-expanded="false" aria-controls="collapseDuplicates">
 
-                    <div class="col-12">
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox" id="fullRow" name="fullRow" value="true" />
-                            <label class="form-check-label" for="fullRow">Comparar filas completas</label>
-                        </div>
+            <i class="bi bi-chevron-right collapse-chevron"></i>
+            <h4 class="text-white mb-0 d-inline-block">
+                <i class="bi bi-search text-warning me-2"></i>Búsqueda de Duplicados
+            </h4>
 
-                        <label class="form-label text-muted-light">Seleccionar Columnas (si no seleccionas ninguna se compararán todas):</label>
+            <span class="collapse-hint ms-auto d-none d-sm-inline text-warning">
+                <i class="bi bi-eye me-1"></i> Click para expandir herramientas de limpieza
+            </span>
+        </button>
+    </div>
 
-                        <div class="controls-row mb-2">
-                            <input id="columnSearch" class="form-control form-control-sm" placeholder="Buscar columna..." aria-label="Buscar columna" />
-                            <button type="button" id="selectAllBtn" class="btn btn-sm btn-outline-light">Seleccionar todo</button>
-                            <button type="button" id="clearAllBtn" class="btn btn-sm btn-outline-light">Limpiar</button>
-                            <button type="submit" class="btn btn-warning btn-duplicate">Buscar Duplicados</button>
-                        </div>
+    <div class="collapse" id="collapseDuplicates">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card bg-dark text-white border-secondary p-3 shadow-lg" style="border-left: 4px solid #ffc107 !important;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong>Opcional: Buscar filas duplicadas</strong>
+                        <small class="text-muted-light">Selecciona una o más columnas como llave principal o marca "Comparar filas completas".</small>
+                    </div>
 
-                        <div id="selectedPills" class="mb-2" aria-live="polite"></div>
+                    <form id="findDuplicatesForm" class="row g-2" onsubmit="handleFindDuplicatesSubmit(event)">
+                        <input type="hidden" name="tempFileName" value="@Model.TempFileName" />
+                        <input type="hidden" name="hasHeaders" value="@Model.HasHeaders.ToString().ToLower()" />
+                        <input type="hidden" name="fileSize" value="@Model.FileSizeFormatted" />
+                        <input type="hidden" name="processingTime" value="@Model.ProcessingTimeFormatted" />
 
-                        <div id="columnsContainer" class="columns-grid">
-                            @for (int i = 0; i < Model.ColumnProfiles.Count; i++)
-                            {
-                                var col = Model.ColumnProfiles[i];
-                                <div class="col-item">
-                                    <div class="form-check">
-                                        <input class="form-check-input key-col-checkbox" type="checkbox" id="col_@i" name="keyColumns" value="@col.ColumnName" />
-                                        <label class="form-check-label text-truncate" for="col_@i" title="@col.ColumnName">@col.ColumnName</label>
+                        <div class="col-12">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="fullRow" name="fullRow" value="true" />
+                                <label class="form-check-label" for="fullRow">Comparar filas completas</label>
+                            </div>
+
+                            <label class="form-label text-muted-light small">Seleccionar Columnas (si no seleccionas ninguna se compararán todas):</label>
+
+                            <div class="controls-row mb-2">
+                                <input id="columnSearch" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Buscar columna..." aria-label="Buscar columna" />
+                                <button type="button" id="selectAllBtn" class="btn btn-sm btn-outline-light">Seleccionar todo</button>
+                                <button type="button" id="clearAllBtn" class="btn btn-sm btn-outline-light">Limpiar</button>
+                                <button type="submit" class="btn btn-warning btn-duplicate fw-bold">
+                                    <i class="bi bi-intersect me-1"></i> Buscar Duplicados
+                                </button>
+                            </div>
+
+                            <div id="selectedPills" class="mb-2" aria-live="polite"></div>
+
+                            <div id="columnsContainer" class="columns-grid border border-secondary rounded p-2" style="background: rgba(0,0,0,0.2);">
+                                @for (int i = 0; i < Model.ColumnProfiles.Count; i++)
+                                {
+                                    var col = Model.ColumnProfiles[i];
+                                    <div class="col-item">
+                                        <div class="form-check">
+                                            <input class="form-check-input key-col-checkbox" type="checkbox" id="col_@i" name="keyColumns" value="@col.ColumnName" />
+                                            <label class="form-check-label text-truncate" for="col_@i" title="@col.ColumnName">@col.ColumnName</label>
+                                        </div>
                                     </div>
-                                </div>
-                            }
+                                }
+                            </div>
                         </div>
-                    </div>
-                </form>
+                    </form>
 
-                @if (Model.DuplicateGroups != null && Model.DuplicateGroups.Any())
-                {
-                    <div class="mt-3">
-                        <div class="alert bg-dark border-warning text-white d-flex justify-content-between align-items-center mb-0">
-                            <div>
-                                <strong class="text-warning me-2">@Model.DuplicateGroups.Sum(g => g.Count)</strong> filas con duplicados en <strong class="text-warning">@Model.DuplicateGroups.Count()</strong> grupos.
-                            </div>
-                            <div>
-                                <button id="openDuplicatesBtn" type="button" class="btn btn-outline-warning btn-sm me-2" data-bs-toggle="modal" data-bs-target="#duplicatesModal">Ver Duplicados</button>
-                                <button id="openDuplicatesModalAuto" type="button" class="d-none" data-bs-toggle="modal" data-bs-target="#duplicatesModal">Abrir</button>
+                    @if (Model.DuplicateGroups != null && Model.DuplicateGroups.Any())
+                    {
+                        <div class="mt-3">
+                            <div class="alert bg-dark border-warning text-white d-flex justify-content-between align-items-center mb-0">
+                                <div>
+                                    <i class="bi bi-info-circle text-warning me-2"></i>
+                                    Se encontraron <strong class="text-warning">@Model.DuplicateGroups.Sum(g => g.Count)</strong> filas duplicadas.
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#duplicatesModal">
+                                        <i class="bi bi-eye"></i> Ver Resultados
+                                    </button>
+                                    <button id="openDuplicatesModalAuto" type="button" class="d-none" data-bs-toggle="modal" data-bs-target="#duplicatesModal">Abrir</button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                }
+                    }
+                </div>
             </div>
         </div>
     </div>
@@ -422,81 +513,53 @@
         }
     </div>
 
-    @if (Model.DuplicateGroups != null && Model.DuplicateGroups.Any())
-    {
-        <div class="modal fade" id="duplicatesModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-xl modal-dialog-centered">
-                <div class="modal-content bg-dark text-white">
-                    <div class="modal-header border-secondary">
-                        <h5 class="modal-title text-warning"><i class="bi bi-exclamation-triangle me-2"></i> Filas Duplicadas (@Model.DuplicateGroups.Sum(g => g.Count))</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3 text-muted-light">Se encontraron <strong class="text-warning">@Model.DuplicateGroups.Sum(g => g.Count)</strong> filas dentro de <strong class="text-warning">@Model.DuplicateGroups.Count()</strong> grupos. Puedes revisar los grupos abajo.</div>
-                        <div class="duplicates-list">
-                            <div class="row g-3">
-                                @foreach (var grp in Model.DuplicateGroups)
-                                {
-                                    <div class="col-md-6">
-                                        <div class="card bg-dark border-danger">
-                                            <div class="card-body">
-                                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                                    <div>
-                                                        <h6 class="mb-0 text-truncate" title="@grp.SampleDisplay">Clave: @grp.SampleDisplay</h6>
-                                                        <small class="text-muted-light">Ocurrencias: <strong class="text-warning">@grp.Count</strong></small>
-                                                    </div>
-                                                    <div class="text-end small text-muted-light">
-                                                        <div>Filas: @string.Join(", ", grp.RowIndices.Take(10)) @if (grp.RowIndices.Count > 10) {
-                                                        <text>... (@(grp.RowIndices.Count) filas)</text>
-                                                    }
-    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="text-muted-light small fst-italic">Muestra de valores: @grp.SampleDisplay</div>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    </div>
+    <div class="modal fade" id="duplicatesModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-warning"><i class="bi bi-exclamation-triangle me-2"></i> Filas Duplicadas (<span id="duplicatesCount">0</span>)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
-                <div class="modal-footer border-secondary">
-                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
-                    <button id="exportDuplicatesBtn" type="button" class="btn btn-warning">Exportar CSV</button>
-                </div>
-            </div>
-        </div>
-    </div>
-        }
-</div>
-
-<div class="modal fade" id="validateColumnModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content bg-dark text-white border-warning">
-            <div class="modal-header border-secondary">
-                <h5 class="modal-title text-warning"><i class="bi bi-wrench-adjustable me-2"></i> Análisis de Conversión</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-            <div class="modal-body">
-                <div id="validationSummary" class="mb-3 p-3 bg-dark-subtle rounded border border-secondary"></div>
-                <div id="validationAdvice" class="alert alert-info py-2" style="font-size: 0.9rem;"></div>
-
-                <div class="mb-3">
-                    <label class="form-label small text-muted-light">Probar compatibilidad con:</label>
-                    <div class="d-flex gap-2">
-                        <button id="simToInteger" class="btn btn-sm btn-outline-primary">Entero</button>
-                        <button id="simToDecimal" class="btn btn-sm btn-outline-info">Decimal</button>
-                        <button id="simToDate" class="btn btn-sm btn-outline-success">Fecha</button>
-                    </div>
-                </div>
-
-                <h6 class="text-warning mb-2">Muestra de conflictos (Mismatches):</h6>
-                <div id="validationMismatches" style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
-                    <div class="text-muted-light small">Selecciona una opción arriba para buscar valores que no cumplan con el formato.</div>
+                <div class="modal-body">
+                    <div id="duplicatesInfo" class="mb-3 text-muted-light"></div>
+                    <div class="duplicates-list" id="duplicatesList"></div>
                 </div>
             </div>
             <div class="modal-footer border-secondary">
                 <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
+                <button id="exportDuplicatesBtn" type="button" class="btn btn-warning">Exportar CSV</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="validateColumnModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-warning">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-warning"><i class="bi bi-wrench-adjustable me-2"></i> Análisis de Conversión</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="validationSummary" class="mb-3 p-3 bg-dark-subtle rounded border border-secondary"></div>
+                    <div id="validationAdvice" class="alert alert-info py-2" style="font-size: 0.9rem;"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label small text-muted-light">Probar compatibilidad con:</label>
+                        <div class="d-flex gap-2">
+                            <button id="simToInteger" class="btn btn-sm btn-outline-primary">Entero</button>
+                            <button id="simToDecimal" class="btn btn-sm btn-outline-info">Decimal</button>
+                            <button id="simToDate" class="btn btn-sm btn-outline-success">Fecha</button>
+                        </div>
+                    </div>
+
+                    <h6 class="text-warning mb-2">Muestra de conflictos (Mismatches):</h6>
+                    <div id="validationMismatches" style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
+                        <div class="text-muted-light small">Selecciona una opción arriba para buscar valores que no cumplan con el formato.</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
+                </div>
             </div>
         </div>
     </div>
@@ -538,6 +601,86 @@
                     }
                     return r.json();
                 });
+            }
+
+            window.handleFindDuplicatesSubmit = function (e) {
+                e.preventDefault();
+                const form = document.getElementById('findDuplicatesForm');
+                const btn = form.querySelector('button[type="submit"]');
+                const originalHTML = btn.innerHTML;
+                
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Buscando...';
+                btn.disabled = true;
+
+                const formData = new FormData(form);
+                const keyColumns = Array.from(document.querySelectorAll('.key-col-checkbox:checked')).map(cb => cb.value);
+                const fullRow = document.getElementById('fullRow').checked;
+
+                const data = {
+                    tempFileName: formData.get('tempFileName'),
+                    hasHeaders: formData.get('hasHeaders'),
+                    fileSize: formData.get('fileSize'),
+                    processingTime: formData.get('processingTime'),
+                    fullRow: fullRow
+                };
+
+                if (keyColumns.length > 0) {
+                    keyColumns.forEach(col => {
+                        data['keyColumns'] = data['keyColumns'] ? data['keyColumns'] + ',' + col : col;
+                    });
+                }
+
+                postForm('@Url.Action("FindDuplicates", "DataProfiling")', { ...data, keyColumns: keyColumns.join(',') })
+                    .then(res => {
+                        if (res.success && res.duplicateGroups && res.duplicateGroups.length > 0) {
+                            populateDuplicatesModal(res.duplicateGroups);
+                            const modal = new bootstrap.Modal(document.getElementById('duplicatesModal'), {});
+                            modal.show();
+                        } else {
+                            alert('No se encontraron duplicados con los criterios seleccionados.');
+                        }
+                    })
+                    .catch(err => {
+                        alert('Error al buscar duplicados: ' + err.message);
+                    })
+                    .finally(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.disabled = false;
+                    });
+            };
+
+            function populateDuplicatesModal(duplicateGroups) {
+                const totalCount = duplicateGroups.reduce((sum, g) => sum + g.count, 0);
+                document.getElementById('duplicatesCount').textContent = totalCount;
+                document.getElementById('duplicatesInfo').innerHTML = 
+                    `Se encontraron <strong class="text-warning">${totalCount}</strong> filas dentro de <strong class="text-warning">${duplicateGroups.length}</strong> grupos. Puedes revisar los grupos abajo.`;
+
+                let html = '<div class="row g-3">';
+                duplicateGroups.forEach(grp => {
+                    html += `
+                        <div class="col-md-6">
+                            <div class="card bg-dark border-danger">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="mb-0 text-truncate" title="${grp.sampleDisplay}">Clave: ${grp.sampleDisplay}</h6>
+                                            <small class="text-muted-light">Ocurrencias: <strong class="text-warning">${grp.count}</strong></small>
+                                        </div>
+                                        <div class="text-end small text-muted-light">
+                                            <div>
+                                                Filas: ${grp.rowIndices.slice(0, 10).join(', ')}
+                                                ${grp.rowIndices.length > 10 ? `... (${grp.rowIndices.length} filas)` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-muted-light small fst-italic">Muestra de valores: ${grp.sampleDisplay}</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                document.getElementById('duplicatesList').innerHTML = html;
             }
 
             document.querySelectorAll('.validate-col-btn').forEach(function (btn) {
@@ -619,5 +762,41 @@
                 bsModal.show();
             }
         })();
+            document.addEventListener("DOMContentLoaded", function() {
+            // --- 2. BUSCADOR DE COLUMNAS ---
+            const searchInput = document.getElementById('columnSearch');
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    const term = this.value.toLowerCase();
+                    document.querySelectorAll('.col-item').forEach(item => {
+                        const text = item.textContent.toLowerCase();
+                        item.style.display = text.includes(term) ? 'block' : 'none';
+                    });
+                });
+            }
+
+            // --- 3. BOTÓN SELECCIONAR TODO ---
+            const selectAllBtn = document.getElementById('selectAllBtn');
+            if (selectAllBtn) {
+                selectAllBtn.addEventListener('click', function() {
+                    document.querySelectorAll('.key-col-checkbox').forEach(cb => {
+                        // Solo marcar los que están visibles por el filtro
+                        if (cb.closest('.col-item').style.display !== 'none') {
+                            cb.checked = true;
+                        }
+                    });
+                });
+            }
+
+            // --- 4. BOTÓN LIMPIAR ---
+            const clearAllBtn = document.getElementById('clearAllBtn');
+            if (clearAllBtn) {
+                clearAllBtn.addEventListener('click', function() {
+                    document.querySelectorAll('.key-col-checkbox').forEach(cb => cb.checked = false);
+                    if (searchInput) searchInput.value = '';
+                    document.querySelectorAll('.col-item').forEach(item => item.style.display = 'block');
+                });
+            }
+        });
     </script>
 }

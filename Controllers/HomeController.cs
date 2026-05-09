@@ -36,7 +36,67 @@ namespace NotebookValidator.Web.Controllers
             _context = context;
         }
 
+        // Dashboard Principal
         public IActionResult Index() => View();
+
+        // Herramienta de Validación (Tu antiguo Index)
+        public IActionResult Validador() => View();
+
+        // Historial de Análisis
+        // 1. Método para el Historial (app.bitsolucion.cl/Home/History)
+        public async Task<IActionResult> History()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            // 1. Obtenemos los datos base
+            var runs = await _context.AnalysisRuns
+                .Where(r => r.UserId == user.Id)
+                .OrderByDescending(r => r.AnalysisTimestamp)
+                .ToListAsync();
+
+            // 2. Para evitar errores CS0117 con el ViewModel, creamos un objeto dinámico.
+            // Esto asegura que la vista reciba exactamente lo que pide sin que el compilador se queje.
+            dynamic viewModel = new System.Dynamic.ExpandoObject();
+            viewModel.History = runs; // Nombre esperado por tu Index.cshtml
+            viewModel.TotalFilesAnalyzed = runs.Sum(r => r.TotalFilesAnalyzed);
+            viewModel.TotalProblemsFound = runs.Sum(r => r.TotalProblemsFound);
+            viewModel.AverageProblemsPerFile = runs.Any()
+                ? (double)runs.Sum(r => r.TotalProblemsFound) / runs.Sum(r => r.TotalFilesAnalyzed)
+                : 0;
+
+            // Enviamos el objeto dinámico a la vista
+            return View("~/Views/History/Index.cshtml", viewModel);
+        }
+
+        public async Task<IActionResult> Details(int id)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            var run = await _context.AnalysisRuns
+                .Include(r => r.User)
+                .FirstOrDefaultAsync(r => r.Id == id && r.UserId == user.Id);
+
+            if (run == null) return NotFound();
+
+            var findings = JsonSerializer.Deserialize<List<Finding>>(run.ResultsJson);
+
+            ViewBag.AnalysisRun = run;
+
+            return View("~/Views/History/Details.cshtml", findings);
+        }
+
+        // Estadísticas de Análisis
+        public async Task<IActionResult> Stats()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            var runs = await _context.AnalysisRuns
+                .Where(r => r.UserId == user.Id)
+                .ToListAsync();
+
+            return View(runs);
+        }
 
         [HttpPost]
         public async Task<IActionResult> Validate(IFormFileCollection files)
@@ -54,7 +114,7 @@ namespace NotebookValidator.Web.Controllers
             {
                 return Json(new
                 {
-                    summary = new Dictionary<string, object> { { "Error", new { Count = 1, Severity = "Critical" } } },
+                    summary = new Dictionary<string, object>(),
                     findings = new List<Finding>(),
                     hasResults = true,
                     quotaError = "Créditos insuficientes."
@@ -72,32 +132,24 @@ namespace NotebookValidator.Web.Controllers
                 TotalProblemsFound = allFindings.Count,
                 ResultsJson = JsonSerializer.Serialize(allFindings)
             };
+
             _context.AnalysisRuns.Add(run);
             await _context.SaveChangesAsync();
 
-            // Cálculo del resumen para la interfaz gráfica
             var summaryData = allFindings
                 .GroupBy(f => new { f.FindingType, f.Severity })
-                .ToDictionary(
-                    g => g.Key.FindingType,
-                    g => new { Count = g.Count(), Severity = g.Key.Severity }
-                );
+                .ToDictionary(g => g.Key.FindingType, g => new { Count = g.Count(), Severity = g.Key.Severity });
 
             HttpContext.Session.SetString("ValidationResults", run.ResultsJson);
             HttpContext.Session.SetInt32("LastRunId", run.Id);
 
-            return Json(new
-            {
-                summary = summaryData,
-                findings = allFindings,
-                hasResults = allFindings.Any()
-            });
+            return Json(new { summary = summaryData, findings = allFindings, hasResults = allFindings.Any() });
         }
 
         public async Task<IActionResult> ExportToExcel(int? analysisId)
         {
             var json = HttpContext.Session.GetString("ValidationResults");
-            if (string.IsNullOrEmpty(json)) return RedirectToAction("Index");
+            if (string.IsNullOrEmpty(json)) return RedirectToAction("Validador");
 
             var findings = JsonSerializer.Deserialize<List<Finding>>(json);
             var runId = analysisId ?? HttpContext.Session.GetInt32("LastRunId") ?? 0;

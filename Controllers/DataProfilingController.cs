@@ -103,6 +103,7 @@ namespace NotebookValidator.Web.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult FindDuplicates(string tempFileName, string[] keyColumns, bool fullRow = false, bool hasHeaders = true, string fileSize = "", string processingTime = "")
         {
             if (string.IsNullOrEmpty(tempFileName)) return RedirectToAction("Index");
@@ -124,9 +125,12 @@ namespace NotebookValidator.Web.Controllers
                 profileResult.ProcessingTimeFormatted = processingTime;
                 profileResult.FileExtension = Path.GetExtension(tempFileName).ToUpper().Replace(".", "");
 
-                return View("Resultados", profileResult);
+                return Json(new { success = true, duplicateGroups = profileResult.DuplicateGroups });
             }
-            catch { return RedirectToAction("Index"); }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
         }
 
         [HttpPost]

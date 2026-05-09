@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Validador Bit Solución</title>
+    <title>@ViewData["Title"] - Bit Solución</title>
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
@@ -12,208 +12,164 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
-
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/NotebookValidator.Web.styles.css" asp-append-version="true" />
+
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+
+        .main-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            min-height: 100vh;
+            background-color: #0f111a;
+        }
+
+        .content-body {
+            flex: 1 0 auto;
+        }
+
+        .footer-custom {
+            flex-shrink: 0;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 1.2rem 2rem;
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        /* Estilos para Módulo Activo */
+        .sidebar-nav .nav-link {
+            position: relative;
+            transition: all 0.2s ease;
+            color: rgba(255,255,255,0.6);
+            border-left: 4px solid transparent;
+            padding-left: 1.2rem;
+        }
+
+            .sidebar-nav .nav-link:hover {
+                color: #fff;
+                background-color: rgba(255,255,255,0.05);
+            }
+
+            .sidebar-nav .nav-link.active {
+                color: #fff !important;
+                background-color: rgba(255, 193, 7, 0.1);
+                border-left: 4px solid #ffc107 !important;
+                font-weight: 600;
+            }
+
+                .sidebar-nav .nav-link.active i {
+                    color: #ffc107 !important;
+                }
+
+        .nav-header {
+            font-size: 0.7rem;
+            letter-spacing: 1.2px;
+            font-weight: 700;
+            color: #4b5162;
+            padding: 1.5rem 1.2rem 0.5rem;
+            text-transform: uppercase;
+        }
+    </style>
 </head>
-<body style="overflow-x: hidden;">
-
-    <div class="sidebar">
-        <div class="sidebar-brand">
-            <a class="d-flex align-items-center" asp-controller="Home" asp-action="Index">
-                <img src="~/img/Bit-solucion-logo-menu.png" alt="Bit Solución Logo" />
-            </a>
-        </div>
-
-        <hr class="sidebar-divider">
-
-        <ul class="sidebar-nav">
-            @{
-                var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
-                var isValidatorSectionActive = (currentController == "Home" || currentController == "History");
-            }
-
-            @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
-            {
-                <li class="nav-item">
-                    <a class="nav-link @(isValidatorSectionActive ? "" : "collapsed")" data-bs-toggle="collapse" href="#validator-collapse" role="button" aria-expanded="@(isValidatorSectionActive.ToString().ToLower())">
-                        <i class="bi bi-file-earmark-check"></i> <span>Validador Notebooks</span>
-                    </a>
-
-                    <div class="collapse @(isValidatorSectionActive ? "show" : "")" id="validator-collapse">
-                        <ul class="nav-sub-menu">
-                            <li class="nav-item @(currentController == "Home" ? "active" : "")">
-                                <a class="nav-link" asp-controller="Home" asp-action="Index">Nuevo Análisis</a>
-                            </li>
-                            <li class="nav-item @(currentController == "History" ? "active" : "")">
-                                <a class="nav-link" asp-controller="History" asp-action="Index">Historial</a>
-                            </li>
-                        </ul>
-                    </div>
-                </li>
-            }
-
-            @if (User.IsInRole("Admin") || User.IsInRole("ParameterValidatorUser"))
-            {
-                <li class="nav-item @(currentController == "ParameterValidator" ? "active" : "")">
-                    <a class="nav-link" asp-controller="ParameterValidator" asp-action="Index">
-                        <i class="bi bi-filetype-py"></i> <span>Validador Parámetros</span>
-                    </a>
-                </li>
-            }
-
-            @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
-            {
-                <li class="nav-item @(currentController == "Cuadratura" ? "active" : "")">
-                    <a class="nav-link" asp-controller="Cuadratura" asp-action="Index">
-                        <i class="bi bi-table"></i> <span>Cuadratura de Datos</span>
-                    </a>
-                </li>
-            }
-
-            @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
-            {
-                <li class="nav-item @(currentController == "DataProfiling" ? "active" : "")">
-                    <a class="nav-link" asp-area="" asp-controller="DataProfiling" asp-action="Index">
-                        <i class="bi bi-bar-chart-steps"></i> <span>Perfilamiento de Datos</span>
-                    </a>
-                </li>
-            }
-
-            @if (User.IsInRole("Admin") || User.IsInRole("TempCleanerUser"))
-            {
-                <li class="nav-item @(currentController == "TempTable" ? "active" : "")">
-                    <a class="nav-link" asp-area="" asp-controller="TempTable" asp-action="Index">
-                        <i class="bi bi-trash"></i> <span>Limpieza Tmp</span>
-                    </a>
-                </li>
-            }
-
-            @if (User.IsInRole("Admin"))
-            {
-                <li class="nav-item @(currentController == "GeminiDoc" ? "active" : "")">
-                    <a class="nav-link" asp-controller="GeminiDoc" asp-action="Index">
-                        <i class="bi bi-robot"></i> <span>Documentador Gemini</span>
-                    </a>
-                </li>
-            }
-
-            @if (User.IsInRole("Admin"))
-            {
-                <li class="nav-item @(currentController == "JobConverter" ? "active" : "")">
-                    <a class="nav-link" asp-area="" asp-controller="JobConverter" asp-action="Index">
-                        <i class="bi bi-wrench-adjustable-circle-fill"></i> <span>Generador Jobs</span>
-                    </a>
-                </li>
-            }
-
-            <li class="nav-item">
-                <a class="nav-link collapsed" data-bs-toggle="collapse" href="#standards-collapse" role="button">
-                    <i class="bi bi-book"></i> <span>Estándares</span>
+<body>
+    <div class="main-wrapper">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <a class="d-flex align-items-center" asp-controller="Home" asp-action="Index">
+                    <img src="~/img/Bit-solucion-logo-menu.png" alt="Bit Solución Logo" />
                 </a>
-                <div class="collapse" id="standards-collapse">
-                    <ul class="nav-sub-menu">
-                        <li><a class="nav-link" asp-controller="Standards" asp-action="Document">Documento de Estándares</a></li>
-                        <li><a class="nav-link" asp-controller="Standards" asp-action="Format">Formato de Documentos</a></li>
-                        <li><a class="nav-link" asp-controller="Standards" asp-action="Jobs">Documentos de Pruebas Jobs</a></li>
+            </div>
 
-                        @if (User.IsInRole("Admin"))
-                        {
-                            <li><hr class="dropdown-divider" style="border-top: 1px solid var(--border-color);"></li>
-                            <li><a class="nav-link" asp-controller="ParameterAdmin" asp-action="Index">Lista de Parámetros</a></li>
-                        }
-                    </ul>
-                </div>
-            </li>
+            <nav class="sidebar-nav mt-4">
+                <ul class="nav flex-column">
+                    @{
+                        var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+                        var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+                    }
 
-            @if (User.IsInRole("Admin"))
-            {
-                <li class="nav-section-title">ADMINISTRACIÓN</li>
-                <li class="nav-item @(currentController == "AdminDashboard" ? "active" : "")">
-                    <a class="nav-link" asp-controller="AdminDashboard" asp-action="Index">
-                        <i class="bi bi-speedometer2"></i> <span>Dashboard Global</span>
-                    </a>
-                </li>
-                <li class="nav-item @(currentController == "Admin" ? "active" : "")">
-                    <a class="nav-link" asp-controller="Admin" asp-action="Index">
-                        <i class="bi bi-people"></i> <span>Gestionar Usuarios</span>
-                    </a>
-                </li>
-                <li class="nav-item @(currentController == "AuditLog" ? "active" : "")">
-                    <a class="nav-link" asp-controller="AuditLog" asp-action="Index">
-                        <i class="bi bi-shield-check"></i> <span>Log de Auditoría</span>
-                    </a>
-                </li>
-                <li class="nav-item @(currentController == "ValidationRuleAdmin" ? "active" : "")">
-                    <a class="nav-link" asp-controller="ValidationRuleAdmin" asp-action="Index">
-                        <i class="bi bi-rulers"></i> <span>Admin Reglas Validador</span>
-                    </a>
-                </li>
-            }
-        </ul>
-        <hr class="sidebar-divider mt-auto">
-    </div>
+                    <li class="nav-item">
+                        <a class="nav-link @(currentController == "Home" && currentAction == "Index" ? "active" : "")" asp-controller="Home" asp-action="Index">
+                            <i class="bi bi-house-door me-2"></i> Inicio
+                        </a>
+                    </li>
 
-    <div class="main-content" style="position: relative; min-height: 100vh; padding-bottom: 70px; overflow-x: hidden;">
+                    @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "Home" && currentAction == "Validador" ? "active" : "")" asp-controller="Home" asp-action="Validador">
+                                <i class="bi bi-journal-code me-2"></i> Validador Notebooks
+                            </a>
+                        </li>
+                    }
 
-        <nav class="navbar top-bar">
-            <div class="container-fluid">
-                <button class="btn btn-outline-secondary" id="sidebar-toggle" type="button">
-                    <i class="bi bi-list"></i>
-                </button>
+                    @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+                    {
+                        <li class="nav-item"><a class="nav-link @(currentController == "DataProfiling" ? "active" : "")" asp-controller="DataProfiling" asp-action="Index"><i class="bi bi-bar-chart-steps me-2"></i> Perfilamiento Datos</a></li>
+                        <li class="nav-item"><a class="nav-link @(currentController == "Cuadratura" ? "active" : "")" asp-controller="Cuadratura" asp-action="Index"><i class="bi bi-table me-2"></i> Cuadratura Datos</a></li>
+                    }
 
+                    @if (User.IsInRole("Admin") || User.IsInRole("ParameterValidatorUser"))
+                    {
+                        <li class="nav-item"><a class="nav-link @(currentController == "ParameterValidator" ? "active" : "")" asp-controller="ParameterValidator" asp-action="Index"><i class="bi bi-filetype-py me-2"></i> Validador Parámetros</a></li>
+                    }
+
+                    <li class="nav-item"><a class="nav-link @(currentController == "JobConverter" ? "active" : "")" asp-controller="JobConverter" asp-action="Index"><i class="bi bi-wrench-adjustable-circle-fill me-2"></i> Generador de Jobs</a></li>
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("TempCleanerUser"))
+                    {
+                        <li class="nav-item"><a class="nav-link @(currentController == "TempTable" ? "active" : "")" asp-controller="TempTable" asp-action="Index"><i class="bi bi-trash3 me-2"></i> Limpieza Tmp</a></li>
+                    }
+
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <li class="nav-header">ADMINISTRACIÓN</li>
+                        <li class="nav-item"><a class="nav-link @(currentController == "AdminDashboard" ? "active" : "")" asp-controller="AdminDashboard" asp-action="Index"><i class="bi bi-speedometer2 me-2"></i> Dashboard Global</a></li>
+                        <li class="nav-item"><a class="nav-link @(currentController == "Admin" ? "active" : "")" asp-controller="Admin" asp-action="Index"><i class="bi bi-people me-2"></i> Gestionar Usuarios</a></li>
+                        <li class="nav-item"><a class="nav-link @(currentController == "ValidationRuleAdmin" ? "active" : "")" asp-controller="ValidationRuleAdmin" asp-action="Index"><i class="bi bi-list-check me-2"></i> Reglas Validador</a></li>
+                        <li class="nav-item"><a class="nav-link @(currentController == "AuditLog" ? "active" : "")" asp-controller="AuditLog" asp-action="Index"><i class="bi bi-shield-check me-2"></i> Log de Auditoría</a></li>
+                    }
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar px-4 d-flex justify-content-between align-items-center">
+                <button class="btn text-white d-md-none" id="sidebar-toggle"><i class="bi bi-list"></i></button>
                 <div class="ms-auto">
                     <partial name="_LoginPartial" />
                 </div>
-            </div>
-        </nav>
+            </header>
 
-        <main role="main" class="p-4">
-            @RenderBody()
+            <div class="content-body container-fluid py-4">
+                @RenderBody()
+            </div>
+
+            <footer class="footer-custom d-flex justify-content-between align-items-center">
+                <div>&copy; @DateTime.Now.Year - <span class="text-warning">Bit Solución</span></div>
+                <div><span class="badge bg-dark text-muted" style="border: 1px solid rgba(255,255,255,0.1)">v @System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3)</span></div>
+            </footer>
         </main>
-
-        <footer class="footer border-top border-secondary" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 70px; background-color: rgba(255, 255, 255, 0.02);">
-            <div class="container-fluid d-flex justify-content-between align-items-center h-100 px-4 small text-white-50">
-                <span>&copy; @DateTime.Now.Year - Bit Solución</span>
-                <span class="badge bg-warning text-dark border border-warning shadow-sm" style="font-family: monospace;" title="Versión de compilación">
-                    v @System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(4)
-                </span>
-            </div>
-        </footer>
     </div>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/lib/qrcode/qrcode.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-
     @await RenderSectionAsync("Scripts", required: false)
-
-    <script>
-        $(document).ready(function () {
-            const message = '@TempData["ToastrMessage"]';
-            const type = '@TempData["ToastrType"]';
-
-            if (message) {
-                toastr.options = {
-                    "closeButton": true,
-                    "progressBar": true,
-                    "positionClass": "toast-bottom-right",
-                    "preventDuplicates": true,
-                    "timeOut": "5000"
-                };
-                toastr[type](message);
-            }
-        });
-    </script>
 </body>
 </html>

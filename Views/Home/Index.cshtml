@@ -1,140 +1,86 @@
-@using NotebookValidator.Web.Services
-@model List<Finding>
 @{
-    ViewData["Title"] = "Validador de Notebooks";
+    ViewData["Title"] = "Panel Principal";
 }
 
 <style>
-    /* Ajustes para lista de archivos: izquierda flexible con truncado, derecha fija */
-    #file-list .list-group-item {
-        box-sizing: border-box;
-        overflow: hidden; /* evita scroll horizontal por contenido largo */
+    .welcome-section {
+        padding: 4rem 1rem;
+        text-align: center;
     }
 
-    #file-list .file-left {
+    .home-card {
+        background-color: var(--card-bg, #1a1a1a);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 2.5rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        text-decoration: none !important;
+        height: 100%;
         display: flex;
+        flex-direction: column;
         align-items: center;
-        flex: 1 1 auto; /* ocupa el espacio disponible */
-        min-width: 0; /* necesario para que text-overflow funcione en flex children */
-        gap: 0.5rem;
+        justify-content: center;
     }
 
-    #file-list .file-left .file-name {
-        display: block;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        max-width: 100%;
+        .home-card:hover {
+            transform: translateY(-10px);
+            border-color: #ffc107;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+    .home-icon {
+        font-size: 3.5rem;
+        color: #ffc107;
+        margin-bottom: 1.5rem;
     }
 
-    #file-list .file-right {
-        display: flex;
-        align-items: center;
-        flex: 0 0 auto; /* contenido de la derecha no crece */
-        gap: 0.5rem;
-        margin-left: 0.5rem;
+    .card-title {
+        color: #ffffff;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
     }
 
-    #file-list .file-right small {
-        white-space: nowrap;
-        flex-shrink: 0;
-    }
-
-    /* Asegura que el botón eliminar no se reduzca */
-    #file-list .file-right .btn {
-        flex-shrink: 0;
+    .card-text {
+        color: #b0b0b0;
+        font-size: 0.95rem;
+        line-height: 1.6;
     }
 </style>
 
-<div class="text-center">
-    <h1 class="display-4">Validador de Notebooks</h1>
-    <p>Sube uno o más archivos (.py, .ipynb, .zip) para buscar malas prácticas.</p>
-</div>
-
-<div class="row mt-4">
-
-    <div class="col-lg-5">
-        <div id="upload-card" class="card h-100 d-flex flex-column">
-            <div class="card-header">
-                <h5>
-                    <i class="bi bi-file-earmark-arrow-up-fill me-2"></i>1. Cargar Archivos para Análisis.
-                </h5>
-            </div>
-            <div class="card-body d-flex flex-column">
-                <input type="file" id="file-input" multiple class="d-none" accept=".py,.ipynb,.zip" />
-                <button type="button" class="btn btn-secondary" onclick="document.getElementById('file-input').click();">
-                    Elegir Archivos...
-                </button>
-
-                <hr />
-
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div>
-                        <span id="selected-count" class="badge bg-secondary">0 archivos</span>
-                        <span id="total-size" class="badge bg-secondary ms-2">0 B</span>
-                    </div>
-                    <small class="text-muted">Sugerencia: archivos ≤ 50 MB</small>
-                </div>
-
-                <strong>Archivos en cola para analizar:</strong>
-                <ul id="file-list" class="list-group mt-2 flex-grow-1">
-                    <li id="empty-list-item" class="list-group-item text-muted">No se han seleccionado archivos.</li>
-                </ul>
-            </div>
-            <div class="card-footer text-end">
-                <button type="button" id="clear-files-button" class="btn btn-outline-secondary me-2">
-                    Limpiar Lista
-                </button>
-                <button type="button" id="validate-button" class="btn btn-primary" disabled aria-disabled="true">
-                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
-                    Analizar Archivos
-                </button>
-            </div>
-        </div>
+<div class="container">
+    <div class="welcome-section">
+        <h1 class="display-4 fw-bold text-white mb-3">
+            Bienvenido a <span class="text-warning">Bit Solución</span>
+        </h1>
+        <p class="lead text-white-50">Selecciona el módulo con el que deseas trabajar hoy.</p>
     </div>
 
-    <div class="col-lg-7">
-        <div id="summary-card" class="card h-100 d-flex flex-column" style="display: none;">
-            <div class="card-header">
-                <h5>
-                    <i class="bi bi-table"></i> 2. Resumen del Análisis
-                </h5>
-            </div>
-            <div class="card-body" id="summary-content">
-            </div>
-            <div class="card-footer text-end">
-                <a asp-action="ExportToExcel" asp-controller="Home" id="export-button" class="btn btn-success" style="display: none;">
-                    Exportar a Excel
-                </a>
-            </div>
+    <div class="row g-4 mb-5">
+        <div class="col-md-6 col-lg-4">
+            <a asp-controller="Home" asp-action="Validador" class="home-card">
+                <i class="bi bi-file-earmark-check home-icon"></i>
+                <h3 class="card-title">Validador de Notebooks</h3>
+                <p class="card-text">Analiza archivos .py e .ipynb buscando malas prácticas y errores estructurales.</p>
+            </a>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <a asp-controller="DataProfiling" asp-action="Index" class="home-card">
+                <i class="bi bi-bar-chart-steps home-icon"></i>
+                <h3 class="card-title">Perfilamiento de Datos</h3>
+                <p class="card-text">Radiografía completa de archivos pesados con detección automática de PII y duplicados.</p>
+            </a>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <a asp-controller="Cuadratura" asp-action="Index" class="home-card">
+                <i class="bi bi-table home-icon"></i>
+                <h3 class="card-title">Cuadratura de Datos</h3>
+                <p class="card-text">Compara y concilia múltiples fuentes de datos para asegurar la consistencia.</p>
+            </a>
         </div>
     </div>
 </div>
-
-<div id="results-container" class="mt-4">
-    @if (Model != null && Model.Any())
-    {
-        @await Html.PartialAsync("_ValidationResults", Model)
-    }
-</div>
-
-<div class="modal fade" id="codeModal" tabindex="-1" aria-labelledby="codeModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content">
-
-            <div class="modal-header">
-                <h5 class="modal-title" id="codeModalLabel">Contexto del Código</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <pre><code id="code-content" class="language-python"></code></pre>
-            </div>
-
-        </div>
-    </div>
-</div>
-
-
-@section Scripts {
-    <script src="~/js/home-index.js" asp-append-version="true"></script>
-}
