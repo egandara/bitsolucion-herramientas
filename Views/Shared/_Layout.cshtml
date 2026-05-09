@@ -14,13 +14,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/NotebookValidator.Web.styles.css" asp-append-version="true" />
 </head>
-<body>
+<body style="overflow-x: hidden;">
 
     <div class="sidebar">
         <div class="sidebar-brand">
@@ -158,7 +157,7 @@
         <hr class="sidebar-divider mt-auto">
     </div>
 
-    <div class="main-content">
+    <div class="main-content" style="position: relative; min-height: 100vh; padding-bottom: 70px; overflow-x: hidden;">
 
         <nav class="navbar top-bar">
             <div class="container-fluid">
@@ -175,6 +174,15 @@
         <main role="main" class="p-4">
             @RenderBody()
         </main>
+
+        <footer class="footer border-top border-secondary" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 70px; background-color: rgba(255, 255, 255, 0.02);">
+            <div class="container-fluid d-flex justify-content-between align-items-center h-100 px-4 small text-white-50">
+                <span>&copy; @DateTime.Now.Year - Bit Solución</span>
+                <span class="badge bg-warning text-dark border border-warning shadow-sm" style="font-family: monospace;" title="Versión de compilación">
+                    v @System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(4)
+                </span>
+            </div>
+        </footer>
     </div>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
@@ -203,7 +211,6 @@
                     "preventDuplicates": true,
                     "timeOut": "5000"
                 };
-
                 toastr[type](message);
             }
         });

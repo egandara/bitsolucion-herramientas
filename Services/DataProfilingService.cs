@@ -7,20 +7,86 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using NotebookValidator.Web.Models;
 
 namespace NotebookValidator.Web.Services
 {
     public class DataProfilingService
     {
-        // Expresiones regulares para PII Estándar
         private static readonly Regex EmailRegex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex RutCompletoRegex = new Regex(@"^\d{1,2}\.?\d{3}\.?\d{3}[-][0-9kK]{1}$", RegexOptions.Compiled);
         private static readonly Regex CreditCardRegex = new Regex(@"^\d{4}[ -]?\d{4}[ -]?\d{4}[ -]?\d{4}$", RegexOptions.Compiled);
-
         private static readonly Regex RutNameRegex = new Regex(@"(^|_)(rut|run)($|_)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex DvNameRegex = new Regex(@"(^|_)(dv|digito_verificador)($|_)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex DvValueRegex = new Regex(@"^[0-9kK]$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        private class ColumnTracker
+        {
+            public int NullCount = 0;
+            public int WhitespaceCount = 0;
+            public int ZeroCount = 0;
+            public int NegativeCount = 0;
+            public double MinNum = double.MaxValue;
+            public double MaxNum = double.MinValue;
+            public double SumNum = 0;
+
+            // Separamos enteros y decimales
+            public int IntegerCount = 0;
+            public int DecimalCount = 0;
+            public int DateCount = 0;
+            public int TotalCount = 0;
+
+            public int MinLength = int.MaxValue;
+            public int MaxLength = int.MinValue;
+            public bool HasDecimals = false;
+            public DateTime MinDate = DateTime.MaxValue;
+            public DateTime MaxDate = DateTime.MinValue;
+
+            public Dictionary<string, int> Frequencies = new Dictionary<string, int>(StringComparer.Ordinal);
+            private const int MAX_UNIQUE = 15000;
+            public bool UniqueCapped = false;
+
+            public void ProcessValue(string rawVal)
+            {
+                TotalCount++;
+                if (string.IsNullOrEmpty(rawVal)) { NullCount++; return; }
+                if (string.IsNullOrWhiteSpace(rawVal)) { NullCount++; WhitespaceCount++; return; }
+
+                string val = rawVal.Trim();
+
+                if (val.Length < MinLength) MinLength = val.Length;
+                if (val.Length > MaxLength) MaxLength = val.Length;
+
+                if (!UniqueCapped)
+                {
+                    if (Frequencies.TryGetValue(val, out int c)) { Frequencies[val] = c + 1; }
+                    else
+                    {
+                        if (Frequencies.Count < MAX_UNIQUE) Frequencies.Add(val, 1);
+                        else UniqueCapped = true;
+                    }
+                }
+
+                if (double.TryParse(val.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double num))
+                {
+                    if (Math.Abs(num % 1) > double.Epsilon) { DecimalCount++; HasDecimals = true; }
+                    else { IntegerCount++; }
+
+                    SumNum += num;
+                    if (num == 0) ZeroCount++;
+                    else if (num < 0) NegativeCount++;
+                    if (num < MinNum) MinNum = num;
+                    if (num > MaxNum) MaxNum = num;
+                }
+                else if (DateTime.TryParse(val, out DateTime dtOut))
+                {
+                    DateCount++;
+                    if (dtOut < MinDate) MinDate = dtOut;
+                    if (dtOut > MaxDate) MaxDate = dtOut;
+                }
+            }
+        }
 
         public DataProfileResult AnalyzeFile(IFormFile file, bool hasHeaders)
         {
@@ -31,11 +97,26 @@ namespace NotebookValidator.Web.Services
         public DataProfileResult AnalyzeFile(Stream stream, string fileName, bool hasHeaders)
         {
             var result = new DataProfileResult { FileName = fileName, HasHeaders = hasHeaders };
-
             string extension = Path.GetExtension(fileName).ToLower();
-            bool isFlatFile = extension == ".csv" || extension == ".txt" || extension == ".dat";
-            IExcelDataReader reader;
+            result.FileExtension = string.IsNullOrEmpty(extension) ? "DESCONOCIDO" : extension.ToUpper().Replace(".", "");
 
+            bool isFlatFile = extension == ".csv" || extension == ".txt" || extension == ".dat";
+
+            if (isFlatFile)
+            {
+                var sniff = SniffFile(stream);
+                result.SeparatorUsed = sniff.separator;
+                result.LineEndingType = sniff.lineEnding;
+            }
+            else
+            {
+                result.LineEndingType = "Windows (CRLF)";
+                result.SeparatorUsed = "Excel Internal";
+            }
+
+            stream.Position = 0;
+
+            IExcelDataReader reader;
             if (isFlatFile)
             {
                 var configCsv = new ExcelReaderConfiguration() { AutodetectSeparators = new char[] { ',', ';', '\t', '|' } };
@@ -46,23 +127,181 @@ namespace NotebookValidator.Web.Services
                 reader = ExcelReaderFactory.CreateReader(stream);
             }
 
-            var ds = reader.AsDataSet(new ExcelDataSetConfiguration() { ConfigureDataTable = (_) => new ExcelDataTableConfiguration() { UseHeaderRow = hasHeaders } });
-            var dt = ds.Tables.Count > 0 ? ds.Tables[0] : new DataTable();
+            int fieldCount = reader.FieldCount;
+            if (fieldCount == 0) return result;
 
-            if (!hasHeaders && dt.Columns.Count > 0)
-                for (int i = 0; i < dt.Columns.Count; i++) dt.Columns[i].ColumnName = $"Columna_{i + 1}";
+            var columnNames = new string[fieldCount];
+            var trackers = new ColumnTracker[fieldCount];
 
-            result.TotalRows = dt.Rows.Count;
-            result.TotalColumns = dt.Columns.Count;
-
-            if (result.TotalRows == 0) return result;
-
-            foreach (DataColumn column in dt.Columns)
+            if (hasHeaders && reader.Read())
             {
-                result.ColumnProfiles.Add(AnalyzeColumn(dt, column, result.TotalRows));
+                for (int i = 0; i < fieldCount; i++)
+                {
+                    columnNames[i] = reader.GetValue(i)?.ToString() ?? $"Columna_{i + 1}";
+                    trackers[i] = new ColumnTracker();
+                }
+            }
+            else
+            {
+                for (int i = 0; i < fieldCount; i++)
+                {
+                    columnNames[i] = $"Columna_{i + 1}";
+                    trackers[i] = new ColumnTracker();
+                }
             }
 
+            int rowCount = 0;
+            while (reader.Read())
+            {
+                rowCount++;
+                for (int i = 0; i < fieldCount; i++)
+                {
+                    trackers[i].ProcessValue(reader.GetValue(i)?.ToString());
+                }
+            }
+
+            result.TotalRows = rowCount;
+            result.TotalColumns = fieldCount;
+
+            if (rowCount == 0) return result;
+
+            var profilesArray = new ColumnProfile[fieldCount];
+            Parallel.For(0, fieldCount, i =>
+            {
+                profilesArray[i] = FinalizeProfile(columnNames[i], trackers[i], rowCount);
+            });
+
+            result.ColumnProfiles = profilesArray.ToList();
             return result;
+        }
+
+        private (string separator, string lineEnding) SniffFile(Stream stream)
+        {
+            long pos = stream.Position;
+            stream.Position = 0;
+            using var reader = new StreamReader(stream, leaveOpen: true);
+
+            char[] buffer = new char[524288];
+            int read = reader.ReadBlock(buffer, 0, buffer.Length);
+            string chunk = new string(buffer, 0, read);
+            stream.Position = pos;
+
+            string lineEnding = chunk.Contains("\r\n") ? "Windows (CRLF)" : (chunk.Contains("\n") ? "Unix (LF)" : "Desconocido");
+
+            char[] candidates = { ',', ';', '\t', '|' };
+            string firstLine = chunk.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None).FirstOrDefault() ?? "";
+
+            char bestSep = ',';
+            int maxCount = -1;
+
+            foreach (var c in candidates)
+            {
+                int count = firstLine.Count(x => x == c);
+                if (count > maxCount) { maxCount = count; bestSep = c; }
+            }
+
+            string sepName = bestSep == '\t' ? "Tabulación" : bestSep.ToString();
+            return (sepName, lineEnding);
+        }
+
+        private ColumnProfile FinalizeProfile(string columnName, ColumnTracker tracker, int totalRows)
+        {
+            var profile = new ColumnProfile { ColumnName = columnName };
+
+            profile.NullOrEmptyCount = tracker.NullCount;
+            profile.NullPercentage = Math.Round((double)tracker.NullCount / totalRows * 100, 2);
+            profile.WhitespaceCount = tracker.WhitespaceCount;
+            profile.ZeroCount = tracker.ZeroCount;
+            profile.NegativeCount = tracker.NegativeCount;
+
+            int distinctTracked = tracker.Frequencies.Count;
+            profile.UniqueValuesCount = tracker.UniqueCapped ? (distinctTracked + 1) : distinctTracked;
+            int validValuesCount = totalRows - tracker.NullCount;
+            profile.UniquePercentage = validValuesCount > 0 ? Math.Round((double)profile.UniqueValuesCount / validValuesCount * 100, 2) : 0;
+
+            if (profile.NullPercentage > 30 || (profile.UniqueValuesCount <= 1 && validValuesCount > 0)) profile.HealthStatus = "Crítica";
+            else if (profile.NullPercentage > 5) profile.HealthStatus = "Advertencia";
+            else profile.HealthStatus = "Óptima";
+
+            // Guardar distribución para la interfaz
+            profile.DetectedIntegerCount = tracker.IntegerCount;
+            profile.DetectedDecimalCount = tracker.DecimalCount;
+            profile.DetectedDateCount = tracker.DateCount;
+            profile.DetectedTextCount = validValuesCount - tracker.IntegerCount - tracker.DecimalCount - tracker.DateCount;
+            if (profile.DetectedTextCount < 0) profile.DetectedTextCount = 0;
+
+            if (validValuesCount > 0)
+            {
+                double numPct = ((double)(tracker.IntegerCount + tracker.DecimalCount) / validValuesCount) * 100;
+                if (numPct >= 90.0) profile.ValidationRecommendation = "Alto porcentaje numérico — considerar conversión automática.";
+                else if (numPct >= 80.0) profile.ValidationRecommendation = "Porcentaje numérico moderado — revisar posibles conflictos antes de convertir.";
+                else profile.ValidationRecommendation = "Predomina Texto — no se recomienda conversión automática.";
+            }
+
+            if (distinctTracked > 0)
+            {
+                int emailHits = 0, rutHits = 0, ccHits = 0, mantisaHits = 0, dvHits = 0;
+                var sample = tracker.Frequencies.Keys.Take(500).ToList();
+
+                bool isRutName = RutNameRegex.IsMatch(profile.ColumnName);
+                bool isDvName = DvNameRegex.IsMatch(profile.ColumnName);
+
+                foreach (var val in sample)
+                {
+                    bool hasAt = val.Contains("@");
+                    bool hasDash = val.Contains("-");
+
+                    if (hasDash && val.Length >= 8 && val.Length <= 12 && RutCompletoRegex.IsMatch(val)) rutHits++;
+                    else if (hasAt && EmailRegex.IsMatch(val)) emailHits++;
+                    else if (val.Length >= 15 && val.Length <= 19 && (val.Contains(" ") || hasDash) && CreditCardRegex.IsMatch(val)) ccHits++;
+                    else
+                    {
+                        if (isRutName && val.Length >= 6 && val.Length <= 8 && double.TryParse(val, out double num) && num >= 100000 && num <= 99999999) mantisaHits++;
+                        if (isDvName && val.Length == 1 && DvValueRegex.IsMatch(val)) dvHits++;
+                    }
+                }
+
+                if (ccHits > 0) { profile.IsPII = true; profile.PIIType = "Tarjeta de Crédito"; }
+                else if (rutHits > sample.Count * 0.10) { profile.IsPII = true; profile.PIIType = "RUT Chileno Completo"; }
+                else if (emailHits > sample.Count * 0.10) { profile.IsPII = true; profile.PIIType = "Email"; }
+                else if (isRutName && mantisaHits > sample.Count * 0.50) { profile.IsPII = true; profile.PIIType = "RUT (Mantisa)"; }
+                else if (isDvName && dvHits > sample.Count * 0.50) { profile.IsPII = true; profile.PIIType = "RUT (Dígito Verificador)"; }
+            }
+
+            profile.TopValues = tracker.Frequencies.OrderByDescending(kvp => kvp.Value).Take(3).Select(kvp => new TopValueItem
+            {
+                Value = string.IsNullOrEmpty(kvp.Key) ? "(Vacío)" : kvp.Key,
+                Count = kvp.Value,
+                Percentage = validValuesCount > 0 ? Math.Round((double)kvp.Value / validValuesCount * 100, 2) : 0
+            }).ToList();
+
+            int numericTotal = tracker.IntegerCount + tracker.DecimalCount;
+            if (validValuesCount > 0 && numericTotal == validValuesCount && !profile.IsPII)
+            {
+                profile.InferredDataType = tracker.HasDecimals ? "Decimal" : "Entero";
+                string format = tracker.HasDecimals ? "N4" : "N0";
+
+                profile.MinValue = tracker.MinNum.ToString(format, CultureInfo.InvariantCulture);
+                profile.MaxValue = tracker.MaxNum.ToString(format, CultureInfo.InvariantCulture);
+                profile.Average = Math.Round(tracker.SumNum / validValuesCount, tracker.HasDecimals ? 4 : 2);
+            }
+            else if (validValuesCount > 0 && tracker.DateCount == validValuesCount)
+            {
+                profile.InferredDataType = "Fecha";
+                profile.MinValue = tracker.MinDate.ToString("yyyy-MM-dd");
+                profile.MaxValue = tracker.MaxDate.ToString("yyyy-MM-dd");
+            }
+            else
+            {
+                profile.InferredDataType = "Texto";
+                if (validValuesCount > 0)
+                {
+                    profile.MinValue = "Len: " + (tracker.MinLength == int.MaxValue ? 0 : tracker.MinLength).ToString();
+                    profile.MaxValue = "Len: " + (tracker.MaxLength == int.MinValue ? 0 : tracker.MaxLength).ToString();
+                }
+            }
+
+            return profile;
         }
 
         private bool TryParseLenientNumber(string s, out double value)
@@ -70,194 +309,114 @@ namespace NotebookValidator.Web.Services
             value = 0;
             if (string.IsNullOrWhiteSpace(s)) return false;
 
-            var v = s.Trim();
-            v = v.Replace("\u00A0", "");
-            v = v.Replace(" ", "");
-            v = v.Replace("$", "").Replace("€", "").Replace("£", "");
-            v = v.Replace("\"", "").Replace("'", "");
+            var v = s.Trim().Replace("\u00A0", "").Replace(" ", "").Replace("$", "").Replace("€", "").Replace("£", "").Replace("\"", "").Replace("'", "");
 
             if (Regex.IsMatch(v, @"[A-Za-z\u00C0-\u017F]"))
             {
                 var parenMatch = Regex.Match(v, @"^\((.*)\)$");
-                if (parenMatch.Success)
+                if (parenMatch.Success && TryParseLenientNumber(parenMatch.Groups[1].Value, out double innerVal))
                 {
-                    var inner = parenMatch.Groups[1].Value;
-                    if (TryParseLenientNumber(inner, out double innerVal))
-                    {
-                        value = -innerVal;
-                        return true;
-                    }
+                    value = -innerVal;
+                    return true;
                 }
                 return false;
             }
 
             int countDot = v.Count(c => c == '.');
             int countComma = v.Count(c => c == ',');
-
             string candidate = v;
 
             try
             {
-                if (countDot > 0 && countComma > 0)
-                {
-                    if (v.LastIndexOf(',') > v.LastIndexOf('.'))
-                    {
-                        candidate = v.Replace(".", "").Replace(",", ".");
-                    }
-                    else
-                    {
-                        candidate = v.Replace(",", "");
-                    }
-                }
-                else if (countComma > 0 && countDot == 0)
-                {
-                    if (countComma == 1 && Regex.IsMatch(v, @",\d{1,3}$"))
-                    {
-                        candidate = v.Replace(",", ".");
-                    }
-                    else
-                    {
-                        candidate = v.Replace(",", "");
-                    }
-                }
-                else if (countDot > 0 && countComma == 0)
-                {
-                    if (countDot == 1 && Regex.IsMatch(v, @"\.\d{1,3}$"))
-                    {
-                        candidate = v;
-                    }
-                    else
-                    {
-                        candidate = v.Replace(".", "");
-                    }
-                }
+                if (countDot > 0 && countComma > 0) candidate = v.LastIndexOf(',') > v.LastIndexOf('.') ? v.Replace(".", "").Replace(",", ".") : v.Replace(",", "");
+                else if (countComma > 0 && countDot == 0) candidate = (countComma == 1 && Regex.IsMatch(v, @",\d{1,3}$")) ? v.Replace(",", ".") : v.Replace(",", "");
+                else if (countDot > 0 && countComma == 0) candidate = (countDot == 1 && Regex.IsMatch(v, @"\.\d{1,3}$")) ? v : v.Replace(".", "");
 
-                if (double.TryParse(candidate, NumberStyles.Any, CultureInfo.InvariantCulture, out value))
-                {
-                    return true;
-                }
-
-                var alt = candidate.Replace(",", ".");
-                if (double.TryParse(alt, NumberStyles.Any, CultureInfo.InvariantCulture, out value))
-                {
-                    return true;
-                }
+                if (double.TryParse(candidate, NumberStyles.Any, CultureInfo.InvariantCulture, out value)) return true;
+                if (double.TryParse(candidate.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out value)) return true;
             }
-            catch
-            {
-                return false;
-            }
+            catch { return false; }
 
             return false;
         }
 
         public ColumnValidationResult ValidateTextColumn(string filePath, bool hasHeaders, string columnName, int sampleLimit = 5000, int mismatchSampleLimit = 100, string targetType = null)
         {
+            var result = new ColumnValidationResult { ColumnName = columnName, TotalSampled = 0 };
+
             using var stream = File.OpenRead(filePath);
             string extension = Path.GetExtension(filePath).ToLower();
             bool isFlatFile = extension == ".csv" || extension == ".txt" || extension == ".dat";
-            IExcelDataReader reader;
 
-            if (isFlatFile)
+            var configCsv = new ExcelReaderConfiguration() { AutodetectSeparators = new char[] { ',', ';', '\t', '|' } };
+            using var reader = isFlatFile ? ExcelReaderFactory.CreateCsvReader(stream, configCsv) : ExcelReaderFactory.CreateReader(stream);
+
+            int targetColumnIndex = -1;
+
+            if (hasHeaders && reader.Read())
             {
-                var configCsv = new ExcelReaderConfiguration() { AutodetectSeparators = new char[] { ',', ';', '\t', '|' } };
-                reader = ExcelReaderFactory.CreateCsvReader(stream, configCsv);
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    if (string.Equals(reader.GetValue(i)?.ToString() ?? $"Columna_{i + 1}", columnName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        targetColumnIndex = i;
+                        break;
+                    }
+                }
             }
             else
             {
-                reader = ExcelReaderFactory.CreateReader(stream);
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    if ($"Columna_{i + 1}" == columnName) { targetColumnIndex = i; break; }
+                }
             }
 
-            var ds = reader.AsDataSet(new ExcelDataSetConfiguration() { ConfigureDataTable = (_) => new ExcelDataTableConfiguration() { UseHeaderRow = hasHeaders } });
-            var dt = ds.Tables.Count > 0 ? ds.Tables[0] : new DataTable();
+            if (targetColumnIndex == -1) return result;
 
-            if (!hasHeaders && dt.Columns.Count > 0)
-                for (int i = 0; i < dt.Columns.Count; i++) dt.Columns[i].ColumnName = $"Columna_{i + 1}";
-
-            var result = new ColumnValidationResult { ColumnName = columnName, TotalSampled = 0 };
-
-            if (!dt.Columns.Contains(columnName)) return result;
-
-            var col = dt.Columns[columnName];
             int intCount = 0, decCount = 0, dateCount = 0, textCount = 0;
             var mismatches = new List<MismatchRow>();
             var sampleValues = new List<string>();
 
-            int rows = Math.Min(dt.Rows.Count, sampleLimit);
-            for (int i = 0; i < rows; i++)
+            int count = 0;
+            while (reader.Read() && count < sampleLimit)
             {
-                var raw = dt.Rows[i][col]?.ToString();
-                if (sampleValues.Count < 20)
-                {
-                    sampleValues.Add(raw ?? string.Empty);
-                }
+                count++;
+                var raw = reader.GetValue(targetColumnIndex)?.ToString();
 
-                if (string.IsNullOrEmpty(raw) || string.IsNullOrWhiteSpace(raw))
-                {
-                    textCount++;
-                    continue;
-                }
+                if (sampleValues.Count < 20) sampleValues.Add(raw ?? string.Empty);
+
+                if (string.IsNullOrWhiteSpace(raw)) { textCount++; continue; }
 
                 var v = raw.Trim();
 
-                if (DateTime.TryParse(v, out _))
-                {
-                    dateCount++;
-                }
+                if (DateTime.TryParse(v, out _)) dateCount++;
                 else if (TryParseLenientNumber(v, out double num))
                 {
-                    if (Math.Abs(num % 1) > double.Epsilon)
-                    {
-                        decCount++;
-                    }
-                    else
-                    {
-                        intCount++;
-                    }
+                    if (Math.Abs(num % 1) > double.Epsilon) decCount++;
+                    else intCount++;
                 }
-                else
-                {
-                    textCount++;
-                }
+                else textCount++;
 
-                // SI SE PIDE UN TARGET TYPE, BUSCAMOS LOS QUE "NO" COINCIDEN CON ÉL
                 if (!string.IsNullOrEmpty(targetType) && mismatches.Count < mismatchSampleLimit)
                 {
                     bool fails = false;
                     string reason = string.Empty;
 
-                    if (targetType == "Entero")
+                    if (targetType == "Entero" && (!TryParseLenientNumber(v, out double d) || Math.Abs(d % 1) > double.Epsilon))
                     {
-                        // Falla si no se puede convertir a número, o si el residuo decimal no es 0
-                        if (!TryParseLenientNumber(v, out double d) || Math.Abs(d % 1) > double.Epsilon)
-                        {
-                            fails = true;
-                            reason = "No es un número entero";
-                        }
+                        fails = true; reason = "No es un número entero";
                     }
-                    else if (targetType == "Decimal")
+                    else if (targetType == "Decimal" && !TryParseLenientNumber(v, out _))
                     {
-                        // Falla si no se puede parsear como número de ninguna forma
-                        if (!TryParseLenientNumber(v, out _))
-                        {
-                            fails = true;
-                            reason = "No es un valor numérico";
-                        }
+                        fails = true; reason = "No es un valor numérico";
                     }
-                    else if (targetType == "Fecha")
+                    else if (targetType == "Fecha" && !DateTime.TryParse(v, out _))
                     {
-                        // Falla si no se puede parsear como fecha
-                        if (!DateTime.TryParse(v, out _))
-                        {
-                            fails = true;
-                            reason = "Formato de fecha inválido";
-                        }
+                        fails = true; reason = "Formato de fecha inválido";
                     }
 
-                    if (fails)
-                    {
-                        mismatches.Add(new MismatchRow { RowIndex = i + 1, Value = v, Reason = reason });
-                    }
+                    if (fails) mismatches.Add(new MismatchRow { RowIndex = count + (hasHeaders ? 1 : 0), Value = v, Reason = reason });
                 }
             }
 
@@ -274,18 +433,9 @@ namespace NotebookValidator.Web.Services
             result.TextPercentage = total > 0 ? Math.Round((double)textCount / total * 100, 2) : 0;
 
             result.IsLikelyNumeric = (result.IntegerPercentage + result.DecimalPercentage) >= 90.0;
-            if (result.IsLikelyNumeric)
-            {
-                result.Recommendation = "Alto porcentaje numérico — considerar convertir la columna a Numérico.";
-            }
-            else if ((result.IntegerPercentage + result.DecimalPercentage) >= 80.0)
-            {
-                result.Recommendation = "Porcentaje numérico moderado — revisar los valores que no coinciden antes de convertir.";
-            }
-            else
-            {
-                result.Recommendation = "Predomina Texto — no se recomienda conversión automática.";
-            }
+            result.Recommendation = result.IsLikelyNumeric ? "Alto porcentaje numérico — considerar convertir la columna a Numérico."
+                                  : (result.IntegerPercentage + result.DecimalPercentage >= 80.0 ? "Porcentaje numérico moderado — revisar los valores que no coinciden antes de convertir."
+                                  : "Predomina Texto — no se recomienda conversión automática.");
 
             result.MismatchRows = mismatches;
             result.SampleValues = sampleValues;
@@ -295,192 +445,80 @@ namespace NotebookValidator.Web.Services
 
         public List<DuplicateGroup> FindDuplicateGroups(string filePath, bool hasHeaders, string[] keyColumns, bool fullRow)
         {
+            var result = new List<DuplicateGroup>();
+
             using var stream = File.OpenRead(filePath);
             string extension = Path.GetExtension(filePath).ToLower();
             bool isFlatFile = extension == ".csv" || extension == ".txt" || extension == ".dat";
-            IExcelDataReader reader;
 
-            if (isFlatFile)
+            var configCsv = new ExcelReaderConfiguration() { AutodetectSeparators = new char[] { ',', ';', '\t', '|' } };
+            using var reader = isFlatFile ? ExcelReaderFactory.CreateCsvReader(stream, configCsv) : ExcelReaderFactory.CreateReader(stream);
+
+            int fieldCount = reader.FieldCount;
+            if (fieldCount == 0) return result;
+
+            List<int> compareIndexes = new List<int>();
+
+            if (hasHeaders && reader.Read())
             {
-                var configCsv = new ExcelReaderConfiguration() { AutodetectSeparators = new char[] { ',', ';', '\t', '|' } };
-                reader = ExcelReaderFactory.CreateCsvReader(stream, configCsv);
-            }
-            else
-            {
-                reader = ExcelReaderFactory.CreateReader(stream);
-            }
-
-            var ds = reader.AsDataSet(new ExcelDataSetConfiguration() { ConfigureDataTable = (_) => new ExcelDataTableConfiguration() { UseHeaderRow = hasHeaders } });
-            var dt = ds.Tables.Count > 0 ? ds.Tables[0] : new DataTable();
-
-            if (!hasHeaders && dt.Columns.Count > 0)
-                for (int i = 0; i < dt.Columns.Count; i++) dt.Columns[i].ColumnName = $"Columna_{i + 1}";
-
-            var result = new List<DuplicateGroup>();
-
-            if (dt.Rows.Count == 0) return result;
-
-            List<int> compareIndexes;
-            if (fullRow || keyColumns == null || keyColumns.Length == 0)
-            {
-                compareIndexes = Enumerable.Range(0, dt.Columns.Count).ToList();
-            }
-            else
-            {
-                compareIndexes = new List<int>();
-                foreach (var colName in keyColumns)
+                if (fullRow || keyColumns == null || keyColumns.Length == 0)
                 {
-                    var found = dt.Columns.Cast<DataColumn>().FirstOrDefault(c => string.Equals(c.ColumnName, colName, StringComparison.OrdinalIgnoreCase));
-                    if (found != null) compareIndexes.Add(found.Ordinal);
-                }
-
-                if (!compareIndexes.Any()) compareIndexes = Enumerable.Range(0, dt.Columns.Count).ToList();
-            }
-
-            var groups = new Dictionary<string, DuplicateGroup>(StringComparer.Ordinal);
-            for (int rowIndex = 0; rowIndex < dt.Rows.Count; rowIndex++)
-            {
-                var row = dt.Rows[rowIndex];
-                var parts = compareIndexes.Select(i => row[i]?.ToString() ?? string.Empty).ToArray();
-                var key = string.Join("\u001F", parts);
-
-                if (!groups.TryGetValue(key, out DuplicateGroup group))
-                {
-                    group = new DuplicateGroup
-                    {
-                        Key = key,
-                        Count = 0,
-                        RowIndices = new List<int>(),
-                        SampleDisplay = string.Join(" | ", parts.Select(p => string.IsNullOrEmpty(p) ? "(vacío)" : p))
-                    };
-                    groups[key] = group;
-                }
-
-                group.Count++;
-                group.RowIndices.Add(rowIndex + 1);
-            }
-
-            result = groups.Values.Where(g => g.Count > 1).OrderByDescending(g => g.Count).ToList();
-            return result;
-        }
-
-        private ColumnProfile AnalyzeColumn(DataTable dt, DataColumn column, int totalRows)
-        {
-            var profile = new ColumnProfile { ColumnName = column.ColumnName };
-            var values = new List<string>();
-            var numericValues = new List<double>();
-            int nullCount = 0, zeroCount = 0, negativeCount = 0, whitespaceCount = 0;
-
-            bool hasDecimals = false;
-
-            foreach (DataRow row in dt.Rows)
-            {
-                var rawVal = row[column]?.ToString();
-
-                if (string.IsNullOrEmpty(rawVal))
-                {
-                    nullCount++;
-                }
-                else if (string.IsNullOrWhiteSpace(rawVal))
-                {
-                    nullCount++;
-                    whitespaceCount++;
+                    compareIndexes = Enumerable.Range(0, fieldCount).ToList();
                 }
                 else
                 {
-                    var val = rawVal.Trim();
-                    values.Add(val);
-                    if (double.TryParse(val.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double num))
+                    for (int i = 0; i < fieldCount; i++)
                     {
-                        numericValues.Add(num);
-                        if (num == 0) zeroCount++;
-                        else if (num < 0) negativeCount++;
-
-                        if (Math.Abs(num % 1) > double.Epsilon)
-                        {
-                            hasDecimals = true;
-                        }
+                        var colName = reader.GetValue(i)?.ToString() ?? $"Columna_{i + 1}";
+                        if (keyColumns.Contains(colName, StringComparer.OrdinalIgnoreCase)) compareIndexes.Add(i);
                     }
                 }
-            }
-
-            profile.NullOrEmptyCount = nullCount;
-            profile.NullPercentage = Math.Round((double)nullCount / totalRows * 100, 2);
-            profile.WhitespaceCount = whitespaceCount;
-            profile.ZeroCount = zeroCount;
-            profile.NegativeCount = negativeCount;
-
-            var uniqueValues = values.GroupBy(v => v).ToList();
-            profile.UniqueValuesCount = uniqueValues.Count;
-            profile.UniquePercentage = values.Any() ? Math.Round((double)uniqueValues.Count / values.Count * 100, 2) : 0;
-
-            if (profile.NullPercentage > 30 || (profile.UniqueValuesCount <= 1 && values.Any())) profile.HealthStatus = "Crítica";
-            else if (profile.NullPercentage > 5) profile.HealthStatus = "Advertencia";
-            else profile.HealthStatus = "Óptima";
-
-            if (uniqueValues.Any())
-            {
-                int emailHits = 0, rutHits = 0, ccHits = 0;
-                int mantisaHits = 0, dvHits = 0;
-
-                var sample = uniqueValues.Take(500).Select(g => g.Key).ToList();
-
-                bool isRutName = RutNameRegex.IsMatch(profile.ColumnName);
-                bool isDvName = DvNameRegex.IsMatch(profile.ColumnName);
-
-                foreach (var val in sample)
-                {
-                    if (RutCompletoRegex.IsMatch(val)) rutHits++;
-                    else if (EmailRegex.IsMatch(val)) emailHits++;
-                    else if (CreditCardRegex.IsMatch(val)) ccHits++;
-                    else
-                    {
-                        if (isRutName && double.TryParse(val, out double num) && num >= 100000 && num <= 99999999) mantisaHits++;
-                        if (isDvName && DvValueRegex.IsMatch(val)) dvHits++;
-                    }
-                }
-
-                if (ccHits > 0) { profile.IsPII = true; profile.PIIType = "Tarjeta de Crédito"; }
-                else if (rutHits > sample.Count * 0.10) { profile.IsPII = true; profile.PIIType = "RUT Chileno Completo"; }
-                else if (emailHits > sample.Count * 0.10) { profile.IsPII = true; profile.PIIType = "Email"; }
-                else if (isRutName && mantisaHits > sample.Count * 0.50) { profile.IsPII = true; profile.PIIType = "RUT (Mantisa)"; }
-                else if (isDvName && dvHits > sample.Count * 0.50) { profile.IsPII = true; profile.PIIType = "RUT (Dígito Verificador)"; }
-            }
-
-            profile.TopValues = uniqueValues.OrderByDescending(g => g.Count()).Take(3).Select(g => new TopValueItem
-            {
-                Value = string.IsNullOrEmpty(g.Key) ? "(Vacío)" : g.Key,
-                Count = g.Count(),
-                Percentage = values.Any() ? Math.Round((double)g.Count() / values.Count * 100, 2) : 0
-            }).ToList();
-
-            if (values.Count > 0 && numericValues.Count == values.Count && !profile.IsPII)
-            {
-                profile.InferredDataType = hasDecimals ? "Decimal" : "Entero";
-                string format = hasDecimals ? "N4" : "N0";
-
-                profile.MinValue = numericValues.Min().ToString(format, CultureInfo.InvariantCulture);
-                profile.MaxValue = numericValues.Max().ToString(format, CultureInfo.InvariantCulture);
-                profile.Average = Math.Round(numericValues.Average(), hasDecimals ? 4 : 2);
-            }
-            else if (values.Count > 0 && values.All(v => DateTime.TryParse(v, out _)))
-            {
-                profile.InferredDataType = "Fecha";
-                var dates = values.Select(v => DateTime.Parse(v)).ToList();
-                profile.MinValue = dates.Min().ToString("yyyy-MM-dd");
-                profile.MaxValue = dates.Max().ToString("yyyy-MM-dd");
             }
             else
             {
-                profile.InferredDataType = "Texto";
-                if (values.Any())
+                if (fullRow || keyColumns == null || keyColumns.Length == 0) compareIndexes = Enumerable.Range(0, fieldCount).ToList();
+                else
                 {
-                    profile.MinValue = "Len: " + values.Min(v => v.Length).ToString();
-                    profile.MaxValue = "Len: " + values.Max(v => v.Length).ToString();
+                    for (int i = 0; i < fieldCount; i++)
+                        if (keyColumns.Contains($"Columna_{i + 1}")) compareIndexes.Add(i);
                 }
             }
 
-            return profile;
+            if (!compareIndexes.Any()) compareIndexes = Enumerable.Range(0, fieldCount).ToList();
+
+            var seenOnce = new Dictionary<string, int>(StringComparer.Ordinal);
+            var duplicates = new Dictionary<string, DuplicateGroup>(StringComparer.Ordinal);
+
+            int rowIndex = hasHeaders ? 1 : 0;
+            while (reader.Read())
+            {
+                rowIndex++;
+                var parts = compareIndexes.Select(i => reader.GetValue(i)?.ToString() ?? string.Empty).ToArray();
+                var key = string.Join("\u001F", parts);
+
+                if (duplicates.TryGetValue(key, out var grp))
+                {
+                    grp.Count++;
+                    grp.RowIndices.Add(rowIndex);
+                }
+                else if (seenOnce.TryGetValue(key, out int firstIndex))
+                {
+                    seenOnce.Remove(key);
+                    duplicates[key] = new DuplicateGroup
+                    {
+                        Key = key,
+                        Count = 2,
+                        RowIndices = new List<int> { firstIndex, rowIndex },
+                        SampleDisplay = string.Join(" | ", parts.Select(p => string.IsNullOrEmpty(p) ? "(vacío)" : p))
+                    };
+                }
+                else
+                {
+                    seenOnce[key] = rowIndex;
+                }
+            }
+
+            return duplicates.Values.OrderByDescending(g => g.Count).ToList();
         }
     }
 }

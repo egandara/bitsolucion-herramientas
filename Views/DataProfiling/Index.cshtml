@@ -3,7 +3,6 @@
 }
 
 <style>
-    /* Fondo borroso y bloqueo de pantalla */
     #uploadOverlay {
         position: fixed;
         top: 0;
@@ -12,7 +11,7 @@
         height: 100%;
         background: rgba(0, 0, 0, 0.8);
         backdrop-filter: blur(10px);
-        display: none; /* Oculto por defecto */
+        display: none;
         z-index: 9999;
         justify-content: center;
         align-items: center;
@@ -31,7 +30,6 @@
         animation: pulse-container 3s infinite ease-in-out;
     }
 
-    /* Animación de pulsación para indicar actividad */
     @@keyframes pulse-container {
         0% {
             transform: scale(1);
@@ -66,7 +64,8 @@
 
         <div class="progress mb-3" style="height: 30px; background-color: rgba(255,255,255,0.1);">
             <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning text-dark fw-bold"
-                 role="progressbar" style="width: 0%; transition: width 0.4s ease;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                 role="progressbar" style="width: 0%; transition: width 0.4s ease;"
+                 aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
                 0%
             </div>
         </div>
@@ -76,7 +75,7 @@
             <span id="timeLabel" class="small text-muted-light">Calculando tiempo...</span>
         </div>
 
-        <div id="analysisDetail" class="mt-3 p-2 rounded small style="background: rgba(0,0,0,0.2); display:none;">
+        <div id="analysisDetail" class="mt-3 p-2 rounded small" style="background: rgba(0,0,0,0.2); display:none;">
             <span class="spinner-grow spinner-grow-sm text-warning me-2"></span>
             <span id="dynamicMessage">Iniciando procesamiento...</span>
         </div>
@@ -86,7 +85,7 @@
 <div class="container mt-4">
     <div class="text-center mb-5">
         <h1 class="display-5 fw-bold text-white">Perfilamiento de Datos</h1>
-        <p class="form-check-label">Sube un archivo pesado para obtener una radiografía automática y detección de datos sensibles.</p>
+        <p class="form-check-label">Sube un archivo para obtener una radiografía automática y detección de datos sensibles.</p>
     </div>
 
     <div class="row justify-content-center">
@@ -100,14 +99,12 @@
                         <div class="mb-4">
                             <label for="archivo" class="form-label fw-bold">Seleccionar Archivo:</label>
                             <input class="form-control bg-dark text-white border-secondary" type="file" id="archivo" name="archivo" accept=".xlsx, .xls, .csv, .txt" required>
-                            <div class="form-check-label mt-2">Capacidad máxima probada: 2 GB (900 Mbps Fibra).</div>
+                            <div class="form-check-label mt-2">Capacidad máxima probada: 2 GB.</div>
                         </div>
 
                         <div class="form-check form-switch mb-4">
                             <input class="form-check-input" type="checkbox" id="tieneEncabezados" name="tieneEncabezados" value="true" checked>
-                            <label class="form-check-label" for="tieneEncabezados">
-                                El archivo contiene encabezados en la primera fila
-                            </label>
+                            <label class="form-check-label" for="tieneEncabezados">El archivo contiene encabezados en la primera fila</label>
                         </div>
 
                         <div class="d-grid">
@@ -123,16 +120,16 @@
 </div>
 
 @section Scripts {
-    <script>
-        document.getElementById('uploadForm').onsubmit = function (e) {
-            e.preventDefault();
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
 
+    <script>
+        document.getElementById('uploadForm').onsubmit = async function (e) {
+            e.preventDefault();
             const fileInput = document.getElementById('archivo');
             if (fileInput.files.length === 0) return;
 
-            const form = e.target;
-            const formData = new FormData(form);
-            const xhr = new XMLHttpRequest();
+            sessionStorage.removeItem('uploadDuration');
+            let uploadFinished = false;
 
             const overlay = document.getElementById('uploadOverlay');
             const progressBar = document.getElementById('progressBar');
@@ -142,10 +139,46 @@
             const dynamicMessage = document.getElementById('dynamicMessage');
             const analysisDetail = document.getElementById('analysisDetail');
 
-            let startTime = Date.now();
-            let analysisInterval;
+            // 1. INICIALIZAR WEBSOCKETS (SIGNALR)
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/profilingHub")
+                .build();
 
-            // PASO 1: Monitoreo de la subida de archivos
+            // Escuchar mensajes desde el servidor
+            connection.on("ReceiveProgress", function (message) {
+                dynamicMessage.innerText = message;
+            });
+
+            connection.on("ProcessingComplete", function (jobId) {
+                dynamicMessage.innerText = "¡Procesamiento exitoso! Redirigiendo...";
+                // Detener conexión y redirigir
+                connection.stop().then(() => {
+                    window.location.href = '@Url.Action("VerResultados", "DataProfiling")?jobId=' + jobId;
+                });
+            });
+
+            connection.on("ProcessingError", function (errorMessage) {
+                overlay.style.display = 'none';
+                alert("Error en el análisis: " + errorMessage);
+                connection.stop();
+            });
+
+            try {
+                await connection.start();
+            } catch (err) {
+                alert("Error al conectar con el servidor en tiempo real.");
+                return;
+            }
+
+            // 2. CONFIGURAR LA SUBIDA DEL ARCHIVO
+            const form = e.target;
+            const formData = new FormData(form);
+            // Inyectar el ID de la conexión WebSocket para que el servidor sepa a quién avisarle
+            formData.append("connectionId", connection.connectionId);
+
+            const xhr = new XMLHttpRequest();
+            let startTime = Date.now();
+
             xhr.upload.addEventListener('progress', function (event) {
                 if (event.lengthComputable) {
                     overlay.style.display = 'flex';
@@ -167,48 +200,30 @@
                         statusLabel.innerHTML = '<i class="bi bi-cloud-upload-fill me-2"></i> Paso 1: Subiendo archivo...';
                         timeLabel.innerHTML = `Restante: aprox. ${remainingTime} seg.`;
                     } else {
-                        // PASO 2: Inicia el procesamiento en el servidor
+                        if (!uploadFinished) {
+                            let totalUploadTime = (Date.now() - startTime) / 1000;
+                            sessionStorage.setItem('uploadDuration', totalUploadTime.toFixed(1));
+                            uploadFinished = true;
+                        }
+
                         statusLabel.innerHTML = '<i class="bi bi-gear-wide-animated spin-slow me-2 text-warning"></i> Paso 2: Analizando datos...';
                         progressBar.classList.remove('bg-warning');
                         progressBar.classList.add('bg-success');
                         progressBar.innerHTML = "¡SUBIDA EXITOSA!";
-                        timeLabel.innerHTML = "Procesando registros en el servidor...";
-
-                        // Mostrar mensajes dinámicos para archivos grandes
+                        timeLabel.innerHTML = "Procesando registros en el servidor. Por favor espere...";
                         analysisDetail.style.display = 'block';
-                        const mensajes = [
-                            "Abriendo contenedor de datos...",
-                            "Leyendo filas y columnas...",
-                            "Identificando tipos de datos...",
-                            "Buscando datos sensibles (PII)...",
-                            "Analizando duplicados...",
-                            "Calculando estadísticas finales...",
-                            "Generando reporte visual..."
-                        ];
-
-                        let idx = 0;
-                        analysisInterval = setInterval(() => {
-                            if (idx < mensajes.length) {
-                                dynamicMessage.innerText = mensajes[idx];
-                                idx++;
-                            }
-                        }, 5000);
                     }
                 }
             });
 
             xhr.onreadystatechange = function () {
                 if (xhr.readyState === XMLHttpRequest.DONE) {
-                    if (analysisInterval) clearInterval(analysisInterval);
-
-                    if (xhr.status === 200) {
-                        document.open();
-                        document.write(xhr.responseText);
-                        document.close();
-                    } else {
+                    if (xhr.status !== 200) {
                         overlay.style.display = 'none';
-                        alert("Error en el servidor. Verifica el log o el tamaño del archivo.");
+                        alert("Error en la subida del archivo al servidor.");
+                        connection.stop();
                     }
+                    // Si es 200 OK, no hacemos nada más, dejamos que SignalR se encargue de la redirección.
                 }
             };
 

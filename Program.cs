@@ -51,6 +51,8 @@ builder.Services.Configure<FormOptions>(options =>
     options.MemoryBufferThreshold = int.MaxValue;
 });
 
+builder.Services.AddSignalR(); // Encender WebSockets
+builder.Services.AddMemoryCache(); // Encender memoria temporal
 builder.Services.AddHostedService<EmailBotBackgroundService>();
 builder.Services.AddScoped<DataProfilingService>();
 builder.Services.AddControllersWithViews();
@@ -96,6 +98,7 @@ app.UseAuthorization();
 app.UseMiddleware<ForcePasswordChangeMiddleware>();
 app.UseSession();
 
+app.MapHub<NotebookValidator.Web.Hubs.ProfilingHub>("/profilingHub");
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
