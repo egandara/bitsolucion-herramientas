@@ -3,32 +3,116 @@
     ViewData["Title"] = "Resultados del Perfilamiento";
 }
 
+<div id="antiForgeryToken" style="display:none;">
+    @Html.AntiForgeryToken()
+</div>
+
 <style>
     .text-muted-light {
         color: #adb5bd !important;
     }
 
     .bg-dark-subtle {
-        background-color: rgba(255, 255, 255, 0.03) !important;
+        background-color: rgba(255,255,255,0.03) !important;
     }
 
     .pulse-danger {
-        box-shadow: 0 0 0 rgba(220, 53, 69, 0.4);
+        box-shadow: 0 0 0 rgba(220,53,69,0.4);
         animation: pulse 2s infinite;
     }
 
     @@keyframes pulse {
-        0% {
-            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+        0%
+
+    {
+        box-shadow: 0 0 0 0 rgba(220,53,69,0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 6px rgba(220,53,69,0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(220,53,69,0);
+    }
+
+    }
+
+    .pill {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        margin-right: 0.35rem;
+        margin-bottom: 0.35rem;
+        border-radius: 999px;
+        background: rgba(255,193,7,0.15);
+        color: #ffc107;
+        font-size: 0.85rem;
+        border: 1px solid rgba(255,193,7,0.25);
+    }
+
+        .pill .remove {
+            margin-left: 0.4rem;
+            cursor: pointer;
+            color: #212529;
+            opacity: 0.8;
         }
 
-        70% {
-            box-shadow: 0 0 0 6px rgba(220, 53, 69, 0);
+    .columns-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 0.625rem;
+        max-height: 220px;
+        overflow: auto;
+        padding: 0.25rem;
+    }
+
+    .col-item {
+        white-space: nowrap;
+    }
+
+    .controls-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        width: 100%;
+    }
+
+        .controls-row .form-control {
+            flex: 1 1 auto;
+            min-width: 160px;
         }
 
-        100% {
-            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
-        }
+    .btn-duplicate {
+        min-width: 170px;
+    }
+
+    .modal-content.bg-dark {
+        border-color: rgba(255,255,255,0.08);
+    }
+
+    .duplicates-list {
+        max-height: 60vh;
+        overflow: auto;
+        padding-right: 0.5rem;
+    }
+
+    @@media (max-width:768px) {
+        .columns-grid
+
+    {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    }
+
+    .controls-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn-duplicate {
+        width: 100%;
+        min-width: auto;
+    }
+
     }
 </style>
 
@@ -65,23 +149,85 @@
         </div>
     </div>
 
+    <h4 class="text-white mb-3 border-bottom border-warning pb-2">Búsqueda de Duplicados</h4>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-dark text-white border-secondary p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong>Opcional: Buscar filas duplicadas</strong>
+                    <small class="text-muted-light">Selecciona una o más columnas como llave principal o marca "Comparar filas completas".</small>
+                </div>
+
+                <form asp-action="FindDuplicates" asp-controller="DataProfiling" method="post" class="row g-2">
+                    <input type="hidden" name="tempFileName" value="@Model.TempFileName" />
+                    <input type="hidden" name="hasHeaders" value="@Model.HasHeaders.ToString().ToLower()" />
+
+                    <div class="col-12">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="fullRow" name="fullRow" value="true" />
+                            <label class="form-check-label" for="fullRow">Comparar filas completas</label>
+                        </div>
+
+                        <label class="form-label text-muted-light">Seleccionar Columnas (si no seleccionas ninguna se compararán todas):</label>
+
+                        <div class="controls-row mb-2">
+                            <input id="columnSearch" class="form-control form-control-sm" placeholder="Buscar columna..." aria-label="Buscar columna" />
+                            <button type="button" id="selectAllBtn" class="btn btn-sm btn-outline-light">Seleccionar todo</button>
+                            <button type="button" id="clearAllBtn" class="btn btn-sm btn-outline-light">Limpiar</button>
+                            <button type="submit" class="btn btn-warning btn-duplicate">Buscar Duplicados</button>
+                        </div>
+
+                        <div id="selectedPills" class="mb-2" aria-live="polite"></div>
+
+                        <div id="columnsContainer" class="columns-grid">
+                            @for (int i = 0; i < Model.ColumnProfiles.Count; i++)
+                            {
+                                var col = Model.ColumnProfiles[i];
+                                <div class="col-item">
+                                    <div class="form-check">
+                                        <input class="form-check-input key-col-checkbox" type="checkbox" id="col_@i" name="keyColumns" value="@col.ColumnName" />
+                                        <label class="form-check-label text-truncate" for="col_@i" title="@col.ColumnName">@col.ColumnName</label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </form>
+
+                @if (Model.DuplicateGroups != null && Model.DuplicateGroups.Any())
+                {
+                    <div class="mt-3">
+                        <div class="alert bg-dark border-warning text-white d-flex justify-content-between align-items-center mb-0">
+                            <div>
+                                <strong class="text-warning me-2">@Model.DuplicateGroups.Sum(g => g.Count)</strong> filas con duplicados en <strong class="text-warning">@Model.DuplicateGroups.Count()</strong> grupos.
+                            </div>
+                            <div>
+                                <button id="openDuplicatesBtn" type="button" class="btn btn-outline-warning btn-sm me-2" data-bs-toggle="modal" data-bs-target="#duplicatesModal">Ver Duplicados</button>
+                                <button id="openDuplicatesModalAuto" type="button" class="d-none" data-bs-toggle="modal" data-bs-target="#duplicatesModal">Abrir</button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
     <h4 class="text-white mb-3 border-bottom border-warning pb-2">Análisis de Columnas</h4>
 
-    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4 mb-4">
         @foreach (var col in Model.ColumnProfiles)
         {
             <div class="col">
                 <div class="card bg-dark text-white border-secondary h-100 shadow-sm position-relative @(col.IsPII ? "border-danger" : "")">
-
                     <div class="card-header border-secondary d-flex justify-content-between align-items-center bg-dark-subtle">
                         <h5 class="mb-0 text-truncate" title="@col.ColumnName" style="max-width: 50%;">@col.ColumnName</h5>
-                        <div>
+                        <div class="d-flex align-items-center">
                             @{
-                                // --- NUEVO: Lógica de colores para Entero vs Decimal ---
                                 var badgeClass = "";
                                 var badgeStyle = "";
                                 if (col.InferredDataType == "Entero") { badgeClass = "bg-primary"; }
-                                else if (col.InferredDataType == "Decimal") { badgeClass = "text-white"; badgeStyle = "background-color: #6f42c1;"; } // Morado elegante
+                                else if (col.InferredDataType == "Decimal") { badgeClass = "text-white"; badgeStyle = "background-color: #6f42c1;"; }
                                 else if (col.InferredDataType == "Fecha") { badgeClass = "bg-success"; }
                                 else { badgeClass = "bg-info text-dark"; }
 
@@ -94,11 +240,19 @@
                     </div>
 
                     <div class="card-body">
-
                         @if (col.IsPII)
                         {
                             <div class="alert alert-danger bg-danger text-white border-0 py-2 mb-3 pulse-danger text-center fw-bold" role="alert" style="font-size: 0.85rem;">
                                 <i class="bi bi-shield-lock-fill me-1"></i> DATO SENSIBLE (PII): @col.PIIType
+                            </div>
+                        }
+
+                        @if (col.InferredDataType == "Texto")
+                        {
+                            <div class="mb-3 text-end">
+                                <button type="button" class="btn btn-outline-warning btn-sm validate-col-btn" data-col="@col.ColumnName" data-temp="@Model.TempFileName" data-headers="@(Model.HasHeaders ? "true" : "false")">
+                                    <i class="bi bi-wrench-adjustable me-1"></i> Validar conversión
+                                </button>
                             </div>
                         }
 
@@ -145,9 +299,7 @@
                             }
                             else
                             {
-                                <div class="col-12 text-center text-muted-light small fst-italic">
-                                    No hay alertas específicas para fechas.
-                                </div>
+                                <div class="col-12 text-center text-muted-light small fst-italic">No hay alertas específicas para fechas.</div>
                             }
                         </div>
 
@@ -172,7 +324,6 @@
                         {
                             <div class="bg-black p-3 rounded">
                                 <div class="text-muted-light mb-2" style="font-size: 0.75rem;"><i class="bi bi-bar-chart-line text-warning me-1"></i> TOP VALORES</div>
-
                                 @foreach (var val in col.TopValues)
                                 {
                                     <div class="mb-2">
@@ -192,4 +343,198 @@
             </div>
         }
     </div>
+
+    @if (Model.DuplicateGroups != null && Model.DuplicateGroups.Any())
+    {
+        <div class="modal fade" id="duplicatesModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-centered">
+                <div class="modal-content bg-dark text-white">
+                    <div class="modal-header border-secondary">
+                        <h5 class="modal-title text-warning"><i class="bi bi-exclamation-triangle me-2"></i> Filas Duplicadas (@Model.DuplicateGroups.Sum(g => g.Count))</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3 text-muted-light">Se encontraron <strong class="text-warning">@Model.DuplicateGroups.Sum(g => g.Count)</strong> filas dentro de <strong class="text-warning">@Model.DuplicateGroups.Count()</strong> grupos. Puedes revisar los grupos abajo.</div>
+                        <div class="duplicates-list">
+                            <div class="row g-3">
+                                @foreach (var grp in Model.DuplicateGroups)
+                                {
+                                    <div class="col-md-6">
+                                        <div class="card bg-dark border-danger">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                                    <div>
+                                                        <h6 class="mb-0 text-truncate" title="@grp.SampleDisplay">Clave: @grp.SampleDisplay</h6>
+                                                        <small class="text-muted-light">Ocurrencias: <strong class="text-warning">@grp.Count</strong></small>
+                                                    </div>
+                                                    <div class="text-end small text-muted-light">
+                                                        <div>Filas: @string.Join(", ", grp.RowIndices.Take(10)) @if (grp.RowIndices.Count > 10) {
+                                                        <text>... (@(grp.RowIndices.Count) filas)</text>
+                                                    }
+    </div>
+                                                </div>
+                                            </div>
+                                            <div class="text-muted-light small fst-italic">Muestra de valores: @grp.SampleDisplay</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
+                    <button id="exportDuplicatesBtn" type="button" class="btn btn-warning">Exportar CSV</button>
+                </div>
+            </div>
+        </div>
+    </div>
+        }
 </div>
+
+<div class="modal fade" id="validateColumnModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content bg-dark text-white border-warning">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-warning"><i class="bi bi-wrench-adjustable me-2"></i> Análisis de Conversión</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="validationSummary" class="mb-3 p-3 bg-dark-subtle rounded border border-secondary"></div>
+                <div id="validationAdvice" class="alert alert-info py-2" style="font-size: 0.9rem;"></div>
+
+                <div class="mb-3">
+                    <label class="form-label small text-muted-light">Probar compatibilidad con:</label>
+                    <div class="d-flex gap-2">
+                        <button id="simToInteger" class="btn btn-sm btn-outline-primary">Entero</button>
+                        <button id="simToDecimal" class="btn btn-sm btn-outline-info">Decimal</button>
+                        <button id="simToDate" class="btn btn-sm btn-outline-success">Fecha</button>
+                    </div>
+                </div>
+
+                <h6 class="text-warning mb-2">Muestra de conflictos (Mismatches):</h6>
+                <div id="validationMismatches" style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
+                    <div class="text-muted-light small">Selecciona una opción arriba para buscar valores que no cumplan con el formato.</div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const antiTokenInput = document.querySelector('#antiForgeryToken input[name="__RequestVerificationToken"]');
+            const token = antiTokenInput ? antiTokenInput.value : '';
+
+                    // Abrir modal de duplicados automáticamente si existe en la página
+        const autoBtn = document.getElementById('openDuplicatesModalAuto');
+        if (autoBtn) autoBtn.click();
+
+            function postForm(url, data) {
+                const params = new URLSearchParams();
+                for (const k in data) {
+                    if (data[k] === null || typeof data[k] === 'undefined') continue;
+                    params.append(k, String(data[k]));
+                }
+
+                return fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                        'RequestVerificationToken': token
+                    },
+                    body: params.toString()
+                }).then(r => {
+                    if (!r.ok) {
+                        return r.text().then(t => { throw new Error('Error en la petición: ' + (t || r.statusText || r.status)); });
+                    }
+                    return r.json();
+                });
+            }
+
+            document.querySelectorAll('.validate-col-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const columnName = this.getAttribute('data-col');
+                    const temp = this.getAttribute('data-temp');
+                    const hasHeaders = this.getAttribute('data-headers') === 'true';
+
+                    // Reseteamos el modal antes de abrirlo
+                    document.getElementById('validationMismatches').innerHTML = '<div class="text-muted-light small">Selecciona una opción arriba para buscar valores que no cumplan con el formato.</div>';
+                    document.getElementById('validationAdvice').className = "alert alert-info py-2";
+                    document.getElementById('validationAdvice').innerHTML = "Cargando análisis general...";
+
+                    postForm('@Url.Action("ValidateTextColumn", "DataProfiling")', { tempFileName: temp, columnName: columnName, hasHeaders: hasHeaders })
+                        .then(function (res) {
+                            showValidationModal(columnName, temp, hasHeaders, res);
+                        })
+                        .catch(function (err) {
+                            alert('Error al validar la columna: ' + err.message);
+                        });
+                });
+            });
+
+            function showValidationModal(columnName, temp, hasHeaders, data) {
+                const modalEl = document.getElementById('validateColumnModal');
+                const summary = document.getElementById('validationSummary');
+                const advice = document.getElementById('validationAdvice');
+                const mismatches = document.getElementById('validationMismatches');
+
+                summary.innerHTML = `
+                    <div><strong class="text-warning">${columnName}</strong> — Muestra: <strong>${data.totalSampled}</strong> filas</div>
+                    <div class="mt-2 small text-muted-light">
+                        Enteros: <strong class="text-warning">${data.integerCount}</strong> (${data.integerPercentage}%),
+                        Decimales: <strong class="text-warning">${data.decimalCount}</strong> (${data.decimalPercentage}%),
+                        Fechas: <strong class="text-warning">${data.dateCount}</strong> (${data.datePercentage}%),
+                        Texto: <strong class="text-warning">${data.textCount}</strong> (${data.textPercentage}%)
+                    </div>
+                `;
+                advice.textContent = data.recommendation || 'Haz clic en los botones de prueba para ver qué valores bloquean la conversión.';
+
+                // Lógica de botones de testeo
+                document.getElementById('simToInteger').onclick = function () { testTarget('Entero'); };
+                document.getElementById('simToDecimal').onclick = function () { testTarget('Decimal'); };
+                document.getElementById('simToDate').onclick = function () { testTarget('Fecha'); };
+
+                function testTarget(targetType) {
+                    mismatches.innerHTML = '<div class="text-center p-3"><div class="spinner-border text-warning spinner-border-sm" role="status"></div> Buscando discrepancias...</div>';
+
+                    postForm('@Url.Action("ValidateTextColumn", "DataProfiling")', { tempFileName: temp, columnName: columnName, targetType: targetType, hasHeaders: hasHeaders })
+                        .then(resp => {
+                            const targetMismatches = resp.mismatchRows || [];
+
+                            if (targetMismatches.length > 0) {
+                                advice.className = "alert alert-warning py-2";
+                                advice.innerHTML = `Se encontraron <strong>${targetMismatches.length}</strong> valores en la muestra que impiden la conversión a <strong>${targetType}</strong>.`;
+                                populateMismatchList(targetMismatches);
+                            } else {
+                                advice.className = "alert alert-success py-2";
+                                advice.innerHTML = `No se encontraron problemas para convertir a <strong>${targetType}</strong> en la muestra analizada.`;
+                                mismatches.innerHTML = '<div class="text-success small">Todo parece estar correcto.</div>';
+                            }
+                        })
+                        .catch(err => alert('Error: ' + err.message));
+                }
+
+                function populateMismatchList(mismatchArray) {
+                    mismatches.innerHTML = '';
+                    const rows = document.createElement('div');
+                    rows.className = 'row g-2';
+                    mismatchArray.forEach(function (m) {
+                        const col = document.createElement('div');
+                        col.className = 'col-12';
+                        col.innerHTML = `<div class="card bg-dark border-danger"><div class="card-body p-2"><div class="d-flex justify-content-between"><div class="text-truncate" style="max-width:70%"><strong>Fila #${m.rowIndex}</strong> — ${m.value}</div><div class="text-muted-light small">${m.reason}</div></div></div></div>`;
+                        rows.appendChild(col);
+                    });
+                    mismatches.appendChild(rows);
+                }
+
+                const bsModal = new bootstrap.Modal(modalEl, { backdrop: true });
+                bsModal.show();
+            }
+        })();
+    </script>
+}

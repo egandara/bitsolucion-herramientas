@@ -11,6 +11,7 @@ using QuestPDF.Infrastructure;
 using Syncfusion.Licensing;
 using System;
 using NotebookValidator.Web.Services;
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +30,26 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+
+// 1. Configurar Kestrel (Servidor interno por defecto de ASP.NET)
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = 2147483648; // 2 GB
+});
+
+// 2. Configurar IIS (Si ejecutas la app usando IIS Express en Visual Studio)
+builder.Services.Configure<IISServerOptions>(options =>
+{
+    options.MaxRequestBodySize = 2147483648; // 2 GB
+});
+
+// 3. Configurar los límites de lectura de formularios en toda la aplicación
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.ValueLengthLimit = int.MaxValue;
+    options.MultipartBodyLengthLimit = 2147483648; // 2 GB
+    options.MemoryBufferThreshold = int.MaxValue;
+});
 
 builder.Services.AddHostedService<EmailBotBackgroundService>();
 builder.Services.AddScoped<DataProfilingService>();

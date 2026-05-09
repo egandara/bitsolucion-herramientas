@@ -2,10 +2,91 @@
     ViewData["Title"] = "Perfilamiento de Datos";
 }
 
+<style>
+    /* Fondo borroso y bloqueo de pantalla */
+    #uploadOverlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(10px);
+        display: none; /* Oculto por defecto */
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        color: white;
+    }
+
+    .progress-container {
+        width: 85%;
+        max-width: 550px;
+        background-color: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 193, 7, 0.3);
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        animation: pulse-container 3s infinite ease-in-out;
+    }
+
+    /* Animación de pulsación para indicar actividad */
+    @@keyframes pulse-container {
+        0% {
+            transform: scale(1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+
+        50% {
+            transform: scale(1.02);
+            box-shadow: 0 8px 40px rgba(255, 193, 7, 0.2);
+        }
+
+        100% {
+            transform: scale(1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+    }
+
+    .spin-slow {
+        animation: spinner-border 1.5s infinite linear;
+    }
+
+    .text-muted-light {
+        color: #adb5bd;
+    }
+</style>
+
+<div id="uploadOverlay">
+    <div class="progress-container text-center">
+        <h4 class="text-warning mb-4" id="statusLabel">
+            <i class="bi bi-cloud-upload me-2"></i> Preparando subida...
+        </h4>
+
+        <div class="progress mb-3" style="height: 30px; background-color: rgba(255,255,255,0.1);">
+            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning text-dark fw-bold"
+                 role="progressbar" style="width: 0%; transition: width 0.4s ease;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                0%
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between mb-2">
+            <span id="bytesLabel" class="small fw-bold">0 / 0 MB</span>
+            <span id="timeLabel" class="small text-muted-light">Calculando tiempo...</span>
+        </div>
+
+        <div id="analysisDetail" class="mt-3 p-2 rounded small style="background: rgba(0,0,0,0.2); display:none;">
+            <span class="spinner-grow spinner-grow-sm text-warning me-2"></span>
+            <span id="dynamicMessage">Iniciando procesamiento...</span>
+        </div>
+    </div>
+</div>
+
 <div class="container mt-4">
     <div class="text-center mb-5">
         <h1 class="display-5 fw-bold text-white">Perfilamiento de Datos</h1>
-        <p class="form-check-label">Sube un archivo (.xlsx, .csv) para obtener una radiografía automática de su contenido.</p>
+        <p class="form-check-label">Sube un archivo pesado para obtener una radiografía automática y detección de datos sensibles.</p>
     </div>
 
     <div class="row justify-content-center">
@@ -15,12 +96,11 @@
                     <h4 class="mb-0 text-warning"><i class="bi bi-file-earmark-spreadsheet me-2"></i> Cargar Archivo para Análisis</h4>
                 </div>
                 <div class="card-body p-4">
-                    <form asp-action="Analyze" asp-controller="DataProfiling" method="post" enctype="multipart/form-data">
-                        
+                    <form id="uploadForm" method="post" enctype="multipart/form-data">
                         <div class="mb-4">
                             <label for="archivo" class="form-label fw-bold">Seleccionar Archivo:</label>
                             <input class="form-control bg-dark text-white border-secondary" type="file" id="archivo" name="archivo" accept=".xlsx, .xls, .csv, .txt" required>
-                            <div class="form-check-label">Formatos soportados: Excel (.xlsx, .xls) y Archivos Planos (.csv, .txt).</div>
+                            <div class="form-check-label mt-2">Capacidad máxima probada: 2 GB (900 Mbps Fibra).</div>
                         </div>
 
                         <div class="form-check form-switch mb-4">
@@ -31,7 +111,7 @@
                         </div>
 
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-warning btn-lg fw-bold text-dark">
+                            <button type="submit" id="btnSubmit" class="btn btn-warning btn-lg fw-bold text-dark shadow">
                                 <i class="bi bi-search me-2"></i> Generar Radiografía
                             </button>
                         </div>
@@ -41,3 +121,99 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.getElementById('uploadForm').onsubmit = function (e) {
+            e.preventDefault();
+
+            const fileInput = document.getElementById('archivo');
+            if (fileInput.files.length === 0) return;
+
+            const form = e.target;
+            const formData = new FormData(form);
+            const xhr = new XMLHttpRequest();
+
+            const overlay = document.getElementById('uploadOverlay');
+            const progressBar = document.getElementById('progressBar');
+            const bytesLabel = document.getElementById('bytesLabel');
+            const timeLabel = document.getElementById('timeLabel');
+            const statusLabel = document.getElementById('statusLabel');
+            const dynamicMessage = document.getElementById('dynamicMessage');
+            const analysisDetail = document.getElementById('analysisDetail');
+
+            let startTime = Date.now();
+            let analysisInterval;
+
+            // PASO 1: Monitoreo de la subida de archivos
+            xhr.upload.addEventListener('progress', function (event) {
+                if (event.lengthComputable) {
+                    overlay.style.display = 'flex';
+
+                    const percent = Math.round((event.loaded / event.total) * 100);
+                    const loadedMB = (event.loaded / (1024 * 1024)).toFixed(2);
+                    const totalMB = (event.total / (1024 * 1024)).toFixed(2);
+
+                    progressBar.style.width = percent + '%';
+                    progressBar.innerHTML = percent + '%';
+                    bytesLabel.innerHTML = `<i class="bi bi-arrow-up-circle me-1"></i> ${loadedMB} / ${totalMB} MB`;
+
+                    const elapsedTime = (Date.now() - startTime) / 1000;
+                    const uploadSpeed = event.loaded / elapsedTime;
+                    const remainingBytes = event.total - event.loaded;
+                    const remainingTime = Math.round(remainingBytes / uploadSpeed);
+
+                    if (percent < 100) {
+                        statusLabel.innerHTML = '<i class="bi bi-cloud-upload-fill me-2"></i> Paso 1: Subiendo archivo...';
+                        timeLabel.innerHTML = `Restante: aprox. ${remainingTime} seg.`;
+                    } else {
+                        // PASO 2: Inicia el procesamiento en el servidor
+                        statusLabel.innerHTML = '<i class="bi bi-gear-wide-animated spin-slow me-2 text-warning"></i> Paso 2: Analizando datos...';
+                        progressBar.classList.remove('bg-warning');
+                        progressBar.classList.add('bg-success');
+                        progressBar.innerHTML = "¡SUBIDA EXITOSA!";
+                        timeLabel.innerHTML = "Procesando registros en el servidor...";
+
+                        // Mostrar mensajes dinámicos para archivos grandes
+                        analysisDetail.style.display = 'block';
+                        const mensajes = [
+                            "Abriendo contenedor de datos...",
+                            "Leyendo filas y columnas...",
+                            "Identificando tipos de datos...",
+                            "Buscando datos sensibles (PII)...",
+                            "Analizando duplicados...",
+                            "Calculando estadísticas finales...",
+                            "Generando reporte visual..."
+                        ];
+
+                        let idx = 0;
+                        analysisInterval = setInterval(() => {
+                            if (idx < mensajes.length) {
+                                dynamicMessage.innerText = mensajes[idx];
+                                idx++;
+                            }
+                        }, 5000);
+                    }
+                }
+            });
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if (analysisInterval) clearInterval(analysisInterval);
+
+                    if (xhr.status === 200) {
+                        document.open();
+                        document.write(xhr.responseText);
+                        document.close();
+                    } else {
+                        overlay.style.display = 'none';
+                        alert("Error en el servidor. Verifica el log o el tamaño del archivo.");
+                    }
+                }
+            };
+
+            xhr.open('POST', '@Url.Action("Analyze", "DataProfiling")', true);
+            xhr.send(formData);
+        };
+    </script>
+}
