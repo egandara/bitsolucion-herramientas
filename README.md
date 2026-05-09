@@ -1,4 +1,3 @@
-Código
 # Bitsolución Herramientas
 
 Plataforma interna desarrollada en **ASP.NET Core MVC**, diseñada para centralizar y gestionar herramientas operativas como validación de notebooks, cuadraturas, perfilamiento y transmisión de datos en tiempo real.
@@ -28,7 +27,6 @@ Plataforma interna desarrollada en **ASP.NET Core MVC**, diseñada para centrali
 /Views
 /wwwroot
 
-Código
 
 ---
 
@@ -45,23 +43,19 @@ Código
 ### 1. Restaurar dependencias
 dotnet restore
 
-Código
 
 ### 2. Aplicar migraciones
 dotnet ef database update
 
-Código
 
 ### 3. Ejecutar la aplicación
 dotnet run
 
-Código
 
 La aplicación estará disponible en:
 
 https://localhost:5001
 
-Código
 
 ---
 
@@ -75,7 +69,6 @@ const connection = new signalR.HubConnectionBuilder()
 
 connection.start();
 
-Código
 
 ---
 
