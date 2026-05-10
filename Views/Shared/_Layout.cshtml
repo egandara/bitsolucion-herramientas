@@ -156,10 +156,10 @@
                 @RenderBody()
             </div>
 
-            <footer class="footer-custom d-flex justify-content-between align-items-center">
+            @*<footer class="footer-custom d-flex justify-content-between align-items-center">
                 <div>&copy; @DateTime.Now.Year - <span class="text-warning">Bit Solución</span></div>
                 <div><span class="badge bg-dark text-muted" style="border: 1px solid rgba(255,255,255,0.1)">v @System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3)</span></div>
-            </footer>
+            </footer>*@
         </main>
     </div>
 
@@ -170,6 +170,36 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script src="~/lib/qrcode/qrcode.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script>
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+    </script>
     @await RenderSectionAsync("Scripts", required: false)
+    @{
+        var buildDate = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+    }
+
+    <footer class="border-top py-2 fixed-bottom"
+            style="border-color: rgba(255,255,255,0.1) !important; background-color: #0b0b0b;">
+        <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center small">
+            <div class="mb-1 mb-md-0 d-flex align-items-center">
+                <span class="me-2" style="color:#FFD43B;">⚡</span>
+                <strong style="color:#FFD43B;">Bitsolución Herramientas</strong>
+                <span class="text-secondary ms-1">© @DateTime.Now.Year</span>
+            </div>
+
+            <div class="d-flex align-items-center"
+                 data-bs-toggle="tooltip"
+                 title="Compilado el @buildDate">
+                <span class="text-secondary me-2">Versión</span>
+                <span class="px-2 py-1 rounded"
+                      style="background-color:#FFD43B; color:#000; font-family: monospace;">
+                    @VersionHelper.GetVersion()
+                </span>
+            </div>
+        </div>
+    </footer>
 </body>
 </html>
