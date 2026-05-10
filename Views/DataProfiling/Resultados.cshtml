@@ -93,7 +93,6 @@
         padding-right: 0.5rem;
     }
 
-    /* Estilos para el colapsable de Duplicados */
     .collapse-toggle {
         border-bottom: 1px solid rgba(255,193,7,0.12);
         background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
@@ -111,52 +110,54 @@
         padding: 0;
     }
 
-    .collapse-toggler .collapse-chevron {
-        transition: transform 0.18s ease;
-        font-size: 1.05rem;
-        color: #ffc107;
-    }
+        .collapse-toggler .collapse-chevron {
+            transition: transform 0.18s ease;
+            font-size: 1.05rem;
+            color: #ffc107;
+        }
 
-    /* Cuando el botón NO tiene la clase .collapsed significa que está abierto */
-    .collapse-toggler:not(.collapsed) .collapse-chevron {
-        transform: rotate(90deg);
-    }
+        .collapse-toggler:not(.collapsed) .collapse-chevron {
+            transform: rotate(90deg);
+        }
 
     .collapse-hint {
-        font-size: 0.82rem;
+        font-size: 0.85rem;
         color: #adb5bd;
         margin-top: 2px;
+        font-weight: 500;
+        opacity: 0.8;
     }
 
-    /* Efecto hover para el encabezado colapsable */
     .collapse-toggle:hover {
         background: rgba(255, 193, 7, 0.1) !important;
         border-color: rgba(255, 193, 7, 0.5) !important;
         transition: all 0.3s ease;
     }
 
-    /* Estilo del texto de ayuda */
-    .collapse-hint {
-        font-size: 0.85rem;
-        font-weight: 500;
-        opacity: 0.8;
-    }
-
-    /* Animación del ícono */
-    .collapse-toggler .collapse-chevron {
-        transition: transform 0.3s ease;
-        margin-right: 10px;
-    }
-
-    /* Rotación del ícono cuando está abierto */
-    .collapse-toggler:not(.collapsed) .collapse-chevron {
-        transform: rotate(90deg);
-    }
-
-    /* Quitar bordes de enfoque del botón invisible */
     .collapse-toggler:focus {
         box-shadow: none;
         outline: none;
+    }
+
+    .col-card-container {
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .filtro-btn.active {
+        background-color: #ffc107 !important;
+        color: #212529 !important;
+        border-color: #ffc107 !important;
+    }
+
+    #inputBusquedaCol::placeholder {
+        color: rgba(255, 255, 255, 0.6) !important;
+        opacity: 1;
+    }
+
+    .chart-wrapper {
+        position: relative;
+        height: 250px;
+        width: 100%;
     }
 
     @@media (max-width:768px) {
@@ -271,21 +272,11 @@
 
     <h4 class="text-white mb-3 border-bottom border-warning pb-2">Búsqueda de Duplicados</h4>
 
-    <div class="collapse-toggle mb-3 p-2 rounded" style="cursor: pointer; background: rgba(255, 193, 7, 0.05); border: 1px solid rgba(255, 193, 7, 0.2);"
-         onclick="document.getElementById('btnToggleCollapse').click()">
-
-        <button id="btnToggleCollapse" class="collapse-toggler collapsed" type="button"
-                data-bs-toggle="collapse" data-bs-target="#collapseDuplicates"
-                aria-expanded="false" aria-controls="collapseDuplicates">
-
+    <div class="collapse-toggle mb-3 p-2 rounded" style="cursor: pointer; background: rgba(255, 193, 7, 0.05); border: 1px solid rgba(255, 193, 7, 0.2);" onclick="document.getElementById('btnToggleCollapse').click()">
+        <button id="btnToggleCollapse" class="collapse-toggler collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDuplicates" aria-expanded="false" aria-controls="collapseDuplicates">
             <i class="bi bi-chevron-right collapse-chevron"></i>
-            <h4 class="text-white mb-0 d-inline-block">
-                <i class="bi bi-search text-warning me-2"></i>Búsqueda de Duplicados
-            </h4>
-
-            <span class="collapse-hint ms-auto d-none d-sm-inline text-warning">
-                <i class="bi bi-eye me-1"></i> Click para expandir herramientas de limpieza
-            </span>
+            <h4 class="text-white mb-0 d-inline-block"><i class="bi bi-search text-warning me-2"></i>Búsqueda de Duplicados</h4>
+            <span class="collapse-hint ms-auto d-none d-sm-inline text-warning"><i class="bi bi-eye me-1"></i> Click para expandir herramientas de limpieza</span>
         </button>
     </div>
 
@@ -360,12 +351,40 @@
         </div>
     </div>
 
-    <h4 class="text-white mb-3 border-bottom border-warning pb-2">Análisis de Columnas</h4>
+    <div class="bg-dark-subtle p-3 rounded border border-secondary mb-4">
+        <div class="row align-items-center g-3">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-dark text-warning border-secondary"><i class="bi bi-search"></i></span>
+                    <input type="text" id="inputBusquedaCol" class="form-control bg-dark text-white border-secondary" placeholder="Buscar columna por nombre..." onkeyup="ejecutarFiltradoGlobal()">
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <span class="text-muted-light small me-1"><i class="bi bi-funnel"></i> Tipo:</span>
+                    <button type="button" class="btn btn-sm btn-outline-light rounded-pill filtro-btn active" data-filtro="todos" onclick="cambiarFiltroTipo(this)">Todos</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill filtro-btn" data-filtro="Entero" onclick="cambiarFiltroTipo(this)">Enteros</button>
+                    <button type="button" class="btn btn-sm btn-outline-info rounded-pill filtro-btn" data-filtro="Decimal" onclick="cambiarFiltroTipo(this)">Decimales</button>
+                    <button type="button" class="btn btn-sm btn-outline-success rounded-pill filtro-btn" data-filtro="Fecha" onclick="cambiarFiltroTipo(this)">Fechas</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill filtro-btn" data-filtro="Texto" onclick="cambiarFiltroTipo(this)">Texto</button>
+                </div>
+            </div>
+            <div class="col-md-3 text-end">
+                <div class="form-check form-switch form-check-reverse d-inline-block">
+                    <input class="form-check-input bg-danger border-danger" type="checkbox" id="switchAnomaliasGlobal" onchange="ejecutarFiltradoGlobal()">
+                    <label class="form-check-label fw-bold text-danger me-2" for="switchAnomaliasGlobal" style="cursor:pointer;">
+                        <i class="bi bi-shield-exclamation"></i> Solo Anomalías
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4 mb-4">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4 mb-4" id="columnasGridMain">
         @foreach (var col in Model.ColumnProfiles)
         {
-            <div class="col">
+            bool esAnomalia = col.HealthStatus != "Óptima";
+            <div class="col col-card-container" data-nombre="@col.ColumnName.ToLower()" data-tipo="@col.InferredDataType" data-anomalia="@esAnomalia.ToString().ToLower()">
                 <div class="card bg-dark text-white border-secondary h-100 shadow-sm position-relative @(col.IsPII ? "border-danger" : "")">
                     <div class="card-header border-secondary d-flex justify-content-between align-items-center bg-dark-subtle">
                         <h5 class="mb-0 text-truncate" title="@col.ColumnName" style="max-width: 50%;">@col.ColumnName</h5>
@@ -386,7 +405,7 @@
                         </div>
                     </div>
 
-                    <div class="card-body">
+                    <div class="card-body d-flex flex-column">
                         @if (col.IsPII)
                         {
                             <div class="alert alert-danger bg-danger text-white border-0 py-2 mb-3 pulse-danger text-center fw-bold" role="alert" style="font-size: 0.85rem;">
@@ -431,8 +450,7 @@
                                 <span class="small fw-bold @(col.NullPercentage > 0 ? "text-danger" : "text-success")">@col.NullPercentage% (@col.NullOrEmptyCount)</span>
                             </div>
                             <div class="progress" style="height: 6px; background-color: #343a40;">
-                                <div class="progress-bar @(col.NullPercentage > 20 ? "bg-danger" : (col.NullPercentage > 0 ? "bg-warning" : "bg-success"))"
-                                     role="progressbar" style="width: @col.NullPercentage.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                                <div class="progress-bar @(col.NullPercentage > 20 ? "bg-danger" : (col.NullPercentage > 0 ? "bg-warning" : "bg-success"))" role="progressbar" style="width: @col.NullPercentage.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)%"></div>
                             </div>
                         </div>
 
@@ -441,76 +459,122 @@
                             <span class="fs-5 fw-bold">@col.UniqueValuesCount.ToString("N0") <span class="fs-6 text-muted-light fw-normal">(@col.UniquePercentage%)</span></span>
                         </div>
 
-                        <div class="row mb-3 bg-dark-subtle p-2 rounded mx-0 border border-secondary" style="font-size: 0.85rem;">
-                            @if (col.InferredDataType == "Entero" || col.InferredDataType == "Decimal")
-                            {
-                                <div class="col-6">
-                                    <span class="text-muted-light d-block mb-1">Valores en Cero (0)</span>
-                                    <span class="fw-bold @(col.ZeroCount > 0 ? "text-warning" : "text-success")">
-                                        <i class="bi @(col.ZeroCount > 0 ? "bi-exclamation-circle" : "bi-check2")"></i> @col.ZeroCount.ToString("N0")
-                                    </span>
-                                </div>
-                                <div class="col-6">
-                                    <span class="text-muted-light d-block mb-1">Valores Negativos</span>
-                                    <span class="fw-bold @(col.NegativeCount > 0 ? "text-danger" : "text-success")">
-                                        <i class="bi @(col.NegativeCount > 0 ? "bi-x-circle" : "bi-check2")"></i> @col.NegativeCount.ToString("N0")
-                                    </span>
-                                </div>
-                            }
-                            else if (col.InferredDataType == "Texto")
-                            {
-                                <div class="col-12 text-center">
-                                    <span class="text-muted-light d-inline-block me-2">Filas con solo espacios en blanco (" "):</span>
-                                    <span class="fw-bold @(col.WhitespaceCount > 0 ? "text-warning" : "text-success")">
-                                        <i class="bi @(col.WhitespaceCount > 0 ? "bi-exclamation-triangle" : "bi-check-all")"></i> @col.WhitespaceCount.ToString("N0")
-                                    </span>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="col-12 text-center text-muted-light small fst-italic">No hay alertas específicas para fechas.</div>
-                            }
+                        <textarea class="d-none top-values-data">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(col.TopValues))</textarea>
+
+                        <div class="mt-auto pt-2">
+                            <hr class="border-secondary mb-2 mt-0">
+                            <button type="button" class="btn btn-sm btn-outline-info w-100 fw-bold"
+                                    data-colname="@col.ColumnName"
+                                    data-type="@col.InferredDataType"
+                                    data-health="@col.HealthStatus"
+                                    data-min="@col.MinValue"
+                                    data-max="@col.MaxValue"
+                                    data-avg="@(col.Average.HasValue? col.Average.Value.ToString("N2", System.Globalization.CultureInfo.InvariantCulture) : "-")"
+                                    data-zeros="@col.ZeroCount"
+                                    data-negatives="@col.NegativeCount"
+                                    data-whitespaces="@col.WhitespaceCount"
+                                    data-nulls="@col.NullOrEmptyCount"
+                                    data-nullspct="@col.NullPercentage.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)"
+                                    data-uniques="@col.UniqueValuesCount"
+                                    data-uniquespct="@col.UniquePercentage.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)"
+                                    onclick="abrirOffcanvasDetalle(this)">
+                                <i class="bi bi-bar-chart-steps me-1"></i> Ver Detalles y Estadísticas
+                            </button>
                         </div>
-
-                        <hr class="border-secondary">
-
-                        <div class="row mb-3 text-center">
-                            <div class="col-4">
-                                <div class="text-muted-light mb-1" style="font-size: 0.70rem;"><i class="bi bi-arrow-down-circle text-info"></i> MÍNIMO</div>
-                                <div class="small text-truncate" title="@col.MinValue">@col.MinValue</div>
-                            </div>
-                            <div class="col-4 border-start border-end border-secondary">
-                                <div class="text-muted-light mb-1" style="font-size: 0.70rem;"><i class="bi bi-bullseye text-warning"></i> PROMEDIO</div>
-                                <div class="small text-warning fw-bold">@(col.Average.HasValue? col.Average.Value.ToString("N2") : "-")</div>
-                            </div>
-                            <div class="col-4">
-                                <div class="text-muted-light mb-1" style="font-size: 0.70rem;"><i class="bi bi-arrow-up-circle text-danger"></i> MÁXIMO</div>
-                                <div class="small text-truncate" title="@col.MaxValue">@col.MaxValue</div>
-                            </div>
-                        </div>
-
-                        @if (col.TopValues.Any())
-                        {
-                            <div class="bg-black p-3 rounded">
-                                <div class="text-muted-light mb-2" style="font-size: 0.75rem;"><i class="bi bi-bar-chart-line text-warning me-1"></i> TOP VALORES</div>
-                                @foreach (var val in col.TopValues)
-                                {
-                                    <div class="mb-2">
-                                        <div class="d-flex justify-content-between align-items-end mb-1" style="font-size: 0.8rem;">
-                                            <span class="text-light text-truncate pe-2" style="max-width: 60%; font-family: monospace;" title="@val.Value">@val.Value</span>
-                                            <span class="text-muted-light" style="font-size: 0.75rem;">@val.Count <small>(@val.Percentage%)</small></span>
-                                        </div>
-                                        <div class="progress" style="height: 4px; background-color: #343a40;">
-                                            <div class="progress-bar bg-warning" role="progressbar" style="width: @val.Percentage.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)%"></div>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        }
                     </div>
                 </div>
             </div>
         }
+    </div>
+
+    <div class="offcanvas offcanvas-end bg-dark text-white border-start border-warning shadow-lg" tabindex="-1" id="detalleColumnaOffcanvas" style="width: 480px;">
+        <div class="offcanvas-header bg-dark-subtle border-bottom border-secondary">
+            <h5 class="offcanvas-title text-warning fw-bold"><i class="bi bi-layout-sidebar-reverse me-2"></i>Detalle de Columna</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+        </div>
+        <div class="offcanvas-body">
+
+            <h3 id="offNombre" class="mb-2 text-break">NombreColumna</h3>
+            <div class="mb-4">
+                <span id="offTipo" class="badge bg-primary fs-7">Tipo</span>
+                <span id="offSalud" class="badge bg-success fs-7 ms-1">Salud</span>
+            </div>
+
+            <h6 class="text-muted-light mb-2 text-uppercase fw-bold" style="font-size: 0.8rem;">
+                <i class="bi bi-clipboard-data text-light me-1"></i> Integridad y Cardinalidad
+                <i class="bi bi-question-circle text-muted ms-1" style="cursor:help;" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-container="body" title="Indica qué tan completa está la columna y cuánta variedad de datos tiene."></i>
+            </h6>
+            <div class="row text-center mb-4 g-2">
+                <div class="col-6">
+                    <div class="bg-dark-subtle p-2 rounded border border-secondary h-100 d-flex flex-column justify-content-center">
+                        <div class="text-muted-light mb-1" style="font-size: 0.65rem;">NULOS / VACÍOS</div>
+                        <div class="fw-bold fs-5 text-white"><span id="offNullsPct">0.0</span>%</div>
+                        <div class="small text-muted-light"><span id="offNullsCount">0</span> registros</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="bg-dark-subtle p-2 rounded border border-secondary h-100 d-flex flex-column justify-content-center">
+                        <div class="text-muted-light mb-1" style="font-size: 0.65rem;">VALORES ÚNICOS</div>
+                        <div class="fw-bold fs-5 text-info"><span id="offUniquesPct">0.0</span>%</div>
+                        <div class="small text-muted-light"><span id="offUniquesCount">0</span> distintos</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="seccionEstadisticasNumericas">
+                <h6 id="offStatsTitle" class="text-muted-light mb-2 text-uppercase fw-bold" style="font-size: 0.8rem;">
+                    <i class="bi bi-calculator text-info me-1"></i> Estadísticas Numéricas
+                    <i class="bi bi-question-circle text-muted ms-1" style="cursor:help;" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-container="body" title="Resumen matemático de los valores detectados."></i>
+                </h6>
+                <div class="row text-center mb-4 g-2">
+                    <div class="col-4">
+                        <div class="bg-dark-subtle p-2 rounded border border-secondary h-100">
+                            <div id="offLabelMin" class="text-muted-light mb-1" style="font-size: 0.65rem;">MÍNIMO</div>
+                            <div id="offMin" class="fw-bold small text-truncate">-</div>
+                        </div>
+                    </div>
+                    <div id="offColAvg" class="col-4">
+                        <div class="bg-dark-subtle p-2 rounded border border-warning h-100" style="box-shadow: inset 0 0 10px rgba(255,193,7,0.1);">
+                            <div class="text-warning mb-1" style="font-size: 0.65rem;">PROMEDIO</div>
+                            <div id="offAvg" class="fw-bold small text-warning">-</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="bg-dark-subtle p-2 rounded border border-secondary h-100">
+                            <div id="offLabelMax" class="text-muted-light mb-1" style="font-size: 0.65rem;">MÁXIMO</div>
+                            <div id="offMax" class="fw-bold small text-truncate">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h6 class="text-muted-light mb-2 text-uppercase fw-bold" style="font-size: 0.8rem;">
+                <i class="bi bi-exclamation-octagon text-danger me-1"></i> Conteo de Anomalías Extras
+                <i class="bi bi-question-circle text-muted ms-1" style="cursor:help;" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-container="body" title="Valores que normalmente representan errores de captura de datos o datos faltantes ocultos."></i>
+            </h6>
+            <ul class="list-group list-group-flush mb-4 rounded border border-secondary">
+                <li class="list-group-item bg-dark text-white d-flex justify-content-between align-items-center border-secondary">
+                    Valores en Cero (0) <span id="offZeros" class="badge bg-secondary rounded-pill">0</span>
+                </li>
+                <li class="list-group-item bg-dark text-white d-flex justify-content-between align-items-center border-secondary">
+                    Valores Negativos <span id="offNegatives" class="badge bg-secondary rounded-pill">0</span>
+                </li>
+                <li class="list-group-item bg-dark text-white d-flex justify-content-between align-items-center border-secondary">
+                    Solo Espacios Blancos (" ") <span id="offWhitespaces" class="badge bg-secondary rounded-pill">0</span>
+                </li>
+            </ul>
+
+            <h6 class="text-muted-light mb-2 text-uppercase fw-bold" style="font-size: 0.8rem;">
+                <i class="bi bi-bar-chart-line text-success me-1"></i> Top Valores Frecuentes
+            </h6>
+            <div class="bg-black p-3 rounded border border-secondary">
+                <div id="noChartData" class="text-muted-light small fst-italic text-center py-3" style="display:none;">No hay datos frecuentes para graficar.</div>
+                <div class="chart-wrapper" id="chartContainer">
+                    <canvas id="topValuesChart"></canvas>
+                </div>
+            </div>
+
+        </div>
     </div>
 
     <div class="modal fade" id="duplicatesModal" tabindex="-1" aria-hidden="true">
@@ -524,10 +588,10 @@
                     <div id="duplicatesInfo" class="mb-3 text-muted-light"></div>
                     <div class="duplicates-list" id="duplicatesList"></div>
                 </div>
-            </div>
-            <div class="modal-footer border-secondary">
-                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
-                <button id="exportDuplicatesBtn" type="button" class="btn btn-warning">Exportar CSV</button>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
+                    <button id="exportDuplicatesBtn" type="button" class="btn btn-warning">Exportar CSV</button>
+                </div>
             </div>
         </div>
     </div>
@@ -566,6 +630,8 @@
 </div>
 
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <script>
         (function () {
             const antiTokenInput = document.querySelector('#antiForgeryToken input[name="__RequestVerificationToken"]');
@@ -574,7 +640,6 @@
             const autoBtn = document.getElementById('openDuplicatesModalAuto');
             if (autoBtn) autoBtn.click();
 
-            // NUEVO SCRIPT PARA CARGAR EL TIEMPO DE SUBIDA
             const uiUploadTime = document.getElementById('uiUploadTime');
             if (uiUploadTime) {
                 const upTime = sessionStorage.getItem('uploadDuration');
@@ -608,14 +673,13 @@
                 const form = document.getElementById('findDuplicatesForm');
                 const btn = form.querySelector('button[type="submit"]');
                 const originalHTML = btn.innerHTML;
-                
+
                 btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Buscando...';
                 btn.disabled = true;
 
                 const formData = new FormData(form);
                 const keyColumns = Array.from(document.querySelectorAll('.key-col-checkbox:checked')).map(cb => cb.value);
                 const fullRow = document.getElementById('fullRow').checked;
-
                 const data = {
                     tempFileName: formData.get('tempFileName'),
                     hasHeaders: formData.get('hasHeaders'),
@@ -652,7 +716,7 @@
             function populateDuplicatesModal(duplicateGroups) {
                 const totalCount = duplicateGroups.reduce((sum, g) => sum + g.count, 0);
                 document.getElementById('duplicatesCount').textContent = totalCount;
-                document.getElementById('duplicatesInfo').innerHTML = 
+                document.getElementById('duplicatesInfo').innerHTML =
                     `Se encontraron <strong class="text-warning">${totalCount}</strong> filas dentro de <strong class="text-warning">${duplicateGroups.length}</strong> grupos. Puedes revisar los grupos abajo.`;
 
                 let html = '<div class="row g-3">';
@@ -660,19 +724,16 @@
                     html += `
                         <div class="col-md-6">
                             <div class="card bg-dark border-danger">
-                                <div class="card-body">
+                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         <div>
                                             <h6 class="mb-0 text-truncate" title="${grp.sampleDisplay}">Clave: ${grp.sampleDisplay}</h6>
                                             <small class="text-muted-light">Ocurrencias: <strong class="text-warning">${grp.count}</strong></small>
                                         </div>
                                         <div class="text-end small text-muted-light">
-                                            <div>
-                                                Filas: ${grp.rowIndices.slice(0, 10).join(', ')}
-                                                ${grp.rowIndices.length > 10 ? `... (${grp.rowIndices.length} filas)` : ''}
-                                            </div>
+                                             <div>Filas: ${grp.rowIndices.slice(0, 10).join(', ')} ${grp.rowIndices.length > 10 ? `... (${grp.rowIndices.length} filas)` : ''}</div>
                                         </div>
-                                    </div>
+                                     </div>
                                 </div>
                             </div>
                             <div class="text-muted-light small fst-italic">Muestra de valores: ${grp.sampleDisplay}</div>
@@ -727,7 +788,6 @@
 
                 function testTarget(targetType) {
                     mismatches.innerHTML = '<div class="text-center p-3"><div class="spinner-border text-warning spinner-border-sm" role="status"></div> Buscando discrepancias...</div>';
-
                     postForm('@Url.Action("ValidateTextColumn", "DataProfiling")', { tempFileName: temp, columnName: columnName, targetType: targetType, hasHeaders: hasHeaders })
                         .then(resp => {
                             const targetMismatches = resp.mismatchRows || [];
@@ -762,8 +822,197 @@
                 bsModal.show();
             }
         })();
-            document.addEventListener("DOMContentLoaded", function() {
-            // --- 2. BUSCADOR DE COLUMNAS ---
+
+        // ==========================================
+        // VARIABLES GLOBALES Y FUNCIONES DE VISTA
+        // ==========================================
+        let filtroTipoGlobal = 'todos';
+        let offcanvasInstance = null;
+        let topValuesChartInstance = null;
+
+        function cambiarFiltroTipo(btn) {
+            document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            filtroTipoGlobal = btn.getAttribute('data-filtro');
+            ejecutarFiltradoGlobal();
+        }
+
+        function ejecutarFiltradoGlobal() {
+            const inputBusqueda = document.getElementById('inputBusquedaCol');
+            const texto = inputBusqueda ? inputBusqueda.value.toLowerCase() : '';
+            const switchAnomalias = document.getElementById('switchAnomaliasGlobal');
+            const soloAnomalias = switchAnomalias ? switchAnomalias.checked : false;
+
+            const tarjetas = document.querySelectorAll('.col-card-container');
+
+            tarjetas.forEach(t => {
+                const nombre = t.getAttribute('data-nombre');
+                const tipo = t.getAttribute('data-tipo');
+                const esAnomalia = t.getAttribute('data-anomalia') === 'true';
+
+                const matchTexto = nombre.includes(texto);
+                const matchTipo = (filtroTipoGlobal === 'todos' || tipo === filtroTipoGlobal);
+                const matchAnomalia = (!soloAnomalias || esAnomalia);
+
+                if (matchTexto && matchTipo && matchAnomalia) {
+                    t.style.display = "block";
+                    setTimeout(() => { t.style.opacity = "1"; t.style.transform = "scale(1)"; }, 10);
+                } else {
+                    t.style.opacity = "0";
+                    t.style.transform = "scale(0.95)";
+                    setTimeout(() => { t.style.display = "none"; }, 300);
+                }
+            });
+        }
+
+        function abrirOffcanvasDetalle(btn) {
+            // Asignaciones base
+            document.getElementById('offNombre').innerText = btn.getAttribute('data-colname');
+            const tipo = btn.getAttribute('data-type');
+            const salud = btn.getAttribute('data-health');
+
+            const badgeTipo = document.getElementById('offTipo');
+            badgeTipo.innerText = tipo;
+            badgeTipo.className = "badge fs-7 " + (tipo === 'Entero' ? 'bg-primary' : (tipo === 'Decimal' ? 'bg-info text-dark' : (tipo === 'Fecha' ? 'bg-success' : 'bg-secondary')));
+
+            const badgeSalud = document.getElementById('offSalud');
+            badgeSalud.innerText = salud;
+            badgeSalud.className = "badge fs-7 ms-1 " + (salud === 'Óptima' ? 'bg-success' : (salud === 'Advertencia' ? 'bg-warning text-dark' : 'bg-danger'));
+
+            // Métricas de Integridad
+            const nullsCount = parseInt(btn.getAttribute('data-nulls'));
+            const nullsPct = btn.getAttribute('data-nullspct');
+            document.getElementById('offNullsPct').innerText = nullsPct;
+            document.getElementById('offNullsCount').innerText = nullsCount.toLocaleString();
+
+            const uniqueCount = parseInt(btn.getAttribute('data-uniques'));
+            const uniquePct = btn.getAttribute('data-uniquespct');
+            document.getElementById('offUniquesPct').innerText = uniquePct;
+            document.getElementById('offUniquesCount').innerText = uniqueCount.toLocaleString();
+
+            // Ocultamiento Dinámico según tipo de columna
+            if (tipo === 'Fecha') {
+                document.getElementById('seccionEstadisticasNumericas').style.display = 'block';
+                document.getElementById('offStatsTitle').innerHTML = '<i class="bi bi-calendar-event text-success me-1"></i> Rango Temporal <i class="bi bi-question-circle text-muted ms-1" style="cursor:help;" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-container="body" title="Fechas extremas detectadas."></i>';
+                document.getElementById('offLabelMin').innerText = 'FECHA INICIO';
+                document.getElementById('offLabelMax').innerText = 'FECHA FIN';
+                document.getElementById('offColAvg').style.display = 'none';
+                document.getElementById('offMin').innerText = btn.getAttribute('data-min');
+                document.getElementById('offMax').innerText = btn.getAttribute('data-max');
+
+                actualizarTooltipsModal();
+            } else if (tipo === 'Texto') {
+                document.getElementById('seccionEstadisticasNumericas').style.display = 'none';
+            } else {
+                document.getElementById('seccionEstadisticasNumericas').style.display = 'block';
+                document.getElementById('offStatsTitle').innerHTML = '<i class="bi bi-calculator text-info me-1"></i> Estadísticas Numéricas <i class="bi bi-question-circle text-muted ms-1" style="cursor:help;" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-container="body" title="Resumen matemático de los valores detectados."></i>';
+                document.getElementById('offLabelMin').innerText = 'MÍNIMO';
+                document.getElementById('offLabelMax').innerText = 'MÁXIMO';
+                document.getElementById('offColAvg').style.display = 'block';
+                document.getElementById('offMin').innerText = btn.getAttribute('data-min');
+                document.getElementById('offMax').innerText = btn.getAttribute('data-max');
+                document.getElementById('offAvg').innerText = btn.getAttribute('data-avg');
+
+                actualizarTooltipsModal();
+            }
+
+            // Anomalías
+            const zeros = parseInt(btn.getAttribute('data-zeros'));
+            const negs = parseInt(btn.getAttribute('data-negatives'));
+            const whites = parseInt(btn.getAttribute('data-whitespaces'));
+
+            document.getElementById('offZeros').innerText = zeros;
+            document.getElementById('offZeros').className = "badge rounded-pill " + (zeros > 0 ? "bg-warning text-dark" : "bg-secondary");
+            document.getElementById('offNegatives').innerText = negs;
+            document.getElementById('offNegatives').className = "badge rounded-pill " + (negs > 0 ? "bg-danger" : "bg-secondary");
+            document.getElementById('offWhitespaces').innerText = whites;
+            document.getElementById('offWhitespaces').className = "badge rounded-pill " + (whites > 0 ? "bg-warning text-dark" : "bg-secondary");
+
+            // Configuración del gráfico de Chart.js
+            const topValuesData = btn.closest('.card-body').querySelector('.top-values-data').value;
+            let topValues = [];
+            try {
+                topValues = JSON.parse(topValuesData);
+            } catch(e) {
+                console.error(e);
+            }
+
+            const chartCanvas = document.getElementById('topValuesChart');
+            if(topValuesChartInstance) {
+                topValuesChartInstance.destroy();
+            }
+
+            if(topValues && topValues.length > 0) {
+                document.getElementById('chartContainer').style.display = 'block';
+                document.getElementById('noChartData').style.display = 'none';
+
+                const labels = topValues.map(v => (v.Value === null || v.Value === "") ? "(Vacío)" : (v.Value.length > 25 ? v.Value.substring(0, 25) + "..." : v.Value));
+                const chartData = topValues.map(v => v.Percentage);
+
+                topValuesChartInstance = new Chart(chartCanvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '% de Frecuencia',
+                            data: chartData,
+                            backgroundColor: 'rgba(255, 193, 7, 0.8)',
+                            borderColor: '#ffc107',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) { return " " + context.raw + '% del total'; }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                max: 100,
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                                ticks: { color: '#adb5bd' }
+                            },
+                            y: {
+                                grid: { display: false },
+                                ticks: { color: '#adb5bd', font: { family: 'monospace', size: 11 } }
+                            }
+                        }
+                    }
+                });
+            } else {
+                document.getElementById('chartContainer').style.display = 'none';
+                document.getElementById('noChartData').style.display = 'block';
+            }
+
+            if(!offcanvasInstance) {
+                offcanvasInstance = new bootstrap.Offcanvas(document.getElementById('detalleColumnaOffcanvas'));
+            }
+            offcanvasInstance.show();
+        }
+
+        function actualizarTooltipsModal() {
+            var tooltips = [].slice.call(document.getElementById('seccionEstadisticasNumericas').querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltips.map(function (t) { return new bootstrap.Tooltip(t, { container: 'body' }); });
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl, {
+                    trigger: 'hover',
+                    container: 'body'
+                });
+            });
+
             const searchInput = document.getElementById('columnSearch');
             if (searchInput) {
                 searchInput.addEventListener('input', function() {
@@ -775,12 +1024,10 @@
                 });
             }
 
-            // --- 3. BOTÓN SELECCIONAR TODO ---
             const selectAllBtn = document.getElementById('selectAllBtn');
             if (selectAllBtn) {
                 selectAllBtn.addEventListener('click', function() {
                     document.querySelectorAll('.key-col-checkbox').forEach(cb => {
-                        // Solo marcar los que están visibles por el filtro
                         if (cb.closest('.col-item').style.display !== 'none') {
                             cb.checked = true;
                         }
@@ -788,7 +1035,6 @@
                 });
             }
 
-            // --- 4. BOTÓN LIMPIAR ---
             const clearAllBtn = document.getElementById('clearAllBtn');
             if (clearAllBtn) {
                 clearAllBtn.addEventListener('click', function() {

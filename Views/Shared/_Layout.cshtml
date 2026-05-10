@@ -116,6 +116,15 @@
 
                     @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
                     {
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "NotebookGenerator" && currentAction == "Index" ? "active" : "")" asp-controller="NotebookGenerator" asp-action="Index">
+                                <i class="bi bi-file-earmark-plus me-2"></i> Generador Notebooks
+                            </a>
+                        </li>
+                    }
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+                    {
                         <li class="nav-item"><a class="nav-link @(currentController == "DataProfiling" ? "active" : "")" asp-controller="DataProfiling" asp-action="Index"><i class="bi bi-bar-chart-steps me-2"></i> Perfilamiento Datos</a></li>
                         <li class="nav-item"><a class="nav-link @(currentController == "Cuadratura" ? "active" : "")" asp-controller="Cuadratura" asp-action="Index"><i class="bi bi-table me-2"></i> Cuadratura Datos</a></li>
                     }

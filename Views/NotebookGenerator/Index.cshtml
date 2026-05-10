@@ -1,0 +1,291 @@
+@model NotebookValidator.Web.Models.NotebookGeneratorViewModel
+@{
+    ViewData["Title"] = "Generador de Notebook Base";
+}
+
+<style>
+    .text-muted-light {
+        color: #adb5bd !important;
+    }
+
+    .bg-dark-subtle {
+        background-color: rgba(255,255,255,0.03) !important;
+    }
+
+    .font-monospace {
+        font-family: 'Cascadia Code', 'Courier New', monospace !important;
+        font-size: 0.85rem;
+    }
+
+    .form-control.bg-dark, .form-select.bg-dark {
+        color: #fff !important;
+        background-color: #212529 !important;
+        border-color: #495057 !important;
+    }
+
+        .form-control.bg-dark:focus, .form-select.bg-dark:focus {
+            background-color: #212529 !important;
+            color: #fff !important;
+            border-color: #ffc107 !important;
+            box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;
+        }
+
+        .form-control.bg-dark::placeholder {
+            color: rgba(255, 255, 255, 0.45) !important;
+            opacity: 1;
+        }
+
+    .nro-badge {
+        background: #343a40;
+        color: #ffc107;
+        font-weight: bold;
+        border-radius: 4px;
+        padding: 4px 8px;
+        border: 1px solid #495057;
+    }
+</style>
+
+<datalist id="datalistParameters">
+    @if (ViewBag.ParametersJson != null)
+    {
+        @foreach (var p in System.Text.Json.JsonSerializer.Deserialize<List<AllowedParameter>>(ViewBag.ParametersJson))
+        {
+            <option value="@p.Name">@p.Category</option>
+        }
+    }
+</datalist>
+
+<div class="container mt-4 mb-5">
+    <h2 class="text-white mb-4"><i class="bi bi-file-earmark-code text-warning me-2"></i> Generador de Notebooks</h2>
+
+    <form asp-action="Generar" method="post">
+        <div class="card bg-dark text-white border-secondary mb-4 shadow-sm">
+            <div class="card-header bg-dark-subtle border-secondary">
+                <h5 class="mb-0 text-warning">1. Encabezado y Documentación</h5>
+            </div>
+            <div class="card-body row">
+                <div class="col-12 mb-3">
+                    <label class="form-label small text-muted-light">Título del Notebook</label>
+                    <input asp-for="Titulo" class="form-control bg-dark text-white border-secondary" placeholder="Ej. BCI_001_Extraccion_Datos" required />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label small text-muted-light">Jefe de Proyecto</label>
+                    <input asp-for="EmailJefeProyecto" type="email" class="form-control bg-dark text-white border-secondary" placeholder="jefe.proyecto@bci.cl" required />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label small text-muted-light">Analista Banco</label>
+                    <input asp-for="EmailAnalista" type="email" class="form-control bg-dark text-white border-secondary" placeholder="analista.banco@bci.cl" required />
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted-light">Descripción</label>
+                    <textarea asp-for="Descripcion" class="form-control bg-dark text-white border-secondary" rows="2" placeholder="Describa brevemente el objetivo de este proceso..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-dark text-white border-secondary mb-4 shadow-sm">
+            <div class="card-header bg-dark-subtle border-secondary d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-warning">2. Captura de Variables (Widgets)</h5>
+                <button type="button" class="btn btn-sm btn-outline-warning" onclick="agregarParametro()"><i class="bi bi-plus-circle"></i> Agregar Variable</button>
+            </div>
+            <div class="card-body">
+                <table class="table table-dark table-bordered border-secondary mt-2 align-middle">
+                    <thead>
+                        <tr class="text-muted-light small">
+                            <th style="width: 25%;">Nombre Widget (W)</th>
+                            <th style="width: 25%;">Valor Default</th>
+                            <th style="width: 8%; text-align: center;">Nro.</th>
+                            <th style="width: 37%;">Etiqueta / Título</th>
+                            <th style="width: 5%;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="parametrosTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card bg-dark text-white border-secondary mb-4 shadow-sm">
+            <div class="card-header bg-dark-subtle border-secondary"><h5 class="mb-0 text-warning">3. Constructor de Pasos del Proceso</h5></div>
+            <div class="card-body row g-3">
+                <div class="col-md-3">
+                    <label class="form-label text-muted-light small">Operación SQL</label>
+                    <select id="opSql" class="form-select bg-dark text-white border-secondary" onchange="toggleOrigen()">
+                        <option value="DROP">DROP TABLE</option>
+                        <option value="CREATE">CREATE TABLE (Multicelda)</option>
+                        <option value="VIEW">CREATE TEMP VIEW</option>
+                        <option value="SELECT">SELECT</option>
+                        <option value="INSERT">INSERT INTO</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted-light small">Objeto Destino</label>
+                    <input type="text" id="nombreObjeto" class="form-control bg-dark text-white border-secondary" placeholder="Ej. tmp_B1consumo">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted-light small">Variable DB (X)</label>
+                    <input type="text" id="varDb" class="form-control bg-dark text-white border-secondary" list="datalistParameters" oninput="forzarX(this)" placeholder="Ej. db_plat_tempX">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted-light small">Var Path (X)</label>
+                    <input type="text" id="varPath" class="form-control bg-dark text-white border-secondary" list="datalistParameters" oninput="forzarX(this)" placeholder="Ej. path_plat_tempX">
+                </div>
+
+                <div id="divOrigen" class="col-12 row g-3" style="display:none;">
+                    <div class="col-md-6">
+                        <label class="form-label text-info small">Tabla / Vista Origen</label>
+                        <input type="text" id="nombreOrigen" class="form-control bg-dark text-white border-info" placeholder="Nombre de tabla fuente...">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-info small">Variable DB Origen (X)</label>
+                        <input type="text" id="varDbOrigen" class="form-control bg-dark text-white border-info" list="datalistParameters" oninput="forzarX(this)" placeholder="Ej. db_platinumX">
+                    </div>
+                </div>
+
+                <div class="col-12 text-end mt-3">
+                    <button type="button" class="btn btn-warning fw-bold px-4 shadow" onclick="construirPaso()"><i class="bi bi-plus-lg me-1"></i> Inyectar Paso al Editor</button>
+                </div>
+                <div class="col-12 mt-4">
+                    <textarea id="textareaCodigo" asp-for="CodigoUsuario" class="form-control bg-dark text-white border-secondary font-monospace" rows="15" placeholder="El código generado aparecerá aquí. Puedes editarlo libremente..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-end mb-5">
+            <button type="submit" class="btn btn-warning btn-lg fw-bold shadow-lg"><i class="bi bi-cloud-download me-2"></i> Generar Notebook (.py)</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script id="paramsData" type="application/json">@Html.Raw(ViewBag.ParametersJson)</script>
+    <script>
+        const dbParams = JSON.parse(document.getElementById('paramsData').textContent || "[]");
+        let paramIndex = 0;
+        let stepCounter = 1;
+
+        function updateLabels() {
+            const rows = document.querySelectorAll('#parametrosTableBody tr');
+            rows.forEach((row, index) => {
+                const nro = (index + 1).toString().padStart(2, '0');
+                row.querySelector('.nro-val').textContent = nro;
+                const labelInput = row.querySelector('.label-input');
+                if (!labelInput.value || /^\d{2}\s/.test(labelInput.value)) {
+                    const currentText = labelInput.value.replace(/^\d{2}\s/, "");
+                    labelInput.value = nro + " " + (currentText || "");
+                }
+            });
+        }
+
+        function agregarParametro() {
+            const tbody = document.getElementById('parametrosTableBody');
+            const i = paramIndex++;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="text" name="Parametros[${i}].NombreWidget" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace widget-name-input" list="datalistParameters" oninput="validarYAutoCompletar(${i})" id="name_${i}" placeholder="Ej. fechaProcesoW" required /></td>
+                <td><input type="text" name="Parametros[${i}].ValorPorDefecto" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace" id="def_${i}" placeholder="Ej. 20260101" /></td>
+                <td class="text-center"><span class="nro-badge nro-val">00</span></td>
+                <td><input type="text" name="Parametros[${i}].Etiqueta" class="form-control form-control-sm bg-dark text-white border-secondary label-input" id="lab_${i}" placeholder="Ej. Fecha de Proceso:" /></td>
+                <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="this.closest('tr').remove(); updateLabels();"><i class="bi bi-trash"></i></button></td>
+            `;
+            tbody.appendChild(tr);
+            updateLabels();
+        }
+
+        function validarYAutoCompletar(idx) {
+            const input = document.getElementById(`name_${idx}`);
+            const val = input.value.trim();
+
+            const allInputs = document.querySelectorAll('.widget-name-input');
+            let duplicado = false;
+            allInputs.forEach(el => {
+                if (el !== input && el.value.trim() === val && val !== "") { duplicado = true; }
+            });
+
+            if (duplicado) {
+                alert(`El widget "${val}" ya ha sido agregado en otra fila.`);
+                input.value = "";
+                return;
+            }
+
+            const match = dbParams.find(p => p.Name === val);
+            if (match) {
+                document.getElementById(`def_${idx}`).value = match.DefaultValue || "";
+                const nro = document.querySelectorAll('#parametrosTableBody tr')[idx]?.querySelector('.nro-val').textContent || "01";
+                document.getElementById(`lab_${idx}`).value = nro + " " + (match.Label || "");
+            }
+        }
+
+        function forzarX(input) {
+            const val = input.value;
+            const match = dbParams.find(p => p.Name === val);
+            if (match) {
+                let name = match.Name.trim();
+                if (name.toLowerCase().endsWith('w')) input.value = name.slice(0, -1) + (name.endsWith('W') ? 'X' : 'x');
+                else if (!name.toLowerCase().endsWith('x')) input.value = name + "_X";
+            }
+        }
+
+        function toggleOrigen() {
+            const op = document.getElementById('opSql').value;
+            document.getElementById('divOrigen').style.display = (op === 'CREATE' || op === 'VIEW' || op === 'INSERT') ? 'flex' : 'none';
+        }
+
+        function construirPaso() {
+            const op = document.getElementById('opSql').value;
+            const objDest = document.getElementById('nombreObjeto').value || 'mi_tabla';
+            const dbDest = document.getElementById('varDb').value || 'db_X';
+            const pathDest = document.getElementById('varPath').value || 'path_X';
+            const objOrig = document.getElementById('nombreOrigen').value || 'fuente';
+            const dbOrig = document.getElementById('varDbOrigen').value || 'db_orig_X';
+            const editor = document.getElementById('textareaCodigo');
+
+            let code = "";
+
+            if (op === 'CREATE') {
+                // CELDA 1: DROP
+                code += `\n# --- PASO ${stepCounter}: DROP ${objDest} ---\n`;
+                code += `print(">>> EJECUTANDO: DROP ${objDest}")\n`;
+                const varDrop = `paso_drop_${objDest}`;
+                code += `${varDrop} = """DROP TABLE IF EXISTS """ + ${dbDest} + ".${objDest}"""\n`;
+                code += `sqlSafe(${varDrop})\n`;
+                code += `# COMMAND ----------\n`;
+
+                // CELDA 2: RM
+                code += `\n# --- PASO ${stepCounter}: RM Físico ${objDest} ---\n`;
+                code += `print(">>> EJECUTANDO: RM Físico ${objDest}")\n`;
+                code += `dbutils.fs.rm(${pathDest} + "${objDest}", True)\n`;
+                code += `# COMMAND ----------\n`;
+
+                // CELDA 3: CREATE
+                code += `\n# --- PASO ${stepCounter}: CREATE ${objDest} ---\n`;
+                code += `print(">>> EJECUTANDO: CREATE ${objDest}")\n`;
+                const varCrea = `paso_creacion_${objDest}`;
+                code += `${varCrea} = """CREATE TABLE """ + ${dbDest} + ".${objDest} AS \\nSELECT * FROM """ + ${dbOrig} + ".${objOrig}"""\n`;
+                code += `sqlSafe(${varCrea})\n`;
+                code += `print(">>> OK")\n`;
+            }
+            else if (op === 'VIEW') {
+                code += `\n# --- PASO ${stepCounter}: VIEW ${objDest} ---\n`;
+                code += `print(">>> EJECUTANDO: VIEW ${objDest}")\n`;
+                const varView = `paso_vista_${objDest}`;
+                code += `${varView} = """CREATE OR REPLACE TEMPORARY VIEW ${objDest} AS \\nSELECT * FROM """ + ${dbOrig} + ".${objOrig}"""\n`;
+                code += `sqlSafe(${varView})\n`;
+                code += `print(">>> OK")\n`;
+            }
+            else {
+                const prefix = op.toLowerCase();
+                code += `\n# --- PASO ${stepCounter}: ${op} ${objDest} ---\n`;
+                code += `print(">>> EJECUTANDO: ${op} ${objDest}")\n`;
+                const varOp = `paso_${prefix}_${objDest}`;
+                code += `${varOp} = """${op} * FROM """ + ${dbDest} + ".${objDest}"""\n`;
+                code += `sqlSafe(${varOp})\n`;
+                code += `print(">>> OK")\n`;
+            }
+
+            editor.value += code + "\n# COMMAND ----------\n";
+            stepCounter++;
+        }
+
+        document.addEventListener("DOMContentLoaded", () => { agregarParametro(); });
+    </script>
+}

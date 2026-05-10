@@ -68,7 +68,40 @@ namespace NotebookValidator.Web.Services
                     }
                 }
 
-                if (double.TryParse(val.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double num))
+                // Detección inteligente de fechas
+                bool isDate = false;
+                DateTime parsedDate = DateTime.MinValue;
+
+                // 1. Detectar formato compacto yyyyMMdd (ej. 20260510)
+                if (val.Length == 8 && Regex.IsMatch(val, @"^\d{8}$") && DateTime.TryParseExact(val, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedDate))
+                {
+                    if (parsedDate.Year >= 1900 && parsedDate.Year <= 2100) isDate = true;
+                }
+                // 1.1 Detectar formato periodo yyyyMM (ej. 202605)
+                else if (val.Length == 6 && Regex.IsMatch(val, @"^\d{6}$") && DateTime.TryParseExact(val, "yyyyMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedDate))
+                {
+                    if (parsedDate.Year >= 1900 && parsedDate.Year <= 2100) isDate = true;
+                }
+                // 2. Detección de fechas estándar (ej. 2026-05-10, 10/05/2026)
+                else if (DateTime.TryParse(val, CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedDate))
+                {
+                    if (!double.TryParse(val, NumberStyles.Any, CultureInfo.InvariantCulture, out _))
+                    {
+                        isDate = true;
+                    }
+                    else if (val.Contains("-") || val.Contains("/"))
+                    {
+                        isDate = true;
+                    }
+                }
+
+                if (isDate)
+                {
+                    DateCount++;
+                    if (parsedDate < MinDate) MinDate = parsedDate;
+                    if (parsedDate > MaxDate) MaxDate = parsedDate;
+                }
+                else if (double.TryParse(val.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out double num))
                 {
                     if (Math.Abs(num % 1) > double.Epsilon) { DecimalCount++; HasDecimals = true; }
                     else { IntegerCount++; }
@@ -78,12 +111,6 @@ namespace NotebookValidator.Web.Services
                     else if (num < 0) NegativeCount++;
                     if (num < MinNum) MinNum = num;
                     if (num > MaxNum) MaxNum = num;
-                }
-                else if (DateTime.TryParse(val, out DateTime dtOut))
-                {
-                    DateCount++;
-                    if (dtOut < MinDate) MinDate = dtOut;
-                    if (dtOut > MaxDate) MaxDate = dtOut;
                 }
             }
         }
@@ -223,7 +250,6 @@ namespace NotebookValidator.Web.Services
             else if (profile.NullPercentage > 5) profile.HealthStatus = "Advertencia";
             else profile.HealthStatus = "Óptima";
 
-            // Guardar distribución para la interfaz
             profile.DetectedIntegerCount = tracker.IntegerCount;
             profile.DetectedDecimalCount = tracker.DecimalCount;
             profile.DetectedDateCount = tracker.DateCount;
@@ -276,20 +302,22 @@ namespace NotebookValidator.Web.Services
             }).ToList();
 
             int numericTotal = tracker.IntegerCount + tracker.DecimalCount;
-            if (validValuesCount > 0 && numericTotal == validValuesCount && !profile.IsPII)
+
+            if (validValuesCount > 0 && tracker.DateCount > numericTotal && tracker.DateCount >= profile.DetectedTextCount)
+            {
+                profile.InferredDataType = "Fecha";
+                profile.MinValue = tracker.MinDate != DateTime.MaxValue ? tracker.MinDate.ToString("yyyy-MM-dd") : "-";
+                profile.MaxValue = tracker.MaxDate != DateTime.MinValue ? tracker.MaxDate.ToString("yyyy-MM-dd") : "-";
+                profile.Average = null;
+            }
+            else if (validValuesCount > 0 && numericTotal > tracker.DateCount && numericTotal >= profile.DetectedTextCount && !profile.IsPII)
             {
                 profile.InferredDataType = tracker.HasDecimals ? "Decimal" : "Entero";
                 string format = tracker.HasDecimals ? "N4" : "N0";
 
-                profile.MinValue = tracker.MinNum.ToString(format, CultureInfo.InvariantCulture);
-                profile.MaxValue = tracker.MaxNum.ToString(format, CultureInfo.InvariantCulture);
-                profile.Average = Math.Round(tracker.SumNum / validValuesCount, tracker.HasDecimals ? 4 : 2);
-            }
-            else if (validValuesCount > 0 && tracker.DateCount == validValuesCount)
-            {
-                profile.InferredDataType = "Fecha";
-                profile.MinValue = tracker.MinDate.ToString("yyyy-MM-dd");
-                profile.MaxValue = tracker.MaxDate.ToString("yyyy-MM-dd");
+                profile.MinValue = tracker.MinNum != double.MaxValue ? tracker.MinNum.ToString(format, CultureInfo.InvariantCulture) : "-";
+                profile.MaxValue = tracker.MaxNum != double.MinValue ? tracker.MaxNum.ToString(format, CultureInfo.InvariantCulture) : "-";
+                profile.Average = numericTotal > 0 ? Math.Round(tracker.SumNum / numericTotal, tracker.HasDecimals ? 4 : 2) : null;
             }
             else
             {
@@ -390,7 +418,10 @@ namespace NotebookValidator.Web.Services
 
                 var v = raw.Trim();
 
-                if (DateTime.TryParse(v, out _)) dateCount++;
+                // Detección consistente para Validación de columnas (yyyyMMdd y yyyyMM)
+                if (v.Length == 8 && Regex.IsMatch(v, @"^\d{8}$") && DateTime.TryParseExact(v, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dtOut) && dtOut.Year >= 1900 && dtOut.Year <= 2100) dateCount++;
+                else if (v.Length == 6 && Regex.IsMatch(v, @"^\d{6}$") && DateTime.TryParseExact(v, "yyyyMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dtOut6) && dtOut6.Year >= 1900 && dtOut6.Year <= 2100) dateCount++;
+                else if (DateTime.TryParse(v, CultureInfo.InvariantCulture, DateTimeStyles.None, out _) && (!double.TryParse(v, out _) || v.Contains("-") || v.Contains("/"))) dateCount++;
                 else if (TryParseLenientNumber(v, out double num))
                 {
                     if (Math.Abs(num % 1) > double.Epsilon) decCount++;
@@ -411,7 +442,9 @@ namespace NotebookValidator.Web.Services
                     {
                         fails = true; reason = "No es un valor numérico";
                     }
-                    else if (targetType == "Fecha" && !DateTime.TryParse(v, out _))
+                    else if (targetType == "Fecha" && !DateTime.TryParse(v, out _) &&
+                             !(v.Length == 8 && Regex.IsMatch(v, @"^\d{8}$") && DateTime.TryParseExact(v, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _)) &&
+                             !(v.Length == 6 && Regex.IsMatch(v, @"^\d{6}$") && DateTime.TryParseExact(v, "yyyyMM", CultureInfo.InvariantCulture, DateTimeStyles.None, out _)))
                     {
                         fails = true; reason = "Formato de fecha inválido";
                     }

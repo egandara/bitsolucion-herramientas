@@ -18,21 +18,18 @@ namespace NotebookValidator.Web.Controllers
             _context = context;
         }
 
-        // Muestra la lista de parámetros
         public async Task<IActionResult> Index()
         {
-            // Se añade .ToLower() para asegurar un ordenamiento alfabético insensible a mayúsculas/minúsculas
             var sortedParameters = await _context.AllowedParameters
                 .OrderBy(p => p.Name.ToLower())
                 .ToListAsync();
-            
+
             return View(sortedParameters);
         }
-        
-        // Procesa la creación de un nuevo parámetro
+
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Name")] AllowedParameter allowedParameter)
+        public async Task<IActionResult> Create([Bind("Name,DefaultValue,Label,Category")] AllowedParameter allowedParameter)
         {
             if (ModelState.IsValid)
             {
@@ -43,7 +40,30 @@ namespace NotebookValidator.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // Procesa la eliminación de un parámetro
+        // ACCIÓN DE EDICIÓN
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,DefaultValue,Label,Category")] AllowedParameter allowedParameter)
+        {
+            if (id != allowedParameter.Id) return NotFound();
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(allowedParameter);
+                    await _context.SaveChangesAsync();
+                    TempData["ToastMessage"] = "Parámetro actualizado correctamente.";
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!_context.AllowedParameters.Any(e => e.Id == allowedParameter.Id)) return NotFound();
+                    else throw;
+                }
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)

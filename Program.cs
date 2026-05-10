@@ -51,6 +51,7 @@ builder.Services.Configure<FormOptions>(options =>
     options.MemoryBufferThreshold = int.MaxValue;
 });
 
+builder.Services.AddScoped<NotebookBuilderService>();
 builder.Services.AddSignalR(); // Encender WebSockets
 builder.Services.AddMemoryCache(); // Encender memoria temporal
 builder.Services.AddHostedService<EmailBotBackgroundService>();
