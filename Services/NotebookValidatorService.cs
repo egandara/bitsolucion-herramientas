@@ -19,10 +19,84 @@ namespace NotebookValidator.Web.Services
     public class NotebookValidatorService
     {
         private readonly ApplicationDbContext _context;
+        // Regex para detectar SQL que NO debe borrarse (DML/DDL)
+        private static readonly Regex SqlOperationalRegex = new Regex(@"\b(INSERT|UPDATE|DELETE|MERGE|ALTER|CREATE|DROP|TRUNCATE|REPLACE|COPY)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         public NotebookValidatorService(ApplicationDbContext context)
         {
             _context = context;
+        }
+
+        // --- MOTOR DE GENERACIÓN DE ARCHIVOS CORREGIDOS (HITO 3) ---
+        public async Task<byte[]> GenerateCorrectedFilesZipAsync(IEnumerable<(Stream stream, string fileName)> files, List<string> typesToClean)
+        {
+            using var ms = new MemoryStream();
+            using (var archive = new ZipArchive(ms, ZipArchiveMode.Create, true))
+            {
+                foreach (var file in files)
+                {
+                    using var reader = new StreamReader(file.stream);
+                    var content = await reader.ReadToEndAsync();
+                    string correctedContent = content;
+                    var baseName = Path.GetFileNameWithoutExtension(file.fileName);
+
+                    if (file.fileName.EndsWith(".ipynb"))
+                    {
+                        var notebook = JsonSerializer.Deserialize<Notebook>(content, new JsonSerializerOptions { AllowTrailingCommas = true });
+                        if (notebook?.Cells != null)
+                        {
+                            // 1. CORRECCIÓN DE HEADER: Cambia la primera celda por el nombre del archivo
+                            if (typesToClean.Contains("Header Incorrecto") && notebook.Cells.Any())
+                            {
+                                notebook.Cells[0].Source = new List<string> { $"# {baseName}" };
+                            }
+
+                            // 2. LIMPIEZA DE CELDAS (%sql y salida del footer)
+                            notebook.Cells = notebook.Cells.Where(cell => {
+                                if (cell.CellType != "code") return true;
+                                var code = string.Join("\n", cell.Source).Trim();
+
+                                // Lógica inteligente para %sql
+                                if (typesToClean.Contains("Código SQL en Databricks") && code.StartsWith("%sql", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    return SqlOperationalRegex.IsMatch(code);
+                                }
+
+                                // Si corregimos el footer, eliminamos celdas duplicadas de salida antes de agregar las nuevas
+                                if (typesToClean.Contains("Footer Incorrecto") && code.Contains("dbutils.notebook.exit"))
+                                {
+                                    return false;
+                                }
+
+                                return true;
+                            }).ToList();
+
+                            // 3. CORRECCIÓN DE FOOTER: Inyecta las dos celdas estándar
+                            if (typesToClean.Contains("Footer Incorrecto"))
+                            {
+                                notebook.Cells.Add(new Cell
+                                {
+                                    CellType = "code",
+                                    Source = new List<string> { "# Mensaje Final" }
+                                });
+                                notebook.Cells.Add(new Cell
+                                {
+                                    CellType = "code",
+                                    Source = new List<string> { "dbutils.notebook.exit(\"{\\\"coderror\\\":\\\"0\\\", \\\"msgerror\\\":\\\"Notebook termina ejecucion satisfactoriamente\\\"}\")" }
+                                });
+                            }
+
+                            correctedContent = JsonSerializer.Serialize(notebook, new JsonSerializerOptions { WriteIndented = true });
+                        }
+                    }
+
+                    var entry = archive.CreateEntry(file.fileName);
+                    using var entryStream = entry.Open();
+                    using var writer = new StreamWriter(entryStream);
+                    await writer.WriteAsync(correctedContent);
+                }
+            }
+            return ms.ToArray();
         }
 
         public async Task<(List<Finding> allFindings, int filesCount, Dictionary<string, List<string>> fileVariables)> ProcessFilesAsync(IEnumerable<(Stream stream, string fileName)> files)
@@ -90,7 +164,6 @@ namespace NotebookValidator.Web.Services
                     notebook = new Notebook { Cells = cells };
                 }
 
-                // --- SMART FIX: EXTRAER VARIABLES DEL NOTEBOOK ---
                 var varRegex = new Regex(@"^(\w+)\s*=\s*dbutils\.widgets\.get", RegexOptions.IgnoreCase | RegexOptions.Multiline);
                 foreach (var cell in notebook.Cells.Where(c => c.CellType == "code"))
                 {
@@ -164,16 +237,21 @@ namespace NotebookValidator.Web.Services
             if (cells == null || !cells.Any()) yield break;
             var baseFileName = Path.GetFileNameWithoutExtension(originalFileName);
             var firstCellContent = string.Join("\n", cells.First().Source);
-            if (!firstCellContent.Contains(baseFileName, StringComparison.OrdinalIgnoreCase))
-                yield return new Finding(originalFileName, "Header Incorrecto", $"Falta el nombre '{baseFileName}' en la primera celda.", 1, Severity: "Warning");
+            // Validación estricta: debe coincidir con el formato # NombreArchivo
+            if (!firstCellContent.Trim().Equals($"# {baseFileName}", StringComparison.OrdinalIgnoreCase))
+                yield return new Finding(originalFileName, "Header Incorrecto", $"El header debe ser exactamente '# {baseFileName}'.", 1, Severity: "Warning");
         }
 
         private IEnumerable<Finding> ValidateFooter(List<Cell> cells, string fileName)
         {
             if (cells == null || cells.Count < 2) yield break;
-            var lastContent = string.Join("\n", cells.Last().Source);
-            if (!lastContent.Contains("dbutils.notebook.exit"))
-                yield return new Finding(fileName, "Footer Incorrecto", "No se detectó el comando de salida al final.", cells.Count, Severity: "Info");
+            var lastTwoCells = cells.Skip(Math.Max(0, cells.Count - 2)).ToList();
+
+            bool hasMsgFinal = string.Join("", lastTwoCells[0].Source).Contains("# Mensaje Final");
+            bool hasExit = string.Join("", lastTwoCells[1].Source).Contains("dbutils.notebook.exit");
+
+            if (!hasMsgFinal || !hasExit)
+                yield return new Finding(fileName, "Footer Incorrecto", "Faltan las celdas estándar de cierre (# Mensaje Final y dbutils.notebook.exit).", cells.Count, Severity: "Info");
         }
 
         private IEnumerable<Finding> ValidateUnusedImports(List<Cell> cells, string fileName) => Enumerable.Empty<Finding>();

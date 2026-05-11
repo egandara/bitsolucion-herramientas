@@ -7,11 +7,13 @@
 <style>
     /* 1. CORRECCIÓN DE VISIBILIDAD EN CARGA */
     .text-light-muted {
-        color: #abb2bf !important; /* Gris claro legible */
+        color: #abb2bf !important;
+        /* Gris claro legible */
     }
 
     #upload-card .card-body strong {
-        color: #ffc107; /* Título de sección en dorado */
+        color: #ffc107;
+        /* Título de sección en dorado */
     }
 
     /* 2. ESTILOS DE LA LISTA DE ARCHIVOS */
@@ -70,10 +72,14 @@
         border: 1px solid #30363d;
         font-family: 'Cascadia Code', 'Consolas', 'Monaco', monospace;
         font-size: 0.9rem;
-        white-space: pre-wrap; /* Evita scroll horizontal */
-        word-wrap: break-word; /* Rompe palabras largas */
-        max-height: 500px; /* Controla extensión vertical */
-        overflow-y: auto; /* Scroll vertical sutil */
+        white-space: pre-wrap;
+        /* Evita scroll horizontal */
+        word-wrap: break-word;
+        /* Rompe palabras largas */
+        max-height: 500px;
+        /* Controla extensión vertical */
+        overflow-y: auto;
+        /* Scroll vertical sutil */
         line-height: 1.5;
         text-align: left;
     }
@@ -145,7 +151,12 @@
                 </button>
             </div>
             <div class="card-body" id="summary-content"></div>
-            <div class="card-footer border-top border-secondary text-end bg-transparent py-3">
+            <div class="card-footer border-top border-secondary d-flex justify-content-between align-items-center bg-transparent py-3">
+
+                <button type="button" id="btn-download-fixed" class="btn btn-outline-warning fw-bold" style="display: none;" onclick="downloadCorrectedNotebook()">
+                    <i class="bi bi-magic me-1"></i> Descargar Versión Corregida
+                </button>
+
                 <a asp-action="ExportToExcel" asp-controller="Home" id="export-button" class="btn btn-success fw-bold" style="display: none;">
                     <i class="bi bi-file-earmark-excel me-1"></i> Exportar a Excel
                 </a>

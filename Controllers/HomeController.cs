@@ -10,7 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json; // Vital para la auditoría
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,14 +23,14 @@ namespace NotebookValidator.Web.Controllers
         private readonly IWebHostEnvironment _hostEnvironment;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ApplicationDbContext _context;
-        private readonly AuditService _auditService; // Inyectamos el servicio de auditoría
+        private readonly AuditService _auditService;
 
         public HomeController(
             NotebookValidatorService validatorService,
             IWebHostEnvironment hostEnvironment,
             UserManager<ApplicationUser> userManager,
             ApplicationDbContext context,
-            AuditService auditService) // Agregado al constructor
+            AuditService auditService)
         {
             _validatorService = validatorService;
             _hostEnvironment = hostEnvironment;
@@ -94,8 +94,6 @@ namespace NotebookValidator.Web.Controllers
             if (user == null) return Unauthorized();
 
             var fileStreams = files.Select(f => (f.OpenReadStream(), f.FileName)).ToList();
-
-            // Procesamiento de archivos
             var (allFindings, processedCount, fileVariables) = await _validatorService.ProcessFilesAsync(fileStreams);
 
             if (user.AnalysisQuota < processedCount)
@@ -118,31 +116,9 @@ namespace NotebookValidator.Web.Controllers
             _context.AnalysisRuns.Add(run);
             await _context.SaveChangesAsync();
 
-            // --- LOG DE AUDITORÍA ---
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-
-            var auditDetails = new
-            {
-                Modulo = "Validador de Notebooks",
-                Accion = "Análisis de Código",
-                ArchivosProcesados = files.Select(f => f.FileName).ToList(),
-                TotalHallazgos = allFindings.Count,
-                ResumenHallazgos = new
-                {
-                    Critical = allFindings.Count(f => f.Severity == "Critical"),
-                    Warning = allFindings.Count(f => f.Severity == "Warning"),
-                    Info = allFindings.Count(f => f.Severity == "Info")
-                },
-                RunId = run.Id
-            };
-
-            await _auditService.LogActionAsync(
-                user.Id,
-                "VALIDACIÓN: ANÁLISIS EJECUTADO",
-                JsonSerializer.Serialize(auditDetails),
-                ip,
-                run.Id.ToString());
-            // --- FIN LOG ---
+            var auditDetails = new { Modulo = "Validador", Accion = "Análisis", Hallazgos = allFindings.Count, RunId = run.Id };
+            await _auditService.LogActionAsync(user.Id, "VALIDACIÓN: ANÁLISIS EJECUTADO", JsonSerializer.Serialize(auditDetails), ip, run.Id.ToString());
 
             var summaryData = allFindings
                 .GroupBy(f => new { f.FindingType, f.Severity })
@@ -152,6 +128,24 @@ namespace NotebookValidator.Web.Controllers
             HttpContext.Session.SetInt32("LastRunId", run.Id);
 
             return Json(new { summary = summaryData, findings = allFindings, hasResults = allFindings.Any(), fileVariables = fileVariables });
+        }
+
+        // --- ACCIÓN SMART FIX ---
+        [HttpPost]
+        public async Task<IActionResult> GenerateCorrected(IFormFileCollection files, string typesToCleanJson)
+        {
+            if (files == null || files.Count == 0) return BadRequest();
+            var typesToClean = JsonSerializer.Deserialize<List<string>>(typesToCleanJson) ?? new List<string>();
+
+            var fileStreams = files.Select(f => (f.OpenReadStream(), f.FileName)).ToList();
+            var zipBytes = await _validatorService.GenerateCorrectedFilesZipAsync(fileStreams, typesToClean);
+
+            var user = await _userManager.GetUserAsync(User);
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var details = new { Archivos = files.Select(f => f.FileName).ToList(), Limpieza = typesToClean };
+            await _auditService.LogActionAsync(user.Id, "VALIDACIÓN: SMART FIX DESCARGADO", JsonSerializer.Serialize(details), ip);
+
+            return File(zipBytes, "application/zip", $"BitSolucion_Corregido_{DateTime.Now:yyyyMMdd}.zip");
         }
 
         public async Task<IActionResult> ExportToExcel(int? analysisId)

@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let fileStore = new DataTransfer();
     window.detectedVars = {};
+    window.typesToClean = [];
 
     updateControls();
 
@@ -96,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function () {
         for (let i = 0; i < fileStore.files.length; i++) {
             const file = fileStore.files[i];
             const listItem = document.createElement('li');
-            listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+            listItem.className = 'list-group-item d-flex justify-content-between align-items-center bg-dark text-white border-secondary mb-1';
 
             const leftDiv = document.createElement('div');
             leftDiv.className = 'file-left';
@@ -229,9 +230,11 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     });
 
+    // --- INTEGRACIÓN: RENDER SUMMARY ---
     function renderSummary(summaryData) {
         const summaryCard = document.getElementById('summary-card');
         summaryContent.innerHTML = '';
+        window.typesToClean = [];
 
         if (!summaryData || Object.keys(summaryData).length === 0) {
             summaryContent.innerHTML = '<div class="alert alert-success m-3">No se encontraron problemas.</div>';
@@ -251,15 +254,38 @@ document.addEventListener('DOMContentLoaded', function () {
         let totalProblems = 0;
         for (const item of entries) {
             const li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-center summary-filter-item';
+            li.className = 'list-group-item d-flex justify-content-between align-items-center summary-filter-item bg-transparent text-white border-secondary';
             li.style.cursor = 'pointer';
             li.dataset.filter = item.problemType;
 
-            const badgeClass = (item.severity === 'Critical') ? 'badge bg-danger rounded-pill' :
-                (item.severity === 'Info') ? 'badge bg-info rounded-pill' :
-                    'badge bg-warning text-dark rounded-pill';
+            const badgeClass = (item.severity === 'Critical') ? 'badge bg-danger rounded-pill me-2' :
+                (item.severity === 'Info') ? 'badge bg-info rounded-pill me-2' :
+                    'badge bg-warning text-dark rounded-pill me-2';
 
-            li.innerHTML = `${escapeHtml(item.problemType)} <span class="${badgeClass}">${item.count}</span>`;
+            const leftPart = document.createElement('div');
+            leftPart.innerHTML = escapeHtml(item.problemType);
+
+            const rightPart = document.createElement('div');
+            rightPart.className = 'd-flex align-items-center';
+
+            const countBadge = document.createElement('span');
+            countBadge.className = badgeClass;
+            countBadge.textContent = item.count;
+
+            // BOTÓN LIMPIAR / CORREGIR
+            const cleanBtn = document.createElement('button');
+            cleanBtn.className = 'btn btn-sm btn-outline-danger py-0 px-2 ms-2';
+            cleanBtn.innerHTML = item.problemType.includes('Incorrecto') ? '<i class="bi bi-magic"></i> Corregir' : '<i class="bi bi-eraser-fill"></i> Limpiar';
+            cleanBtn.onclick = (e) => {
+                e.stopPropagation();
+                toggleCleanCategory(item.problemType, cleanBtn, countBadge);
+            };
+
+            rightPart.appendChild(countBadge);
+            rightPart.appendChild(cleanBtn);
+
+            li.appendChild(leftPart);
+            li.appendChild(rightPart);
             ul.appendChild(li);
             totalProblems += item.count;
         }
@@ -267,14 +293,60 @@ document.addEventListener('DOMContentLoaded', function () {
         const totalDiv = document.createElement('div');
         totalDiv.className = 'summary-total mt-2';
         totalDiv.innerHTML = `
-            <div class="total-label">Total de Problemas</div>
-            <div class="total-value">${totalProblems}</div>
+            <div class="total-label text-light-muted">Total de Problemas</div>
+            <div class="total-value text-warning fw-bold fs-3">${totalProblems}</div>
         `;
 
         summaryContent.appendChild(ul);
         summaryContent.appendChild(totalDiv);
         if (summaryCard) summaryCard.style.display = 'flex';
+
+        const downloadBtn = document.getElementById('btn-download-fixed');
+        if (downloadBtn) downloadBtn.style.display = 'inline-block';
     }
+
+    function toggleCleanCategory(type, btn, badge) {
+        const idx = window.typesToClean.indexOf(type);
+        if (idx === -1) {
+            window.typesToClean.push(type);
+            btn.classList.replace('btn-outline-danger', 'btn-danger');
+            btn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Marcado';
+            badge.style.textDecoration = 'line-through';
+            badge.style.opacity = '0.5';
+        } else {
+            window.typesToClean.splice(idx, 1);
+            btn.classList.replace('btn-danger', 'btn-outline-danger');
+            btn.innerHTML = type.includes('Incorrecto') ? '<i class="bi bi-magic"></i> Corregir' : '<i class="bi bi-eraser-fill"></i> Limpiar';
+            badge.style.textDecoration = 'none';
+            badge.style.opacity = '1';
+        }
+    }
+
+    // --- INTEGRACIÓN: DESCARGA ---
+    window.downloadCorrectedNotebook = function () {
+        if (window.typesToClean.length === 0) {
+            if (typeof toastr !== 'undefined') toastr.warning("Selecciona al menos una categoría para procesar.");
+            return;
+        }
+
+        const formData = new FormData();
+        for (const file of fileStore.files) { formData.append('files', file); }
+        formData.append('typesToCleanJson', JSON.stringify(window.typesToClean));
+
+        if (typeof toastr !== 'undefined') toastr.info("Procesando archivos corregidos...");
+
+        fetch('/Home/GenerateCorrected', { method: 'POST', body: formData })
+            .then(res => res.blob())
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `BitSolucion_Estandarizado_${Date.now()}.zip`;
+                a.click();
+                if (typeof toastr !== 'undefined') toastr.success("Estandarización completada.");
+            })
+            .catch(err => { if (typeof toastr !== 'undefined') toastr.error("Error al procesar descarga."); });
+    };
 
     function renderResultsTable(findings) {
         resultsContainer.innerHTML = '';
@@ -282,7 +354,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const table = document.createElement('table');
         table.id = 'resultsTable';
-        table.className = 'table table-bordered table-striped mt-3';
+        table.className = 'table table-bordered table-striped mt-3 bg-dark text-white border-secondary';
         table.innerHTML = `
             <thead class="thead-dark">
                 <tr>
@@ -325,8 +397,8 @@ document.addEventListener('DOMContentLoaded', function () {
             tr.innerHTML = `
                 <td>${escapeHtml(fileName)}</td>
                 <td><span class="${badgeClass}">${escapeHtml(type)}</span></td>
-                <td>${escapeHtml(finding.CellNumber?.ToString() ?? 'N/A')}</td>
-                <td>${escapeHtml(finding.LineNumber?.ToString() ?? 'N/A')}</td>
+                <td>${escapeHtml(finding.CellNumber?.toString() ?? 'N/A')}</td>
+                <td>${escapeHtml(finding.LineNumber?.toString() ?? 'N/A')}</td>
                 <td><code>${escapeHtml(content)}</code></td>
                 <td>${escapeHtml(details)}</td>
                 <td class="text-center">${actionHtml}</td>
@@ -390,8 +462,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-// --- FUNCIONES GLOBALES SMART FIX ACTUALIZADAS PARA LEGIBILIDAD ---
-
+// --- FUNCIONES GLOBALES SMART FIX ---
 window.openSmartFix = function (fileName, sourceBase64) {
     const fullCellContent = decodeURIComponent(escape(atob(sourceBase64)));
     document.getElementById('fix-original-code').innerText = fullCellContent;
@@ -410,7 +481,6 @@ window.openSmartFix = function (fileName, sourceBase64) {
     if (!match) {
         stepInput.value = "N/A - Consulta informativa";
         previewCodeEl.innerText = "# Esta celda contiene una consulta informativa (SELECT).\n# Según el estándar del proceso, no se requiere envolver en sqlSafe ni parametrizar.";
-        // AJUSTE: Color gris claro legible (#adb5bd) para el cuadro de nota
         previewCodeEl.style.color = "#adb5bd";
         previewLabel.innerText = "NOTA DE ANÁLISIS:";
         previewLabel.className = "form-label small text-secondary fw-bold";
@@ -458,9 +528,7 @@ window.openSmartFix = function (fileName, sourceBase64) {
 
 window.confirmFix = function () {
     if (typeof toastr !== 'undefined') {
-        toastr.success("Corrección aplicada al portapapeles. (Funcionalidad de descarga en desarrollo)");
-    } else {
-        alert("Corrección generada correctamente.");
+        toastr.success("Corrección aplicada al portapapeles.");
     }
     bootstrap.Modal.getInstance(document.getElementById('smartFixModal')).hide();
 };
@@ -468,9 +536,7 @@ window.confirmFix = function () {
 window.applyBulkFix = function () {
     if (confirm("¿Deseas eliminar automáticamente las librerías y widgets no usados del notebook?")) {
         if (typeof toastr !== 'undefined') {
-            toastr.info("Limpiando notebook... Generando versión optimizada.");
-        } else {
-            alert("Limpieza en proceso...");
+            toastr.info("Limpiando notebook...");
         }
     }
 };
