@@ -5,87 +5,130 @@
 }
 
 <style>
-    /* Ajustes para lista de archivos: izquierda flexible con truncado, derecha fija */
+    /* 1. CORRECCIÓN DE VISIBILIDAD EN CARGA */
+    .text-light-muted {
+        color: #abb2bf !important; /* Gris claro legible */
+    }
+
+    #upload-card .card-body strong {
+        color: #ffc107; /* Título de sección en dorado */
+    }
+
+    /* 2. ESTILOS DE LA LISTA DE ARCHIVOS */
     #file-list .list-group-item {
+        background-color: #0d1117;
+        border: 1px solid #30363d;
+        color: #c9d1d9;
         box-sizing: border-box;
-        overflow: hidden; /* evita scroll horizontal por contenido largo */
+        overflow: hidden;
     }
 
     #file-list .file-left {
         display: flex;
         align-items: center;
-        flex: 1 1 auto; /* ocupa el espacio disponible */
-        min-width: 0; /* necesario para que text-overflow funcione en flex children */
+        flex: 1 1 auto;
+        min-width: 0;
         gap: 0.5rem;
     }
 
-    #file-list .file-left .file-name {
+        #file-list .file-left .file-name {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 100%;
+        }
+
+    /* 3. REDISEÑO TOTAL DEL POPUP (codeModal) */
+    #codeModal .modal-content {
+        background-color: #161b22;
+        border: 1px solid #ffc107;
+        box-shadow: 0 0 20px rgba(255, 193, 7, 0.2);
+    }
+
+    #codeModal .modal-header {
+        border-bottom: 1px solid #30363d;
+        padding: 1.2rem 1.5rem;
+    }
+
+    #codeModal .modal-title {
+        color: #ffc107;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+
+    #codeModal .modal-body {
+        padding: 1.5rem;
+    }
+
+    /* Bloque de código estandarizado */
+    .code-view-container {
+        background-color: #0d1117;
+        color: #58a6ff;
+        padding: 18px;
+        border-radius: 8px;
+        border: 1px solid #30363d;
+        font-family: 'Cascadia Code', 'Consolas', 'Monaco', monospace;
+        font-size: 0.9rem;
+        white-space: pre-wrap; /* Evita scroll horizontal */
+        word-wrap: break-word; /* Rompe palabras largas */
+        max-height: 500px; /* Controla extensión vertical */
+        overflow-y: auto; /* Scroll vertical sutil */
+        line-height: 1.5;
+        text-align: left;
+    }
+
+    .modal-label-custom {
+        color: #abb2bf !important;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        font-weight: bold;
+        margin-bottom: 0.8rem;
         display: block;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        max-width: 100%;
+        letter-spacing: 1px;
     }
 
-    #file-list .file-right {
-        display: flex;
-        align-items: center;
-        flex: 0 0 auto; /* contenido de la derecha no crece */
-        gap: 0.5rem;
-        margin-left: 0.5rem;
-    }
-
-    #file-list .file-right small {
-        white-space: nowrap;
-        flex-shrink: 0;
-    }
-
-    /* Asegura que el botón eliminar no se reduzca */
-    #file-list .file-right .btn {
-        flex-shrink: 0;
+    /* Ajuste para el Smart Fix Modal (Mantener consistencia) */
+    #smartFixModal .modal-content {
+        background-color: #0f111a;
+        border: 1px solid #495057;
     }
 </style>
 
 <div class="text-center">
-    <h1 class="display-4">Validador de Notebooks</h1>
-    <p>Sube uno o más archivos (.py, .ipynb, .zip) para buscar malas prácticas.</p>
+    <h1 class="display-4 fw-bold" style="color: #fff;">Validador de Notebooks</h1>
+    <p class="text-light-muted">Sube uno o más archivos (.py, .ipynb, .zip) para buscar malas prácticas y asegurar la calidad del código.</p>
 </div>
 
 <div class="row mt-4">
-
     <div class="col-lg-5">
-        <div id="upload-card" class="card h-100 d-flex flex-column">
-            <div class="card-header">
-                <h5>
-                    <i class="bi bi-file-earmark-arrow-up-fill me-2"></i>1. Cargar Archivos para Análisis.
-                </h5>
+        <div id="upload-card" class="card h-100 d-flex flex-column shadow-lg" style="background-color: #161b22; border: 1px solid #30363d;">
+            <div class="card-header border-bottom border-secondary py-3">
+                <h5 class="mb-0 text-white"><i class="bi bi-file-earmark-arrow-up-fill me-2 text-warning"></i>1. Cargar Archivos para Análisis</h5>
             </div>
             <div class="card-body d-flex flex-column">
                 <input type="file" id="file-input" multiple class="d-none" accept=".py,.ipynb,.zip" />
-                <button type="button" class="btn btn-secondary" onclick="document.getElementById('file-input').click();">
-                    Elegir Archivos...
+                <button type="button" class="btn btn-warning fw-bold w-100 py-2 shadow-sm" onclick="document.getElementById('file-input').click();">
+                    <i class="bi bi-folder2-open me-2"></i> Elegir Archivos...
                 </button>
-
-                <hr />
+                <hr class="border-secondary" />
 
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <div>
-                        <span id="selected-count" class="badge bg-secondary">0 archivos</span>
-                        <span id="total-size" class="badge bg-secondary ms-2">0 B</span>
+                        <span id="selected-count" class="badge bg-dark border border-secondary">0 archivos</span>
+                        <span id="total-size" class="badge bg-dark border border-secondary ms-2">0 B</span>
                     </div>
-                    <small class="text-muted">Sugerencia: archivos ≤ 50 MB</small>
+                    <small class="text-light-muted"><i class="bi bi-info-circle me-1"></i>Sugerencia: archivos ≤ 50 MB</small>
                 </div>
 
-                <strong>Archivos en cola para analizar:</strong>
-                <ul id="file-list" class="list-group mt-2 flex-grow-1">
-                    <li id="empty-list-item" class="list-group-item text-muted">No se han seleccionado archivos.</li>
+                <strong class="mb-2 d-block">Archivos en cola para analizar:</strong>
+                <ul id="file-list" class="list-group mt-1 flex-grow-1 border-0">
+                    <li id="empty-list-item" class="list-group-item text-light-muted fst-italic">No se han seleccionado archivos.</li>
                 </ul>
             </div>
-            <div class="card-footer text-end">
-                <button type="button" id="clear-files-button" class="btn btn-outline-secondary me-2">
-                    Limpiar Lista
-                </button>
-                <button type="button" id="validate-button" class="btn btn-primary" disabled aria-disabled="true">
+            <div class="card-footer border-top border-secondary text-end bg-transparent py-3">
+                <button type="button" id="clear-files-button" class="btn btn-outline-light btn-sm me-2">Limpiar Lista</button>
+                <button type="button" id="validate-button" class="btn btn-primary px-4 fw-bold" disabled aria-disabled="true">
                     <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
                     Analizar Archivos
                 </button>
@@ -94,17 +137,17 @@
     </div>
 
     <div class="col-lg-7">
-        <div id="summary-card" class="card h-100 d-flex flex-column" style="display: none;">
-            <div class="card-header">
-                <h5>
-                    <i class="bi bi-table"></i> 2. Resumen del Análisis
-                </h5>
+        <div id="summary-card" class="card h-100 d-flex flex-column shadow-lg" style="display: none; background-color: #161b22; border: 1px solid #30363d;">
+            <div class="card-header d-flex justify-content-between align-items-center border-bottom border-secondary py-3">
+                <h5 class="mb-0 text-white"><i class="bi bi-table text-warning me-2"></i> 2. Resumen del Análisis</h5>
+                <button type="button" id="btn-bulk-fix" class="btn btn-sm btn-warning fw-bold shadow-sm" style="display:none;" onclick="applyBulkFix()">
+                    <i class="bi bi-magic me-1"></i> Smart Fix Masivo
+                </button>
             </div>
-            <div class="card-body" id="summary-content">
-            </div>
-            <div class="card-footer text-end">
-                <a asp-action="ExportToExcel" asp-controller="Home" id="export-button" class="btn btn-success" style="display: none;">
-                    Exportar a Excel
+            <div class="card-body" id="summary-content"></div>
+            <div class="card-footer border-top border-secondary text-end bg-transparent py-3">
+                <a asp-action="ExportToExcel" asp-controller="Home" id="export-button" class="btn btn-success fw-bold" style="display: none;">
+                    <i class="bi bi-file-earmark-excel me-1"></i> Exportar a Excel
                 </a>
             </div>
         </div>
@@ -121,19 +164,59 @@
 <div class="modal fade" id="codeModal" tabindex="-1" aria-labelledby="codeModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
-
             <div class="modal-header">
-                <h5 class="modal-title" id="codeModalLabel">Contexto del Código</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="codeModalLabel">
+                    <i class="bi bi-info-square-fill me-2"></i>Contexto del Hallazgo Detectado
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <pre><code id="code-content" class="language-python"></code></pre>
+                <label class="modal-label-custom">Código fuente de la celda:</label>
+                <div class="code-view-container">
+                    <code id="code-content" class="language-python"></code>
+                </div>
             </div>
-
+            <div class="modal-footer border-top border-secondary">
+                <button type="button" class="btn btn-outline-light px-4" data-bs-dismiss="modal">Cerrar</button>
+            </div>
         </div>
     </div>
 </div>
 
+<div class="modal fade" id="smartFixModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content text-white">
+            <div class="modal-header">
+                <h5 class="modal-title text-warning fw-bold"><i class="bi bi-magic me-2"></i>CORRECCIÓN INTELIGENTE</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small text-muted">Contenido de la Celda Detectada:</label>
+                    <pre class="p-2 rounded" style="background-color: #050505; border: 1px solid #333;"><code id="fix-original-code" style="color: #ffc107;"></code></pre>
+                </div>
+                <div class="row mb-3 align-items-end">
+                    <div class="col-md-7">
+                        <label class="form-label small text-warning fw-bold">Variable de Base de Datos (X):</label>
+                        <select id="fix-var-select" class="form-select bg-dark text-white border-secondary shadow-sm"></select>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label small text-muted">Nombre de Variable Sugerido:</label>
+                        <input type="text" id="fix-step-name" class="form-control bg-dark text-white border-secondary" readonly style="font-family: monospace;">
+                    </div>
+                </div>
+                <div class="mb-0">
+                    <label id="preview-label" class="form-label small text-success fw-bold">NUEVO CÓDIGO ESTANDARIZADO:</label>
+                    <pre class="p-2 rounded border border-success" style="background-color: #050505;"><code id="fix-preview-code" class="text-white"></code></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="btn-apply-fix" class="btn btn-warning fw-bold" onclick="confirmFix()"><i class="bi bi-check-circle me-1"></i> Aplicar al Notebook</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     <script src="~/js/home-index.js" asp-append-version="true"></script>

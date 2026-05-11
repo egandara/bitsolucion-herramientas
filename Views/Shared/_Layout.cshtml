@@ -168,12 +168,13 @@
                     @if (User.IsInRole("Admin"))
                     {
                         <li class="nav-item mt-2">
-                            <a class="nav-link @(currentController == "AdminDashboard" || currentController == "Admin" || currentController == "ValidationRuleAdmin" || currentController == "AuditLog" || currentController == "ParameterAdmin" ? "active" : "text-warning fw-bold")"
+                            @* Lógica actualizada para incluir RegexSandbox *@
+                            <a class="nav-link @(currentController == "AdminDashboard" || currentController == "Admin" || currentController == "ValidationRuleAdmin" || currentController == "AuditLog" || currentController == "ParameterAdmin" || currentController == "RegexSandbox" ? "active" : "text-warning fw-bold")"
                                data-bs-toggle="collapse" href="#adminCollapse" role="button" aria-expanded="false" aria-controls="adminCollapse">
                                 <i class="bi bi-shield-lock-fill me-2"></i> Administración
                                 <i class="bi bi-chevron-down ms-auto small"></i>
                             </a>
-                            <div class="collapse @(currentController == "AdminDashboard" || currentController == "Admin" || currentController == "ValidationRuleAdmin" || currentController == "AuditLog" || currentController == "ParameterAdmin" ? "show" : "")" id="adminCollapse">
+                            <div class="collapse @(currentController == "AdminDashboard" || currentController == "Admin" || currentController == "ValidationRuleAdmin" || currentController == "AuditLog" || currentController == "ParameterAdmin" || currentController == "RegexSandbox" ? "show" : "")" id="adminCollapse">
                                 <ul class="nav flex-column ms-3 mt-1 border-start border-secondary" style="border-width: 2px !important;">
                                     <li class="nav-item">
                                         <a class="nav-link py-1 @(currentController == "AdminDashboard" ? "active" : "")" asp-controller="AdminDashboard" asp-action="Index">
@@ -188,6 +189,12 @@
                                     <li class="nav-item">
                                         <a class="nav-link py-1 @(currentController == "ValidationRuleAdmin" ? "active" : "")" asp-controller="ValidationRuleAdmin" asp-action="Index">
                                             <i class="bi bi-list-check me-2"></i> Reglas Validador
+                                        </a>
+                                    </li>
+                                    @* NUEVO MÓDULO: Sandbox de Reglas *@
+                                    <li class="nav-item">
+                                        <a class="nav-link py-1 @(currentController == "RegexSandbox" ? "active" : "")" asp-controller="RegexSandbox" asp-action="Index">
+                                            <i class="bi bi-shield-shaded me-2"></i> Sandbox de Reglas
                                         </a>
                                     </li>
                                     <li class="nav-item">
@@ -262,7 +269,6 @@
                       style="background-color:#FFD43B; color:#000; font-family: monospace; font-weight: bold;">
                     @{
                         var fullVersion = VersionHelper.GetVersion();
-                        // 3. Acortar a los primeros 7 caracteres
                         var shortVersion = fullVersion.Length > 7 ? fullVersion.Substring(0, 7) : fullVersion;
                     }
                     @shortVersion

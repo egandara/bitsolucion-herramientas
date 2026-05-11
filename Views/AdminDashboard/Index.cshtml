@@ -1,190 +1,329 @@
-@using NotebookValidator.Web.ViewModels
-@model AdminDashboardViewModel
+@model NotebookValidator.Web.ViewModels.AdminDashboardViewModel
 @{
-    ViewData["Title"] = "Dashboard de Administrador";
+    ViewData["Title"] = "Mission Control";
 }
 
-<h1 class="mb-4">@ViewData["Title"]</h1>
+<style>
+    /* CORRECCIÓN DE VISIBILIDAD */
+    .text-light-muted {
+        color: #abb2bf !important;
+    }
 
-<form method="get" asp-action="Index">
-    <div class="row g-3 align-items-center mb-4">
-        <div class="col-auto">
-            <label for="startDate" class="col-form-label">Fecha Inicio</label>
+    /* Color brillante para los datos de la tabla para que resalten sobre el fondo */
+    .table-data-highlight {
+        color: #1a1a1a !important;
+    }
+
+    .card-dashboard {
+        background-color: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 10px;
+        transition: transform 0.2s;
+        height: 100%;
+    }
+
+        .card-dashboard:hover {
+            transform: translateY(-5px);
+            border-color: #ffc107;
+        }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1;
+        margin-top: 5px;
+    }
+
+    .table-dark-custom {
+        background-color: #0d1117;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+        .table-dark-custom th {
+            background-color: #161b22;
+            color: #ffc107;
+            border-bottom: 2px solid #30363d;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+        }
+
+        .table-dark-custom td {
+            border-bottom: 1px solid #21262d;
+            vertical-align: middle;
+            padding: 12px 15px;
+        }
+
+    /* Estilos para inputs de fecha */
+    .form-control-dark {
+        background-color: #000;
+        border: 1px solid #30363d;
+        color: #fff;
+    }
+
+        .form-control-dark:focus {
+            background-color: #000;
+            border-color: #ffc107;
+            color: #fff;
+            box-shadow: none;
+        }
+</style>
+
+@* Padding al final para evitar que el footer fijo tape el contenido de la tabla *@
+<div class="container-fluid px-4" style="padding-bottom: 150px;">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <h2 class="text-white fw-bold mb-0">
+            <i class="bi bi-speedometer2 text-warning me-2"></i>Mission Control
+        </h2>
+        <form method="get" class="d-flex gap-2 align-items-end bg-dark p-2 rounded border border-secondary shadow-sm">
+            <div>
+                <label class="text-light-muted small fw-bold d-block mb-1">Desde:</label>
+                <input type="date" name="startDate" class="form-control form-control-sm form-control-dark" value="@Model.StartDate?.ToString("yyyy-MM-dd")">
+            </div>
+            <div>
+                <label class="text-light-muted small fw-bold d-block mb-1">Hasta:</label>
+                <input type="date" name="endDate" class="form-control form-control-sm form-control-dark" value="@Model.EndDate?.ToString("yyyy-MM-dd")">
+            </div>
+            <button type="submit" class="btn btn-warning btn-sm fw-bold px-3">Filtrar</button>
+            <a asp-action="Index" class="btn btn-outline-light btn-sm" title="Reiniciar filtros"><i class="bi bi-arrow-clockwise"></i></a>
+        </form>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card card-dashboard p-3 border-start border-4 border-info">
+                <small class="text-light-muted fw-bold">USUARIOS TOTALES</small>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="stat-value text-info">@Model.TotalUsers</span>
+                    <i class="bi bi-people-fill text-info fs-3"></i>
+                </div>
+            </div>
         </div>
-        <div class="col-auto">
-            <input type="date" id="startDate" name="startDate" class="form-control" value="@(Model.StartDate?.ToString("yyyy-MM-dd"))">
+        <div class="col-md-3">
+            <div class="card card-dashboard p-3 border-start border-4 border-warning">
+                <small class="text-light-muted fw-bold">ANÁLISIS EJECUTADOS</small>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="stat-value text-warning">@Model.TotalAnalyses</span>
+                    <i class="bi bi-journal-code text-warning fs-3"></i>
+                </div>
+            </div>
         </div>
-        <div class="col-auto">
-            <label for="endDate" class="col-form-label">Fecha Fin</label>
+        <div class="col-md-3">
+            <div class="card card-dashboard p-3 border-start border-4 border-danger">
+                <small class="text-light-muted fw-bold">HALLAZGOS TOTALES</small>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="stat-value text-danger">@Model.TotalProblemsFound</span>
+                    <i class="bi bi-exclamation-octagon-fill text-danger fs-3"></i>
+                </div>
+            </div>
         </div>
-        <div class="col-auto">
-            <input type="date" id="endDate" name="endDate" class="form-control" value="@(Model.EndDate?.ToString("yyyy-MM-dd"))">
-        </div>
-        <div class="col-auto">
-            <button type="submit" class="btn btn-primary">Filtrar</button>
+        <div class="col-md-3">
+            <div class="card card-dashboard p-3 border-start border-4 border-success">
+                <small class="text-light-muted fw-bold">USUARIO MÁS ACTIVO</small>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-success fw-bold text-truncate" style="font-size: 1.1rem; margin-top: 15px;">@Model.MostActiveUser.Split('@')[0]</span>
+                    <i class="bi bi-star-fill text-success fs-3"></i>
+                </div>
+            </div>
         </div>
     </div>
-</form>
 
-
-<div class="row">
-    <div class="col-lg-3 col-md-6 mb-4">
-        <div class="card stat-card text-white bg-info h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h3 class="card-title mb-0">@Model.TotalAnalyses</h3>
-                        <p class="card-text">Análisis Realizados</p>
+    <div class="row mb-4">
+        <div class="col-lg-8 mb-4 mb-lg-0">
+            <div class="card card-dashboard">
+                <div class="card-header bg-transparent border-secondary py-3">
+                    <h6 class="mb-0 text-white"><i class="bi bi-graph-up-arrow text-warning me-2"></i>Tendencia de Actividad (Últimos 15 días)</h6>
+                </div>
+                <div class="card-body">
+                    <div style="height: 300px;">
+                        <canvas id="trendChart"></canvas>
                     </div>
-                    <div class="fs-1 opacity-50">
-                        <i class="fas fa-chart-bar"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card card-dashboard">
+                <div class="card-header bg-transparent border-secondary py-3">
+                    <h6 class="mb-0 text-white"><i class="bi bi-pie-chart-fill text-warning me-2"></i>Distribución de Riesgo</h6>
+                </div>
+                <div class="card-body">
+                    <div style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                        @if (Model.ProblemTypeCounts.Any())
+                        {
+                            <canvas id="severityChart"></canvas>
+                        }
+                        else
+                        {
+                            <p class="text-light-muted fst-italic">No hay datos disponibles para el período.</p>
+                        }
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-lg-3 col-md-6 mb-4">
-        <div class="card stat-card text-white bg-success h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h3 class="card-title mb-0">@Model.TotalProblemsFound</h3>
-                        <p class="card-text">Problemas Encontrados</p>
-                    </div>
-                    <div class="fs-1 opacity-50">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card card-dashboard">
+                <div class="card-header bg-transparent border-secondary py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 text-white"><i class="bi bi-clock-history text-warning me-2"></i>Análisis Recientes</h6>
+                    <span class="badge bg-dark border border-secondary text-light-muted">Últimos 10 registros</span>
                 </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-3 col-md-6 mb-4">
-        <div class="card stat-card text-dark bg-warning h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h3 class="card-title mb-0">@Model.TotalUsers</h3>
-                        <p class="card-text">Usuarios Registrados</p>
-                    </div>
-                    <div class="fs-1 opacity-50">
-                        <i class="fas fa-users"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-3 col-md-6 mb-4">
-        <div class="card stat-card text-white bg-danger h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h3 class="card-title mb-0">@Model.MostActiveUser</h3>
-                        <p class="card-text">Usuario Más Activo</p>
-                    </div>
-                    <div class="fs-1 opacity-50">
-                        <i class="fas fa-star"></i>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-dark-custom mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Fecha y Hora</th>
+                                    <th>Usuario</th>
+                                    <th class="text-center">Archivos</th>
+                                    <th class="text-center">Hallazgos</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var run in Model.RecentAnalyses)
+                                {
+                                    <tr>
+                                        <td class="table-data-highlight">@run.AnalysisTimestamp.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                                        <td class="table-data-highlight">
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-person-circle me-2 text-warning opacity-75"></i>
+                                                <span>@run.User?.Email</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-dark border border-secondary text-light-muted">@run.TotalFilesAnalyzed</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge @(run.TotalProblemsFound > 0 ? "bg-danger" : "bg-success")">
+                                                @run.TotalProblemsFound
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a asp-controller="Home" asp-action="Details" asp-route-id="@run.Id" class="btn btn-sm btn-outline-warning py-0">Ver Detalle</a>
+                                        </td>
+                                    </tr>
+                                }
+                                @if (!Model.RecentAnalyses.Any())
+                                {
+                                    <tr>
+                                        <td colspan="5" class="text-center text-light-muted py-4 fst-italic">No se encontraron registros de análisis.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<div class="row mt-4">
-    <div class="col-lg-7">
-        <div class="card h-100">
-            <div class="card-header">
-                <h3 class="card-title">Distribución de Problemas</h3>
-            </div>
-            <div class="card-body" style="position: relative; height: 400px;">
-                @if (Model.ProblemTypeCounts.Any())
-                {
-                    <canvas id="problemTypeChart"></canvas>
-                }
-                else
-                {
-                    <p class="text-center text-muted">No hay datos de problemas para mostrar en el período seleccionado.</p>
-                }
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-5">
-        <div class="card h-100">
-            <div class="card-header">
-                <h3 class="card-title">Análisis Recientes</h3>
-            </div>
-            <div class="card-body">
-                <ul class="list-group list-group-flush">
-                    @foreach (var run in Model.RecentAnalyses)
-                    {
-                        <li class="list-group-item">
-                            <a asp-controller="History" asp-action="Details" asp-route-id="@run.Id">Análisis #@run.Id</a>
-                            <small class="text-muted d-block">Por: @run.User.Email - @run.AnalysisTimestamp.ToString("g")</small>
-                        </li>
-                    }
-                </ul>
-            </div>
-        </div>
-    </div>
-</div>
-
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const chartElement = document.getElementById('problemTypeChart');
-            if (!chartElement) return;
-
-            const ctx = chartElement.getContext('2d');
-
-            const distribution = @Html.Raw(Json.Serialize(Model.ProblemTypeCounts));
-            const severities = @Html.Raw(Json.Serialize(Model.ProblemTypeSeverities));
-
-            const labels = Object.keys(distribution);
-            const data = Object.values(distribution);
-
-            const criticalColors = ['#B91C1C', '#DC2626', '#F87171'];
-            const warningColors = ['#D97706', '#F59E0B', '#FBBF24'];
-            const infoColors = ['#2563EB', '#3B82F6', '#60A5FA'];
-
-            let criticalIndex = 0, warningIndex = 0, infoIndex = 0;
-
-            const backgroundColors = labels.map(label => {
-                const severity = severities[label];
-                switch (severity) {
-                    case 'Critical':
-                        return criticalColors[criticalIndex++ % criticalColors.length];
-                    case 'Warning':
-                        return warningColors[warningIndex++ % warningColors.length];
-                    case 'Info':
-                    default:
-                        return infoColors[infoIndex++ % infoColors.length];
-                }
-            });
-
-            const myChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Distribución de Problemas',
-                        data: data,
-                        backgroundColor: backgroundColors,
-                        borderColor: '#ffffff',
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
+            // GRÁFICA DE TENDENCIA (LÍNEA)
+            const trendCtx = document.getElementById('trendChart');
+            if (trendCtx) {
+                new Chart(trendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: @Html.Raw(Json.Serialize(Model.TrendLabels)),
+                        datasets: [{
+                            label: 'Análisis realizados',
+                            data: @Html.Raw(Json.Serialize(Model.TrendData)),
+                            borderColor: '#ffc107',
+                            backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#ffc107'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#161b22',
+                                titleColor: '#ffc107',
+                                bodyColor: '#fff',
+                                borderColor: '#30363d',
+                                borderWidth: 1
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(255,255,255,0.05)' },
+                                ticks: { color: '#8b949e', stepSize: 1 }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#8b949e' }
+                            }
                         }
                     }
-                }
-            });
+                });
+            }
+
+            // GRÁFICA DE SEVERIDAD (DONA)
+            const severityCtx = document.getElementById('severityChart');
+            if (severityCtx) {
+                const severityLabels = @Html.Raw(Json.Serialize(Model.ProblemTypeCounts.Keys));
+                const severityData = @Html.Raw(Json.Serialize(Model.ProblemTypeCounts.Values));
+                const severities = @Html.Raw(Json.Serialize(Model.ProblemTypeSeverities));
+
+                const colors = severityLabels.map(label => {
+                    const s = severities[label];
+                    if (s === 'Critical') return '#dc3545';
+                    if (s === 'Warning') return '#ffc107';
+                    return '#0dcaf0'; // Info
+                });
+
+                new Chart(severityCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: severityLabels,
+                        datasets: [{
+                            data: severityData,
+                            backgroundColor: colors,
+                            borderWidth: 2,
+                            borderColor: '#161b22'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '75%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: '#abb2bf',
+                                    padding: 20,
+                                    font: { size: 11 },
+                                    usePointStyle: true
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: '#161b22',
+                                titleColor: '#ffc107',
+                                bodyColor: '#fff',
+                                borderColor: '#30363d',
+                                borderWidth: 1
+                            }
+                        }
+                    }
+                });
+            }
         });
     </script>
 }

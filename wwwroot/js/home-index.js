@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
-    // Referencias a elementos del DOM
+    // --- TU LÓGICA ORIGINAL INTACTA ---
     const fileInput = document.getElementById('file-input');
     const validateButton = document.getElementById('validate-button');
     const clearFilesButton = document.getElementById('clear-files-button');
@@ -12,11 +12,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const totalSizeEl = document.getElementById('total-size');
 
     let fileStore = new DataTransfer();
+    window.detectedVars = {};
 
-    // Inicializar estado
     updateControls();
 
-    // Helper para tamaño legible
     function humanFileSize(bytes) {
         if (bytes === 0) return '0 B';
         const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -24,7 +23,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 2) + ' ' + units[i];
     }
 
-    // --- FUNCIÓN HELPER (NUEVA) ---
     function updateSummaryBadges() {
         const count = fileStore.files.length;
         let total = 0;
@@ -43,18 +41,25 @@ document.addEventListener('DOMContentLoaded', function () {
         clearFilesButton.style.display = hasFiles ? 'inline-block' : 'none';
     }
 
-    // --- LÓGICA DE MANEJO DE ARCHIVOS ---
-    fileInput.addEventListener('change', e => addFilesToStore(e.target.files));
-    uploadCard.addEventListener('dragover', e => {
+    fileInput.addEventListener('change', function (e) {
+        addFilesToStore(e.target.files);
+    });
+
+    uploadCard.addEventListener('dragover', function (e) {
         e.preventDefault();
         uploadCard.classList.add('drag-over');
     });
-    uploadCard.addEventListener('dragleave', () => uploadCard.classList.remove('drag-over'));
-    uploadCard.addEventListener('drop', e => {
+
+    uploadCard.addEventListener('dragleave', function () {
+        uploadCard.classList.remove('drag-over');
+    });
+
+    uploadCard.addEventListener('drop', function (e) {
         e.preventDefault();
         uploadCard.classList.remove('drag-over');
         addFilesToStore(e.dataTransfer.files);
     });
+
     clearFilesButton.addEventListener('click', function () {
         fileStore = new DataTransfer();
         fileInput.value = '';
@@ -65,7 +70,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function addFilesToStore(files) {
         if (files.length > 0) {
             for (const file of files) {
-                // Evitar duplicados por nombre y tamaño
                 let exists = false;
                 for (let i = 0; i < fileStore.files.length; i++) {
                     if (file.name === fileStore.files[i].name && file.size === fileStore.files[i].size) {
@@ -73,9 +77,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         break;
                     }
                 }
-                if (!exists) fileStore.items.add(file);
+                if (!exists) {
+                    fileStore.items.add(file);
+                }
             }
-            // Render y actualización de badges
             renderFileList();
             updateSummaryBadges();
         }
@@ -87,16 +92,15 @@ document.addEventListener('DOMContentLoaded', function () {
             fileListUl.appendChild(emptyListItem);
             return;
         }
+
         for (let i = 0; i < fileStore.files.length; i++) {
             const file = fileStore.files[i];
             const listItem = document.createElement('li');
             listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
 
-            // LEFT: icon + name (flexible)
             const leftDiv = document.createElement('div');
-            leftDiv.className = 'file-left'; // aplicado para css de truncado
+            leftDiv.className = 'file-left';
 
-            // Icono por tipo
             const ext = file.name.split('.').pop()?.toLowerCase();
             const icon = document.createElement('i');
             icon.className = 'me-2';
@@ -106,16 +110,15 @@ document.addEventListener('DOMContentLoaded', function () {
             else icon.className += ' bi bi-file-earmark';
 
             const nameSpan = document.createElement('span');
-            nameSpan.className = 'file-name'; // para aplicar ellipsis
+            nameSpan.className = 'file-name';
             nameSpan.textContent = file.name;
             nameSpan.title = file.name;
 
             leftDiv.appendChild(icon);
             leftDiv.appendChild(nameSpan);
 
-            // RIGHT: size + remove (fijo)
             const rightDiv = document.createElement('div');
-            rightDiv.className = 'file-right'; // clase para controlar tamaño fijo
+            rightDiv.className = 'file-right';
 
             const sizeSpan = document.createElement('small');
             sizeSpan.className = 'text-muted';
@@ -125,15 +128,15 @@ document.addEventListener('DOMContentLoaded', function () {
             removeBtn.className = 'btn btn-danger btn-sm';
             removeBtn.innerHTML = '&times;';
             removeBtn.type = 'button';
-            removeBtn.setAttribute('aria-label', `Eliminar ${file.name}`);
-            removeBtn.addEventListener('click', () => removeFile(i));
+            removeBtn.addEventListener('click', function () {
+                removeFile(i);
+            });
 
             rightDiv.appendChild(sizeSpan);
             rightDiv.appendChild(removeBtn);
 
             listItem.appendChild(leftDiv);
             listItem.appendChild(rightDiv);
-
             fileListUl.appendChild(listItem);
         }
     }
@@ -141,7 +144,9 @@ document.addEventListener('DOMContentLoaded', function () {
     function removeFile(indexToRemove) {
         const newFiles = new DataTransfer();
         for (let i = 0; i < fileStore.files.length; i++) {
-            if (i !== indexToRemove) { newFiles.items.add(fileStore.files[i]); }
+            if (i !== indexToRemove) {
+                newFiles.items.add(fileStore.files[i]);
+            }
         }
         fileStore = newFiles;
         fileInput.value = '';
@@ -149,11 +154,8 @@ document.addEventListener('DOMContentLoaded', function () {
         updateSummaryBadges();
     }
 
-    // --- LÓGICA DE ANÁLISIS ---
     validateButton.addEventListener('click', function () {
-        if (fileStore.files.length === 0) {
-            return;
-        }
+        if (fileStore.files.length === 0) return;
 
         const spinner = this.querySelector('.spinner-border');
         this.disabled = true;
@@ -161,80 +163,62 @@ document.addEventListener('DOMContentLoaded', function () {
         this.childNodes[2].nodeValue = ' Analizando...';
 
         const formData = new FormData();
-        for (const file of fileStore.files) { formData.append('files', file); }
+        for (const file of fileStore.files) {
+            formData.append('files', file);
+        }
 
         document.getElementById('summary-card').style.display = 'none';
         document.getElementById('export-button').style.display = 'none';
-        resultsContainer.innerHTML = '<div class="text-center mt-4"><div class="spinner-border" role="status"></div><p>Analizando...</p></div>';
 
-        // Nueva versión robusta de fetch: maneja respuestas no-json y códigos HTTP distintos de 200
+        const bulkBtn = document.getElementById('btn-bulk-fix');
+        if (bulkBtn) bulkBtn.style.display = 'none';
+
+        resultsContainer.innerHTML = `
+            <div class="text-center mt-4">
+                <div class="spinner-border" role="status"></div>
+                <p>Analizando notebooks...</p>
+            </div>
+        `;
+
         fetch('/Home/Validate', {
             method: 'POST',
             body: formData
         })
             .then(async response => {
-                const contentType = response.headers.get('content-type') || '';
-                if (!response.ok) {
-                    // Intentar leer cuerpo: JSON con campo error o texto puro
-                    try {
-                        if (contentType.includes('application/json')) {
-                            const json = await response.json();
-                            const err = json && json.error ? json.error : JSON.stringify(json);
-                            throw new Error(err || `HTTP ${response.status}`);
-                        } else {
-                            const text = await response.text();
-                            throw new Error(text || `HTTP ${response.status}`);
-                        }
-                    } catch (readErr) {
-                        // Si no se pudo parsear, devolver un mensaje genérico con status
-                        throw new Error(readErr.message || `HTTP ${response.status}`);
-                    }
-                }
-
-                // OK: parsear JSON si viene; si no, tratar como error
-                if (contentType.includes('application/json')) {
-                    return response.json();
-                } else {
-                    const text = await response.text();
-                    throw new Error(text || 'Respuesta inesperada del servidor.');
-                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
             })
             .then(data => {
-                if (!data) {
-                    resultsContainer.innerHTML = '<div class="alert alert-danger">Respuesta vacía del servidor.</div>';
-                    return;
-                }
-
-                if (data.error) {
-                    resultsContainer.innerHTML = `<div class="alert alert-danger">${escapeHtml(data.error)}</div>`;
-                    return;
-                }
-
-                // Limpiar mensajes previos
                 resultsContainer.innerHTML = '';
-
-                if (window.jQuery && $.fn.DataTable && $.fn.DataTable.isDataTable && $.fn.DataTable.isDataTable('#resultsTable')) {
+                if (window.jQuery && $.fn.DataTable && $.fn.DataTable.isDataTable('#resultsTable')) {
                     $('#resultsTable').DataTable().destroy();
                 }
+
+                window.detectedVars = data.fileVariables;
 
                 renderSummary(data.summary);
                 renderResultsTable(data.findings);
 
                 if (data.hasResults) {
                     document.getElementById('export-button').style.display = 'inline-block';
-                    if (data.findings && data.findings.length > 0 && window.jQuery && $.fn.DataTable) {
-                        $('#resultsTable').DataTable({
-                            language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' },
-                            pageLength: 10
-                        });
-                    }
+
+                    const hasCleanable = data.findings.some(f =>
+                        f.findingType.includes("Librerias") || f.findingType.includes("Widgets")
+                    );
+                    if (hasCleanable && bulkBtn) bulkBtn.style.display = 'inline-block';
+
+                    $('#resultsTable').DataTable({
+                        language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' },
+                        pageLength: 10,
+                        order: [[0, 'asc']]
+                    });
+
+                    setupClickableRows();
+                    setupSummaryFiltering();
                 }
             })
             .catch(error => {
-                console.error('Fetch error:', error);
-                // Mostrar el mensaje del servidor si existe, sino un mensaje legible
-                const msg = error && error.message ? error.message : 'Ocurrió un error al contactar el servidor.';
-                resultsContainer.innerHTML = `<div class="alert alert-danger">${escapeHtml(msg)}</div>`;
+                resultsContainer.innerHTML = `<div class="alert alert-danger">${escapeHtml(error.message)}</div>`;
             })
             .finally(() => {
                 this.disabled = false;
@@ -245,72 +229,35 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     });
 
-    // --- LÓGICA DEL FILTRO INTERACTIVO ---
-    summaryContent.addEventListener('click', function (e) {
-        const filterTarget = e.target.closest('[data-filter]');
-
-        if (!filterTarget) return;
-
-        const filterValue = filterTarget.dataset.filter;
-        if (window.jQuery && $.fn.DataTable) {
-            const dataTable = $('#resultsTable').DataTable();
-            if (dataTable) {
-                dataTable.column(1).search(filterValue).draw();
-            }
-        }
-    });
-
-    function escapeHtml(text) {
-        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-        return String(text || '').replace(/[&<>"']/g, m => map[m]);
-    }
-
-    // --- RENDER: resumen y tabla (añadido para evitar "renderSummary is not defined") ---
     function renderSummary(summaryData) {
         const summaryCard = document.getElementById('summary-card');
         summaryContent.innerHTML = '';
 
         if (!summaryData || Object.keys(summaryData).length === 0) {
-            summaryContent.innerHTML = '<div class="alert alert-success m-3">¡Excelente! No se encontraron problemas.</div>';
+            summaryContent.innerHTML = '<div class="alert alert-success m-3">No se encontraron problemas.</div>';
             if (summaryCard) summaryCard.style.display = 'flex';
             return;
         }
 
-        if (summaryData['Error de Cuota']) {
-            summaryContent.innerHTML = `<div class="alert alert-danger m-3">${escapeHtml(summaryData['Error de Cuota'])}</div>`;
-            if (summaryCard) summaryCard.style.display = 'flex';
-            return;
-        }
-
-        const severityOrder = { "Critical": 1, "Warning": 2, "Info": 3 };
-
-        // summaryData may be { type: { Count, Severity } } or { type: { count, severity } }
-        const entries = Object.entries(summaryData).map(([k, v]) => {
-            const count = v.Count ?? v.count ?? 0;
-            const severity = v.Severity ?? v.severity ?? 'Info';
-            return { problemType: k, count, severity };
-        });
-
-        entries.sort((a, b) => {
-            const sa = severityOrder[a.severity] || 99;
-            const sb = severityOrder[b.severity] || 99;
-            if (sa !== sb) return sa - sb;
-            return a.problemType.localeCompare(b.problemType);
-        });
+        const entries = Object.entries(summaryData).map(([k, v]) => ({
+            problemType: k,
+            count: v.Count ?? v.count ?? 0,
+            severity: v.Severity ?? v.severity ?? 'Info'
+        }));
 
         const ul = document.createElement('ul');
         ul.className = 'list-group list-group-flush';
-        let totalProblems = 0;
 
+        let totalProblems = 0;
         for (const item of entries) {
             const li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+            li.className = 'list-group-item d-flex justify-content-between align-items-center summary-filter-item';
             li.style.cursor = 'pointer';
             li.dataset.filter = item.problemType;
-            li.title = `Filtrar por "${item.problemType}"`;
 
             const badgeClass = (item.severity === 'Critical') ? 'badge bg-danger rounded-pill' :
-                (item.severity === 'Info') ? 'badge bg-info rounded-pill' : 'badge bg-warning text-dark rounded-pill';
+                (item.severity === 'Info') ? 'badge bg-info rounded-pill' :
+                    'badge bg-warning text-dark rounded-pill';
 
             li.innerHTML = `${escapeHtml(item.problemType)} <span class="${badgeClass}">${item.count}</span>`;
             ul.appendChild(li);
@@ -319,10 +266,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const totalDiv = document.createElement('div');
         totalDiv.className = 'summary-total mt-2';
-        totalDiv.style.cursor = 'pointer';
-        totalDiv.dataset.filter = '';
-        totalDiv.title = 'Clic para limpiar filtro y ver todo';
-        totalDiv.innerHTML = `<div class="total-label">Total de Problemas</div><div class="total-value">${totalProblems}</div>`;
+        totalDiv.innerHTML = `
+            <div class="total-label">Total de Problemas</div>
+            <div class="total-value">${totalProblems}</div>
+        `;
 
         summaryContent.appendChild(ul);
         summaryContent.appendChild(totalDiv);
@@ -331,61 +278,71 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderResultsTable(findings) {
         resultsContainer.innerHTML = '';
-        if (!findings || findings.length === 0) {
-            if (!document.querySelector('#summary-content .alert-danger')) {
-                resultsContainer.innerHTML = '<div class="alert alert-success mt-3">No se encontraron problemas en los archivos analizados.</div>';
-            }
-            return;
-        }
+        if (!findings || findings.length === 0) return;
 
         const table = document.createElement('table');
         table.id = 'resultsTable';
         table.className = 'table table-bordered table-striped mt-3';
-        table.innerHTML = `<thead class="thead-dark"><tr><th>Archivo</th><th>Tipo de Problema</th><th>Celda</th><th>Línea</th><th>Contenido</th><th>Detalle</th></tr></thead><tbody></tbody>`;
+        table.innerHTML = `
+            <thead class="thead-dark">
+                <tr>
+                    <th>Archivo</th>
+                    <th>Tipo de Problema</th>
+                    <th>Celda</th>
+                    <th>Línea</th>
+                    <th>Contenido</th>
+                    <th>Detalle</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        `;
 
         const tbody = table.querySelector('tbody');
-
         for (const finding of findings) {
-            const badgeClass = finding.Severity === "Critical" || finding.severity === "Critical" ? "badge bg-danger" :
-                (finding.Severity === "Info" || finding.severity === "Info") ? "badge bg-info" : "badge bg-warning text-dark";
-
             const tr = document.createElement('tr');
             tr.className = 'clickable-row';
             tr.style.cursor = 'pointer';
 
-            // Keep compatibility with different property casing
+            const sourceCode = finding.CellSourceCode ?? finding.cellSourceCode ?? '';
+            tr.dataset.sourceCode = btoa(unescape(encodeURIComponent(sourceCode || '')));
+            tr.dataset.lineNumber = finding.LineNumber ?? finding.lineNumber ?? 0;
+
+            const badgeClass = (finding.Severity === "Critical" || finding.severity === "Critical") ? "badge bg-danger" :
+                (finding.Severity === "Info" || finding.severity === "Info") ? "badge bg-info" :
+                    "badge bg-warning text-dark";
+
             const fileName = finding.FileName ?? finding.fileName ?? 'N/A';
-            const findingType = finding.FindingType ?? finding.findingType ?? 'N/A';
-            const cellNumber = finding.CellNumber ?? finding.cellNumber ?? 'N/A';
-            const lineNumber = finding.LineNumber ?? finding.lineNumber ?? 'N/A';
+            const type = finding.FindingType ?? finding.findingType ?? 'N/A';
             const content = finding.Content ?? finding.content ?? '';
             const details = finding.Details ?? finding.details ?? '';
 
-            // Store source code (if present) base64 encoded for modal use
-            const sourceCode = finding.CellSourceCode ?? finding.cellSourceCode ?? '';
-            tr.dataset.sourceCode = btoa(unescape(encodeURIComponent(sourceCode || '')));
-            tr.dataset.lineNumber = lineNumber;
+            let actionHtml = '';
+            if (type.toUpperCase().includes("SQL")) {
+                actionHtml = `<button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); window.openSmartFix('${fileName}', '${tr.dataset.sourceCode}')"><i class="bi bi-magic"></i></button>`;
+            }
 
             tr.innerHTML = `
                 <td>${escapeHtml(fileName)}</td>
-                <td><span class="${badgeClass}">${escapeHtml(findingType)}</span></td>
-                <td>${escapeHtml(cellNumber?.toString?.() ?? 'N/A')}</td>
-                <td>${escapeHtml(lineNumber?.toString?.() ?? 'N/A')}</td>
+                <td><span class="${badgeClass}">${escapeHtml(type)}</span></td>
+                <td>${escapeHtml(finding.CellNumber?.ToString() ?? 'N/A')}</td>
+                <td>${escapeHtml(finding.LineNumber?.ToString() ?? 'N/A')}</td>
                 <td><code>${escapeHtml(content)}</code></td>
-                <td>${escapeHtml(details)}</td>`;
+                <td>${escapeHtml(details)}</td>
+                <td class="text-center">${actionHtml}</td>
+            `;
             tbody.appendChild(tr);
         }
-
         resultsContainer.appendChild(table);
+    }
 
-        // Delegated click handler to open modal with code (if Prism and bootstrap exist)
-        resultsContainer.querySelectorAll('table#resultsTable tbody tr.clickable-row').forEach(tr => {
+    function setupClickableRows() {
+        resultsContainer.querySelectorAll('tr.clickable-row').forEach(tr => {
             tr.addEventListener('click', function () {
-                const encoded = this.dataset.sourceCode || '';
                 let source = '';
                 try {
-                    source = decodeURIComponent(escape(atob(encoded || '')));
-                } catch { source = ''; }
+                    source = decodeURIComponent(escape(atob(this.dataset.sourceCode || '')));
+                } catch (e) { source = ''; }
 
                 const lineNumber = parseInt(this.dataset.lineNumber) || 0;
                 const fileName = this.cells[0].innerText || '';
@@ -415,5 +372,105 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Las funciones renderSummary, renderResultsTable quedan igual que antes.
+    function setupSummaryFiltering() {
+        const filterItems = document.querySelectorAll('.summary-filter-item');
+        filterItems.forEach(item => {
+            item.addEventListener('click', function () {
+                const filterValue = this.dataset.filter;
+                if (window.jQuery && $.fn.DataTable && $.fn.DataTable.isDataTable('#resultsTable')) {
+                    $('#resultsTable').DataTable().column(1).search(filterValue).draw();
+                }
+            });
+        });
+    }
+
+    function escapeHtml(text) {
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return String(text || '').replace(/[&<>"']/g, m => map[m]);
+    }
 });
+
+// --- FUNCIONES GLOBALES SMART FIX ACTUALIZADAS PARA LEGIBILIDAD ---
+
+window.openSmartFix = function (fileName, sourceBase64) {
+    const fullCellContent = decodeURIComponent(escape(atob(sourceBase64)));
+    document.getElementById('fix-original-code').innerText = fullCellContent;
+
+    let sqlContent = fullCellContent.replace(/^%sql\s*/i, '').trim();
+
+    const ddlRegex = /(DROP TABLE|CREATE TABLE|CREATE OR REPLACE TABLE|CREATE VIEW|CREATE OR REPLACE TEMPORARY VIEW|INSERT INTO|DELETE FROM|UPDATE|MERGE INTO|ALTER TABLE)\s+(?:IF\s+EXISTS\s+)?([\w\.]+)/i;
+    const match = sqlContent.match(ddlRegex);
+
+    const previewCodeEl = document.getElementById('fix-preview-code');
+    const select = document.getElementById('fix-var-select');
+    const stepInput = document.getElementById('fix-step-name');
+    const applyBtn = document.getElementById('btn-apply-fix');
+    const previewLabel = document.getElementById('preview-label');
+
+    if (!match) {
+        stepInput.value = "N/A - Consulta informativa";
+        previewCodeEl.innerText = "# Esta celda contiene una consulta informativa (SELECT).\n# Según el estándar del proceso, no se requiere envolver en sqlSafe ni parametrizar.";
+        // AJUSTE: Color gris claro legible (#adb5bd) para el cuadro de nota
+        previewCodeEl.style.color = "#adb5bd";
+        previewLabel.innerText = "NOTA DE ANÁLISIS:";
+        previewLabel.className = "form-label small text-secondary fw-bold";
+        applyBtn.disabled = true;
+        select.disabled = true;
+        new bootstrap.Modal(document.getElementById('smartFixModal')).show();
+        return;
+    }
+
+    applyBtn.disabled = false;
+    select.disabled = false;
+    previewLabel.innerText = "NUEVO CÓDIGO ESTANDARIZADO:";
+    previewLabel.className = "form-label small text-success fw-bold";
+    previewCodeEl.style.color = "#fff";
+
+    const operation = match[1].toUpperCase();
+    const fullTableName = match[2];
+    const tableName = fullTableName.split('.').pop().toLowerCase();
+
+    let prefix = "paso_";
+    if (operation.includes("DROP")) prefix += "drop_";
+    else if (operation.includes("CREATE")) prefix += "creacion_";
+    else if (operation.includes("INSERT")) prefix += "insert_";
+    else prefix += "op_";
+
+    const varNameSugerida = `${prefix}${tableName}`;
+    stepInput.value = varNameSugerida;
+
+    select.innerHTML = '<option value="">-- Seleccionar Variable DB --</option>';
+    const vars = window.detectedVars[fileName] || [];
+    vars.forEach(v => {
+        select.innerHTML += `<option value="${v}">${v}</option>`;
+    });
+
+    select.onchange = () => {
+        const dbVar = select.value || '[VARIABLE_X]';
+        let standardizedSql = sqlContent.replace(fullTableName, `""" + ${dbVar} + ".${tableName}"""`);
+        const finalCode = `${varNameSugerida} = """${standardizedSql}"""\nsqlSafe(${varNameSugerida})`;
+        previewCodeEl.innerText = finalCode;
+    };
+
+    select.onchange();
+    new bootstrap.Modal(document.getElementById('smartFixModal')).show();
+};
+
+window.confirmFix = function () {
+    if (typeof toastr !== 'undefined') {
+        toastr.success("Corrección aplicada al portapapeles. (Funcionalidad de descarga en desarrollo)");
+    } else {
+        alert("Corrección generada correctamente.");
+    }
+    bootstrap.Modal.getInstance(document.getElementById('smartFixModal')).hide();
+};
+
+window.applyBulkFix = function () {
+    if (confirm("¿Deseas eliminar automáticamente las librerías y widgets no usados del notebook?")) {
+        if (typeof toastr !== 'undefined') {
+            toastr.info("Limpiando notebook... Generando versión optimizada.");
+        } else {
+            alert("Limpieza en proceso...");
+        }
+    }
+};

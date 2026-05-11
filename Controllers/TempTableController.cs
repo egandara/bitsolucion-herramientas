@@ -2,13 +2,17 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NotebookValidator.Web.Services;
+using Microsoft.AspNetCore.Identity;
+using NotebookValidator.Web.Data;
 using System;
 using System.IO;
 using System.Text;
+using System.Linq;
+using System.Collections.Generic;
 using System.Threading.Tasks;
-// 1. Añadir estas importaciones
 using System.Text.RegularExpressions;
 using System.Net.Mime;
+using System.Text.Json; // Vital para la auditoría
 
 namespace NotebookValidator.Web.Controllers
 {
@@ -16,98 +20,83 @@ namespace NotebookValidator.Web.Controllers
     public class TempTableController : Controller
     {
         private readonly TempTableService _tempTableService;
+        private readonly AuditService _auditService;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public TempTableController(TempTableService tempTableService)
+        // CONSTRUCTOR ACTUALIZADO CON INYECCIÓN
+        public TempTableController(
+            TempTableService tempTableService,
+            AuditService auditService,
+            UserManager<ApplicationUser> userManager)
         {
             _tempTableService = tempTableService;
+            _auditService = auditService;
+            _userManager = userManager;
         }
 
-        public IActionResult Index()
-        {
-            return View();
-        }
+        public IActionResult Index() => View();
 
         [HttpPost]
-        // 2. Recibir los nuevos parámetros del FormData
         public async Task<IActionResult> Generate(IFormFileCollection files, string platinum_temp_db, string db_location_platinum_temp)
         {
-            if (files == null || files.Count == 0)
-            {
-                TempData["ToastMessage"] = "Por favor, selecciona al menos un archivo para analizar.";
-                TempData["ToastType"] = "error";
-                return RedirectToAction("Index");
-            }
+            if (files == null || files.Count == 0) return RedirectToAction("Index");
 
             try
             {
-                // 3. Generar el nombre base del notebook
                 string baseFileName = GenerateNotebookBaseName(files);
-                string outputFileName = $"{baseFileName}.ipynb"; // Asegurarse que sea .ipynb
+                string outputFileName = $"{baseFileName}.ipynb";
 
-                // 4. Llamar al servicio con los nuevos parámetros
-                var generatedNotebookJson = await _tempTableService.GenerateDeletionNotebookAsync(
-                    files,
-                    baseFileName,
-                    platinum_temp_db,
-                    db_location_platinum_temp
-                );
+                // LLAMADA AL SERVICIO (Recibimos JSON y Lista de Tablas)
+                var (generatedJson, tablesDetected) = await _tempTableService.GenerateDeletionNotebookAsync(
+                    files, baseFileName, platinum_temp_db, db_location_platinum_temp);
 
-                // 5. [CORRECCIÓN] Devolver el archivo con el header Content-Disposition correcto
-                // Esto soluciona el error "filename_=UTF-8..."
+                // --- LOG DE AUDITORÍA (LO QUE FALTABA) ---
+                var userId = _userManager.GetUserId(User);
+                var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+                var auditDetails = new
+                {
+                    Modulo = "Limpieza de Tablas Temporales",
+                    Accion = "Detección y Generación de Notebook",
+                    ArchivosSubidos = files.Select(f => f.FileName).ToList(),
+                    TotalHallazgos = tablesDetected.Count,
+                    TablasEncontradas = tablesDetected,
+                    ParametrosConfig = new { Database = platinum_temp_db, Location = db_location_platinum_temp }
+                };
+
+                await _auditService.LogActionAsync(
+                    userId,
+                    "Limpieza Tmp: Generación Script",
+                    JsonSerializer.Serialize(auditDetails),
+                    ip);
+                // --- FIN LOG ---
+
                 Response.Headers.Add("Content-Disposition", new ContentDisposition
                 {
                     FileName = outputFileName,
-                    Inline = false // Fuerza la descarga
+                    Inline = false
                 }.ToString());
 
-                // Devolver como application/json (que es el formato de .ipynb)
-                return File(Encoding.UTF8.GetBytes(generatedNotebookJson), "application/json");
+                return File(Encoding.UTF8.GetBytes(generatedJson), "application/json");
             }
             catch (Exception ex)
             {
-                TempData["ToastMessage"] = $"Ocurrió un error: {ex.Message}";
-                TempData["ToastType"] = "error";
+                TempData["ToastMessage"] = $"Error: {ex.Message}";
                 return RedirectToAction("Index");
             }
         }
 
-        // 6. [NUEVO] Método helper para la lógica de nombrado
         private string GenerateNotebookBaseName(IFormFileCollection files)
         {
             int maxNum = 0;
-            int paddingLength = 3; // Padding por defecto (ej. 001)
-            string processName = "Limpieza_Tablas_Temporales"; // Nombre base
-
-            // Regex para capturar (BCI_ o BCI)(001 o 01 o 1)(_)
-            // ^(BCI_?|BCI) -> BCI_ o BCI al inicio
-            // (\d{1,3}) -> Captura 1 a 3 dígitos (ej. 001, 01, 1)
-            // _.* -> Seguido de _ y cualquier cosa
             var regex = new Regex(@"^(BCI_?|BCI)(\d{1,3})_.*", RegexOptions.IgnoreCase);
-
             foreach (var file in files)
             {
-                if (file.FileName == null) continue;
-
                 var match = regex.Match(file.FileName);
-                if (match.Success)
-                {
-                    string numStr = match.Groups[2].Value; // El número (ej. "001")
-                    if (int.TryParse(numStr, out int currentNum))
-                    {
-                        if (currentNum > maxNum)
-                        {
-                            maxNum = currentNum;
-                            paddingLength = numStr.Length; // Captura el padding (ej. 3 para "001")
-                        }
-                    }
-                }
+                if (match.Success && int.TryParse(match.Groups[2].Value, out int currentNum))
+                    maxNum = Math.Max(maxNum, currentNum);
             }
-
-            int newNum = maxNum + 1;
-            string newNumStr = newNum.ToString($"D{paddingLength}"); // Aplica padding (ej. 5 -> "005")
-
-            // Retorna solo el nombre base, sin extensión
-            return $"BCI_{newNumStr}_{processName}";
+            return $"BCI_{(maxNum + 1):D3}_Limpieza_Tablas_Temporales";
         }
     }
 }

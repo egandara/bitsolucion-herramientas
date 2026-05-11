@@ -118,7 +118,8 @@ namespace NotebookValidator.Web.Services
                 else
                 {
                     // 3. Procesar con el motor centralizado
-                    var (findings, count) = await validatorService.ProcessFilesAsync(validAttachments);
+                    // CORRECCIÓN LÍNEA 121: Ajustamos nombres de variables y parámetros para coincidir con el resto del archivo
+                    var (findings, count, _) = await validatorService.ProcessFilesAsync(validAttachments);
 
                     if (user.AnalysisQuota < count)
                     {
@@ -155,7 +156,7 @@ namespace NotebookValidator.Web.Services
             await client.DisconnectAsync(true, stoppingToken);
         }
 
-        // --- NUEVO MÉTODO PARA GENERAR EL RESUMEN HTML ---
+        // --- MÉTODO PARA GENERAR EL RESUMEN HTML ---
         private string BuildSummaryHtml(List<string> analyzedFiles, List<Finding> findings)
         {
             var sb = new StringBuilder();
@@ -219,7 +220,6 @@ namespace NotebookValidator.Web.Services
             message.To.Add(new MailboxAddress("", to));
             message.Subject = $"RE: {subject}";
 
-            // AHORA ENVIAMOS EL CUERPO COMO HTML (HtmlBody)
             var builder = new BodyBuilder { HtmlBody = bodyHtml };
 
             if (excel != null)

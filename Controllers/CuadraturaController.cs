@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 using System.IO;
 using System.Threading.Tasks;
 using System.Linq;
@@ -7,6 +9,7 @@ using System.Data;
 using System.Collections.Generic;
 using NotebookValidator.Web.Services;
 using NotebookValidator.Web.Models;
+using NotebookValidator.Web.Data;
 using System;
 using System.Text.Json;
 using System.Globalization;
@@ -14,18 +17,25 @@ using ExcelDataReader;
 
 namespace NotebookValidator.Web.Controllers
 {
+    [Authorize]
     public class CuadraturaController : Controller
     {
         private readonly ICuadraturaService _cuadraturaService;
+        private readonly AuditService _auditService;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public CuadraturaController(ICuadraturaService cuadraturaService)
+        public CuadraturaController(
+            ICuadraturaService cuadraturaService,
+            AuditService auditService,
+            UserManager<ApplicationUser> userManager)
         {
             _cuadraturaService = cuadraturaService;
+            _auditService = auditService;
+            _userManager = userManager;
         }
 
         public IActionResult Index() => View();
 
-        // NUEVO: Extrae las hojas de forma ultrarápida al soltar el archivo
         [HttpPost]
         public IActionResult ObtenerHojasExcel(IFormFile archivo)
         {
@@ -55,7 +65,6 @@ namespace NotebookValidator.Web.Controllers
             using (var stream = new FileStream(tempPath1, FileMode.Create)) await archivo1.CopyToAsync(stream);
             using (var stream = new FileStream(tempPath2, FileMode.Create)) await archivo2.CopyToAsync(stream);
 
-            // Pasamos los nombres de las hojas seleccionadas
             DataTable dt1 = _cuadraturaService.LeerExcel(tempPath1, tieneEncabezados1, hoja1);
             DataTable dt2 = _cuadraturaService.LeerExcel(tempPath2, tieneEncabezados2, hoja2);
 
@@ -112,7 +121,7 @@ namespace NotebookValidator.Web.Controllers
         }
 
         [HttpPost]
-        public IActionResult EjecutarCuadratura(string TempPathArchivo1, string TempPathArchivo2, string AliasArchivo1, string AliasArchivo2, bool TieneEncabezados1, bool TieneEncabezados2, string HojaArchivo1, string HojaArchivo2, bool ModoAgrupacion, List<string> LlaveArchivo1, List<string> LlaveArchivo2, List<string> ColsComparar1, List<string> ColsComparar2, List<string> Tolerancias)
+        public async Task<IActionResult> EjecutarCuadratura(string TempPathArchivo1, string TempPathArchivo2, string AliasArchivo1, string AliasArchivo2, bool TieneEncabezados1, bool TieneEncabezados2, string HojaArchivo1, string HojaArchivo2, bool ModoAgrupacion, List<string> LlaveArchivo1, List<string> LlaveArchivo2, List<string> ColsComparar1, List<string> ColsComparar2, List<string> Tolerancias)
         {
             DataTable dt1 = _cuadraturaService.LeerExcel(TempPathArchivo1, TieneEncabezados1, HojaArchivo1);
             DataTable dt2 = _cuadraturaService.LeerExcel(TempPathArchivo2, TieneEncabezados2, HojaArchivo2);
@@ -154,13 +163,52 @@ namespace NotebookValidator.Web.Controllers
 
             resultados.AliasArchivo1 = string.IsNullOrWhiteSpace(AliasArchivo1) ? "Archivo 1" : AliasArchivo1;
             resultados.AliasArchivo2 = string.IsNullOrWhiteSpace(AliasArchivo2) ? "Archivo 2" : AliasArchivo2;
-
             resultados.EsModoAgrupacion = ModoAgrupacion;
             resultados.LlavesAgrupacion = LlaveArchivo1 ?? new List<string>();
             resultados.TotalOriginal1 = countOriginal1;
             resultados.TotalOriginal2 = countOriginal2;
             resultados.TotalAgrupado1 = dt1.Rows.Count;
             resultados.TotalAgrupado2 = dt2.Rows.Count;
+
+            // --- REGISTRO DE AUDITORÍA ---
+            var userId = _userManager.GetUserId(User);
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            var auditDetails = new
+            {
+                Modulo = "Cuadratura de Datos",
+                Accion = "Comparación Ejecutada",
+                Archivos = new
+                {
+                    Origen1 = resultados.AliasArchivo1,
+                    Origen2 = resultados.AliasArchivo2,
+                    Hoja1 = HojaArchivo1,
+                    Hoja2 = HojaArchivo2
+                },
+                Metadatos = new
+                {
+                    FilasOriginal1 = resultados.TotalOriginal1,
+                    FilasOriginal2 = resultados.TotalOriginal2,
+                    FilasComparadas1 = resultados.TotalAgrupado1,
+                    FilasComparadas2 = resultados.TotalAgrupado2,
+                    ColumnasComparadas = validCols1.Count,
+                    CeldasEvaluadas = (long)resultados.TotalAgrupado1 * validCols1.Count,
+                    Modo = ModoAgrupacion ? "Agrupación (Sumarizada)" : "Registro a Registro"
+                },
+                ResultadoCuadratura = new
+                {
+                    CoincidenciasExactas = resultados.TotalCoincidenciasExactas,
+                    RegistrosConDiferencias = resultados.RegistrosConDiferencias.Count,
+                    HuerfanosArchivo1 = resultados.HuerfanosArchivo1.Count,
+                    HuerfanosArchivo2 = resultados.HuerfanosArchivo2.Count
+                }
+            };
+
+            await _auditService.LogActionAsync(
+                userId,
+                "Cuadratura: Comparación Ejecutada",
+                JsonSerializer.Serialize(auditDetails),
+                ip);
 
             if (System.IO.File.Exists(TempPathArchivo1)) System.IO.File.Delete(TempPathArchivo1);
             if (System.IO.File.Exists(TempPathArchivo2)) System.IO.File.Delete(TempPathArchivo2);

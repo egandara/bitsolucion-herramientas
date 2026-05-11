@@ -26,40 +26,36 @@ namespace NotebookValidator.Web.Controllers
         {
             IQueryable<AnalysisRun> query = _context.AnalysisRuns.Include(r => r.User);
 
-            if (startDate.HasValue)
-            {
-                query = query.Where(r => r.AnalysisTimestamp >= startDate.Value);
-            }
-            if (endDate.HasValue)
-            {
-                query = query.Where(r => r.AnalysisTimestamp < endDate.Value.AddDays(1));
-            }
+            if (startDate.HasValue) query = query.Where(r => r.AnalysisTimestamp >= startDate.Value);
+            if (endDate.HasValue) query = query.Where(r => r.AnalysisTimestamp < endDate.Value.AddDays(1));
 
             var filteredAnalyses = await query.ToListAsync();
             var allUsers = await _context.Users.ToListAsync();
 
+            // 1. Procesar Hallazgos para la Dona
             var allFindings = filteredAnalyses
                 .SelectMany(run => JsonSerializer.Deserialize<List<Finding>>(run.ResultsJson) ?? new List<Finding>())
                 .ToList();
 
-            var problemTypeCounts = allFindings
-                .GroupBy(f => f.FindingType)
-                .ToDictionary(g => g.Key, g => g.Count());
+            var problemTypeCounts = allFindings.GroupBy(f => f.FindingType).ToDictionary(g => g.Key, g => g.Count());
+            var problemTypeSeverities = allFindings.GroupBy(f => f.FindingType).ToDictionary(g => g.Key, g => g.FirstOrDefault()?.Severity ?? "Info");
 
-            // --- INICIO DEL CÓDIGO AÑADIDO PARA COLORES ---
-            var problemTypeSeverities = allFindings
-                .GroupBy(f => f.FindingType)
-                .ToDictionary(g => g.Key, g => g.FirstOrDefault()?.Severity ?? "Info");
-            // --- FIN DEL CÓDIGO AÑADIDO PARA COLORES ---
+            // 2. Calcular Tendencia (Ãšltimos 15 dÃ­as)
+            var limiteTendencia = DateTime.Now.Date.AddDays(-14);
+            var tendenciaData = filteredAnalyses
+                .Where(r => r.AnalysisTimestamp >= limiteTendencia)
+                .GroupBy(r => r.AnalysisTimestamp.Date)
+                .Select(g => new { Fecha = g.Key, Cantidad = g.Count() })
+                .OrderBy(g => g.Fecha)
+                .ToList();
 
-            var analysesPerUser = filteredAnalyses
+            // 3. Usuario mÃ¡s activo
+            var mostActiveUser = filteredAnalyses
                 .Where(r => r.User != null)
                 .GroupBy(r => r.User.Email)
-                .ToDictionary(g => g.Key, g => g.Count());
-
-            var mostActiveUser = analysesPerUser.Any()
-                ? analysesPerUser.OrderByDescending(kvp => kvp.Value).First().Key
-                : "N/A";
+                .OrderByDescending(g => g.Count())
+                .Select(g => g.Key)
+                .FirstOrDefault() ?? "N/A";
 
             var viewModel = new AdminDashboardViewModel
             {
@@ -67,9 +63,11 @@ namespace NotebookValidator.Web.Controllers
                 TotalAnalyses = filteredAnalyses.Count,
                 TotalProblemsFound = filteredAnalyses.Sum(r => r.TotalProblemsFound),
                 MostActiveUser = mostActiveUser,
-                RecentAnalyses = filteredAnalyses.OrderByDescending(r => r.AnalysisTimestamp).Take(10).ToList(),
+                RecentAnalyses = filteredAnalyses.OrderByDescending(r => r.AnalysisTimestamp).Take(8).ToList(),
                 ProblemTypeCounts = problemTypeCounts,
-                ProblemTypeSeverities = problemTypeSeverities, // Asignamos la nueva propiedad
+                ProblemTypeSeverities = problemTypeSeverities,
+                TrendLabels = tendenciaData.Select(d => d.Fecha.ToString("dd MMM")).ToList(),
+                TrendData = tendenciaData.Select(d => d.Cantidad).ToList(),
                 StartDate = startDate,
                 EndDate = endDate
             };

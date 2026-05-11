@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using NotebookValidator.Web.Data;
 using NotebookValidator.Web.Models;
@@ -14,14 +14,15 @@ namespace NotebookValidator.Web.Services
             _context = context;
         }
 
-        public async Task LogActionAsync(string userId, string actionType, string details, string entityId = null)
+        public async Task LogActionAsync(string userId, string action, string details, string? ipAddress = null, string? entityId = null)
         {
             var auditLog = new AuditLog
             {
                 UserId = userId,
-                ActionType = actionType,
+                Action = action,
                 Timestamp = DateTime.UtcNow,
                 Details = details,
+                IpAddress = ipAddress,
                 EntityId = entityId
             };
 

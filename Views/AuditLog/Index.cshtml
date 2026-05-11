@@ -1,35 +1,197 @@
-﻿@model IEnumerable<NotebookValidator.Web.Models.AuditLog>
-
+@model IEnumerable<NotebookValidator.Web.Models.AuditLog>
 @{
-    ViewData["Title"] = "Registro de Auditoría";
+    ViewData["Title"] = "Log de Auditoría";
 }
 
-<h1 class="mb-4">
-    <i class="bi bi-shield-check me-2"></i> @ViewData["Title"]
-</h1>
+<style>
+    /* Estilo para coincidir con la App */
+    body {
+        background-color: #0f111a;
+    }
 
-<div class="card">
-    <div class="card-body">
-        <table class="table table-hover">
-            <thead>
-                <tr>
-                    <th>Fecha y Hora (UTC)</th>
-                    <th>Usuario</th>
-                    <th>Tipo de Acción</th>
-                    <th>Detalles</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in Model)
-                {
-                    <tr>
-                        <td>@item.Timestamp.ToString("g")</td>
-                        <td>@item.User?.Email</td>
-                        <td><code>@item.ActionType</code></td>
-                        <td>@item.Details</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+    .card-audit {
+        background-color: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+    }
+
+    .table-audit {
+        color: #c9d1d9;
+        border-color: #30363d;
+    }
+
+        .table-audit thead th {
+            background-color: #21262d;
+            color: #ffc107; /* Dorado de la App */
+            border-bottom: 2px solid #30363d;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        .table-audit tbody tr:hover {
+            background-color: #1c2128 !important;
+        }
+
+    /* Estilo del Modal */
+    .modal-content-audit {
+        background-color: #161b22;
+        border: 1px solid #ffc107;
+        box-shadow: 0 0 15px rgba(255, 193, 7, 0.2);
+    }
+
+    .modal-header-audit {
+        border-bottom: 1px solid #30363d;
+    }
+
+    /* Bloque de código/datos corregido */
+    .data-container {
+        background-color: #0d1117;
+        color: #58a6ff; /* Azul cian para datos */
+        padding: 15px;
+        border-radius: 6px;
+        border: 1px solid #30363d;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.9rem;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        max-height: 500px;
+        overflow-y: auto;
+        text-align: justify;
+    }
+
+    .badge-user {
+        border: 1px solid #30363d;
+        background: transparent;
+        color: #8b949e;
+    }
+
+    /* Clase específica para las etiquetas del modal para que sean legibles */
+    .modal-label-custom {
+        color: #abb2bf !important; /* Gris claro legible */
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+</style>
+
+<div class="container-fluid mt-4 px-4">
+    <div class="card card-audit shadow-lg">
+        <div class="card-header modal-header-audit d-flex justify-content-between align-items-center py-3">
+            <h4 class="mb-0 text-warning">
+                <i class="bi bi-shield-lock-fill me-2"></i>Centro de Auditoría de Sistemas
+            </h4>
+            <button class="btn btn-sm btn-outline-warning" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise me-1"></i> Sincronizar
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="auditTable" class="table table-audit align-middle">
+                    <thead>
+                        <tr>
+                            <th>Fecha y Hora (Local)</th>
+                            <th>Usuario / Responsable</th>
+                            <th>Acción Ejecutada</th>
+                            <th>Detalle Rápido</th>
+                            <th>Dirección IP</th>
+                            <th class="text-center">Explorar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var log in Model)
+                        {
+                            <tr>
+                                <td data-order="@log.Timestamp.Ticks" class="small">
+                                    @log.Timestamp.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")
+                                </td>
+                                <td>
+                                    <span class="badge badge-user p-2">
+                                        <i class="bi bi-person me-1"></i> @(log.User?.Email ?? "Sistema / Bot")
+                                    </span>
+                                </td>
+                                <td>
+                                    @{
+                                        var badgeClass = log.Action.Contains("Delete") || log.Action.Contains("Reset") ? "bg-danger" :
+                                        log.Action.Contains("Update") || log.Action.Contains("Quota") ? "bg-warning text-dark" : "bg-primary";
+                                    }
+                                    <span class="badge @badgeClass fw-bold">@log.Action.ToUpper()</span>
+                                </td>
+                                <td class="text-muted small">
+                                    <div class="text-truncate" style="max-width: 280px;">@log.Details</div>
+                                </td>
+                                <td class="font-monospace small">@log.IpAddress</td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-link text-warning p-0"
+                                            onclick="showLogDetails('@log.Action', `@log.Details`)">
+                                        <i class="bi bi-zoom-in fs-5"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
+
+<div class="modal fade" id="auditDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content modal-content-audit text-white">
+            <div class="modal-header modal-header-audit">
+                <h5 class="modal-title text-warning">
+                    <i class="bi bi-info-square-fill me-2"></i>Detalle de Actividad Seleccionada
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <label class="modal-label-custom">Tipo de Evento:</label>
+                        <h4 id="modalAction" class="text-white border-start border-warning border-4 ps-3"></h4>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <label class="modal-label-custom">Descripción Completa / Datos Técnicos:</label>
+                        <div id="modalDetails" class="data-container"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            $('#auditTable').DataTable({
+                "order": [[0, "desc"]], // Fuerza el orden descendente por la columna 0 (Fecha)
+                "columnDefs": [
+                    { "type": "num", "targets": 0 } // Le dice que use el valor numérico (Ticks) para ordenar
+                ],
+                "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" }
+            });
+        });
+
+        function showLogDetails(action, details) {
+            document.getElementById('modalAction').innerText = action;
+            const container = document.getElementById('modalDetails');
+
+            try {
+                const obj = JSON.parse(details);
+                container.innerText = JSON.stringify(obj, null, 4);
+            } catch (e) {
+                container.innerText = details;
+            }
+
+            new bootstrap.Modal(document.getElementById('auditDetailModal')).show();
+        }
+    </script>
+}

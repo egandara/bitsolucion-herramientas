@@ -25,12 +25,13 @@ namespace NotebookValidator.Web.Services
             _context = context;
         }
 
-        public async Task<(List<Finding> allFindings, int filesCount)> ProcessFilesAsync(IEnumerable<(Stream stream, string fileName)> files)
+        public async Task<(List<Finding> allFindings, int filesCount, Dictionary<string, List<string>> fileVariables)> ProcessFilesAsync(IEnumerable<(Stream stream, string fileName)> files)
         {
             var notebooksToProcess = new List<(string tempPath, string originalName)>();
             var tempDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempDirectory);
             var allFindings = new List<Finding>();
+            var fileVariables = new Dictionary<string, List<string>>();
 
             try
             {
@@ -55,11 +56,12 @@ namespace NotebookValidator.Web.Services
 
                 foreach (var (tempPath, originalName) in notebooksToProcess)
                 {
-                    var findings = await AnalyzeNotebookAsync(tempPath, originalName);
+                    var (findings, variables) = await AnalyzeNotebookWithVarsAsync(tempPath, originalName);
                     allFindings.AddRange(findings);
+                    fileVariables[originalName] = variables;
                 }
 
-                return (allFindings, notebooksToProcess.Count);
+                return (allFindings, notebooksToProcess.Count, fileVariables);
             }
             finally
             {
@@ -67,9 +69,10 @@ namespace NotebookValidator.Web.Services
             }
         }
 
-        public async Task<List<Finding>> AnalyzeNotebookAsync(string filePath, string originalFileName)
+        private async Task<(List<Finding> findings, List<string> variables)> AnalyzeNotebookWithVarsAsync(string filePath, string originalFileName)
         {
             var findings = new List<Finding>();
+            var variables = new List<string>();
             Notebook notebook;
 
             try
@@ -86,11 +89,22 @@ namespace NotebookValidator.Web.Services
                         .ToList();
                     notebook = new Notebook { Cells = cells };
                 }
+
+                // --- SMART FIX: EXTRAER VARIABLES DEL NOTEBOOK ---
+                var varRegex = new Regex(@"^(\w+)\s*=\s*dbutils\.widgets\.get", RegexOptions.IgnoreCase | RegexOptions.Multiline);
+                foreach (var cell in notebook.Cells.Where(c => c.CellType == "code"))
+                {
+                    foreach (var line in cell.Source)
+                    {
+                        var match = varRegex.Match(line.Trim());
+                        if (match.Success) variables.Add(match.Groups[1].Value);
+                    }
+                }
             }
             catch (Exception e)
             {
                 findings.Add(new Finding(originalFileName, "Error", $"No se pudo leer el archivo: {e.Message}", Severity: "Critical"));
-                return findings;
+                return (findings, variables);
             }
 
             findings.AddRange(ValidateHeader(notebook.Cells, originalFileName));
@@ -111,14 +125,9 @@ namespace NotebookValidator.Web.Services
                     var line = cell.Source[l];
                     var trimmedLine = line.Trim();
 
-                    // --- MEJORA CRÍTICA: IGNORAR LÍNEAS DE IMPORTACIÓN Y COMENTARIOS ---
-                    if (string.IsNullOrWhiteSpace(trimmedLine) ||
-                        trimmedLine.StartsWith("#") ||
+                    if (string.IsNullOrWhiteSpace(trimmedLine) || trimmedLine.StartsWith("#") ||
                         trimmedLine.StartsWith("import ", StringComparison.OrdinalIgnoreCase) ||
-                        trimmedLine.StartsWith("from ", StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
+                        trimmedLine.StartsWith("from ", StringComparison.OrdinalIgnoreCase)) continue;
 
                     foreach (var cr in compiledRules)
                     {
@@ -129,42 +138,34 @@ namespace NotebookValidator.Web.Services
                     }
                 }
             }
-            return findings;
+            return (findings, variables.Distinct().ToList());
         }
 
         public byte[] GenerateExcelReportBytes(List<Finding> findings, AnalysisRun runInfo, string logoPath = null)
         {
             using var workbook = new XLWorkbook();
             var ws = workbook.Worksheets.Add("Reporte de Validación");
-
-            if (!string.IsNullOrEmpty(logoPath) && File.Exists(logoPath))
-                ws.AddPicture(logoPath).MoveTo(ws.Cell("A1")).Scale(0.4);
-
+            if (!string.IsNullOrEmpty(logoPath) && File.Exists(logoPath)) ws.AddPicture(logoPath).MoveTo(ws.Cell("A1")).Scale(0.4);
             ws.Cell("C2").Value = "REPORTE DE ANÁLISIS DE NOTEBOOKS";
             ws.Cell("C2").Style.Font.Bold = true;
             ws.Cell("C4").Value = "Usuario:"; ws.Cell("D4").Value = runInfo.User?.Email ?? "Sistema Remoto";
             ws.Cell("C5").Value = "Fecha:"; ws.Cell("D5").Value = runInfo.AnalysisTimestamp.ToString("g");
-
             var data = findings.Select(f => new { f.FileName, f.FindingType, f.Severity, f.CellNumber, f.LineNumber, f.Content, f.Details }).ToList();
             var table = ws.Cell(8, 1).InsertTable(data);
             table.Theme = XLTableTheme.TableStyleMedium9;
-
             ws.Columns().AdjustToContents();
             using var ms = new MemoryStream();
             workbook.SaveAs(ms);
             return ms.ToArray();
         }
 
-        // --- MÉTODOS ESTRUCTURALES ORIGINALES ---
         private IEnumerable<Finding> ValidateHeader(List<Cell> cells, string originalFileName)
         {
             if (cells == null || !cells.Any()) yield break;
             var baseFileName = Path.GetFileNameWithoutExtension(originalFileName);
             var firstCellContent = string.Join("\n", cells.First().Source);
             if (!firstCellContent.Contains(baseFileName, StringComparison.OrdinalIgnoreCase))
-            {
                 yield return new Finding(originalFileName, "Header Incorrecto", $"Falta el nombre '{baseFileName}' en la primera celda.", 1, Severity: "Warning");
-            }
         }
 
         private IEnumerable<Finding> ValidateFooter(List<Cell> cells, string fileName)
@@ -172,19 +173,10 @@ namespace NotebookValidator.Web.Services
             if (cells == null || cells.Count < 2) yield break;
             var lastContent = string.Join("\n", cells.Last().Source);
             if (!lastContent.Contains("dbutils.notebook.exit"))
-            {
                 yield return new Finding(fileName, "Footer Incorrecto", "No se detectó el comando de salida al final.", cells.Count, Severity: "Info");
-            }
         }
 
-        private IEnumerable<Finding> ValidateUnusedImports(List<Cell> cells, string fileName)
-        {
-            return Enumerable.Empty<Finding>();
-        }
-
-        private IEnumerable<Finding> ValidateUnusedWidgetVariables(List<Cell> cells, string fileName)
-        {
-            return Enumerable.Empty<Finding>();
-        }
+        private IEnumerable<Finding> ValidateUnusedImports(List<Cell> cells, string fileName) => Enumerable.Empty<Finding>();
+        private IEnumerable<Finding> ValidateUnusedWidgetVariables(List<Cell> cells, string fileName) => Enumerable.Empty<Finding>();
     }
 }

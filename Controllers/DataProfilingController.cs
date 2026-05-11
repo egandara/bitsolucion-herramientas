@@ -3,11 +3,16 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using NotebookValidator.Web.Services;
 using NotebookValidator.Web.Models;
+using NotebookValidator.Web.Data;
 using NotebookValidator.Web.Hubs;
 using System;
 using System.IO;
+using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace NotebookValidator.Web.Controllers
@@ -18,12 +23,21 @@ namespace NotebookValidator.Web.Controllers
         private readonly DataProfilingService _profilingService;
         private readonly IMemoryCache _cache;
         private readonly IHubContext<ProfilingHub> _hubContext;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public DataProfilingController(DataProfilingService profilingService, IMemoryCache cache, IHubContext<ProfilingHub> hubContext)
+        public DataProfilingController(
+            DataProfilingService profilingService,
+            IMemoryCache cache,
+            IHubContext<ProfilingHub> hubContext,
+            UserManager<ApplicationUser> userManager,
+            IServiceScopeFactory scopeFactory)
         {
             _profilingService = profilingService;
             _cache = cache;
             _hubContext = hubContext;
+            _userManager = userManager;
+            _scopeFactory = scopeFactory;
         }
 
         [HttpGet]
@@ -32,7 +46,6 @@ namespace NotebookValidator.Web.Controllers
             return View();
         }
 
-        // NUEVO MÉTODO PARA VER LOS RESULTADOS DESDE LA CACHÉ
         [HttpGet]
         public IActionResult VerResultados(string jobId)
         {
@@ -58,17 +71,25 @@ namespace NotebookValidator.Web.Controllers
             var originalFileName = archivo.FileName;
             var fileSize = archivo.Length;
 
+            // Capturamos datos del usuario antes de entrar al hilo de fondo
+            var userId = _userManager.GetUserId(User);
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+
             // 1. Guardamos el archivo rápidamente
             using (var fs = System.IO.File.Create(tempPath))
             {
                 await archivo.CopyToAsync(fs);
             }
 
-            // 2. Iniciamos el trabajo pesado en SEGUNDO PLANO (Fire and Forget)
+            // 2. Iniciamos el trabajo pesado en SEGUNDO PLANO
             _ = Task.Run(async () =>
             {
                 try
                 {
+                    // Necesitamos crear un scope para acceder al AuditService en segundo plano
+                    using var scope = _scopeFactory.CreateScope();
+                    var auditService = scope.ServiceProvider.GetRequiredService<AuditService>();
+
                     await _hubContext.Clients.Client(connectionId).SendAsync("ReceiveProgress", "Iniciando motor de procesamiento...");
                     var watch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -86,6 +107,30 @@ namespace NotebookValidator.Web.Controllers
                         ? $"{watch.Elapsed.TotalSeconds:N1} seg"
                         : $"{(watch.Elapsed.TotalMinutes):N1} min";
 
+                    // --- REGISTRO DE AUDITORÍA ---
+                    var auditDetails = new
+                    {
+                        Modulo = "Perfilamiento de Datos",
+                        Accion = "Análisis de Estructura y Calidad",
+                        ArchivoOriginal = originalFileName,
+                        Metadatos = new
+                        {
+                            Filas = profileResult.TotalRows,
+                            Columnas = profileResult.TotalColumns,
+                            CeldasTotales = (long)profileResult.TotalRows * profileResult.TotalColumns,
+                            TamanoArchivo = profileResult.FileSizeFormatted,
+                            Extension = Path.GetExtension(originalFileName).ToUpper()
+                        },
+                        Configuracion = new { TieneEncabezados = tieneEncabezados },
+                        Rendimiento = new { TiempoProcesado = profileResult.ProcessingTimeFormatted }
+                    };
+
+                    await auditService.LogActionAsync(
+                        userId,
+                        "Perfilamiento: Análisis Ejecutado",
+                        JsonSerializer.Serialize(auditDetails),
+                        ip);
+
                     // 3. Guardamos el resultado en memoria por 30 minutos
                     _cache.Set(jobId, profileResult, TimeSpan.FromMinutes(30));
 
@@ -98,7 +143,6 @@ namespace NotebookValidator.Web.Controllers
                 }
             });
 
-            // Soltamos la conexión HTTP de inmediato para evitar Timeouts
             return Json(new { success = true, jobId = jobId });
         }
 

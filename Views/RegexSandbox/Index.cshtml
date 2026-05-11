@@ -1,0 +1,173 @@
+@{
+    ViewData["Title"] = "Sandbox de Reglas";
+}
+
+<style>
+    /* CORRECCIÓN DE VISIBILIDAD */
+    .text-light-muted {
+        color: #abb2bf !important; /* Gris claro para subtítulos y placeholders */
+    }
+
+    .sandbox-container {
+        background-color: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 2rem;
+    }
+
+    .editor-label {
+        color: #ffc107; /* Dorado para etiquetas */
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+        display: block;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+    }
+
+    textarea.code-input, input.code-input {
+        background-color: #0d1117;
+        color: #58a6ff; /* Azul cian para el código */
+        border: 1px solid #30363d;
+        font-family: 'Cascadia Code', Consolas, monospace;
+        font-size: 0.9rem;
+        border-radius: 6px;
+    }
+
+        textarea.code-input:focus, input.code-input:focus {
+            background-color: #0d1117;
+            color: #58a6ff;
+            border-color: #ffc107;
+            box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
+        }
+
+    /* Mejora de visibilidad para placeholders */
+    .code-input::placeholder {
+        color: #6a737d !important;
+        opacity: 1;
+    }
+
+    #results-area {
+        background-color: #050505;
+        border-radius: 6px;
+        padding: 1.2rem;
+        min-height: 120px;
+        border-left: 4px solid #30363d;
+        color: #abb2bf; /* Asegura que el texto dentro sea legible */
+    }
+
+    .match-highlight {
+        background-color: rgba(255, 193, 7, 0.3);
+        border-bottom: 2px solid #ffc107;
+        color: #fff;
+    }
+
+    #visual-preview {
+        background-color: #0d1117;
+        color: #c9d1d9;
+        border: 1px solid #30363d;
+        border-radius: 6px;
+        min-height: 200px;
+        font-family: 'Cascadia Code', Consolas, monospace;
+        padding: 1rem;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12 text-center mb-4">
+            <h2 class="text-white fw-bold"><i class="bi bi-shield-shaded text-warning me-2"></i>Reglas Sandbox: Health Check</h2>
+            <p class="text-light-muted">Prueba tus expresiones regulares contra fragmentos de código antes de aplicarlas al motor.</p>
+        </div>
+    </div>
+
+    <div class="sandbox-container shadow-lg">
+        <div class="row">
+            <div class="col-md-6">
+                <label class="editor-label">Patrón Regex a Probar:</label>
+                <div class="input-group mb-4">
+                    <span class="input-group-text bg-dark border-secondary text-warning">/</span>
+                    <input type="text" id="regex-input" class="form-control code-input" placeholder="Ej: spark\.sql\(.*\">
+                    <span class="input-group-text bg-dark border-secondary text-warning">/gmi</span>
+                </div>
+
+                <label class="editor-label">Código de Prueba (Simular Notebook):</label>
+                <textarea id="test-code" class="form-control code-input mb-3" rows="12" placeholder="Pega aquí el código que quieres validar..."></textarea>
+
+                <button type="button" onclick="runTest()" class="btn btn-warning w-100 fw-bold py-2">
+                    <i class="bi bi-play-fill me-1"></i> Ejecutar Prueba de Captura
+                </button>
+            </div>
+
+            <div class="col-md-6">
+                <label class="editor-label">Resultado del Análisis:</label>
+                <div id="results-area" class="mb-4">
+                    <div id="status-msg" class="text-light-muted">Esperando ejecución...</div>
+                    <div id="matches-list" class="mt-3 small"></div>
+                </div>
+
+                <div id="preview-container" style="display:none;">
+                    <label class="editor-label">Visualización de Coincidencias:</label>
+                    <div id="visual-preview"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        async function runTest() {
+            const regex = document.getElementById('regex-input').value;
+            const testCode = document.getElementById('test-code').value;
+            const matchesList = document.getElementById('matches-list');
+            const statusMsg = document.getElementById('status-msg');
+            const visualPreview = document.getElementById('visual-preview');
+            const previewContainer = document.getElementById('preview-container');
+
+            if (!regex || !testCode) {
+                alert("Por favor completa ambos campos.");
+                return;
+            }
+
+            statusMsg.innerHTML = '<span class="spinner-border spinner-border-sm me-2 text-warning"></span><span class="text-light-muted">Procesando...</span>';
+            matchesList.innerHTML = '';
+
+            const response = await fetch('/RegexSandbox/TestRegex', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ regex, testCode })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                statusMsg.innerHTML = `<span class="text-success"><i class="bi bi-check-circle-fill me-2"></i>Se encontraron ${data.count} coincidencias.</span>`;
+                previewContainer.style.display = 'block';
+
+                let highlighted = testCode;
+                // Invertimos para no alterar los índices al insertar etiquetas HTML
+                const reversedMatches = [...data.matches].sort((a, b) => b.index - a.index);
+
+                reversedMatches.forEach(m => {
+                    const before = highlighted.substring(0, m.index);
+                    const match = highlighted.substring(m.index, m.index + m.length);
+                    const after = highlighted.substring(m.index + m.length);
+                    highlighted = before + `<span class="match-highlight">${match}</span>` + after;
+
+                    const item = document.createElement('div');
+                    item.className = 'text-warning mb-1 border-bottom border-dark pb-1';
+                    item.innerHTML = `<i class="bi bi-arrow-right-short"></i> Capturado: <code class="text-info">${m.value}</code>`;
+                    matchesList.prepend(item);
+                });
+
+                visualPreview.innerHTML = highlighted;
+            } else {
+                statusMsg.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Error: ${data.message}</span>`;
+                previewContainer.style.display = 'none';
+            }
+        }
+    </script>
+}

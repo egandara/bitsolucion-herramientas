@@ -11,12 +11,13 @@ namespace NotebookValidator.Web.ViewModels
         public int TotalProblemsFound { get; set; }
         public string MostActiveUser { get; set; } = "N/A";
         public List<AnalysisRun> RecentAnalyses { get; set; } = new();
-        public Dictionary<string, int> ProblemTypeCounts { get; set; } = new(); // Esta es la propiedad que faltaba
+        public Dictionary<string, int> ProblemTypeCounts { get; set; } = new();
+        public Dictionary<string, string> ProblemTypeSeverities { get; set; } = new();
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
 
-        // Propiedad nueva S”LO para los colores del gr·fico
-        public Dictionary<string, string> ProblemTypeSeverities { get; set; }
-
+        // PROPIEDADES PARA LA GR√ÅFICA DE TENDENCIA
+        public List<string> TrendLabels { get; set; } = new();
+        public List<int> TrendData { get; set; } = new();
     }
 }

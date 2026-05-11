@@ -13,17 +13,13 @@ namespace NotebookValidator.Web.Services
 {
     public class TempTableService
     {
-        // 1. [NUEVO] Definimos una lista flexible de variaciones para el nombre de la variable de base de datos.
-        // Esto atrapará: db_platinum_tmpX, platinum_temp_dbX, db_plat_temp_X, etc.
         private const string DbVars = @"(?:platinum_temp_db|db_plat_temp|db_platinum_tmp|db_platinum_temp|platinum_tmp_db|db_plat_tmp)_?X?";
 
-        // 2. [ACTUALIZADO] Usamos interpolación ($"") para inyectar las variaciones en el Regex.
-        // Sólo detecta tablas creadas dentro de la misma celda en una sentencia CREATE TABLE
         private static readonly Regex CreateTableWithDbVarRegex = new Regex(
             $@"CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?[\s\S]{{0,800}}?(?:\+\s*{DbVars}\s*\+\s*['""]{{1,3}}\s*\.\s*|(?:\+\s*{DbVars}\s*\+\s*['""]\s*\+\s*['""]\s*\.\s*)|(?:\b{DbVars}\s*\.\s*))([A-Za-z0-9_]+)",
             RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
-        public async Task<string> GenerateDeletionNotebookAsync(
+        public async Task<(string notebookJson, List<string> tablesFound)> GenerateDeletionNotebookAsync(
             IFormFileCollection files,
             string baseFileName,
             string platinumTempDb,
@@ -72,80 +68,46 @@ namespace NotebookValidator.Web.Services
                         {
                             if (cell.CellType == "code")
                             {
-                                // Unimos con espacio para mantener separadores sin perder palabras por saltos de línea
                                 var code = string.Join(" ", cell.Source);
-
-                                // Extraemos sólo tablas que aparecen en una sentencia CREATE TABLE en la misma celda
                                 var matches = CreateTableWithDbVarRegex.Matches(code);
                                 foreach (Match match in matches)
                                 {
-                                    if (match.Groups.Count > 1)
-                                    {
-                                        tempTableNames.Add(match.Groups[1].Value);
-                                    }
+                                    if (match.Groups.Count > 1) tempTableNames.Add(match.Groups[1].Value);
                                 }
                             }
                         }
                     }
-                    catch (JsonException ex)
-                    {
-                        Console.WriteLine($"Error al deserializar notebook: {ex.Message}");
-                    }
+                    catch { }
                 }
 
-                return BuildOutputNotebook(
-                    tempTableNames.ToList(),
-                    baseFileName,
-                    platinumTempDb,
-                    dbLocationPlatinumTemp
-                );
+                var tablesList = tempTableNames.OrderBy(t => t).ToList();
+                var notebookContent = BuildOutputNotebook(tablesList, baseFileName, platinumTempDb, dbLocationPlatinumTemp);
+
+                // IMPORTANTE: Devolvemos el JSON y la lista de tablas
+                return (notebookContent, tablesList);
             }
             finally
             {
-                if (Directory.Exists(tempDirectory))
-                {
-                    Directory.Delete(tempDirectory, recursive: true);
-                }
+                if (Directory.Exists(tempDirectory)) Directory.Delete(tempDirectory, true);
             }
         }
 
-        private string BuildOutputNotebook(
-            List<string> tableNames,
-            string baseFileName,
-            string platinumTempDb,
-            string dbLocationPlatinumTemp)
+        private string BuildOutputNotebook(List<string> tableNames, string baseFileName, string platinumTempDb, string dbLocationPlatinumTemp)
         {
-            var notebook = new
-            {
-                cells = new List<object>(),
-                metadata = new { },
-                nbformat = 4,
-                nbformat_minor = 0
-            };
-
+            var notebook = new { cells = new List<object>(), metadata = new { }, nbformat = 4, nbformat_minor = 0 };
             notebook.cells.Add(CreateMarkdownCell($"# {baseFileName}"));
-
             notebook.cells.Add(CreateMarkdownCell("## Captura de Variables"));
-            notebook.cells.Add(CreateCodeCell(
-                "dbutils.widgets.removeAll()\n\n" +
-                $"dbutils.widgets.text(\"platinum_temp_dbW\", \"{platinumTempDb}\", \"01 DB Platinum Temp:\")\n" +
-                $"dbutils.widgets.text(\"db_location_platinum_tempW\", \"{dbLocationPlatinumTemp}\", \"02 Location Platinum Temp DB:\")"
-            ));
-
-            notebook.cells.Add(CreateCodeCell("platinum_temp_dbX = dbutils.widgets.get(\"platinum_temp_dbW\")\nspark.conf.set(\"bci.platinum_temp_dbX\", platinum_temp_dbX)\n\ndb_location_platinum_temp_X = dbutils.widgets.get(\"db_location_platinum_tempW\")\nspark.conf.set(\"bci.db_location_platinum_temp_X\", db_location_platinum_temp_X)"));
+            notebook.cells.Add(CreateCodeCell($"dbutils.widgets.removeAll()\ndbutils.widgets.text(\"platinum_temp_dbW\", \"{platinumTempDb}\", \"01 DB Platinum Temp:\")\ndbutils.widgets.text(\"db_location_platinum_tempW\", \"{dbLocationPlatinumTemp}\", \"02 Location Platinum Temp DB:\")"));
+            notebook.cells.Add(CreateCodeCell("platinum_temp_dbX = dbutils.widgets.get(\"platinum_temp_dbW\")\nspark.conf.set(\"bci.platinum_temp_dbX\", platinum_temp_dbX)\ndb_location_platinum_temp_X = dbutils.widgets.get(\"db_location_platinum_tempW\")\nspark.conf.set(\"bci.db_location_platinum_temp_X\", db_location_platinum_temp_X)"));
             notebook.cells.Add(CreateMarkdownCell("## Funciones"));
             notebook.cells.Add(CreateCodeCell("def sql_safe(query):\n  try:\n    print (\"sqlSafe: query -> \" + query)\n    return spark.sql(query)\n  except Exception as e:\n    dbutils.notebook.exit(\"{\\\"coderror\\\":\\\"20001\\\", \\\"msgerror\\\":\\\"Error grave procesado consulta -> \"+str(e)+\"\\\"}\")"));
-            notebook.cells.Add(CreateMarkdownCell("## Eliminacion Tablas Temporales"));
 
-            foreach (var tableName in tableNames.OrderBy(t => t))
+            foreach (var tableName in tableNames)
             {
-                var safeTableNamePart = new string(tableName.Where(char.IsLetterOrDigit).ToArray());
-                var variableName = $"paso_tb_del_{safeTableNamePart.Substring(0, Math.Min(safeTableNamePart.Length, 20))}";
-
+                var safeName = new string(tableName.Where(char.IsLetterOrDigit).ToArray());
+                var varName = $"paso_tb_del_{safeName.Substring(0, Math.Min(safeName.Length, 15))}";
                 notebook.cells.Add(CreateMarkdownCell($"### Tabla {tableName}"));
-                notebook.cells.Add(CreateCodeCell($"{variableName} = \"\"\"DROP TABLE IF EXISTS \"\"\" + platinum_temp_dbX + \".{tableName}\"\"\""));
-                notebook.cells.Add(CreateCodeCell($"sql_safe({variableName})"));
-                notebook.cells.Add(CreateCodeCell($"dbutils.fs.rm(db_location_platinum_temp_X+\"{tableName}\", True)"));
+                notebook.cells.Add(CreateCodeCell($"{varName} = \"\"\"DROP TABLE IF EXISTS \"\"\" + platinum_temp_dbX + \".{tableName}\"\"\"\nsql_safe({varName})\ndbutils.fs.rm(db_location_platinum_temp_X+\"{tableName}\", True)"));
             }
 
             notebook.cells.Add(CreateMarkdownCell("## Mensaje Final"));
@@ -154,14 +116,7 @@ namespace NotebookValidator.Web.Services
             return JsonSerializer.Serialize(notebook, new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
         }
 
-        private object CreateMarkdownCell(string source)
-        {
-            return new { cell_type = "markdown", metadata = new { }, source = source.Split('\n') };
-        }
-
-        private object CreateCodeCell(string source)
-        {
-            return new { cell_type = "code", execution_count = (object)null, metadata = new { }, outputs = new List<object>(), source = source.Split('\n') };
-        }
+        private object CreateMarkdownCell(string source) => new { cell_type = "markdown", metadata = new { }, source = source.Split('\n') };
+        private object CreateCodeCell(string source) => new { cell_type = "code", execution_count = (object)null, metadata = new { }, outputs = new List<object>(), source = source.Split('\n') };
     }
 }

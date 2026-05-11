@@ -11,13 +11,14 @@
                 <th>Línea</th>
                 <th>Contenido</th>
                 <th>Detalle</th>
+                <th class="text-center">Acciones</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var finding in Model)
             {
-                <tr class="clickable-row" 
-                    data-source-code="@Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(finding.CellSourceCode ?? string.Empty))" 
+                <tr class="clickable-row"
+                    data-source-code="@Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(finding.CellSourceCode ?? string.Empty))"
                     data-line-number="@finding.LineNumber"
                     style="cursor: pointer;">
 
@@ -27,6 +28,15 @@
                     <td>@(finding.LineNumber?.ToString() ?? "N/A")</td>
                     <td><code>@finding.Content</code></td>
                     <td>@finding.Details</td>
+                    <td class="text-center" onclick="event.stopPropagation();">
+                        @if (finding.FindingType.Contains("SQL", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <button class="btn btn-sm btn-outline-info" title="Smart Fix"
+                                    onclick="openSmartFix('@finding.FileName', '@Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(finding.CellSourceCode ?? string.Empty))')">
+                                <i class="bi bi-magic"></i>
+                            </button>
+                        }
+                    </td>
                 </tr>
             }
         </tbody>
@@ -34,7 +44,5 @@
 }
 else
 {
-    <div class="alert alert-success mt-3">
-        No se encontraron problemas en este análisis.
-    </div>
+    <div class="alert alert-success mt-3">No se encontraron problemas en este análisis.</div>
 }
