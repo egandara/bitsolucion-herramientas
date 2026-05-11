@@ -8,6 +8,21 @@
         text-align: center;
     }
 
+    .card-module {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+        .card-module:hover {
+            transform: translateY(-5px);
+            border-color: #ffc107 !important;
+            background-color: rgba(255, 193, 7, 0.05) !important;
+        }
+    /* Asegurar que el texto descriptivo sea visible siempre */
+    .card-text {
+        color: rgba(255, 255, 255, 0.7) !important;
+    }
+
     .home-card {
         background-color: var(--card-bg, #1a1a1a);
         border: 1px solid rgba(255, 255, 255, 0.1);
@@ -50,37 +65,122 @@
     }
 </style>
 
-<div class="container">
-    <div class="welcome-section">
-        <h1 class="display-4 fw-bold text-white mb-3">
-            Bienvenido a <span class="text-warning">Bit Solución</span>
-        </h1>
-        <p class="lead text-white-50">Selecciona el módulo con el que deseas trabajar hoy.</p>
-    </div>
+<div class="container text-center mt-5">
+    <h1 class="display-4 fw-bold text-white mb-3">
+        @{
+            var rawName = User.Identity?.Name?.Split('@')[0] ?? "Usuario";
+            var firstName = rawName.Split('.')[0];
+            if (!string.IsNullOrEmpty(firstName) && firstName != "Usuario")
+            {
+                firstName = char.ToUpper(firstName[0]) + firstName.Substring(1).ToLower();
+            }
+        }
+        ¡Hola @firstName!
+    </h1>
+    <p class="lead text-light mb-5" style="opacity: 0.85;">¿Con qué módulo deseas trabajar hoy?</p>
 
-    <div class="row g-4 mb-5">
-        <div class="col-md-6 col-lg-4">
-            <a asp-controller="Home" asp-action="Validador" class="home-card">
-                <i class="bi bi-file-earmark-check home-icon"></i>
-                <h3 class="card-title">Validador de Notebooks</h3>
-                <p class="card-text">Analiza archivos .py e .ipynb buscando malas prácticas y errores estructurales.</p>
+    <div class="row g-4 justify-content-center">
+
+        @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+        {
+            <div class="col-md-4 col-lg-3">
+                <a asp-controller="Home" asp-action="Validador" class="text-decoration-none">
+                    <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module">
+                        <div class="card-body py-4">
+                            <i class="bi bi-journal-code text-warning fs-1 mb-3 d-block"></i>
+                            <h5 class="card-title fw-bold">Validador de Notebooks</h5>
+                            <p class="card-text small text-white-50">Analiza archivos .py e .ipynb buscando malas prácticas.</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+
+        @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+        {
+            <div class="col-md-4 col-lg-3">
+                <a asp-controller="DataProfiling" asp-action="Index" class="text-decoration-none">
+                    <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module">
+                        <div class="card-body py-4">
+                            <i class="bi bi-bar-chart-steps text-warning fs-1 mb-3 d-block"></i>
+                            <h5 class="card-title fw-bold">Perfilamiento de Datos</h5>
+                            <p class="card-text small text-white-50">Radiografía completa de archivos con detección de datos sensibles.</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+
+        @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+        {
+            <div class="col-md-4 col-lg-3">
+                <a asp-controller="Cuadratura" asp-action="Index" class="text-decoration-none">
+                    <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module">
+                        <div class="card-body py-4">
+                            <i class="bi bi-table text-warning fs-1 mb-3 d-block"></i>
+                            <h5 class="card-title fw-bold">Cuadratura de Datos</h5>
+                            <p class="card-text small text-white-50">Compara y concilia múltiples fuentes para asegurar consistencia y buscar diferencias.</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+
+        @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+        {
+            <div class="col-md-4 col-lg-3">
+                <a asp-controller="NotebookGenerator" asp-action="Index" class="text-decoration-none">
+                    <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module">
+                        <div class="card-body py-4">
+                            <i class="bi bi-file-earmark-plus text-warning fs-1 mb-3 d-block"></i>
+                            <h5 class="card-title fw-bold">Generador Notebooks</h5>
+                            <p class="card-text small text-white-50">Crea estructuras base de notebooks bajo estándares establecidos.</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+
+        @if (User.IsInRole("Admin") || User.IsInRole("ParameterValidatorUser"))
+        {
+            <div class="col-md-4 col-lg-3">
+                <a asp-controller="ParameterValidator" asp-action="Index" class="text-decoration-none">
+                    <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module">
+                        <div class="card-body py-4">
+                            <i class="bi bi-filetype-py text-warning fs-1 mb-3 d-block"></i>
+                            <h5 class="card-title fw-bold">Validador Parámetros</h5>
+                            <p class="card-text small text-white-50">Verifica que los parámetros usados en los notebooks sean los permitidos.</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+
+        <div class="col-md-4 col-lg-3">
+            <a asp-controller="JobConverter" asp-action="Index" class="text-decoration-none">
+                <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module">
+                    <div class="card-body py-4">
+                        <i class="bi bi-wrench-adjustable-circle-fill text-warning fs-1 mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold">Generador de Jobs</h5>
+                        <p class="card-text small text-white-50">Replica Jobs creados para ser usados en distintos ambientes.</p>
+                    </div>
+                </div>
             </a>
         </div>
 
-        <div class="col-md-6 col-lg-4">
-            <a asp-controller="DataProfiling" asp-action="Index" class="home-card">
-                <i class="bi bi-bar-chart-steps home-icon"></i>
-                <h3 class="card-title">Perfilamiento de Datos</h3>
-                <p class="card-text">Radiografía completa de archivos pesados con detección automática de PII y duplicados.</p>
-            </a>
-        </div>
-
-        <div class="col-md-6 col-lg-4">
-            <a asp-controller="Cuadratura" asp-action="Index" class="home-card">
-                <i class="bi bi-table home-icon"></i>
-                <h3 class="card-title">Cuadratura de Datos</h3>
-                <p class="card-text">Compara y concilia múltiples fuentes de datos para asegurar la consistencia.</p>
-            </a>
-        </div>
+        @if (User.IsInRole("Admin") || User.IsInRole("TempCleanerUser"))
+        {
+            <div class="col-md-4 col-lg-3">
+                <a asp-controller="TempTable" asp-action="Index" class="text-decoration-none">
+                    <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module">
+                        <div class="card-body py-4">
+                            <i class="bi bi-trash3 text-warning fs-1 mb-3 d-block"></i>
+                            <h5 class="card-title fw-bold">Limpieza Tmp</h5>
+                            <p class="card-text small text-white-50">Gestiona, en un notebook centralizado, el borrado de todas las tablas temporales de un proceso, en el storage y en la base de datos.</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
     </div>
 </div>

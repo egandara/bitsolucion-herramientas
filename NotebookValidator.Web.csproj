@@ -6,11 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
 
     <Deterministic>false</Deterministic>
-    <AssemblyVersion>1.0.*</AssemblyVersion>
+    <AssemblyVersion>1.1.*</AssemblyVersion>
       <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-      <AssemblyVersion>1.0.0.0</AssemblyVersion>
       <FileVersion>1.0.0.0</FileVersion>
-      <AssemblyInformationalVersion>1.0.$([System.DateTime]::UtcNow.ToString("yyyyMMdd.HHmm"))</AssemblyInformationalVersion>
+      <AssemblyInformationalVersion>1.1.$([System.DateTime]::UtcNow.ToString("yyyyMMdd.HHmm"))</AssemblyInformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>

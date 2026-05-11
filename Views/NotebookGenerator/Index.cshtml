@@ -4,6 +4,7 @@
 }
 
 <style>
+    /* Estilos Dark Premium */
     .text-muted-light {
         color: #adb5bd !important;
     }
@@ -25,7 +26,6 @@
 
         .form-control.bg-dark:focus, .form-select.bg-dark:focus {
             background-color: #212529 !important;
-            color: #fff !important;
             border-color: #ffc107 !important;
             box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;
         }
@@ -43,50 +43,95 @@
         padding: 4px 8px;
         border: 1px solid #495057;
     }
-</style>
 
-<datalist id="datalistParameters">
-    @if (ViewBag.ParametersJson != null)
-    {
-        @foreach (var p in System.Text.Json.JsonSerializer.Deserialize<List<AllowedParameter>>(ViewBag.ParametersJson))
-        {
-            <option value="@p.Name">@p.Category</option>
-        }
+    /* CAPAS Y DROPDOWN */
+    .card, .card-body, .table-responsive {
+        overflow: visible !important;
     }
-</datalist>
+
+    .custom-autocomplete-container {
+        position: relative;
+    }
+
+        .custom-autocomplete-container:focus-within {
+            z-index: 3000 !important;
+        }
+
+    .suggestion-box {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        z-index: 9999 !important;
+        width: 100%;
+        background: #2b3035;
+        border: 1px solid #ffc107;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+        display: none;
+        max-height: 250px;
+        overflow-y: auto;
+    }
+
+    .suggestion-item {
+        padding: 10px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #3e444a;
+        transition: background 0.2s;
+    }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-item:hover {
+            background: #3e444a;
+        }
+
+    .suggestion-name {
+        color: #ffc107;
+        font-weight: bold;
+        display: block;
+        font-size: 0.9rem;
+    }
+
+    .suggestion-category {
+        color: #adb5bd;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+</style>
 
 <div class="container mt-4 mb-5">
     <h2 class="text-white mb-4"><i class="bi bi-file-earmark-code text-warning me-2"></i> Generador de Notebooks</h2>
 
     <form asp-action="Generar" method="post">
         <div class="card bg-dark text-white border-secondary mb-4 shadow-sm">
-            <div class="card-header bg-dark-subtle border-secondary">
-                <h5 class="mb-0 text-warning">1. Encabezado y Documentación</h5>
-            </div>
+            <div class="card-header bg-dark-subtle border-secondary"><h5 class="mb-0 text-warning">1. Encabezado y Documentación</h5></div>
             <div class="card-body row">
                 <div class="col-12 mb-3">
-                    <label class="form-label small text-muted-light">Título del Notebook</label>
+                    <label asp-for="Titulo" class="form-label small text-muted-light">Título del Notebook</label>
                     <input asp-for="Titulo" class="form-control bg-dark text-white border-secondary" placeholder="Ej. BCI_001_Extraccion_Datos" required />
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label class="form-label small text-muted-light">Jefe de Proyecto</label>
+                    <label asp-for="EmailJefeProyecto" class="form-label small text-muted-light">Jefe de Proyecto</label>
                     <input asp-for="EmailJefeProyecto" type="email" class="form-control bg-dark text-white border-secondary" placeholder="jefe.proyecto@bci.cl" required />
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label class="form-label small text-muted-light">Analista Banco</label>
+                    <label asp-for="EmailAnalista" class="form-label small text-muted-light">Analista Banco</label>
                     <input asp-for="EmailAnalista" type="email" class="form-control bg-dark text-white border-secondary" placeholder="analista.banco@bci.cl" required />
                 </div>
                 <div class="col-12">
-                    <label class="form-label small text-muted-light">Descripción</label>
+                    <label asp-for="Descripcion" class="form-label small text-muted-light">Descripción</label>
                     <textarea asp-for="Descripcion" class="form-control bg-dark text-white border-secondary" rows="2" placeholder="Describa brevemente el objetivo de este proceso..."></textarea>
                 </div>
             </div>
         </div>
 
-        <div class="card bg-dark text-white border-secondary mb-4 shadow-sm">
+        <div class="card bg-dark text-white border-secondary mb-4 shadow-sm" style="position: relative; z-index: 10;">
             <div class="card-header bg-dark-subtle border-secondary d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 text-warning">2. Captura de Variables (Widgets)</h5>
-                <button type="button" class="btn btn-sm btn-outline-warning" onclick="agregarParametro()"><i class="bi bi-plus-circle"></i> Agregar Variable</button>
+                <button type="button" class="btn btn-sm btn-outline-warning" onclick="agregarParametro()"><i class="bi bi-plus-circle me-1"></i> Agregar Variable</button>
             </div>
             <div class="card-body">
                 <table class="table table-dark table-bordered border-secondary mt-2 align-middle">
@@ -104,7 +149,7 @@
             </div>
         </div>
 
-        <div class="card bg-dark text-white border-secondary mb-4 shadow-sm">
+        <div class="card bg-dark text-white border-secondary mb-4 shadow-sm" style="position: relative; z-index: 5;">
             <div class="card-header bg-dark-subtle border-secondary"><h5 class="mb-0 text-warning">3. Constructor de Pasos del Proceso</h5></div>
             <div class="card-body row g-3">
                 <div class="col-md-3">
@@ -121,38 +166,35 @@
                     <label class="form-label text-muted-light small">Objeto Destino</label>
                     <input type="text" id="nombreObjeto" class="form-control bg-dark text-white border-secondary" placeholder="Ej. tmp_B1consumo">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-3 custom-autocomplete-container">
                     <label class="form-label text-muted-light small">Variable DB (X)</label>
-                    <input type="text" id="varDb" class="form-control bg-dark text-white border-secondary" list="datalistParameters" oninput="forzarX(this)" placeholder="Ej. db_plat_tempX">
+                    <input type="text" id="varDb" class="form-control bg-dark text-white border-secondary autocomplete-input step-var-input"
+                           placeholder="Ej. db_plat_tempX" oninput="showStepSuggestions(this)" onfocus="showStepSuggestions(this)">
+                    <div class="suggestion-box"></div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-3 custom-autocomplete-container">
                     <label class="form-label text-muted-light small">Var Path (X)</label>
-                    <input type="text" id="varPath" class="form-control bg-dark text-white border-secondary" list="datalistParameters" oninput="forzarX(this)" placeholder="Ej. path_plat_tempX">
+                    <input type="text" id="varPath" class="form-control bg-dark text-white border-secondary autocomplete-input step-var-input"
+                           placeholder="Ej. path_plat_tempX" oninput="showStepSuggestions(this)" onfocus="showStepSuggestions(this)">
+                    <div class="suggestion-box"></div>
                 </div>
 
                 <div id="divOrigen" class="col-12 row g-3" style="display:none;">
-                    <div class="col-md-6">
-                        <label class="form-label text-info small">Tabla / Vista Origen</label>
-                        <input type="text" id="nombreOrigen" class="form-control bg-dark text-white border-info" placeholder="Nombre de tabla fuente...">
-                    </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6"><label class="form-label text-info small">Tabla / Vista Origen</label><input type="text" id="nombreOrigen" class="form-control bg-dark text-white border-info" placeholder="Nombre de tabla fuente..."></div>
+                    <div class="col-md-6 custom-autocomplete-container">
                         <label class="form-label text-info small">Variable DB Origen (X)</label>
-                        <input type="text" id="varDbOrigen" class="form-control bg-dark text-white border-info" list="datalistParameters" oninput="forzarX(this)" placeholder="Ej. db_platinumX">
+                        <input type="text" id="varDbOrigen" class="form-control bg-dark text-white border-info autocomplete-input step-var-input"
+                               placeholder="Ej. db_platinumX" oninput="showStepSuggestions(this)" onfocus="showStepSuggestions(this)">
+                        <div class="suggestion-box"></div>
                     </div>
                 </div>
 
-                <div class="col-12 text-end mt-3">
-                    <button type="button" class="btn btn-warning fw-bold px-4 shadow" onclick="construirPaso()"><i class="bi bi-plus-lg me-1"></i> Inyectar Paso al Editor</button>
-                </div>
-                <div class="col-12 mt-4">
-                    <textarea id="textareaCodigo" asp-for="CodigoUsuario" class="form-control bg-dark text-white border-secondary font-monospace" rows="15" placeholder="El código generado aparecerá aquí. Puedes editarlo libremente..."></textarea>
-                </div>
+                <div class="col-12 text-end mt-3"><button type="button" class="btn btn-warning fw-bold px-4 shadow" onclick="construirPaso()"><i class="bi bi-plus-lg me-1"></i> Inyectar Paso al Editor</button></div>
+                <div class="col-12 mt-4"><textarea id="textareaCodigo" asp-for="CodigoUsuario" class="form-control bg-dark text-white border-secondary font-monospace" rows="15" placeholder="El código generado aparecerá aquí..."></textarea></div>
             </div>
         </div>
 
-        <div class="text-end mb-5">
-            <button type="submit" class="btn btn-warning btn-lg fw-bold shadow-lg"><i class="bi bi-cloud-download me-2"></i> Generar Notebook (.py)</button>
-        </div>
+        <div class="text-end mb-5"><button type="submit" class="btn btn-warning btn-lg fw-bold shadow-lg"><i class="bi bi-cloud-download me-2"></i> Generar Notebook (.py)</button></div>
     </form>
 </div>
 
@@ -162,6 +204,92 @@
         const dbParams = JSON.parse(document.getElementById('paramsData').textContent || "[]");
         let paramIndex = 0;
         let stepCounter = 1;
+
+        // --- 1. LÓGICA DROPDOWN SECCIÓN 2 (WIDGETS GLOBALES) ---
+        function showSuggestions(input, filterCategory = null) {
+            const container = input.parentElement;
+            const box = container.querySelector('.suggestion-box');
+            const query = input.value.toLowerCase().trim();
+            document.querySelectorAll('.suggestion-box').forEach(b => { if(b !== box) b.style.display = 'none'; });
+            box.innerHTML = '';
+
+            const filtered = dbParams.filter(p => (!filterCategory || p.Category === filterCategory) && (query === "" || p.Name.toLowerCase().includes(query)));
+
+            if (filtered.length > 0) {
+                filtered.forEach(p => {
+                    const item = document.createElement('div');
+                    item.className = 'suggestion-item';
+                    item.innerHTML = `<span class="suggestion-name">${p.Name}</span><span class="suggestion-category">${p.Category}</span>`;
+                    item.onmousedown = (e) => {
+                        e.preventDefault();
+                        input.value = p.Name;
+                        const idx = input.dataset.idx;
+                        if (validarDuplicado(input)) {
+                            document.getElementById(`def_${idx}`).value = p.DefaultValue || "";
+                            document.getElementById(`lab_${idx}`).value = document.querySelector(`#row_${idx} .nro-val`).textContent + " " + (p.Label || "");
+                        }
+                        box.style.display = 'none';
+                    };
+                    box.appendChild(item);
+                });
+                box.style.display = 'block';
+            } else { box.style.display = 'none'; }
+        }
+
+        // --- 2. LÓGICA DROPDOWN SECCIÓN 3 (VARIABLES X DINÁMICAS) ---
+        function showStepSuggestions(input) {
+            const container = input.parentElement;
+            const box = container.querySelector('.suggestion-box');
+            const query = input.value.toLowerCase().trim();
+            document.querySelectorAll('.suggestion-box').forEach(b => { if(b !== box) b.style.display = 'none'; });
+            box.innerHTML = '';
+
+            // Obtener variables actuales de la Sección 2 y convertirlas a X
+            const currentWidgets = Array.from(document.querySelectorAll('.widget-input'))
+                .map(el => el.value.trim())
+                .filter(val => val !== "")
+                .map(val => toVariableX(val));
+
+            const filtered = currentWidgets.filter(v => query === "" || v.toLowerCase().includes(query));
+
+            if (filtered.length > 0) {
+                filtered.forEach(v => {
+                    const item = document.createElement('div');
+                    item.className = 'suggestion-item';
+                    item.innerHTML = `<span class="suggestion-name">${v}</span><span class="suggestion-category">Variable Detectada (Sección 2)</span>`;
+                    item.onmousedown = (e) => {
+                        e.preventDefault();
+                        input.value = v;
+                        box.style.display = 'none';
+                    };
+                    box.appendChild(item);
+                });
+                box.style.display = 'block';
+            } else { box.style.display = 'none'; }
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('autocomplete-input')) {
+                document.querySelectorAll('.suggestion-box').forEach(b => b.style.display = 'none');
+            }
+        });
+
+        function toVariableX(name) {
+            if (!name) return "";
+            name = name.trim();
+            if (name.toLowerCase().endsWith('w')) return name.slice(0, -1) + (name.endsWith('W') ? 'X' : 'x');
+            if (!name.toLowerCase().endsWith('x')) return name + "_X";
+            return name;
+        }
+
+        function validarDuplicado(input) {
+            const val = input.value.trim();
+            const allInputs = document.querySelectorAll('.widget-input');
+            let repetido = false;
+            allInputs.forEach(el => { if (el !== input && el.value.trim() === val && val !== "") repetido = true; });
+            if (repetido) { alert(`El widget "${val}" ya ha sido seleccionado.`); input.value = ""; return false; }
+            return true;
+        }
 
         function updateLabels() {
             const rows = document.querySelectorAll('#parametrosTableBody tr');
@@ -180,49 +308,20 @@
             const tbody = document.getElementById('parametrosTableBody');
             const i = paramIndex++;
             const tr = document.createElement('tr');
+            tr.id = `row_${i}`;
             tr.innerHTML = `
-                <td><input type="text" name="Parametros[${i}].NombreWidget" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace widget-name-input" list="datalistParameters" oninput="validarYAutoCompletar(${i})" id="name_${i}" placeholder="Ej. fechaProcesoW" required /></td>
-                <td><input type="text" name="Parametros[${i}].ValorPorDefecto" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace" id="def_${i}" placeholder="Ej. 20260101" /></td>
+                <td class="custom-autocomplete-container">
+                    <input type="text" name="Parametros[${i}].NombreWidget" class="form-control form-control-sm bg-dark font-monospace autocomplete-input widget-input"
+                           placeholder="Ej. fechaProcesoW" data-idx="${i}" oninput="showSuggestions(this, 'Widget')" onfocus="showSuggestions(this, 'Widget')" required />
+                    <div class="suggestion-box"></div>
+                </td>
+                <td><input type="text" name="Parametros[${i}].ValorPorDefecto" class="form-control form-control-sm bg-dark font-monospace" id="def_${i}" placeholder="Ej. 20260101" /></td>
                 <td class="text-center"><span class="nro-badge nro-val">00</span></td>
-                <td><input type="text" name="Parametros[${i}].Etiqueta" class="form-control form-control-sm bg-dark text-white border-secondary label-input" id="lab_${i}" placeholder="Ej. Fecha de Proceso:" /></td>
+                <td><input type="text" name="Parametros[${i}].Etiqueta" class="form-control form-control-sm bg-dark label-input" id="lab_${i}" placeholder="Ej. Fecha de Proceso:" /></td>
                 <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="this.closest('tr').remove(); updateLabels();"><i class="bi bi-trash"></i></button></td>
             `;
             tbody.appendChild(tr);
             updateLabels();
-        }
-
-        function validarYAutoCompletar(idx) {
-            const input = document.getElementById(`name_${idx}`);
-            const val = input.value.trim();
-
-            const allInputs = document.querySelectorAll('.widget-name-input');
-            let duplicado = false;
-            allInputs.forEach(el => {
-                if (el !== input && el.value.trim() === val && val !== "") { duplicado = true; }
-            });
-
-            if (duplicado) {
-                alert(`El widget "${val}" ya ha sido agregado en otra fila.`);
-                input.value = "";
-                return;
-            }
-
-            const match = dbParams.find(p => p.Name === val);
-            if (match) {
-                document.getElementById(`def_${idx}`).value = match.DefaultValue || "";
-                const nro = document.querySelectorAll('#parametrosTableBody tr')[idx]?.querySelector('.nro-val').textContent || "01";
-                document.getElementById(`lab_${idx}`).value = nro + " " + (match.Label || "");
-            }
-        }
-
-        function forzarX(input) {
-            const val = input.value;
-            const match = dbParams.find(p => p.Name === val);
-            if (match) {
-                let name = match.Name.trim();
-                if (name.toLowerCase().endsWith('w')) input.value = name.slice(0, -1) + (name.endsWith('W') ? 'X' : 'x');
-                else if (!name.toLowerCase().endsWith('x')) input.value = name + "_X";
-            }
         }
 
         function toggleOrigen() {
@@ -232,7 +331,7 @@
 
         function construirPaso() {
             const op = document.getElementById('opSql').value;
-            const objDest = document.getElementById('nombreObjeto').value || 'mi_tabla';
+            const objDest = document.getElementById('nombreObjeto').value || 'tabla';
             const dbDest = document.getElementById('varDb').value || 'db_X';
             const pathDest = document.getElementById('varPath').value || 'path_X';
             const objOrig = document.getElementById('nombreOrigen').value || 'fuente';
@@ -240,48 +339,18 @@
             const editor = document.getElementById('textareaCodigo');
 
             let code = "";
-
             if (op === 'CREATE') {
-                // CELDA 1: DROP
-                code += `\n# --- PASO ${stepCounter}: DROP ${objDest} ---\n`;
-                code += `print(">>> EJECUTANDO: DROP ${objDest}")\n`;
-                const varDrop = `paso_drop_${objDest}`;
-                code += `${varDrop} = """DROP TABLE IF EXISTS """ + ${dbDest} + ".${objDest}"""\n`;
-                code += `sqlSafe(${varDrop})\n`;
-                code += `# COMMAND ----------\n`;
-
-                // CELDA 2: RM
-                code += `\n# --- PASO ${stepCounter}: RM Físico ${objDest} ---\n`;
-                code += `print(">>> EJECUTANDO: RM Físico ${objDest}")\n`;
-                code += `dbutils.fs.rm(${pathDest} + "${objDest}", True)\n`;
-                code += `# COMMAND ----------\n`;
-
-                // CELDA 3: CREATE
-                code += `\n# --- PASO ${stepCounter}: CREATE ${objDest} ---\n`;
-                code += `print(">>> EJECUTANDO: CREATE ${objDest}")\n`;
-                const varCrea = `paso_creacion_${objDest}`;
-                code += `${varCrea} = """CREATE TABLE """ + ${dbDest} + ".${objDest} AS \\nSELECT * FROM """ + ${dbOrig} + ".${objOrig}"""\n`;
-                code += `sqlSafe(${varCrea})\n`;
-                code += `print(">>> OK")\n`;
+                code += `\n# --- PASO ${stepCounter}: DROP ${objDest} ---\nprint(">>> EJECUTANDO: DROP ${objDest}")\npaso_drop_${objDest} = """DROP TABLE IF EXISTS """ + ${dbDest} + ".${objDest}"""\nsqlSafe(paso_drop_${objDest})\n# COMMAND ----------\n`;
+                code += `\n# --- PASO ${stepCounter}: RM Físico ${objDest} ---\nprint(">>> EJECUTANDO: RM Físico ${objDest}")\ndbutils.fs.rm(${pathDest} + "${objDest}", True)\n# COMMAND ----------\n`;
+                code += `\n# --- PASO ${stepCounter}: CREATE ${objDest} ---\nprint(">>> EJECUTANDO: CREATE ${objDest}")\npaso_creacion_${objDest} = """CREATE TABLE """ + ${dbDest} + ".${objDest} AS \\nSELECT * FROM """ + ${dbOrig} + ".${objOrig}"""\nsqlSafe(paso_creacion_${objDest})\nprint(">>> OK")\n`;
             }
             else if (op === 'VIEW') {
-                code += `\n# --- PASO ${stepCounter}: VIEW ${objDest} ---\n`;
-                code += `print(">>> EJECUTANDO: VIEW ${objDest}")\n`;
-                const varView = `paso_vista_${objDest}`;
-                code += `${varView} = """CREATE OR REPLACE TEMPORARY VIEW ${objDest} AS \\nSELECT * FROM """ + ${dbOrig} + ".${objOrig}"""\n`;
-                code += `sqlSafe(${varView})\n`;
-                code += `print(">>> OK")\n`;
+                code += `\n# --- PASO ${stepCounter}: VIEW ${objDest} ---\nprint(">>> EJECUTANDO: VIEW ${objDest}")\npaso_vista_${objDest} = """CREATE OR REPLACE TEMPORARY VIEW ${objDest} AS \\nSELECT * FROM """ + ${dbOrig} + ".${objOrig}"""\nsqlSafe(paso_vista_${objDest})\nprint(">>> OK")\n`;
             }
             else {
                 const prefix = op.toLowerCase();
-                code += `\n# --- PASO ${stepCounter}: ${op} ${objDest} ---\n`;
-                code += `print(">>> EJECUTANDO: ${op} ${objDest}")\n`;
-                const varOp = `paso_${prefix}_${objDest}`;
-                code += `${varOp} = """${op} * FROM """ + ${dbDest} + ".${objDest}"""\n`;
-                code += `sqlSafe(${varOp})\n`;
-                code += `print(">>> OK")\n`;
+                code += `\n# --- PASO ${stepCounter}: ${op} ${objDest} ---\nprint(">>> EJECUTANDO: ${op} ${objDest}")\npaso_${prefix}_${objDest} = """${op} * FROM """ + ${dbDest} + ".${objDest}"""\nsqlSafe(paso_${prefix}_${objDest})\nprint(">>> OK")\n`;
             }
-
             editor.value += code + "\n# COMMAND ----------\n";
             stepCounter++;
         }
