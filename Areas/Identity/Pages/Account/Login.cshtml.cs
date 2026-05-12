@@ -82,20 +82,22 @@ namespace NotebookValidator.Web.Areas.Identity.Pages.Account
             if (ModelState.IsValid)
             {
                 var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+                // Dentro de OnPostAsync, en el bloque if (result.Succeeded)
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("Usuario conectado.");
 
-                    // --- CORRECCIÓN AQUÍ ---
-                    // 1. Buscamos al usuario por su email para obtener su ID
                     var user = await _signInManager.UserManager.FindByEmailAsync(Input.Email);
 
                     if (user != null)
                     {
-                        // 2. Pasamos user.Id (que es el GUID de base de datos) al servicio
+                        // ACTUALIZAMOS LA FECHA DE CONEXIÓN
+                        user.LastLoginDate = DateTime.Now;
+                        await _signInManager.UserManager.UpdateAsync(user);
+
+                        // Registro de auditoría existente
                         await _auditService.LogActionAsync(user.Id, "Login", "El usuario inició sesión exitosamente.", user.Id);
                     }
-                    // -----------------------
 
                     return LocalRedirect(returnUrl);
                 }

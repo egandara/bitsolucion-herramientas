@@ -1,47 +1,199 @@
-@using NotebookValidator.Web.Data
-@model IEnumerable<ApplicationUser>
-
+@using NotebookValidator.Web.ViewModels
+@model IEnumerable<UserAdminViewModel>
 @{
-    ViewData["Title"] = "Administración de Usuarios";
+    ViewData["Title"] = "Gestión de Identidades";
 }
 
-<h1 class="display-4">@ViewData["Title"]</h1>
-<p>Desde aquí puedes ver todos los usuarios registrados y gestionar sus cuotas de análisis y roles de acceso a los módulos.</p>
+<style>
+    #admin-panel-final {
+        background-color: #0d1117 !important;
+        color: #ffffff !important;
+        padding: 25px;
+        border-radius: 12px;
+    }
 
-<div class="table-responsive mt-4">
-    <table class="table">
-        <thead class="thead-dark">
-            <tr>
-                <th>
-                    Correo Electrónico
-                </th>
-                <th>
-                    Créditos Restantes
-                </th>
-                <th class="text-end">
-                    Acciones
-                </th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var user in Model)
-            {
+    /* KPIs: Diseño de alto contraste sin solapamiento */
+    .kpi-box-custom {
+        background-color: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 10px;
+        padding: 20px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .kpi-label {
+        color: #abb2bf;
+        font-size: 0.75rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 5px;
+    }
+
+    .kpi-value {
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    /* TABLA: Restauración de columnas e información */
+    .table-audit {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 10px;
+        background-color: #0d1117 !important;
+    }
+
+        .table-audit thead th {
+            background-color: #1c2128;
+            color: #ffc107 !important;
+            padding: 15px;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            border: none;
+        }
+
+        .table-audit tbody tr td {
+            background-color: #161b22 !important;
+            color: #ffffff !important;
+            padding: 15px;
+            border: none;
+            vertical-align: middle;
+        }
+
+        .table-audit tbody tr:hover td {
+            background-color: #21262d !important;
+        }
+
+    .user-main-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .user-email {
+        font-weight: bold;
+        font-size: 0.95rem;
+    }
+
+    .user-id-sub {
+        font-size: 0.7rem;
+        color: #6e7681;
+    }
+
+    .badge-role-main {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-bottom: 3px;
+        display: inline-block;
+    }
+
+    .row-inactive {
+        opacity: 0.5;
+        filter: grayscale(1);
+    }
+</style>
+
+<div id="admin-panel-final">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0"><i class="bi bi-shield-lock-fill text-warning me-2"></i>Gestión de Identidades</h2>
+        <div class="w-25"><input type="text" id="userSearch" class="form-control bg-black text-white border-secondary" placeholder="Buscar por email..."></div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="kpi-box-custom border-start border-4 border-info">
+                <div class="kpi-label">Usuarios Activos</div>
+                <div class="kpi-value text-info">@Model.Count(u => u.IsActive)</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-box-custom border-start border-4 border-success">
+                <div class="kpi-label">Análisis del Equipo</div>
+                <div class="kpi-value text-success">@Model.Sum(u => u.TotalAnalyses)</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-box-custom border-start border-4 border-danger">
+                <div class="kpi-label">Administradores</div>
+                <div class="kpi-value text-danger">@Model.Count(u => u.Roles.Contains("Admin"))</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table-audit" id="usersTable">
+            <thead>
                 <tr>
-                    <td class="align-middle">
-                        @Html.DisplayFor(modelItem => user.Email)
-                    </td>
-                    <td class="align-middle">
-                        @Html.DisplayFor(modelItem => user.AnalysisQuota)
-                    </td>
-                    <td class="text-end">
-                        <div class="btn-group" role="group" aria-label="Acciones de usuario">
-                            <a class="btn btn-info btn-sm" asp-action="ManageRoles" asp-route-id="@user.Id">Gestionar Roles</a>
-                            <a class="btn btn-primary btn-sm" asp-action="EditQuota" asp-route-id="@user.Id">Editar Cuota</a>
-                            <a asp-action="ResetPassword" asp-route-userId="@user.Id" class="btn btn-warning btn-sm">Reiniciar Contraseña</a>
-                        </div>
-                    </td>
+                    <th>Ingeniero / ID</th>
+                    <th>Roles</th>
+                    <th>Registro / Último Acceso</th>
+                    <th class="text-center">Actividad</th>
+                    <th class="text-center">Estado</th>
+                    <th class="text-end">Acciones</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var user in Model)
+                {
+                    <tr class="user-row-item @(user.IsActive ? "" : "row-inactive")">
+                        <td>
+                            <div class="user-main-info">
+                                <span class="user-email">@user.Email</span>
+                                <span class="user-id-sub">UUID: @user.Id</span>
+                            </div>
+                        </td>
+                        <td>
+                            @foreach (var role in user.Roles)
+                            {
+                                <span class="badge badge-role-main @(role == "Admin" ? "bg-danger" : "bg-dark border border-secondary text-light-muted")">@role</span>
+                        
+                                <br />
+                            }
+                        </td>
+                        <td>
+                            <div class="small">
+                                <i class="bi bi-calendar-check me-1 text-muted"></i> @(user.RegistrationDate.Year < 2000 ? "Pre-migración" : user.RegistrationDate.ToString("dd/MM/yyyy"))<br />
+                                <i class="bi bi-lightning-fill me-1 text-info"></i> @(user.LastLoginDate.HasValue? user.LastLoginDate.Value.ToString("g") : "Nunca")
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-dark border border-warning text-warning fs-6">@user.TotalAnalyses</span>
+                        </td>
+                        <td class="text-center">
+                            <form asp-action="ToggleStatus" asp-route-id="@user.Id" method="post">
+                                <button type="submit" class="btn btn-sm @(user.IsActive ? "btn-success" : "btn-danger") py-0 px-3 fw-bold" style="font-size:0.7rem;">
+                                    @(user.IsActive ? "ACTIVO" : "INACTIVO")
+                                </button>
+                            </form>
+                            <div class="mt-1"><span class="fw-bold @(user.AnalysisQuota > 0 ? "text-success" : "text-danger")">@user.AnalysisQuota créditos</span></div>
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group">
+                                <a asp-action="ManageRoles" asp-route-id="@user.Id" class="btn btn-sm btn-outline-info" title="Roles"><i class="bi bi-key"></i></a>
+                                <a asp-action="EditQuota" asp-route-id="@user.Id" class="btn btn-sm btn-outline-warning mx-1" title="Cuota"><i class="bi bi-coin"></i></a>
+                                <a asp-controller="Audit" asp-action="Index" asp-route-userEmail="@user.Email" class="btn btn-sm btn-outline-light" title="Ver Actividad"><i class="bi bi-eye"></i></a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.getElementById('userSearch').addEventListener('keyup', function() {
+            let filter = this.value.toLowerCase();
+            let rows = document.querySelectorAll('.user-row-item');
+            rows.forEach(row => {
+                let email = row.cells[0].innerText.toLowerCase();
+                row.style.display = email.includes(filter) ? "" : "none";
+            });
+        });
+    </script>
+}

@@ -1,0 +1,119 @@
+@model IEnumerable<NotebookValidator.Web.Models.AuditLog>
+@{
+    ViewData["Title"] = "Registro de Actividad";
+    var userFilter = ViewBag.UserFilter as string;
+}
+
+<style>
+    #audit-panel-final {
+        background-color: #0d1117 !important;
+        color: #ffffff !important;
+        padding: 25px;
+        border-radius: 12px;
+    }
+
+    .table-audit-logs {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 8px;
+    }
+
+        .table-audit-logs thead th {
+            background-color: #1c2128;
+            color: #ffc107 !important;
+            padding: 15px;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            border: none;
+        }
+
+        .table-audit-logs tbody tr td {
+            background-color: #161b22 !important;
+            color: #ffffff !important;
+            padding: 15px;
+            border: none;
+            vertical-align: middle;
+        }
+
+    .log-details {
+        font-family: 'Cascadia Code', 'Consolas', monospace;
+        font-size: 0.85rem;
+        color: #58a6ff;
+        background: #0d1117;
+        padding: 5px 10px;
+        border-radius: 4px;
+        display: block;
+        max-width: 500px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+</style>
+
+<div id="audit-panel-final">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-journal-text text-warning me-2"></i>Historial de Actividad
+        </h2>
+        @if (!string.IsNullOrEmpty(userFilter))
+        {
+            <div class="badge bg-dark border border-info p-2">
+                Filtrando por: <span class="text-info">@userFilter</span>
+                <a asp-action="Index" asp-route-userEmail="" class="text-danger ms-2" title="Quitar filtro">&times;</a>
+            </div>
+        }
+        <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-light btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Volver a Usuarios
+        </a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table-audit-logs" id="auditTable">
+            <thead>
+                <tr>
+                    <th>Fecha y Hora</th>
+                    <th>Acción</th>
+                    <th>Usuario / IP</th>
+                    <th>Detalles técnicos</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var log in Model)
+                {
+                    <tr>
+                        <td style="width: 180px;">
+                            <small class="text-light-muted">@log.Timestamp.ToString("dd/MM/yyyy HH:mm:ss")</small>
+                        </td>
+                        <td>
+                            <span class="badge @(log.Action.Contains("Error") ? "bg-danger" : "bg-dark border border-warning text-warning")">
+                                @log.Action
+                            </span>
+                        </td>
+                        <td>
+                            <div class="fw-bold" style="font-size: 0.85rem;">@log.UserId</div>
+                            <small class="text-muted">IP: @log.IpAddress</small>
+                        </td>
+                        <td>
+                            <code class="log-details" title="@log.Details">@log.Details</code>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Inicializar DataTable si lo tienes disponible para permitir búsquedas en los logs
+        $(document).ready(function() {
+            if ($.fn.DataTable) {
+                $('#auditTable').DataTable({
+                    language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' },
+                    order: [[0, 'desc']],
+                    pageLength: 25
+                });
+            }
+        });
+    </script>
+}
