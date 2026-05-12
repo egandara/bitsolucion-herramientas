@@ -1,21 +1,26 @@
-# Dependencies
-**/[Bb]in/
-**/[Oo]bj/
+# Secretos locales
+appsettings.Development.json
+secrets.json
 
-# Visual Studio temporary files
+# User Secrets
+**/obj/**
+**/bin/**
+
+# Otros
 .vs/
 *.user
 *.suo
+node_modules/
 
-# User secrets
-secrets.json
-
-# Build results
-[Bb]uild/
-[Rr]elease/
-
-# Local database files
+# SQLite / archivos de base de datos locales
 *.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.db-journal
 
-# Rider files
-.idea/
+# Archivos de base de datos de SQL Server locales / backups
+*.mdf
+*.ldf
+*.bak

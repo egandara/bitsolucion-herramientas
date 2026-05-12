@@ -66,11 +66,27 @@ namespace NotebookValidator.Web.Controllers
         public async Task<IActionResult> Details(int id)
         {
             var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            // 1. Buscamos el análisis sin filtrar por UserId inicialmente
             var run = await _context.AnalysisRuns
                 .Include(r => r.User)
-                .FirstOrDefaultAsync(r => r.Id == id && r.UserId == user.Id);
+                .FirstOrDefaultAsync(r => r.Id == id);
 
             if (run == null) return NotFound();
+
+            // 2. Lógica de Seguridad:
+            // Permitimos el acceso si:
+            // - El usuario es Administrador.
+            // - O el usuario es el dueño del análisis.
+            bool isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
+
+            if (!isAdmin && run.UserId != user.Id)
+            {
+                // Si no es admin y el análisis no es suyo, ocultamos el recurso
+                return NotFound();
+            }
+
             var findings = JsonSerializer.Deserialize<List<Finding>>(run.ResultsJson);
             ViewBag.AnalysisRun = run;
             return View("~/Views/History/Details.cshtml", findings);

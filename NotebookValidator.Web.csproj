@@ -10,6 +10,7 @@
       <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
       <FileVersion>1.0.0.0</FileVersion>
       <AssemblyInformationalVersion>1.1.$([System.DateTime]::UtcNow.ToString("yyyyMMdd.HHmm"))</AssemblyInformationalVersion>
+    <UserSecretsId>0f5d18ab-638e-4c73-a97e-3d58f4cb4632</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
