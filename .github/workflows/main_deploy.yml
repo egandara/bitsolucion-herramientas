@@ -18,8 +18,8 @@ jobs:
         dotnet-version: '9.0.x' # Ajustado a .NET 9
 
     - name: Publicar aplicación
-      # Especificamos la ruta al archivo .csproj para evitar ambigüedades
-      run: dotnet publish NotebookValidator.Web/NotebookValidator.Web.csproj -c Release -o ./publish
+      # Como el archivo está en la raíz, no ponemos "Carpeta/"
+      run: dotnet publish NotebookValidator.Web.csproj -c Release -o ./publish
 
     - name: Desplegar a IIS
       shell: powershell
