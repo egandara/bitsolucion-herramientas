@@ -41,7 +41,7 @@ namespace NotebookValidator.Web.Services
                     if (file.fileName.EndsWith(".ipynb"))
                     {
                         var notebook = await JsonSerializer.DeserializeAsync<Notebook>(file.stream);
-                        ApplySmartFix(notebook, baseName, typesToClean);
+                        ApplySmartFix(notebook!, baseName, typesToClean);
                         correctedContent = JsonSerializer.Serialize(notebook, new JsonSerializerOptions { WriteIndented = true });
                     }
                     else
@@ -543,7 +543,7 @@ namespace NotebookValidator.Web.Services
             }
         }
 
-        public byte[] GenerateExcelReportBytes(List<Finding> findings, AnalysisRun runInfo, string logoPath = null)
+        public byte[] GenerateExcelReportBytes(List<Finding> findings, AnalysisRun runInfo, string? logoPath = null)
         {
             using var workbook = new XLWorkbook();
             var ws = workbook.Worksheets.Add("Reporte");
