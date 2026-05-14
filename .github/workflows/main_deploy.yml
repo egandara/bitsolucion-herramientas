@@ -18,7 +18,7 @@ jobs:
         dotnet-version: '9.0.x' # Ajustado a .NET 9
 
     - name: Publicar aplicación
-      # Como el archivo está en la raíz, no ponemos "Carpeta/"
+      # Se publica el archivo .csproj que está en la raíz del repositorio
       run: dotnet publish NotebookValidator.Web.csproj -c Release -o ./publish
 
     - name: Desplegar a IIS
@@ -26,18 +26,25 @@ jobs:
       run: |
         Import-Module WebAdministration
         
-        # 1. Detener el Pool de aplicaciones para liberar los archivos (.dll)
-        # Usamos el nombre que aparece en tu captura de pantalla
-        Write-Host "Deteniendo Application Pool: NotebookValidator.Web..."
-        Stop-WebAppPool -Name "NotebookValidator.Web"
+        # El nombre del Pool según tu IIS es 'bitsolucion'
+        $poolName = "bitsolucion" 
         
-        # Esperamos 5 segundos para que Windows cierre todos los procesos
+        Write-Host "--- Iniciando proceso de despliegue ---"
+        
+        # 1. Detener el Pool de aplicaciones
+        # SilentlyContinue evita que el script falle si el pool ya estaba detenido
+        Write-Host "Deteniendo Application Pool: $poolName..."
+        Stop-WebAppPool -Name $poolName -ErrorAction SilentlyContinue
+        
+        # Esperamos 5 segundos para asegurar que Windows libere los archivos .dll
         Start-Sleep -Seconds 5
         
-        # 2. Copiar los archivos nuevos a la ruta física que me diste
+        # 2. Copiar los archivos nuevos a la ruta física de producción
         Write-Host "Copiando archivos a C:\inetpub\miapp\publish..."
         xcopy .\publish\* C:\inetpub\miapp\publish\ /E /H /C /I /Y
         
-        # 3. Arrancar el Pool de nuevo para que la web vuelva a estar online
-        Write-Host "Iniciando Application Pool: NotebookValidator.Web..."
-        Start-WebAppPool -Name "NotebookValidator.Web"
+        # 3. Arrancar el Pool de nuevo para poner la web online
+        Write-Host "Iniciando Application Pool: $poolName..."
+        Start-WebAppPool -Name $poolName -ErrorAction SilentlyContinue
+        
+        Write-Host "--- ¡Despliegue completado con éxito! ---"
