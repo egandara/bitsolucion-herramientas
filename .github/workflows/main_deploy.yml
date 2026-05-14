@@ -2,9 +2,9 @@ name: CI/CD Pipeline - BitSolucion
 
 on:
   push:
-    branches: [ "main", "feature/*", "fix/*" ] # Se activa con main y ramas de trabajo
+    branches: [ "main", "feature/*", "fix/*" ]
   pull_request:
-    branches: [ "main" ] # Se activa cuando abres un Pull Request hacia main
+    branches: [ "main" ]
 
 jobs:
   build-and-deploy:
@@ -23,16 +23,18 @@ jobs:
       run: dotnet publish NotebookValidator.Web.csproj -c Release -o ./publish
 
     - name: Desplegar a IIS
-      # ESTA LÍNEA ES EL SEGURO DE VIDA: Solo corre si el cambio es en MAIN
-      if: github.ref == 'refs/heads/main' 
+      if: github.ref == 'refs/heads/main'
       shell: powershell
       run: |
         Import-Module WebAdministration
-        $poolName = "bitsolucion" 
+        $poolName = "bitsolucion"
         
-        Write-Host "--- Iniciando despliegue en PRODUCCIÓN ---"
+        Write-Host "--- Iniciando despliegue en PRODUCCION ---"
         Stop-WebAppPool -Name $poolName -ErrorAction SilentlyContinue
+        
         Start-Sleep -Seconds 5
+        
         xcopy .\publish\* C:\inetpub\miapp\publish\ /E /H /C /I /Y
+        
         Start-WebAppPool -Name $poolName -ErrorAction SilentlyContinue
         Write-Host "--- Despliegue completado ---"
