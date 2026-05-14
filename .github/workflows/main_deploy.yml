@@ -2,7 +2,9 @@ name: CI/CD Pipeline - BitSolucion
 
 on:
   push:
-    branches: [ "main" ] # Se dispara al hacer push a la rama main
+    branches: [ "main", "feature/*", "fix/*" ] # Se activa con cualquier rama de trabajo
+  pull_request:
+    branches: [ "main" ] # Se activa cuando quieres fusionar algo a main
 
 jobs:
   build-and-deploy:
@@ -22,8 +24,10 @@ jobs:
       run: dotnet publish NotebookValidator.Web.csproj -c Release -o ./publish
 
     - name: Desplegar a IIS
+      if: github.ref == 'refs/heads/main' # <--- ESTA ES LA MAGIA
       shell: powershell
       run: |
+        # ... (todo el código de despliegue que ya tenemos)
         Import-Module WebAdministration
         
         # El nombre del Pool según tu IIS es 'bitsolucion'
