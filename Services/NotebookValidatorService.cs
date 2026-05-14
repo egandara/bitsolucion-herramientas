@@ -13,21 +13,21 @@ using ClosedXML.Excel;
 
 namespace NotebookValidator.Web.Services
 {
-    public record WidgetVariableDeclaration(string Name, int CellIndex, int LineIndex, string Content);
-    public record ImportInfo(string Name, int CellIndex, int LineIndex, string Content);
-
     public class NotebookValidatorService
     {
         private readonly ApplicationDbContext _context;
-        // Regex para detectar SQL que NO debe borrarse (DML/DDL)
         private static readonly Regex SqlOperationalRegex = new Regex(@"\b(INSERT|UPDATE|DELETE|MERGE|ALTER|CREATE|DROP|TRUNCATE|REPLACE|COPY)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        private static readonly Regex LocalFunctionRegex = new Regex(@"^def\s+(\w+)\s*\(", RegexOptions.Multiline | RegexOptions.Compiled);
+        private static readonly Regex SqlSafeVariantsRegex = new Regex(@"def\s+(sql_safe|SqlSafe|Sql_Safe|sqlsafe)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        private const string PyCommandSeparator = "# COMMAND ----------";
 
         public NotebookValidatorService(ApplicationDbContext context)
         {
             _context = context;
         }
 
-        // --- MOTOR DE GENERACIÓN DE ARCHIVOS CORREGIDOS (HITO 3) ---
         public async Task<byte[]> GenerateCorrectedFilesZipAsync(IEnumerable<(Stream stream, string fileName)> files, List<string> typesToClean)
         {
             using var ms = new MemoryStream();
@@ -35,59 +35,20 @@ namespace NotebookValidator.Web.Services
             {
                 foreach (var file in files)
                 {
-                    using var reader = new StreamReader(file.stream);
-                    var content = await reader.ReadToEndAsync();
-                    string correctedContent = content;
                     var baseName = Path.GetFileNameWithoutExtension(file.fileName);
+                    string correctedContent;
 
                     if (file.fileName.EndsWith(".ipynb"))
                     {
-                        var notebook = JsonSerializer.Deserialize<Notebook>(content, new JsonSerializerOptions { AllowTrailingCommas = true });
-                        if (notebook?.Cells != null)
-                        {
-                            // 1. CORRECCIÓN DE HEADER: Cambia la primera celda por el nombre del archivo
-                            if (typesToClean.Contains("Header Incorrecto") && notebook.Cells.Any())
-                            {
-                                notebook.Cells[0].Source = new List<string> { $"# {baseName}" };
-                            }
-
-                            // 2. LIMPIEZA DE CELDAS (%sql y salida del footer)
-                            notebook.Cells = notebook.Cells.Where(cell => {
-                                if (cell.CellType != "code") return true;
-                                var code = string.Join("\n", cell.Source).Trim();
-
-                                // Lógica inteligente para %sql
-                                if (typesToClean.Contains("Código SQL en Databricks") && code.StartsWith("%sql", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    return SqlOperationalRegex.IsMatch(code);
-                                }
-
-                                // Si corregimos el footer, eliminamos celdas duplicadas de salida antes de agregar las nuevas
-                                if (typesToClean.Contains("Footer Incorrecto") && code.Contains("dbutils.notebook.exit"))
-                                {
-                                    return false;
-                                }
-
-                                return true;
-                            }).ToList();
-
-                            // 3. CORRECCIÓN DE FOOTER: Inyecta las dos celdas estándar
-                            if (typesToClean.Contains("Footer Incorrecto"))
-                            {
-                                notebook.Cells.Add(new Cell
-                                {
-                                    CellType = "code",
-                                    Source = new List<string> { "# Mensaje Final" }
-                                });
-                                notebook.Cells.Add(new Cell
-                                {
-                                    CellType = "code",
-                                    Source = new List<string> { "dbutils.notebook.exit(\"{\\\"coderror\\\":\\\"0\\\", \\\"msgerror\\\":\\\"Notebook termina ejecucion satisfactoriamente\\\"}\")" }
-                                });
-                            }
-
-                            correctedContent = JsonSerializer.Serialize(notebook, new JsonSerializerOptions { WriteIndented = true });
-                        }
+                        var notebook = await JsonSerializer.DeserializeAsync<Notebook>(file.stream);
+                        ApplySmartFix(notebook, baseName, typesToClean);
+                        correctedContent = JsonSerializer.Serialize(notebook, new JsonSerializerOptions { WriteIndented = true });
+                    }
+                    else
+                    {
+                        using var reader = new StreamReader(file.stream);
+                        var pyContent = await reader.ReadToEndAsync();
+                        correctedContent = ApplySmartFixToPython(pyContent, baseName, typesToClean);
                     }
 
                     var entry = archive.CreateEntry(file.fileName);
@@ -97,6 +58,170 @@ namespace NotebookValidator.Web.Services
                 }
             }
             return ms.ToArray();
+        }
+
+        private void ApplySmartFix(Notebook notebook, string baseName, List<string> typesToClean)
+        {
+            if (notebook?.Cells == null) return;
+
+            // 1. Corrección Inteligente de Header
+            if (typesToClean.Contains("Header Incorrecto") && notebook.Cells.Any())
+            {
+                var firstCellStr = string.Join("\n", notebook.Cells[0].Source);
+                if (firstCellStr.Contains("# Databricks notebook source"))
+                {
+                    notebook.Cells[0].Source = new List<string> {
+                        "# Databricks notebook source\n",
+                        "# MAGIC %md\n",
+                        $"# MAGIC # {baseName}\n"
+                    };
+                }
+                else
+                {
+                    notebook.Cells[0].Source = new List<string> { $"# {baseName}\n" };
+                }
+            }
+
+            // 2. Corrección de truncado de Footer usando GetCleanedCellText
+            if (typesToClean.Contains("Código después de Mensaje Final"))
+            {
+                int exitIndex = -1;
+                for (int i = 0; i < notebook.Cells.Count - 1; i++)
+                {
+                    var currentCleaned = GetCleanedCellText(notebook.Cells[i].Source);
+                    var nextSource = string.Join("\n", notebook.Cells[i + 1].Source).Trim();
+
+                    if ((currentCleaned == "# Mensaje Final" || currentCleaned == "## Mensaje Final") && nextSource.Contains("dbutils.notebook.exit"))
+                    {
+                        exitIndex = i + 1;
+                        break;
+                    }
+                }
+                if (exitIndex != -1 && exitIndex < notebook.Cells.Count - 1)
+                {
+                    notebook.Cells = notebook.Cells.Take(exitIndex + 1).ToList();
+                }
+            }
+
+            bool fixSqlSafe = typesToClean.Contains("Definición local de sqlsafe");
+            bool fixLocalFunc = typesToClean.Contains("Función declarada localmente");
+
+            if (fixSqlSafe)
+            {
+                foreach (var cell in notebook.Cells.Where(c => c.CellType == "code"))
+                {
+                    for (int j = 0; j < cell.Source.Count; j++)
+                    {
+                        string original = cell.Source[j];
+                        string updated = Regex.Replace(original, @"\b(sql_safe|SqlSafe|Sql_Safe|SQLSafe)\b", "sqlsafe");
+                        if (original != updated) cell.Source[j] = updated;
+                    }
+                }
+            }
+
+            var unusedVars = GetUnusedVariables(notebook.Cells);
+            var unusedImports = GetUnusedImportsList(notebook.Cells);
+
+            notebook.Cells = notebook.Cells.Where(cell => {
+                if (cell.CellType != "code") return true;
+
+                var lines = cell.Source.Select(l => l.TrimEnd('\r', '\n')).ToList();
+                var newLines = new List<string>();
+                bool modified = false;
+
+                for (int i = 0; i < lines.Count; i++)
+                {
+                    var line = lines[i];
+                    var trimmed = line.Trim();
+
+                    if (string.IsNullOrWhiteSpace(trimmed)) { newLines.Add(line); continue; }
+
+                    var funcMatch = Regex.Match(line, @"^([ \t]*)def\s+(\w+)\s*\(");
+                    if (funcMatch.Success)
+                    {
+                        string funcName = funcMatch.Groups[2].Value;
+                        bool isSqlSafe = Regex.IsMatch(funcName, @"^(sql_safe|SqlSafe|Sql_Safe|sqlsafe)$", RegexOptions.IgnoreCase);
+
+                        if ((fixSqlSafe && isSqlSafe) || (fixLocalFunc && !isSqlSafe))
+                        {
+                            modified = true;
+                            int baseIndent = funcMatch.Groups[1].Value.Length;
+
+                            while (i + 1 < lines.Count)
+                            {
+                                string nextLine = lines[i + 1];
+                                if (string.IsNullOrWhiteSpace(nextLine)) { i++; continue; }
+                                int currentIndent = nextLine.TakeWhile(c => c == ' ' || c == '\t').Count();
+
+                                if (currentIndent <= baseIndent && !nextLine.TrimStart().StartsWith("#"))
+                                    break;
+
+                                i++;
+                            }
+                            continue;
+                        }
+                    }
+
+                    if ((typesToClean.Contains("Código SQL en Databricks") || typesToClean.Contains("SQL: Informativo (SELECT)") || typesToClean.Contains("SQL: Vacío")) && trimmed.StartsWith("%sql") && !SqlOperationalRegex.IsMatch(trimmed))
+                    { modified = true; continue; }
+
+                    if (typesToClean.Contains("Footer Incorrecto") && trimmed.Contains("dbutils.notebook.exit"))
+                    { modified = true; continue; }
+
+                    bool shouldRemove = false;
+                    if (typesToClean.Contains("Variable de Widget no usada"))
+                    {
+                        foreach (var uv in unusedVars)
+                        {
+                            if (Regex.IsMatch(trimmed, $@"^{uv}\s*=")) { shouldRemove = true; break; }
+                            if (trimmed.StartsWith("print") && trimmed.Contains(uv) && !trimmed.Contains("Parámetros")) { shouldRemove = true; break; }
+                        }
+                    }
+                    if (!shouldRemove && typesToClean.Contains("Import no usado"))
+                    {
+                        foreach (var ui in unusedImports)
+                        {
+                            if (Regex.IsMatch(trimmed, $@"\b(import|from)\b.*\b{ui}\b")) { shouldRemove = true; break; }
+                        }
+                    }
+
+                    if (shouldRemove) { modified = true; }
+                    else { newLines.Add(line); }
+                }
+
+                if (modified || newLines.Count != lines.Count)
+                {
+                    cell.Source = newLines.Select(l => l + "\n").ToList();
+                }
+
+                return cell.Source.Any(l => !string.IsNullOrWhiteSpace(l));
+            }).ToList();
+
+            // 3. Corrección Inteligente de Footer
+            if (typesToClean.Contains("Footer Incorrecto"))
+            {
+                bool isPyFormat = notebook.Cells.Any(c => string.Join("\n", c.Source).Contains("# Databricks notebook source") || string.Join("\n", c.Source).Contains("# MAGIC"));
+
+                if (isPyFormat)
+                {
+                    notebook.Cells.Add(new Cell { CellType = "code", Source = new List<string> { "# MAGIC %md\n", "# MAGIC ## Mensaje Final\n" } });
+                }
+                else
+                {
+                    notebook.Cells.Add(new Cell { CellType = "code", Source = new List<string> { "## Mensaje Final\n" } });
+                }
+
+                notebook.Cells.Add(new Cell { CellType = "code", Source = new List<string> { "dbutils.notebook.exit(\"{\\\"coderror\\\":\\\"0\\\", \\\"msgerror\\\":\\\"Notebook termina ejecucion satisfactoriamente\\\"}\")\n" } });
+            }
+        }
+
+        private string ApplySmartFixToPython(string content, string baseName, List<string> typesToClean)
+        {
+            var blocks = Regex.Split(content, @"^#\s*COMMAND\s*-+", RegexOptions.Multiline).ToList();
+            var cells = blocks.Select(b => new Cell { CellType = "code", Source = b.Split('\n').ToList() }).ToList();
+            var nb = new Notebook { Cells = cells };
+            ApplySmartFix(nb, baseName, typesToClean);
+            return string.Join("\n" + PyCommandSeparator + "\n", nb.Cells.Select(c => string.Join("\n", c.Source)));
         }
 
         public async Task<(List<Finding> allFindings, int filesCount, Dictionary<string, List<string>> fileVariables)> ProcessFilesAsync(IEnumerable<(Stream stream, string fileName)> files)
@@ -113,148 +238,323 @@ namespace NotebookValidator.Web.Services
                 {
                     var tempFilePath = Path.Combine(tempDirectory, file.fileName);
                     using (var fs = new FileStream(tempFilePath, FileMode.Create)) { await file.stream.CopyToAsync(fs); }
-
-                    if (Path.GetExtension(file.fileName).Equals(".zip", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var extractPath = Path.Combine(tempDirectory, Guid.NewGuid().ToString());
-                        ZipFile.ExtractToDirectory(tempFilePath, extractPath);
-                        var notebookFiles = Directory.GetFiles(extractPath, "*.*", SearchOption.AllDirectories)
-                            .Where(f => f.EndsWith(".py") || f.EndsWith(".ipynb"));
-                        foreach (var path in notebookFiles) notebooksToProcess.Add((path, Path.GetFileName(path)));
-                    }
-                    else if (file.fileName.EndsWith(".py") || file.fileName.EndsWith(".ipynb"))
-                    {
+                    if (file.fileName.EndsWith(".py") || file.fileName.EndsWith(".ipynb"))
                         notebooksToProcess.Add((tempFilePath, file.fileName));
-                    }
                 }
 
                 foreach (var (tempPath, originalName) in notebooksToProcess)
                 {
-                    var (findings, variables) = await AnalyzeNotebookWithVarsAsync(tempPath, originalName);
+                    var (findings, variables) = await AnalyzeDetailedAsync(tempPath, originalName);
                     allFindings.AddRange(findings);
                     fileVariables[originalName] = variables;
                 }
-
                 return (allFindings, notebooksToProcess.Count, fileVariables);
             }
-            finally
-            {
-                if (Directory.Exists(tempDirectory)) Directory.Delete(tempDirectory, true);
-            }
+            finally { if (Directory.Exists(tempDirectory)) Directory.Delete(tempDirectory, true); }
         }
 
-        private async Task<(List<Finding> findings, List<string> variables)> AnalyzeNotebookWithVarsAsync(string filePath, string originalFileName)
+        // --- MÉTODO LIMPIADOR DE ARTEFACTOS DE DATABRICKS PARA VALIDACIÓN ---
+        private string GetCleanedCellText(IEnumerable<string> sourceLines)
+        {
+            var cleaned = sourceLines
+                .Select(l => l.Trim('\r', '\n', ' '))
+                .Where(l => !string.IsNullOrWhiteSpace(l) &&
+                            !l.Equals("# Databricks notebook source", StringComparison.OrdinalIgnoreCase) &&
+                            !l.Equals("# MAGIC %md", StringComparison.OrdinalIgnoreCase))
+                .Select(l => {
+                    if (l.StartsWith("# MAGIC ", StringComparison.OrdinalIgnoreCase)) return l.Substring(8).TrimStart();
+                    if (l.StartsWith("# MAGIC", StringComparison.OrdinalIgnoreCase)) return l.Substring(7).TrimStart();
+                    return l;
+                })
+                .Where(l => !string.IsNullOrWhiteSpace(l))
+                .ToList();
+
+            return string.Join("\n", cleaned).Trim();
+        }
+
+        private async Task<(List<Finding> findings, List<string> variables)> AnalyzeDetailedAsync(string filePath, string originalFileName)
         {
             var findings = new List<Finding>();
-            var variables = new List<string>();
-            Notebook notebook;
+            var content = await File.ReadAllTextAsync(filePath);
+            List<Cell> cells;
 
-            try
+            if (filePath.EndsWith(".ipynb"))
             {
-                var fileContent = await File.ReadAllTextAsync(filePath);
-                if (filePath.EndsWith(".ipynb", StringComparison.OrdinalIgnoreCase))
+                var nb = JsonSerializer.Deserialize<Notebook>(content) ?? new Notebook();
+                cells = nb.Cells;
+            }
+            else
+            {
+                cells = Regex.Split(content, @"^#\s*COMMAND\s*-+", RegexOptions.Multiline)
+                    .Select(c => new Cell { CellType = "code", Source = c.Split('\n').ToList() }).ToList();
+            }
+
+            findings.AddRange(ValidateHeader(cells, originalFileName));
+            findings.AddRange(ValidateFooter(cells, originalFileName));
+
+            var widgetVars = new List<string>();
+            var widgetRegex = new Regex(@"^(\w+)\s*=\s*dbutils\.widgets\.get", RegexOptions.Multiline);
+            foreach (var cell in cells.Where(c => c.CellType == "code"))
+            {
+                foreach (var line in cell.Source)
                 {
-                    notebook = JsonSerializer.Deserialize<Notebook>(fileContent, new JsonSerializerOptions { AllowTrailingCommas = true }) ?? new Notebook();
+                    var match = widgetRegex.Match(line.Trim());
+                    if (match.Success) widgetVars.Add(match.Groups[1].Value);
                 }
-                else
+            }
+
+            findings.AddRange(DetectUnusedElementsWithLocation(cells, originalFileName, widgetVars));
+
+            var rules = await _context.ValidationRules.Where(r => r.IsEnabled).ToListAsync();
+            var mixedLangRegex = new Regex(@"^%(scala|r|sh)\b", RegexOptions.Multiline);
+
+            for (int i = 0; i < cells.Count; i++)
+            {
+                var cellSource = string.Join("\n", cells[i].Source);
+
+                foreach (Match m in mixedLangRegex.Matches(cellSource))
                 {
-                    var cells = Regex.Split(fileContent, @"#\s*COMMAND\s*-+")
-                        .Select(content => new Cell { CellType = "code", Source = content.Split('\n').ToList() })
-                        .ToList();
-                    notebook = new Notebook { Cells = cells };
+                    int lineNum = cellSource.Take(m.Index).Count(c => c == '\n') + 1;
+                    findings.Add(new Finding(originalFileName, "Uso de lenguaje mixto", $"Se detectó el uso de '{m.Value}'. Se recomienda estandarizar en un solo lenguaje (PySpark).", i + 1, lineNum, m.Value, cellSource, "Warning"));
                 }
 
-                var varRegex = new Regex(@"^(\w+)\s*=\s*dbutils\.widgets\.get", RegexOptions.IgnoreCase | RegexOptions.Multiline);
-                foreach (var cell in notebook.Cells.Where(c => c.CellType == "code"))
+                var cellLines = cells[i].Source.Select(l => l.TrimEnd('\r', '\n')).ToList();
+                for (int l = 0; l < cellLines.Count; l++)
                 {
-                    foreach (var line in cell.Source)
+                    var line = cellLines[l];
+                    var funcMatch = Regex.Match(line, @"^([ \t]*)def\s+(\w+)\s*\(");
+
+                    if (funcMatch.Success)
                     {
-                        var match = varRegex.Match(line.Trim());
-                        if (match.Success) variables.Add(match.Groups[1].Value);
+                        string funcName = funcMatch.Groups[2].Value;
+                        int baseIndent = funcMatch.Groups[1].Value.Length;
+
+                        var funcBlockLines = new List<string> { line };
+                        int endLine = l;
+
+                        for (int next = l + 1; next < cellLines.Count; next++)
+                        {
+                            string nextLine = cellLines[next];
+                            if (string.IsNullOrWhiteSpace(nextLine))
+                            {
+                                funcBlockLines.Add(nextLine);
+                                continue;
+                            }
+
+                            int currentIndent = nextLine.TakeWhile(c => c == ' ' || c == '\t').Count();
+                            if (currentIndent <= baseIndent && !nextLine.TrimStart().StartsWith("#"))
+                                break;
+
+                            funcBlockLines.Add(nextLine);
+                            endLine = next;
+                        }
+
+                        while (funcBlockLines.Count > 0 && string.IsNullOrWhiteSpace(funcBlockLines.Last()))
+                            funcBlockLines.RemoveAt(funcBlockLines.Count - 1);
+
+                        string extractedSource = string.Join("\n", funcBlockLines);
+                        int lineNum = l + 1;
+
+                        if (Regex.IsMatch(funcName, @"^(sql_safe|SqlSafe|Sql_Safe|sqlsafe)$", RegexOptions.IgnoreCase))
+                        {
+                            findings.Add(new Finding(originalFileName, "Definición local de sqlsafe", "Variante local de sqlsafe detectada. Se recomienda eliminarla y usar el estándar del maestro.", i + 1, lineNum, funcName, extractedSource, "Critical"));
+                        }
+                        else
+                        {
+                            findings.Add(new Finding(originalFileName, "Función declarada localmente", $"Estás definiendo la función '{funcName}' localmente. Considera agregarla al maestro Funciones.ipynb.", i + 1, lineNum, funcName, extractedSource, "Info"));
+                        }
+
+                        l = endLine;
+                    }
+                }
+
+                foreach (var rule in rules)
+                {
+                    var matches = Regex.Matches(cellSource, rule.RegexPattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
+                    foreach (Match m in matches)
+                    {
+                        int lineNum = cellSource.Take(m.Index).Count(c => c == '\n') + 1;
+                        string fType = rule.RuleName;
+                        string fSev = rule.Severity;
+                        string fDet = rule.DetailsMessage;
+
+                        if (fType.Contains("SQL", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var sqlMatch = SqlOperationalRegex.Match(cellSource);
+                            var isJustSqlEmpty = cellSource.Trim().Equals("%sql", StringComparison.OrdinalIgnoreCase);
+                            fSev = "Critical";
+
+                            if (isJustSqlEmpty)
+                            {
+                                fType = "SQL: Vacío";
+                                fDet = "Celda SQL sin consulta. Puede eliminarse automáticamente desde el resumen.";
+                            }
+                            else if (sqlMatch.Success)
+                            {
+                                string op = sqlMatch.Groups[1].Value.ToUpper();
+                                if (op == "CREATE" || op == "ALTER" || op == "DROP" || op == "TRUNCATE" || op == "REPLACE")
+                                    fType = $"SQL: DDL ({op})";
+                                else
+                                    fType = $"SQL: {op}";
+                                fDet = $"Operación {op} detectada. Haz clic en la varita para estandarizar con sqlSafe.";
+                            }
+                            else
+                            {
+                                fType = "SQL: Informativo (SELECT)";
+                                fDet = "Consulta de lectura pura. Puede eliminarse automáticamente desde el resumen.";
+                            }
+                        }
+
+                        findings.Add(new Finding(originalFileName, fType, fDet, i + 1, lineNum, m.Value, cellSource, fSev));
                     }
                 }
             }
-            catch (Exception e)
+            return (findings, widgetVars.Distinct().ToList());
+        }
+
+        private IEnumerable<Finding> DetectUnusedElementsWithLocation(List<Cell> cells, string fileName, List<string> widgets)
+        {
+            var codeCells = cells.Where(c => c.CellType == "code").ToList();
+            var fullCode = string.Join("\n", codeCells.Select(c => string.Join("\n", c.Source)));
+
+            foreach (var v in widgets)
             {
-                findings.Add(new Finding(originalFileName, "Error", $"No se pudo leer el archivo: {e.Message}", Severity: "Critical"));
-                return (findings, variables);
-            }
-
-            findings.AddRange(ValidateHeader(notebook.Cells, originalFileName));
-            findings.AddRange(ValidateUnusedWidgetVariables(notebook.Cells, originalFileName));
-            findings.AddRange(ValidateUnusedImports(notebook.Cells, originalFileName));
-            findings.AddRange(ValidateFooter(notebook.Cells, originalFileName));
-
-            var dynamicRules = await _context.ValidationRules.Where(r => r.IsEnabled).ToListAsync();
-            var compiledRules = dynamicRules.Select(r => new { Rule = r, Regex = new Regex(r.RegexPattern, RegexOptions.IgnoreCase) }).ToList();
-
-            for (int i = 0; i < notebook.Cells.Count; i++)
-            {
-                var cell = notebook.Cells[i];
-                if (cell.CellType != "code") continue;
-
-                for (int l = 0; l < cell.Source.Count; l++)
+                if (Regex.Matches(fullCode, $@"\b{v}\b").Count <= 2)
                 {
-                    var line = cell.Source[l];
-                    var trimmedLine = line.Trim();
-
-                    if (string.IsNullOrWhiteSpace(trimmedLine) || trimmedLine.StartsWith("#") ||
-                        trimmedLine.StartsWith("import ", StringComparison.OrdinalIgnoreCase) ||
-                        trimmedLine.StartsWith("from ", StringComparison.OrdinalIgnoreCase)) continue;
-
-                    foreach (var cr in compiledRules)
+                    for (int i = 0; i < cells.Count; i++)
                     {
-                        if (cr.Regex.IsMatch(line))
+                        for (int l = 0; l < cells[i].Source.Count; l++)
                         {
-                            findings.Add(new Finding(originalFileName, cr.Rule.RuleName, cr.Rule.DetailsMessage, i + 1, l + 1, trimmedLine, string.Join("\n", cell.Source), cr.Rule.Severity));
+                            if (Regex.IsMatch(cells[i].Source[l], $@"^{v}\s*="))
+                            {
+                                yield return new Finding(fileName, "Variable de Widget no usada", $"La variable '{v}' no se utiliza.", i + 1, l + 1, v, string.Join("\n", cells[i].Source), "Warning");
+                            }
                         }
                     }
                 }
             }
-            return (findings, variables.Distinct().ToList());
+
+            var importRegex = new Regex(@"^\s*(?:import\s+(\w+)(?:\s+as\s+(\w+))?|from\s+(\w+)\s+import\s+(\w+)(?:\s+as\s+(\w+))?)", RegexOptions.Multiline);
+            foreach (Match m in importRegex.Matches(fullCode))
+            {
+                string id = !string.IsNullOrEmpty(m.Groups[2].Value) ? m.Groups[2].Value :
+                            (!string.IsNullOrEmpty(m.Groups[5].Value) ? m.Groups[5].Value :
+                            (!string.IsNullOrEmpty(m.Groups[4].Value) ? m.Groups[4].Value : m.Groups[1].Value));
+                if (!string.IsNullOrEmpty(id) && Regex.Matches(fullCode, $@"\b{id}\b").Count <= 1)
+                {
+                    for (int i = 0; i < cells.Count; i++)
+                    {
+                        for (int l = 0; l < cells[i].Source.Count; l++)
+                        {
+                            if (cells[i].Source[l].Contains(m.Value.Trim()))
+                            {
+                                yield return new Finding(fileName, "Import no usado", $"La librería/función '{id}' no se utiliza.", i + 1, l + 1, id, string.Join("\n", cells[i].Source), "Info");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private List<string> GetUnusedVariables(List<Cell> cells)
+        {
+            var widgetVars = new List<string>();
+            var widgetRegex = new Regex(@"^(\w+)\s*=\s*dbutils\.widgets\.get", RegexOptions.Multiline);
+            var fullCode = string.Join("\n", cells.Where(c => c.CellType == "code").Select(c => string.Join("\n", c.Source)));
+            foreach (var cell in cells.Where(c => c.CellType == "code"))
+            {
+                foreach (var line in cell.Source)
+                {
+                    var match = widgetRegex.Match(line.Trim());
+                    if (match.Success) widgetVars.Add(match.Groups[1].Value);
+                }
+            }
+            return widgetVars.Where(v => Regex.Matches(fullCode, $@"\b{v}\b").Count <= 2).ToList();
+        }
+
+        private List<string> GetUnusedImportsList(List<Cell> cells)
+        {
+            var unused = new List<string>();
+            var fullCode = string.Join("\n", cells.Where(c => c.CellType == "code").Select(c => string.Join("\n", c.Source)));
+            var importRegex = new Regex(@"^\s*(?:import\s+(\w+)(?:\s+as\s+(\w+))?|from\s+(\w+)\s+import\s+(\w+)(?:\s+as\s+(\w+))?)", RegexOptions.Multiline);
+            foreach (Match m in importRegex.Matches(fullCode))
+            {
+                string id = !string.IsNullOrEmpty(m.Groups[2].Value) ? m.Groups[2].Value :
+                            (!string.IsNullOrEmpty(m.Groups[5].Value) ? m.Groups[5].Value :
+                            (!string.IsNullOrEmpty(m.Groups[4].Value) ? m.Groups[4].Value : m.Groups[1].Value));
+                if (!string.IsNullOrEmpty(id) && Regex.Matches(fullCode, $@"\b{id}\b").Count <= 1) unused.Add(id);
+            }
+            return unused;
+        }
+
+        private IEnumerable<Finding> ValidateHeader(List<Cell> cells, string fileName)
+        {
+            if (!cells.Any()) yield break;
+            var expected = $"# {Path.GetFileNameWithoutExtension(fileName)}";
+
+            // Usamos la nueva función limpiadora para ignorar las basuras de Databricks
+            var actualCleaned = GetCleanedCellText(cells[0].Source);
+
+            if (!actualCleaned.StartsWith(expected, StringComparison.OrdinalIgnoreCase))
+            {
+                var actualStr = string.Join("\n", cells[0].Source).Trim();
+                yield return new Finding(fileName, "Header Incorrecto", $"Debe ser '{expected}'", 1, 1, actualStr, actualStr, "Warning");
+            }
+        }
+
+        private IEnumerable<Finding> ValidateFooter(List<Cell> cells, string fileName)
+        {
+            string targetExit = "dbutils.notebook.exit";
+            int messagePairIndex = -1;
+            bool pairFound = false;
+
+            for (int i = 0; i < cells.Count - 1; i++)
+            {
+                // Limpiamos la celda actual para asegurar que detecte ## Mensaje Final
+                var currentCleaned = GetCleanedCellText(cells[i].Source);
+                var nextCleaned = string.Join("\n", cells[i + 1].Source).Trim();
+
+                if ((currentCleaned == "# Mensaje Final" || currentCleaned == "## Mensaje Final") && nextCleaned.Contains(targetExit))
+                {
+                    pairFound = true;
+                    messagePairIndex = i;
+                    break;
+                }
+            }
+
+            if (!pairFound)
+            {
+                yield return new Finding(fileName, "Footer Incorrecto", "Falta el par 'Mensaje Final' + exit.", cells.Count, 1, "Cierre faltante", "", "Info");
+            }
+            else if (messagePairIndex + 2 < cells.Count)
+            {
+                // Validación adicional para asegurar que no salte el error por celdas totalmente vacías
+                bool hasRealCode = false;
+                for (int k = messagePairIndex + 2; k < cells.Count; k++)
+                {
+                    var content = string.Join("\n", cells[k].Source).Trim();
+                    if (!string.IsNullOrWhiteSpace(content)) { hasRealCode = true; break; }
+                }
+
+                if (hasRealCode)
+                {
+                    yield return new Finding(fileName, "Código después de Mensaje Final", "Hay celdas inútiles después de la salida.", messagePairIndex + 3, 1, "Código muerto", "", "Warning");
+                }
+            }
         }
 
         public byte[] GenerateExcelReportBytes(List<Finding> findings, AnalysisRun runInfo, string logoPath = null)
         {
             using var workbook = new XLWorkbook();
-            var ws = workbook.Worksheets.Add("Reporte de Validación");
-            if (!string.IsNullOrEmpty(logoPath) && File.Exists(logoPath)) ws.AddPicture(logoPath).MoveTo(ws.Cell("A1")).Scale(0.4);
-            ws.Cell("C2").Value = "REPORTE DE ANÁLISIS DE NOTEBOOKS";
-            ws.Cell("C2").Style.Font.Bold = true;
-            ws.Cell("C4").Value = "Usuario:"; ws.Cell("D4").Value = runInfo.User?.Email ?? "Sistema Remoto";
-            ws.Cell("C5").Value = "Fecha:"; ws.Cell("D5").Value = runInfo.AnalysisTimestamp.ToString("g");
-            var data = findings.Select(f => new { f.FileName, f.FindingType, f.Severity, f.CellNumber, f.LineNumber, f.Content, f.Details }).ToList();
-            var table = ws.Cell(8, 1).InsertTable(data);
-            table.Theme = XLTableTheme.TableStyleMedium9;
+            var ws = workbook.Worksheets.Add("Reporte");
+            if (File.Exists(logoPath)) ws.AddPicture(logoPath).MoveTo(ws.Cell("A1")).Scale(0.4);
+            ws.Cell("C2").Value = "REPORTE BITSOLUCIÓN";
+            var data = findings.Select(f => new { f.FileName, f.FindingType, f.Severity, Ubicacion = $"Celda {f.CellNumber}, Lín {f.LineNumber}", f.Details }).ToList();
+            ws.Cell(8, 1).InsertTable(data).Theme = XLTableTheme.TableStyleMedium9;
             ws.Columns().AdjustToContents();
             using var ms = new MemoryStream();
             workbook.SaveAs(ms);
             return ms.ToArray();
         }
-
-        private IEnumerable<Finding> ValidateHeader(List<Cell> cells, string originalFileName)
-        {
-            if (cells == null || !cells.Any()) yield break;
-            var baseFileName = Path.GetFileNameWithoutExtension(originalFileName);
-            var firstCellContent = string.Join("\n", cells.First().Source);
-            // Validación estricta: debe coincidir con el formato # NombreArchivo
-            if (!firstCellContent.Trim().Equals($"# {baseFileName}", StringComparison.OrdinalIgnoreCase))
-                yield return new Finding(originalFileName, "Header Incorrecto", $"El header debe ser exactamente '# {baseFileName}'.", 1, Severity: "Warning");
-        }
-
-        private IEnumerable<Finding> ValidateFooter(List<Cell> cells, string fileName)
-        {
-            if (cells == null || cells.Count < 2) yield break;
-            var lastTwoCells = cells.Skip(Math.Max(0, cells.Count - 2)).ToList();
-
-            bool hasMsgFinal = string.Join("", lastTwoCells[0].Source).Contains("# Mensaje Final");
-            bool hasExit = string.Join("", lastTwoCells[1].Source).Contains("dbutils.notebook.exit");
-
-            if (!hasMsgFinal || !hasExit)
-                yield return new Finding(fileName, "Footer Incorrecto", "Faltan las celdas estándar de cierre (# Mensaje Final y dbutils.notebook.exit).", cells.Count, Severity: "Info");
-        }
-
-        private IEnumerable<Finding> ValidateUnusedImports(List<Cell> cells, string fileName) => Enumerable.Empty<Finding>();
-        private IEnumerable<Finding> ValidateUnusedWidgetVariables(List<Cell> cells, string fileName) => Enumerable.Empty<Finding>();
     }
 }

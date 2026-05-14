@@ -1,0 +1,293 @@
+@model List<NotebookValidator.Web.Models.Cell>
+@using NotebookValidator.Web.Services
+@{
+    ViewData["Title"] = "Mantenedor de Funciones";
+    var functionsService = ViewBag.FunctionsService as FunctionsService;
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+
+<style>
+    /* Estilos para integrar CodeMirror con nuestro Tema Oscuro */
+    .CodeMirror {
+        height: auto;
+        min-height: 250px;
+        background-color: #07091e !important; /* Fondo navy oscuro */
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 14px;
+    }
+
+    .CodeMirror-scroll {
+        min-height: 250px;
+    }
+
+    .CodeMirror-gutters {
+        background-color: #112240 !important;
+        border-right: 1px solid var(--border-color) !important;
+    }
+
+    .CodeMirror-linenumber {
+        color: #8892B0 !important;
+    }
+
+    .cm-s-monokai span.cm-comment {
+        color: #8892B0 !important;
+    }
+
+    /* Efecto al desbloquear */
+    .editor-unlocked .CodeMirror {
+        border-color: var(--accent-yellow) !important;
+        box-shadow: 0 0 5px rgba(255, 202, 40, 0.3);
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-white"><i class="bi bi-braces-asterisk me-2"></i> Maestro de Funciones Centralizadas</h2>
+
+        <div>
+            <a asp-action="DownloadMaster" class="btn btn-outline-info me-2">
+                <i class="bi bi-download me-2"></i> Descargar Maestro
+            </a>
+            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#addFunctionModal">
+                <i class="bi bi-plus-circle me-2"></i> Nueva Función
+            </button>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i> @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="accordion" id="functionsAccordion">
+        @for (int i = 0; i < Model.Count; i++)
+        {
+            var cell = Model[i];
+            var funcName = functionsService.GetFunctionName(cell);
+            var sourceCode = string.Join("", cell.Source);
+
+            <div class="accordion-item bg-dark border-secondary mb-3 rounded shadow-sm">
+                <h2 class="accordion-header" id="heading_@i">
+                    <button class="accordion-button collapsed bg-dark text-warning border-bottom border-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_@i" aria-expanded="false" aria-controls="collapse_@i">
+                        <i class="bi bi-code-slash me-2"></i> <strong style="letter-spacing: 0.5px;">@funcName</strong>
+                    </button>
+                </h2>
+                <div id="collapse_@i" class="accordion-collapse collapse" aria-labelledby="heading_@i" data-bs-parent="#functionsAccordion">
+                    <div class="accordion-body">
+                        <form asp-action="UpdateFunction" method="post" class="edit-function-form">
+                            <input type="hidden" name="cellIndex" value="@i" />
+                            <div class="mb-3 editor-container">
+                                <textarea name="sourceCode" class="edit-function-textarea">@sourceCode</textarea>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <button type="button" class="btn btn-outline-info btn-unlock">
+                                    <i class="bi bi-unlock"></i> Desbloquear para Editar
+                                </button>
+                                <div>
+                                    <button type="button" class="btn btn-outline-danger me-2" onclick="confirmDelete(@i, '@funcName')">
+                                        <i class="bi bi-trash"></i> Eliminar
+                                    </button>
+                                    <button type="submit" class="btn btn-success d-none btn-save">
+                                        <i class="bi bi-save"></i> Guardar Cambios
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="modal fade" id="addFunctionModal" tabindex="-1" aria-labelledby="addFunctionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="background-color: var(--navy); border: 1px solid var(--border-color);">
+            <form asp-action="AddFunction" method="post" id="addFunctionForm">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-warning" id="addFunctionModalLabel"><i class="bi bi-plus-circle me-2"></i> Agregar Nueva Función</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" style="color: var(--light-text); font-weight: 600;">Código de la Función (Python)</label>
+                        <textarea id="addFunctionTextarea" name="sourceCode"># Describe qué hace tu función aquí
+def nueva_funcion():
+    pass</textarea>
+                    </div>
+                    <div class="alert alert-info py-2 small bg-transparent border-info text-info">
+                        <i class="bi bi-info-circle me-1"></i> Se validará la sintaxis y se creará automáticamente un respaldo del archivo maestro antes de guardar.
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning">Guardar Función</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<form id="deleteForm" asp-action="DeleteFunction" method="post" class="d-none">
+    <input type="hidden" name="cellIndex" id="deleteCellIndex" />
+</form>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/matchbrackets.min.js"></script>
+
+    <script>
+        // LÓGICA DE VALIDACIÓN SINTÁCTICA (PYTHON)
+        function validatePythonSyntax(code) {
+            if (!code.trim()) return "El código no puede estar vacío.";
+
+            if (!/def\s+\w+\s*\(/.test(code)) {
+                return "Sintaxis Inválida: El código debe contener una definición de función (ejemplo: 'def mi_funcion():').";
+            }
+
+            const stack = [];
+            const pairs = { '(': ')', '[': ']', '{': '}' };
+            let inString = false;
+            let stringChar = '';
+
+            for (let i = 0; i < code.length; i++) {
+                let char = code[i];
+
+                if ((char === "'" || char === '"') && (i === 0 || code[i-1] !== '\\')) {
+                    if (!inString) {
+                        inString = true;
+                        stringChar = char;
+                    } else if (char === stringChar) {
+                        inString = false;
+                    }
+                    continue;
+                }
+
+                if (inString) continue;
+
+                if (pairs[char]) {
+                    stack.push(char);
+                } else if (char === ')' || char === ']' || char === '}') {
+                    if (stack.length === 0 || pairs[stack.pop()] !== char) {
+                        return `Error de sintaxis: Hay un paréntesis, corchete o llave mal cerrado cerca del carácter '${char}'.`;
+                    }
+                }
+            }
+
+            if (stack.length > 0) {
+                return "Error de sintaxis: Faltan cerrar paréntesis, corchetes o llaves.";
+            }
+
+            if (!/def\s+\w+\s*\(.*\)\s*:/m.test(code)) {
+                return "Error de sintaxis: Falta el símbolo ':' al final de la definición de la función ('def funcion():').";
+            }
+
+            return null; // Todo OK
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var addModal = document.getElementById('addFunctionModal');
+            var addEditor = null;
+
+            addModal.addEventListener('shown.bs.modal', function () {
+                if (!addEditor) {
+                    addEditor = CodeMirror.fromTextArea(document.getElementById('addFunctionTextarea'), {
+                        mode: "python",
+                        theme: "monokai",
+                        lineNumbers: true,
+                        indentUnit: 4,
+                        matchBrackets: true
+                    });
+                } else {
+                    addEditor.refresh();
+                }
+            });
+
+            document.getElementById('addFunctionForm').addEventListener('submit', function(e) {
+                var code = addEditor.getValue();
+                var validationError = validatePythonSyntax(code);
+                if (validationError) {
+                    e.preventDefault();
+                    if (typeof toastr !== 'undefined') {
+                        toastr.error(validationError, "Error de Código");
+                    } else {
+                        alert(validationError);
+                    }
+                } else {
+                    addEditor.save();
+                }
+            });
+
+            document.querySelectorAll('.edit-function-textarea').forEach((ta) => {
+                var cm = CodeMirror.fromTextArea(ta, {
+                    mode: "python",
+                    theme: "monokai",
+                    lineNumbers: true,
+                    readOnly: true,
+                    indentUnit: 4,
+                    matchBrackets: true
+                });
+
+                const accordionCollapse = ta.closest('.accordion-collapse');
+                accordionCollapse.addEventListener('shown.bs.collapse', function () {
+                    cm.refresh();
+                });
+
+                const form = ta.closest('form');
+                const container = ta.closest('.editor-container');
+                const unlockBtn = form.querySelector('.btn-unlock');
+                const saveBtn = form.querySelector('.btn-save');
+
+                unlockBtn.addEventListener('click', function() {
+                    if (cm.getOption("readOnly")) {
+                        cm.setOption("readOnly", false);
+                        container.classList.add('editor-unlocked');
+                        this.innerHTML = '<i class="bi bi-lock"></i> Bloquear Protección';
+                        this.classList.replace('btn-outline-info', 'btn-outline-secondary');
+                        saveBtn.classList.remove('d-none');
+                    } else {
+                        cm.setOption("readOnly", true);
+                        container.classList.remove('editor-unlocked');
+                        this.innerHTML = '<i class="bi bi-unlock"></i> Desbloquear para Editar';
+                        this.classList.replace('btn-outline-secondary', 'btn-outline-info');
+                        saveBtn.classList.add('d-none');
+                    }
+                });
+
+                form.addEventListener('submit', function(e) {
+                    var code = cm.getValue();
+                    var validationError = validatePythonSyntax(code);
+                    if (validationError) {
+                        e.preventDefault();
+                        if (typeof toastr !== 'undefined') toastr.error(validationError, "Error de Código");
+                    } else {
+                        cm.save();
+                    }
+                });
+            });
+        });
+
+        function confirmDelete(index, name) {
+            if (confirm(`¿Estás seguro de que deseas eliminar permanentemente la función '${name}'?\n\nSe creará un respaldo automático antes de eliminarla.`)) {
+                document.getElementById('deleteCellIndex').value = index;
+                document.getElementById('deleteForm').submit();
+            }
+        }
+    </script>
+}

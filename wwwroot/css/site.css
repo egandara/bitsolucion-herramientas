@@ -812,3 +812,98 @@ body.light-theme {
 body.light-theme .list-group-item .text-muted {
     color: #6c757d !important; /* Un gris estándar para modo claro */
 }
+
+/* --- ESTILOS AGREGADOS PARA EL NUEVO MENÚ DE USUARIO --- */
+
+/* Avatares con iniciales */
+.user-avatar-sm {
+    width: 32px;
+    height: 32px;
+    background-color: var(--navy-light);
+    color: var(--accent-yellow);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    border: 1px solid var(--border-color);
+    font-size: 0.85rem;
+}
+
+.user-avatar-lg {
+    width: 48px;
+    height: 48px;
+    background-color: var(--accent-yellow);
+    color: var(--dark-navy);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+/* Contenedor de créditos */
+.quota-badge-container {
+    background-color: rgba(255, 202, 40, 0.1);
+    border: 1px solid var(--accent-yellow);
+    font-size: 0.9rem;
+}
+
+/* Texto de usuario en cabecera */
+.user-name-text {
+    color: var(--light-text);
+    font-weight: 600;
+}
+
+/* CORRECCIÓN VISIBILIDAD CORREO: Color gris claro legible */
+.user-email-text {
+    color: var(--medium-text) !important;
+    font-size: 0.75rem;
+    display: block;
+    opacity: 1 !important;
+}
+
+/* Efecto hover personalizado para cerrar sesión */
+.logout-item:hover {
+    background-color: rgba(220, 53, 69, 0.15) !important;
+    color: #ff6b6b !important;
+}
+
+/* Animación y fondo oscuro para el dropdown */
+.topbar-dropdown-menu {
+    border: 1px solid var(--border-color) !important;
+    background-color: var(--navy) !important;
+    min-width: 250px;
+    animation: fadeInDown 0.2s ease-out;
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* SOLUCIÓN DE VISIBILIDAD DE TEXTO EN OPCIONES */
+.topbar-dropdown-menu .dropdown-item {
+    color: var(--light-text) !important; /* Fuerza color claro sobreescribiendo a Bootstrap */
+    transition: all 0.2s ease;
+}
+
+    .topbar-dropdown-menu .dropdown-item:hover {
+        background-color: var(--navy-light) !important;
+        color: #ffffff !important;
+        padding-left: 1.5rem;
+    }
+
+/* Color del divisor */
+.topbar-dropdown-menu .dropdown-divider {
+    border-top: 1px solid var(--border-color) !important;
+}

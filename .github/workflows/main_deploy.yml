@@ -1,0 +1,42 @@
+name: CI/CD Pipeline - BitSolucion
+
+on:
+  push:
+    branches: [ "main" ] # Se dispara al hacer push a la rama main
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted # Usa tu runner 'produccion-v2' que ya está Online
+
+    steps:
+    - name: Checkout del código
+      uses: actions/checkout@v4
+
+    - name: Configurar .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x' # Ajustado a .NET 9
+
+    - name: Publicar aplicación
+      run: dotnet publish -c Release -o ./publish
+
+    - name: Desplegar a IIS
+      shell: powershell
+      run: |
+        Import-Module WebAdministration
+        
+        # 1. Detener el Pool de aplicaciones para liberar los archivos (.dll)
+        # Usamos el nombre que aparece en tu captura de pantalla
+        Write-Host "Deteniendo Application Pool: NotebookValidator.Web..."
+        Stop-WebAppPool -Name "NotebookValidator.Web"
+        
+        # Esperamos 5 segundos para que Windows cierre todos los procesos
+        Start-Sleep -Seconds 5
+        
+        # 2. Copiar los archivos nuevos a la ruta física que me diste
+        Write-Host "Copiando archivos a C:\inetpub\miapp\publish..."
+        xcopy .\publish\* C:\inetpub\miapp\publish\ /E /H /C /I /Y
+        
+        # 3. Arrancar el Pool de nuevo para que la web vuelva a estar online
+        Write-Host "Iniciando Application Pool: NotebookValidator.Web..."
+        Start-WebAppPool -Name "NotebookValidator.Web"

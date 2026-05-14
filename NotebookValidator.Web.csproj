@@ -40,4 +40,10 @@
     <Folder Include="wwwroot\lib\qrcode\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="wwwroot\standards\funciones\Funciones.ipynb">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

@@ -40,7 +40,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(connectionString));
+    options.UseSqlServer(connectionString));
 
 builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddRoles<IdentityRole>()
@@ -85,6 +85,7 @@ builder.Services.AddScoped<DocumentationService>();
 builder.Services.AddScoped<WordExportService>();
 builder.Services.AddScoped<JobTransformationService>();
 builder.Services.AddScoped<ICuadraturaService, CuadraturaService>();
+builder.Services.AddScoped<FunctionsService>(); // <-- NUEVO SERVICIO AÑADIDO AQUI
 
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>

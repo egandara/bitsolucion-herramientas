@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function () {
-    // --- TU LÓGICA ORIGINAL INTACTA ---
     const fileInput = document.getElementById('file-input');
     const validateButton = document.getElementById('validate-button');
     const clearFilesButton = document.getElementById('clear-files-button');
@@ -230,7 +229,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     });
 
-    // --- INTEGRACIÓN: RENDER SUMMARY ---
+    // --- RENDER SUMMARY ---
     function renderSummary(summaryData) {
         const summaryCard = document.getElementById('summary-card');
         summaryContent.innerHTML = '';
@@ -258,32 +257,42 @@ document.addEventListener('DOMContentLoaded', function () {
             li.style.cursor = 'pointer';
             li.dataset.filter = item.problemType;
 
-            const badgeClass = (item.severity === 'Critical') ? 'badge bg-danger rounded-pill me-2' :
-                (item.severity === 'Info') ? 'badge bg-info rounded-pill me-2' :
-                    'badge bg-warning text-dark rounded-pill me-2';
+            const badgeClass = (item.severity === 'Critical') ? 'badge bg-danger' :
+                (item.severity === 'Info') ? 'badge bg-info' :
+                    'badge bg-warning text-dark';
 
             const leftPart = document.createElement('div');
-            leftPart.innerHTML = escapeHtml(item.problemType);
+            leftPart.innerHTML = `<span class="${badgeClass}">${escapeHtml(item.problemType)}</span>`;
 
             const rightPart = document.createElement('div');
             rightPart.className = 'd-flex align-items-center';
 
             const countBadge = document.createElement('span');
-            countBadge.className = badgeClass;
+            countBadge.className = badgeClass + ' rounded-pill me-2';
             countBadge.textContent = item.count;
 
-            // BOTÓN LIMPIAR / CORREGIR
-            const cleanBtn = document.createElement('button');
-            cleanBtn.className = 'btn btn-sm btn-outline-danger py-0 px-2 ms-2';
-            cleanBtn.innerHTML = item.problemType.includes('Incorrecto') ? '<i class="bi bi-magic"></i> Corregir' : '<i class="bi bi-eraser-fill"></i> Limpiar';
-            cleanBtn.onclick = (e) => {
-                e.stopPropagation();
-                toggleCleanCategory(item.problemType, cleanBtn, countBadge);
-            };
+            const isOperationalSql = item.problemType.includes('SQL:') && !item.problemType.includes('SELECT') && !item.problemType.includes('Vacío');
 
-            rightPart.appendChild(countBadge);
-            rightPart.appendChild(cleanBtn);
+            if (!isOperationalSql) {
+                const cleanBtn = document.createElement('button');
+                cleanBtn.className = 'btn btn-sm btn-outline-danger py-0 px-2 ms-2';
 
+                const isFix = item.problemType.includes('Incorrecto');
+                cleanBtn.innerHTML = isFix ? '<i class="bi bi-magic"></i> Corregir' : '<i class="bi bi-eraser-fill"></i> Limpiar';
+
+                cleanBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleCleanCategory(item.problemType, cleanBtn, countBadge);
+                };
+                rightPart.appendChild(cleanBtn);
+            } else {
+                const manualBadge = document.createElement('span');
+                manualBadge.className = 'badge bg-secondary ms-2';
+                manualBadge.innerText = 'Corregir en tabla';
+                rightPart.appendChild(manualBadge);
+            }
+
+            rightPart.prepend(countBadge);
             li.appendChild(leftPart);
             li.appendChild(rightPart);
             ul.appendChild(li);
@@ -292,17 +301,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const totalDiv = document.createElement('div');
         totalDiv.className = 'summary-total mt-2';
+        totalDiv.style.cursor = 'pointer';
+        totalDiv.title = 'Hacer clic para ver todos los problemas nuevamente';
         totalDiv.innerHTML = `
             <div class="total-label text-light-muted">Total de Problemas</div>
             <div class="total-value text-warning fw-bold fs-3">${totalProblems}</div>
         `;
+        totalDiv.onclick = () => {
+            if (window.jQuery && $.fn.DataTable && $.fn.DataTable.isDataTable('#resultsTable')) {
+                $('#resultsTable').DataTable().search('').columns().search('').draw();
+            }
+        };
 
         summaryContent.appendChild(ul);
         summaryContent.appendChild(totalDiv);
         if (summaryCard) summaryCard.style.display = 'flex';
 
         const downloadBtn = document.getElementById('btn-download-fixed');
-        if (downloadBtn) downloadBtn.style.display = 'inline-block';
+        if (downloadBtn) {
+            downloadBtn.style.display = 'inline-block';
+
+            if (!document.getElementById('btn-download-master')) {
+                const downloadMasterBtn = document.createElement('a');
+                downloadMasterBtn.id = 'btn-download-master';
+                downloadMasterBtn.className = 'btn btn-outline-success ms-2';
+                downloadMasterBtn.style.display = 'none';
+                downloadMasterBtn.href = '/FunctionsAdmin/DownloadMaster';
+                downloadMasterBtn.innerHTML = '<i class="bi bi-cloud-arrow-down"></i> Descargar Maestro Actualizado';
+                downloadBtn.parentNode.insertBefore(downloadMasterBtn, downloadBtn.nextSibling);
+            }
+        }
     }
 
     function toggleCleanCategory(type, btn, badge) {
@@ -316,13 +344,13 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             window.typesToClean.splice(idx, 1);
             btn.classList.replace('btn-danger', 'btn-outline-danger');
-            btn.innerHTML = type.includes('Incorrecto') ? '<i class="bi bi-magic"></i> Corregir' : '<i class="bi bi-eraser-fill"></i> Limpiar';
+            const isFix = type.includes('Incorrecto');
+            btn.innerHTML = isFix ? '<i class="bi bi-magic"></i> Corregir' : '<i class="bi bi-eraser-fill"></i> Limpiar';
             badge.style.textDecoration = 'none';
             badge.style.opacity = '1';
         }
     }
 
-    // --- INTEGRACIÓN: DESCARGA ---
     window.downloadCorrectedNotebook = function () {
         if (window.typesToClean.length === 0) {
             if (typeof toastr !== 'undefined') toastr.warning("Selecciona al menos una categoría para procesar.");
@@ -341,7 +369,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `BitSolucion_Estandarizado_${Date.now()}.zip`;
+                a.download = `BitSolucion_Corregido_${Date.now()}.zip`;
                 a.click();
                 if (typeof toastr !== 'undefined') toastr.success("Estandarización completada.");
             })
@@ -350,6 +378,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderResultsTable(findings) {
         resultsContainer.innerHTML = '';
+        resultsContainer.style.paddingBottom = '100px';
+
         if (!findings || findings.length === 0) return;
 
         const table = document.createElement('table');
@@ -364,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <th>Línea</th>
                     <th>Contenido</th>
                     <th>Detalle</th>
-                    <th class="text-center">Acciones</th>
+                    <th class="text-center" style="min-width: 60px;">Acciones</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -388,17 +418,25 @@ document.addEventListener('DOMContentLoaded', function () {
             const type = finding.FindingType ?? finding.findingType ?? 'N/A';
             const content = finding.Content ?? finding.content ?? '';
             const details = finding.Details ?? finding.details ?? '';
+            const cellNum = finding.CellNumber ?? finding.cellNumber ?? 'N/A';
+            const lineNum = finding.LineNumber ?? finding.lineNumber ?? 'N/A';
 
             let actionHtml = '';
+
             if (type.toUpperCase().includes("SQL")) {
-                actionHtml = `<button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); window.openSmartFix('${fileName}', '${tr.dataset.sourceCode}')"><i class="bi bi-magic"></i></button>`;
+                const isOperationalSql = type.includes('SQL:') && !type.includes('SELECT') && !type.includes('Vacío');
+                if (isOperationalSql) {
+                    actionHtml = `<button class="btn btn-sm btn-outline-info" title="Transformar a sqlSafe" onclick="event.stopPropagation(); window.openSmartFix('${fileName}', '${tr.dataset.sourceCode}')"><i class="bi bi-magic"></i></button>`;
+                }
+            } else if (type === "Función declarada localmente" || type === "Definición local de sqlsafe") {
+                actionHtml = `<button class="btn btn-sm btn-outline-success" title="Mover al Maestro de Funciones" onclick="event.stopPropagation(); window.openAddToMasterModal('${tr.dataset.sourceCode}')"><i class="bi bi-cloud-arrow-up"></i></button>`;
             }
 
             tr.innerHTML = `
                 <td>${escapeHtml(fileName)}</td>
                 <td><span class="${badgeClass}">${escapeHtml(type)}</span></td>
-                <td>${escapeHtml(finding.CellNumber?.toString() ?? 'N/A')}</td>
-                <td>${escapeHtml(finding.LineNumber?.toString() ?? 'N/A')}</td>
+                <td>${escapeHtml(cellNum.toString())}</td>
+                <td>${escapeHtml(lineNum.toString())}</td>
                 <td><code>${escapeHtml(content)}</code></td>
                 <td>${escapeHtml(details)}</td>
                 <td class="text-center">${actionHtml}</td>
@@ -425,20 +463,46 @@ document.addEventListener('DOMContentLoaded', function () {
                 const codeModalLabel = document.getElementById('codeModalLabel');
                 if (codeModalLabel) codeModalLabel.textContent = `Detalle de "${findingType}" en ${fileName}`;
 
-                if (window.Prism) {
-                    const highlightedHtml = Prism.highlight(source, Prism.languages.python, 'python');
-                    const lines = highlightedHtml.split('\n');
-                    if (lineNumber > 0 && lineNumber <= lines.length) {
-                        lines[lineNumber - 1] = `<span class="line-highlight">${lines[lineNumber - 1]}</span>`;
+                if (codeContentEl) {
+                    codeContentEl.style.whiteSpace = 'pre-wrap';
+                    codeContentEl.style.fontFamily = 'monospace, monospace';
+                    codeContentEl.style.textAlign = 'left';
+
+                    const lines = source.split('\n');
+                    let prismLines = null;
+                    if (window.Prism) {
+                        try {
+                            const highlightedHtml = Prism.highlight(source, Prism.languages.python, 'python');
+                            prismLines = highlightedHtml.split('\n');
+                        } catch (e) { }
                     }
-                    if (codeContentEl) codeContentEl.innerHTML = lines.join('\n');
-                } else {
-                    if (codeContentEl) codeContentEl.textContent = source;
+
+                    // --- SOLUCIÓN: FORZAR MARCADOR DE LÍNEA EN MODAL PARA FUNCIONES ---
+                    let highlightLineNum = lineNumber;
+                    if (findingType.includes("Función") || findingType.includes("sqlsafe")) {
+                        highlightLineNum = 1; // El source recibido ya viene cortado quirúrgicamente
+                    }
+
+                    const sourceToLoop = prismLines || lines;
+                    const linesHtmlArray = sourceToLoop.map((lineContent, idx) => {
+                        const currentLineNum = idx + 1;
+                        const isTargetLine = currentLineNum === highlightLineNum;
+
+                        const numStyle = 'display:inline-block; min-width: 35px; color: #6c757d; text-align: right; margin-right: 15px; border-right: 1px solid #6c757d; padding-right: 10px; user-select: none; opacity: 0.8;';
+                        const rowStyle = isTargetLine ? 'background-color: rgba(220, 53, 69, 0.25); display: block; border-radius: 3px;' : 'display: block;';
+
+                        let finalLineContent = lineContent;
+                        if (!prismLines) finalLineContent = escapeHtml(lineContent);
+                        if (finalLineContent.trim() === '') finalLineContent = ' ';
+
+                        return `<div style="${rowStyle}"><span style="${numStyle}">${currentLineNum}</span><span>${finalLineContent}</span></div>`;
+                    });
+
+                    codeContentEl.innerHTML = linesHtmlArray.join('');
                 }
 
                 if (window.bootstrap && codeModal) {
-                    const modal = new bootstrap.Modal(codeModal);
-                    modal.show();
+                    new bootstrap.Modal(codeModal).show();
                 }
             });
         });
@@ -462,13 +526,185 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-// --- FUNCIONES GLOBALES SMART FIX ---
+// --- FUNCIONES SINTÁCTICAS (Compartidas) ---
+function validatePythonSyntax(code) {
+    if (!code.trim()) return "El código no puede estar vacío.";
+    if (!/def\s+\w+\s*\(/.test(code)) return "Sintaxis Inválida: El código debe contener una definición de función (ejemplo: 'def mi_funcion():').";
+
+    const stack = [];
+    const pairs = { '(': ')', '[': ']', '{': '}' };
+    let inString = false;
+    let stringChar = '';
+
+    for (let i = 0; i < code.length; i++) {
+        let char = code[i];
+        if ((char === "'" || char === '"') && (i === 0 || code[i - 1] !== '\\')) {
+            if (!inString) { inString = true; stringChar = char; }
+            else if (char === stringChar) { inString = false; }
+            continue;
+        }
+        if (inString) continue;
+        if (pairs[char]) { stack.push(char); }
+        else if (char === ')' || char === ']' || char === '}') {
+            if (stack.length === 0 || pairs[stack.pop()] !== char) return `Error de sintaxis: Hay un paréntesis, corchete o llave mal cerrado cerca del carácter '${char}'.`;
+        }
+    }
+    if (stack.length > 0) return "Error de sintaxis: Faltan cerrar paréntesis, corchetes o llaves.";
+    if (!/def\s+\w+\s*\(.*\)\s*:/m.test(code)) return "Error de sintaxis: Falta el símbolo ':' al final de la definición de la función.";
+    return null;
+}
+
+// --- DINAMISMO: CARGA DE CODEMIRROR E INYECCIÓN DE MODAL ---
+function injectCodeMirrorAndModal(callback) {
+    if (!document.getElementById('addToMasterModal')) {
+        const style = document.createElement('style');
+        style.innerHTML = `
+            #addToMasterModal .CodeMirror {
+                height: auto; min-height: 200px;
+                background-color: #07091e !important;
+                border: 1px solid var(--border-color); border-radius: 4px;
+                font-family: 'Consolas', 'Monaco', monospace; font-size: 14px;
+            }
+            #addToMasterModal .CodeMirror-scroll { min-height: 200px; }
+            #addToMasterModal .CodeMirror-gutters { background-color: #112240 !important; border-right: 1px solid var(--border-color) !important; }
+            #addToMasterModal .CodeMirror-linenumber { color: #8892B0 !important; }
+        `;
+        document.head.appendChild(style);
+
+        const modalHtml = `
+        <div class="modal fade" id="addToMasterModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content" style="background-color: var(--navy); border: 1px solid var(--border-color);">
+                    <div class="modal-header border-secondary">
+                        <h5 class="modal-title text-success"><i class="bi bi-cloud-arrow-up me-2"></i> Mover Función al Maestro</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label text-light fw-bold">Código a migrar (Python)</label>
+                            <textarea id="addToMasterTextarea" name="sourceCode"></textarea>
+                        </div>
+                        <div class="alert alert-info py-2 small bg-transparent border-info text-info">
+                            <i class="bi bi-info-circle me-1"></i> Al guardar, se validará la sintaxis y se inyectará en el maestro. Además, marcaremos esta función para ser limpiada de tu notebook automáticamente.
+                        </div>
+                    </div>
+                    <div class="modal-footer border-secondary">
+                        <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-success" id="btnConfirmAddToMaster">
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            Guardar en Maestro
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    if (window.CodeMirror) { callback(); return; }
+
+    $('<link/>', { rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css' }).appendTo('head');
+    $('<link/>', { rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css' }).appendTo('head');
+
+    $.getScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js', function () {
+        $.getScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/python/python.min.js', function () {
+            $.getScript('https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/matchbrackets.min.js', callback);
+        });
+    });
+}
+
+// --- EVENTOS GLOBALES ---
+let addToMasterEditor = null;
+window.openAddToMasterModal = function (sourceBase64) {
+    const fullCellContent = decodeURIComponent(escape(atob(sourceBase64)));
+
+    injectCodeMirrorAndModal(function () {
+        const modalEl = document.getElementById('addToMasterModal');
+        const modal = new bootstrap.Modal(modalEl);
+
+        if (!addToMasterEditor) {
+            addToMasterEditor = CodeMirror.fromTextArea(document.getElementById('addToMasterTextarea'), {
+                mode: "python",
+                theme: "monokai",
+                lineNumbers: true,
+                indentUnit: 4,
+                matchBrackets: true
+            });
+
+            document.getElementById('btnConfirmAddToMaster').onclick = function () {
+                const code = addToMasterEditor.getValue();
+                const validationError = validatePythonSyntax(code);
+                if (validationError) {
+                    if (typeof toastr !== 'undefined') toastr.error(validationError, "Error de Código");
+                    else alert(validationError);
+                    return;
+                }
+
+                const btn = this;
+                const spinner = btn.querySelector('.spinner-border');
+                btn.disabled = true;
+                spinner.classList.remove('d-none');
+
+                const formData = new FormData();
+                formData.append('sourceCode', code);
+
+                fetch('/Home/AddFunctionToMaster', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success) {
+                            if (typeof toastr !== 'undefined') toastr.success(res.message);
+                            modal.hide();
+
+                            const dlMasterBtn = document.getElementById('btn-download-master');
+                            if (dlMasterBtn) dlMasterBtn.style.display = 'inline-block';
+
+                            const filterType = "Función declarada localmente";
+                            if (!window.typesToClean.includes(filterType)) {
+                                const listItems = document.querySelectorAll('.summary-filter-item');
+                                listItems.forEach(li => {
+                                    if (li.dataset.filter === filterType || li.dataset.filter === "Definición local de sqlsafe") {
+                                        const cleanBtn = li.querySelector('button');
+                                        if (cleanBtn && cleanBtn.classList.contains('btn-outline-danger')) {
+                                            cleanBtn.click();
+                                        }
+                                    }
+                                });
+                            }
+
+                            if (typeof toastr !== 'undefined') {
+                                setTimeout(() => {
+                                    toastr.info("La función local fue marcada para eliminación automática. ¡No olvides descargar tu notebook corregido y el archivo Maestro actualizado!", "Siguiente paso", { timeOut: 8000 });
+                                }, 800);
+                            }
+                        } else {
+                            if (typeof toastr !== 'undefined') toastr.error(res.message);
+                        }
+                    })
+                    .finally(() => {
+                        btn.disabled = false;
+                        spinner.classList.add('d-none');
+                    });
+            };
+        }
+
+        addToMasterEditor.setValue(fullCellContent);
+
+        modalEl.addEventListener('shown.bs.modal', function () {
+            addToMasterEditor.refresh();
+        }, { once: true });
+
+        modal.show();
+    });
+};
+
 window.openSmartFix = function (fileName, sourceBase64) {
     const fullCellContent = decodeURIComponent(escape(atob(sourceBase64)));
     document.getElementById('fix-original-code').innerText = fullCellContent;
 
     let sqlContent = fullCellContent.replace(/^%sql\s*/i, '').trim();
-
     const ddlRegex = /(DROP TABLE|CREATE TABLE|CREATE OR REPLACE TABLE|CREATE VIEW|CREATE OR REPLACE TEMPORARY VIEW|INSERT INTO|DELETE FROM|UPDATE|MERGE INTO|ALTER TABLE)\s+(?:IF\s+EXISTS\s+)?([\w\.]+)/i;
     const match = sqlContent.match(ddlRegex);
 
@@ -511,15 +747,12 @@ window.openSmartFix = function (fileName, sourceBase64) {
 
     select.innerHTML = '<option value="">-- Seleccionar Variable DB --</option>';
     const vars = window.detectedVars[fileName] || [];
-    vars.forEach(v => {
-        select.innerHTML += `<option value="${v}">${v}</option>`;
-    });
+    vars.forEach(v => { select.innerHTML += `<option value="${v}">${v}</option>`; });
 
     select.onchange = () => {
         const dbVar = select.value || '[VARIABLE_X]';
         let standardizedSql = sqlContent.replace(fullTableName, `""" + ${dbVar} + ".${tableName}"""`);
-        const finalCode = `${varNameSugerida} = """${standardizedSql}"""\nsqlSafe(${varNameSugerida})`;
-        previewCodeEl.innerText = finalCode;
+        previewCodeEl.innerText = `${varNameSugerida} = """${standardizedSql}"""\nsqlsafe(${varNameSugerida})`;
     };
 
     select.onchange();
@@ -527,16 +760,12 @@ window.openSmartFix = function (fileName, sourceBase64) {
 };
 
 window.confirmFix = function () {
-    if (typeof toastr !== 'undefined') {
-        toastr.success("Corrección aplicada al portapapeles.");
-    }
+    if (typeof toastr !== 'undefined') toastr.success("Corrección aplicada al portapapeles.");
     bootstrap.Modal.getInstance(document.getElementById('smartFixModal')).hide();
 };
 
 window.applyBulkFix = function () {
     if (confirm("¿Deseas eliminar automáticamente las librerías y widgets no usados del notebook?")) {
-        if (typeof toastr !== 'undefined') {
-            toastr.info("Limpiando notebook...");
-        }
+        if (typeof toastr !== 'undefined') toastr.info("Limpiando notebook...");
     }
 };

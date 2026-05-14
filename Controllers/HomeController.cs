@@ -68,22 +68,16 @@ namespace NotebookValidator.Web.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Unauthorized();
 
-            // 1. Buscamos el análisis sin filtrar por UserId inicialmente
             var run = await _context.AnalysisRuns
                 .Include(r => r.User)
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (run == null) return NotFound();
 
-            // 2. Lógica de Seguridad:
-            // Permitimos el acceso si:
-            // - El usuario es Administrador.
-            // - O el usuario es el dueño del análisis.
             bool isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
 
             if (!isAdmin && run.UserId != user.Id)
             {
-                // Si no es admin y el análisis no es suyo, ocultamos el recurso
                 return NotFound();
             }
 
@@ -146,7 +140,6 @@ namespace NotebookValidator.Web.Controllers
             return Json(new { summary = summaryData, findings = allFindings, hasResults = allFindings.Any(), fileVariables = fileVariables });
         }
 
-        // --- ACCIÓN SMART FIX ---
         [HttpPost]
         public async Task<IActionResult> GenerateCorrected(IFormFileCollection files, string typesToCleanJson)
         {
@@ -174,6 +167,35 @@ namespace NotebookValidator.Web.Controllers
             string logoPath = Path.Combine(_hostEnvironment.WebRootPath, "img", "Bit-solucion-logo-menu.png");
             byte[] excelFile = _validatorService.GenerateExcelReportBytes(findings, run, logoPath);
             return File(excelFile, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Reporte_{DateTime.Now:yyyyMMdd}.xlsx");
+        }
+
+        // --- NUEVO ENDPOINT: Agregar al Maestro desde el Validador ---
+        [HttpPost]
+        public async Task<IActionResult> AddFunctionToMaster([FromServices] FunctionsService functionsService, string sourceCode)
+        {
+            try
+            {
+                var user = await _userManager.GetUserAsync(User);
+                var notebook = await functionsService.GetMasterNotebookAsync();
+
+                var lines = sourceCode.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None)
+                                      .Select(l => l + "\n").ToList();
+
+                notebook.Cells.Add(new Cell { CellType = "code", Source = lines });
+
+                await functionsService.SaveMasterWithBackupAsync(notebook, user?.UserName ?? "Usuario");
+
+                if (user != null)
+                {
+                    await _auditService.LogActionAsync(user.Id, "VALIDADOR: MIGRAR FUNCIÓN A MAESTRO", JsonSerializer.Serialize(new { Accion = "Función agregada al maestro desde el Validador" }), HttpContext.Connection.RemoteIpAddress?.ToString());
+                }
+
+                return Json(new { success = true, message = "¡Función agregada exitosamente al maestro!" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Error al guardar en el maestro: " + ex.Message });
+            }
         }
     }
 }

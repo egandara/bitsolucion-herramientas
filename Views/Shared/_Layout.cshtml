@@ -168,13 +168,13 @@
                     @if (User.IsInRole("Admin"))
                     {
                         <li class="nav-item mt-2">
-                            @* Lógica actualizada para incluir RegexSandbox *@
-                            <a class="nav-link @(currentController == "AdminDashboard" || currentController == "Admin" || currentController == "ValidationRuleAdmin" || currentController == "AuditLog" || currentController == "ParameterAdmin" || currentController == "RegexSandbox" ? "active" : "text-warning fw-bold")"
+                            @* NUEVO: Se agregó FunctionsAdmin a la lista de validación para desplegar *@
+                            <a class="nav-link @(currentController == "AdminDashboard" || currentController == "Admin" || currentController == "ValidationRuleAdmin" || currentController == "AuditLog" || currentController == "ParameterAdmin" || currentController == "RegexSandbox" || currentController == "FunctionsAdmin" ? "active" : "text-warning fw-bold")"
                                data-bs-toggle="collapse" href="#adminCollapse" role="button" aria-expanded="false" aria-controls="adminCollapse">
                                 <i class="bi bi-shield-lock-fill me-2"></i> Administración
                                 <i class="bi bi-chevron-down ms-auto small"></i>
                             </a>
-                            <div class="collapse @(currentController == "AdminDashboard" || currentController == "Admin" || currentController == "ValidationRuleAdmin" || currentController == "AuditLog" || currentController == "ParameterAdmin" || currentController == "RegexSandbox" ? "show" : "")" id="adminCollapse">
+                            <div class="collapse @(currentController == "AdminDashboard" || currentController == "Admin" || currentController == "ValidationRuleAdmin" || currentController == "AuditLog" || currentController == "ParameterAdmin" || currentController == "RegexSandbox" || currentController == "FunctionsAdmin" ? "show" : "")" id="adminCollapse">
                                 <ul class="nav flex-column ms-3 mt-1 border-start border-secondary" style="border-width: 2px !important;">
                                     <li class="nav-item">
                                         <a class="nav-link py-1 @(currentController == "AdminDashboard" ? "active" : "")" asp-controller="AdminDashboard" asp-action="Index">
@@ -191,7 +191,12 @@
                                             <i class="bi bi-list-check me-2"></i> Reglas Validador
                                         </a>
                                     </li>
-                                    @* NUEVO MÓDULO: Sandbox de Reglas *@
+                                    @* NUEVO ENLACE: MANTENEDOR DE FUNCIONES *@
+                                    <li class="nav-item">
+                                        <a class="nav-link py-1 @(currentController == "FunctionsAdmin" ? "active" : "")" asp-controller="FunctionsAdmin" asp-action="Index">
+                                            <i class="bi bi-braces-asterisk me-2"></i> Funciones (Maestro)
+                                        </a>
+                                    </li>
                                     <li class="nav-item">
                                         <a class="nav-link py-1 @(currentController == "RegexSandbox" ? "active" : "")" asp-controller="RegexSandbox" asp-action="Index">
                                             <i class="bi bi-shield-shaded me-2"></i> Sandbox de Reglas
@@ -226,11 +231,6 @@
             <div class="content-body container-fluid py-4">
                 @RenderBody()
             </div>
-
-            @*<footer class="footer-custom d-flex justify-content-between align-items-center">
-                <div>&copy; @DateTime.Now.Year - <span class="text-warning">Bit Solución</span></div>
-                <div><span class="badge bg-dark text-muted" style="border: 1px solid rgba(255,255,255,0.1)">v @System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3)</span></div>
-            </footer>*@
         </main>
     </div>
 
