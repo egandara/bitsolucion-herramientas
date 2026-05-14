@@ -2,13 +2,13 @@ name: CI/CD Pipeline - BitSolucion
 
 on:
   push:
-    branches: [ "main", "feature/*", "fix/*" ] # Se activa con cualquier rama de trabajo
+    branches: [ "main", "feature/*", "fix/*" ] # Se activa con main y ramas de trabajo
   pull_request:
-    branches: [ "main" ] # Se activa cuando quieres fusionar algo a main
+    branches: [ "main" ] # Se activa cuando abres un Pull Request hacia main
 
 jobs:
   build-and-deploy:
-    runs-on: self-hosted # Usa tu runner 'produccion-v2' que ya está Online
+    runs-on: self-hosted
 
     steps:
     - name: Checkout del código
@@ -17,38 +17,22 @@ jobs:
     - name: Configurar .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '9.0.x' # Ajustado a .NET 9
+        dotnet-version: '9.0.x'
 
     - name: Publicar aplicación
-      # Se publica el archivo .csproj que está en la raíz del repositorio
       run: dotnet publish NotebookValidator.Web.csproj -c Release -o ./publish
 
     - name: Desplegar a IIS
-      if: github.ref == 'refs/heads/main' # <--- ESTA ES LA MAGIA
+      # ESTA LÍNEA ES EL SEGURO DE VIDA: Solo corre si el cambio es en MAIN
+      if: github.ref == 'refs/heads/main' 
       shell: powershell
       run: |
-        # ... (todo el código de despliegue que ya tenemos)
         Import-Module WebAdministration
-        
-        # El nombre del Pool según tu IIS es 'bitsolucion'
         $poolName = "bitsolucion" 
         
-        Write-Host "--- Iniciando proceso de despliegue ---"
-        
-        # 1. Detener el Pool de aplicaciones
-        # SilentlyContinue evita que el script falle si el pool ya estaba detenido
-        Write-Host "Deteniendo Application Pool: $poolName..."
+        Write-Host "--- Iniciando despliegue en PRODUCCIÓN ---"
         Stop-WebAppPool -Name $poolName -ErrorAction SilentlyContinue
-        
-        # Esperamos 5 segundos para asegurar que Windows libere los archivos .dll
         Start-Sleep -Seconds 5
-        
-        # 2. Copiar los archivos nuevos a la ruta física de producción
-        Write-Host "Copiando archivos a C:\inetpub\miapp\publish..."
         xcopy .\publish\* C:\inetpub\miapp\publish\ /E /H /C /I /Y
-        
-        # 3. Arrancar el Pool de nuevo para poner la web online
-        Write-Host "Iniciando Application Pool: $poolName..."
         Start-WebAppPool -Name $poolName -ErrorAction SilentlyContinue
-        
-        Write-Host "--- ¡Despliegue completado con éxito! ---"
+        Write-Host "--- Despliegue completado ---"
