@@ -24,50 +24,95 @@ namespace NotebookValidator.Web.Controllers
 
         public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate)
         {
-            IQueryable<AnalysisRun> query = _context.AnalysisRuns.Include(r => r.User);
+            // 1. Iniciamos consulta base con AsNoTracking para eficiencia
+            var query = _context.AnalysisRuns.AsNoTracking().AsQueryable();
 
+            // Filtros de fecha (opcionales)
             if (startDate.HasValue) query = query.Where(r => r.AnalysisTimestamp >= startDate.Value);
             if (endDate.HasValue) query = query.Where(r => r.AnalysisTimestamp < endDate.Value.AddDays(1));
 
-            var filteredAnalyses = await query.ToListAsync();
-            var allUsers = await _context.Users.ToListAsync();
+            // 2. ESTADÍSTICAS BÁSICAS (Rápido: Solo números)
+            var totalUsers = await _context.Users.CountAsync();
+            var totalAnalyses = await query.CountAsync();
+            var totalProblems = await query.SumAsync(r => r.TotalProblemsFound);
 
-            // 1. Procesar Hallazgos para la Dona
-            var allFindings = filteredAnalyses
-                .SelectMany(run => JsonSerializer.Deserialize<List<Finding>>(run.ResultsJson) ?? new List<Finding>())
-                .ToList();
+            // 3. ANÁLISIS RECIENTES (Ligero: Metadata + Email del Usuario)
+            // Proyectamos a un nuevo objeto para IGNORAR la columna ResultsJson pesada
+            var recentAnalyses = await query
+                .OrderByDescending(r => r.AnalysisTimestamp)
+                .Take(10)
+                .Select(r => new AnalysisRun
+                {
+                    Id = r.Id,
+                    AnalysisTimestamp = r.AnalysisTimestamp,
+                    TotalFilesAnalyzed = r.TotalFilesAnalyzed,
+                    TotalProblemsFound = r.TotalProblemsFound,
+                    UserId = r.UserId,
+                    // Traemos solo el email para evitar ciclos infinitos
+                    User = new ApplicationUser { Email = r.User.Email }
+                })
+                .ToListAsync();
 
-            var problemTypeCounts = allFindings.GroupBy(f => f.FindingType).ToDictionary(g => g.Key, g => g.Count());
-            var problemTypeSeverities = allFindings.GroupBy(f => f.FindingType).ToDictionary(g => g.Key, g => g.FirstOrDefault()?.Severity ?? "Info");
+            // 4. USUARIO MÁS ACTIVO (Directo en SQL)
+            var mostActiveUserId = await query
+                .Where(r => r.UserId != null)
+                .GroupBy(r => r.UserId)
+                .OrderByDescending(g => g.Count())
+                .Select(g => g.Key)
+                .FirstOrDefaultAsync();
 
-            // 2. Calcular Tendencia (Últimos 15 días)
-            var limiteTendencia = DateTime.Now.Date.AddDays(-14);
-            var tendenciaData = filteredAnalyses
+            string mostActiveUser = "N/A";
+            if (!string.IsNullOrEmpty(mostActiveUserId))
+            {
+                mostActiveUser = await _context.Users
+                    .Where(u => u.Id == mostActiveUserId)
+                    .Select(u => u.Email)
+                    .FirstOrDefaultAsync() ?? "N/A";
+            }
+
+            // 5. TENDENCIA (Agrupación nativa por fecha para Chart.js)
+            var limiteTendencia = DateTime.Now.Date.AddDays(-15);
+            var tendenciaDataRaw = await query
                 .Where(r => r.AnalysisTimestamp >= limiteTendencia)
                 .GroupBy(r => r.AnalysisTimestamp.Date)
                 .Select(g => new { Fecha = g.Key, Cantidad = g.Count() })
-                .OrderBy(g => g.Fecha)
-                .ToList();
+                .OrderBy(x => x.Fecha)
+                .ToListAsync();
 
-            // 3. Usuario más activo
-            var mostActiveUser = filteredAnalyses
-                .Where(r => r.User != null)
-                .GroupBy(r => r.User.Email)
-                .OrderByDescending(g => g.Count())
-                .Select(g => g.Key)
-                .FirstOrDefault() ?? "N/A";
+            // 6. DISTRIBUCIÓN DE RIESGO (Limitado: Solo procesamos los últimos 5 JSONs)
+            // Esto evita que el servidor se congele procesando miles de hallazgos
+            var limitedJsonData = await query
+                .OrderByDescending(r => r.AnalysisTimestamp)
+                .Take(5)
+                .Select(r => r.ResultsJson)
+                .ToListAsync();
 
+            var allFindings = new List<Finding>();
+            foreach (var json in limitedJsonData.Where(j => !string.IsNullOrEmpty(j)))
+            {
+                try
+                {
+                    var findings = JsonSerializer.Deserialize<List<Finding>>(json);
+                    if (findings != null) allFindings.AddRange(findings);
+                }
+                catch { /* Ignorar si hay error en el JSON */ }
+            }
+
+            var problemTypeCounts = allFindings.GroupBy(f => f.FindingType).ToDictionary(g => g.Key, g => g.Count());
+            var problemTypeSeverities = allFindings.GroupBy(f => f.FindingType).ToDictionary(g => g.Key, g => g.FirstOrDefault()?.Severity ?? "Warning");
+
+            // 7. CONSTRUCCIÓN DEL MODELO FINAL
             var viewModel = new AdminDashboardViewModel
             {
-                TotalUsers = allUsers.Count,
-                TotalAnalyses = filteredAnalyses.Count,
-                TotalProblemsFound = filteredAnalyses.Sum(r => r.TotalProblemsFound),
+                TotalUsers = totalUsers,
+                TotalAnalyses = totalAnalyses,
+                TotalProblemsFound = totalProblems,
                 MostActiveUser = mostActiveUser,
-                RecentAnalyses = filteredAnalyses.OrderByDescending(r => r.AnalysisTimestamp).Take(8).ToList(),
+                RecentAnalyses = recentAnalyses,
                 ProblemTypeCounts = problemTypeCounts,
                 ProblemTypeSeverities = problemTypeSeverities,
-                TrendLabels = tendenciaData.Select(d => d.Fecha.ToString("dd MMM")).ToList(),
-                TrendData = tendenciaData.Select(d => d.Cantidad).ToList(),
+                TrendLabels = tendenciaDataRaw.Select(d => d.Fecha.ToString("dd MMM")).ToList(),
+                TrendData = tendenciaDataRaw.Select(d => d.Cantidad).ToList(),
                 StartDate = startDate,
                 EndDate = endDate
             };
