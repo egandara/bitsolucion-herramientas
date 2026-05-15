@@ -1,44 +1,89 @@
-﻿@page
+@page
 @model EmailModel
 @{
     ViewData["Title"] = "Administrar correo electrónico";
     ViewData["ActivePage"] = ManageNavPages.Email;
+    Layout = "_ManageLayout.cshtml";
 }
 
-<h3>@ViewData["Title"]</h3>
 <partial name="_StatusMessage" for="StatusMessage" />
+
 <div class="row">
-    <div class="col-md-6">
-        <form id="email-form" method="post">
+    <div class="col-xl-8 col-lg-10">
+        <h3>
+            <i class="bi bi-envelope-at text-warning me-2"></i>@ViewData["Title"]
+        </h3>
+
+        <form id="email-form" method="post" class="mt-4">
             <div asp-validation-summary="All" class="text-danger" role="alert"></div>
+
             @if (Model.IsEmailConfirmed)
             {
                 <div class="form-floating mb-3 input-group">
-                    <input asp-for="Email" class="form-control" placeholder="Por favor ingrese su correo electrónico." disabled />
-                        <div class="input-group-append">
-                            <span class="h-100 input-group-text text-success font-weight-bold">✓</span>
-                        </div>
-                    <label asp-for="Email" class="form-label"></label>
+                    <input asp-for="Email" class="form-control bg-dark border-secondary text-white-50 shadow-none" placeholder="Correo actual" disabled />
+                    <div class="input-group-append">
+                        <span class="h-100 input-group-text bg-dark border-secondary text-success fw-bold" title="Correo verificado">
+                            <i class="bi bi-patch-check-fill"></i>
+                        </span>
+                    </div>
+                    <label asp-for="Email" class="text-muted">Correo Electrónico Actual</label>
                 </div>
             }
             else
             {
                 <div class="form-floating mb-3">
-                    <input asp-for="Email" class="form-control" placeholder="Por favor ingrese su correo electrónico." disabled />
-                    <label asp-for="Email" class="form-label"></label>
-                    <button id="email-verification" type="submit" asp-page-handler="SendVerificationEmail" class="btn btn-link">Enviar correo electrónico de verificación</button>
+                    <input asp-for="Email" class="form-control bg-dark border-secondary text-white-50 shadow-none" placeholder="Correo actual" disabled />
+                    <label asp-for="Email" class="text-muted">Correo Electrónico Actual</label>
+                    <button id="email-verification" type="submit" asp-page-handler="SendVerificationEmail" class="btn btn-link text-warning p-0 mt-1 small">Enviar correo de verificación</button>
                 </div>
             }
-            <div class="form-floating mb-3">
-                <input asp-for="Input.NewEmail" class="form-control" autocomplete="email" aria-required="true" placeholder="Por favor ingrese un nuevo correo electrónico." />
-                <label asp-for="Input.NewEmail" class="form-label"></label>
-                <span asp-validation-for="Input.NewEmail" class="text-danger"></span>
+
+            <div class="form-floating mb-4">
+                <input asp-for="Input.NewEmail" class="form-control bg-black border-secondary text-white" autocomplete="email" aria-required="true" placeholder="Nuevo correo" />
+                <label asp-for="Input.NewEmail">Nuevo correo electrónico</label>
+                <span asp-validation-for="Input.NewEmail" class="text-danger small"></span>
             </div>
-            <button id="change-email-button" type="submit" asp-page-handler="ChangeEmail" class="w-100 btn btn-lg btn-primary">Cambiar correo electrónico</button>
+
+            <div class="d-flex justify-content-end">
+                <button id="change-email-button" type="submit" asp-page-handler="ChangeEmail" class="btn btn-warning btn-lg px-5 shadow-sm text-dark fw-bold rounded-pill">
+                    <i class="bi bi-envelope-check me-2"></i>Cambiar correo electrónico
+                </button>
+            </div>
         </form>
     </div>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+}
+
+@section Styles {
+    <style>
+        .form-floating > label {
+            color: #888;
+        }
+
+        .form-floating > .form-control:focus ~ label,
+        .form-floating > .form-control:not(:placeholder-shown) ~ label {
+            color: #ffc107;
+            opacity: 0.8;
+        }
+
+        .form-control:disabled {
+            background-color: #1a1a1a !important;
+            border-color: #333 !important;
+            color: #666 !important;
+        }
+
+        .form-control#Input_NewEmail {
+            background-color: #000 !important;
+            border-color: #444;
+            color: white !important;
+        }
+
+            .form-control#Input_NewEmail:focus {
+                border-color: #ffc107;
+                box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
+            }
+    </style>
 }
