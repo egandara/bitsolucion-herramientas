@@ -114,6 +114,7 @@ namespace NotebookValidator.Web.Controllers
             user.AnalysisQuota -= processedCount;
             await _userManager.UpdateAsync(user);
 
+            // 1. Guardar el Análisis Completo (Como estaba antes)
             var run = new AnalysisRun
             {
                 UserId = user.Id,
@@ -124,7 +125,14 @@ namespace NotebookValidator.Web.Controllers
             };
 
             _context.AnalysisRuns.Add(run);
+            await _context.SaveChangesAsync(); // Guardamos para obtener el ID generado
+
+            // --- NUEVO: INTEGRACIÓN DE ESTADÍSTICAS PRE-CALCULADAS ---
+            // Creamos el resumen ligero usando el nuevo método del servicio
+            var summary = _validatorService.CreateSummary(allFindings, run.Id, run.AnalysisTimestamp);
+            _context.AnalysisSummaries.Add(summary);
             await _context.SaveChangesAsync();
+            // ---------------------------------------------------------
 
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
             var auditDetails = new { Modulo = "Validador", Accion = "Análisis", Hallazgos = allFindings.Count, RunId = run.Id };
@@ -169,7 +177,6 @@ namespace NotebookValidator.Web.Controllers
             return File(excelFile, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Reporte_{DateTime.Now:yyyyMMdd}.xlsx");
         }
 
-        // --- NUEVO ENDPOINT: Agregar al Maestro desde el Validador ---
         [HttpPost]
         public async Task<IActionResult> AddFunctionToMaster([FromServices] FunctionsService functionsService, string sourceCode)
         {
