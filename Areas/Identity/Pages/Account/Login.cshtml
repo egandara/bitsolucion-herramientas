@@ -1,82 +1,193 @@
-﻿@page
+@page
 @model LoginModel
 
 @{
     ViewData["Title"] = "Iniciar sesión";
+    Layout = null; // Eliminamos el layout para quitar "NotebookValidator.Web" y los menús
 }
 
-<h1>@ViewData["Title"]</h1>
-<div class="row">
-    <div class="col-md-4">
-        <section>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Bit Solución</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <style>
+        :root {
+            --primary-yellow: #f39c12;
+            --glass-bg: rgba(255, 255, 255, 0.07);
+            --glass-border: rgba(255, 255, 255, 0.15);
+        }
+
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle at center, #1a3a5f 0%, #000 100%);
+            overflow: hidden;
+        }
+
+        .login-wrapper {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        /* MEJORA DE PLACEHOLDER */
+        .glass-input::placeholder {
+            color: rgba(255, 255, 255, 0.5) !important;
+            font-size: 0.9rem;
+        }
+
+        .glass-input {
+            background: rgba(0, 0, 0, 0.2) !important;
+            border: 1px solid var(--glass-border) !important;
+            color: white !important;
+            padding: 0.75rem;
+        }
+
+            .glass-input:focus {
+                border-color: var(--primary-yellow) !important;
+                box-shadow: 0 0 15px rgba(243, 156, 18, 0.3) !important;
+            }
+
+        .input-group-text {
+            background: rgba(0, 0, 0, 0.3) !important;
+            border: 1px solid var(--glass-border) !important;
+            color: var(--primary-yellow) !important;
+        }
+
+        .logo-img {
+            max-width: 180px;
+            height: auto;
+            filter: drop-shadow(0 0 8px rgba(255,255,255,0.2));
+        }
+
+        .btn-login {
+            background-color: var(--primary-yellow);
+            border: none;
+            color: #000;
+            font-weight: 700;
+            padding: 0.8rem;
+            transition: all 0.3s ease;
+        }
+
+            .btn-login:hover {
+                background-color: #e67e22;
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(243, 156, 18, 0.4);
+            }
+
+        @@keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .links-container a {
+            color: rgba(255,255,255,0.7);
+            transition: color 0.3s;
+        }
+
+            .links-container a:hover {
+                color: var(--primary-yellow);
+            }
+    </style>
+</head>
+<body>
+
+    <div class="login-wrapper">
+        <div class="glass-card">
+            <div class="text-center mb-4">
+                <img src="~/img/Bit-solucion-logo-menu.png" alt="Bit Solución Logo" class="logo-img mb-3" />
+                <p class="text-white-50 small">Bienvenido a la central de herramientas</p>
+            </div>
+
             <form id="account" method="post">
-                <h2>Utilice una cuenta local para iniciar sesión.</h2>
-                <hr />
-                <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
-                <div class="form-floating mb-3">
-                    <input asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
-                    <label asp-for="Input.Email" class="form-label">Correo electrónico</label>
-                    <span asp-validation-for="Input.Email" class="text-danger"></span>
+                <div asp-validation-summary="ModelOnly" class="text-danger small mb-3" role="alert"></div>
+
+                <div class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                        <input asp-for="Input.Email" class="form-control glass-input" autocomplete="username" placeholder="ejemplo@bitsolucion.cl" />
+                    </div>
+                    <span asp-validation-for="Input.Email" class="text-danger small"></span>
                 </div>
-                <div class="form-floating mb-3">
-                    <input asp-for="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
-                    <label asp-for="Input.Password" class="form-label">Contraseña</label>
-                    <span asp-validation-for="Input.Password" class="text-danger"></span>
+
+                <div class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-key"></i></span>
+                        <input asp-for="Input.Password" id="passwordInput" class="form-control glass-input" autocomplete="current-password" placeholder="Tu contraseña" />
+                        <button class="btn btn-outline-secondary border-glass" type="button" id="togglePassword" style="border: 1px solid var(--glass-border) !important;">
+                            <i class="bi bi-eye text-white-50" id="toggleIcon"></i>
+                        </button>
+                    </div>
+                    <span asp-validation-for="Input.Password" class="text-danger small"></span>
                 </div>
-                <div class="checkbox mb-3">
-                    <label asp-for="Input.RememberMe" class="form-label">
-                        <input class="form-check-input" asp-for="Input.RememberMe" />
-                        @Html.DisplayNameFor(m => m.Input.RememberMe)
-                    </label>
+
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="form-check">
+                        <input class="form-check-input" asp-for="Input.RememberMe" style="background-color: rgba(255,255,255,0.1); border-color: var(--glass-border);" />
+                        <label class="form-check-label text-white-50 small" asp-for="Input.RememberMe">Recordarme</label>
+                    </div>
+                    <a asp-page="./ForgotPassword" class="small text-warning text-decoration-none">¿Olvidó su clave?</a>
                 </div>
-                <div>
-                    <button id="login-submit" type="submit" class="w-100 btn btn-lg btn-primary">Iniciar sesión</button>
-                </div>
-                <div>
-                    <p>
-                        <a id="forgot-password" asp-page="./ForgotPassword">¿Olvidaste tu contraseña?</a>
-                    </p>
-                    <p>
-                        <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl">Registrarse como nuevo usuario</a>
-                    </p>
-                    <p>
-                        <a id="resend-confirmation" asp-page="./ResendEmailConfirmation">Reenviar confirmación por correo electrónico</a>
-                    </p>
+
+                <button id="login-submit" type="submit" class="btn btn-login w-100 rounded-pill mb-4">
+                    INICIAR SESIÓN
+                </button>
+
+                <div class="links-container text-center small">
+                    <p class="mb-1 text-white-50">¿No tienes cuenta?</p>
+                    <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" class="text-white fw-bold text-decoration-none">Registrarse como nuevo usuario</a>
+                    <div class="mt-2">
+                        <a asp-page="./ResendEmailConfirmation" class="text-white-50 text-decoration-none" style="font-size: 0.8rem;">Reenviar confirmación por correo</a>
+                    </div>
                 </div>
             </form>
-        </section>
+        </div>
     </div>
-    <div class="col-md-6 col-md-offset-2">
-        <section>
-            <h3>Utilice otro servicio para iniciar sesión.</h3>
-            <hr />
-            @{
-                if ((Model.ExternalLogins?.Count ?? 0) == 0)
-                {
-                    <div>
-                        <p>
-                            No hay servicios de autenticación externos configurados. Ver esto <a href="https://go.microsoft.com/fwlink/?LinkID=532715">artículo sobre la configuración de esta aplicación ASP.NET para permitir el inicio de sesión mediante servicios externos.</a>.
-                        </p>
-                    </div>
-                }
-                else
-                {
-                    <form id="external-account" asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="form-horizontal">
-                        <div>
-                            <p>
-                                @foreach (var provider in Model.ExternalLogins!)
-                                {
-                                    <button type="submit" class="btn btn-primary" name="provider" value="@provider.Name" title="Inicie sesión con su @provider.DisplayName cuenta">@provider.DisplayName</button>
-                                }
-                            </p>
-                        </div>
-                    </form>
-                }
-            }
-        </section>
-    </div>
-</div>
 
-@section Scripts {
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <partial name="_ValidationScriptsPartial" />
-}
+
+    <script>
+        // Lógica para el botón de ver contraseña
+        const togglePassword = document.querySelector('#togglePassword');
+        const password = document.querySelector('#passwordInput');
+        const icon = document.querySelector('#toggleIcon');
+
+        togglePassword.addEventListener('click', function() {
+            const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+            password.setAttribute('type', type);
+            icon.classList.toggle('bi-eye');
+            icon.classList.toggle('bi-eye-slash');
+        });
+    </script>
+
+</body>
+</html>
