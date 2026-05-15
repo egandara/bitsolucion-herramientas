@@ -47,8 +47,10 @@ namespace NotebookValidator.Web.Controllers
                     AnalysisQuota = user.AnalysisQuota,
                     Roles = (await _userManager.GetRolesAsync(user)).ToList(),
                     TotalAnalyses = await _context.AnalysisRuns.CountAsync(r => r.UserId == user.Id),
-                    // CARGA DE NUEVOS CAMPOS
-                    RegistrationDate = user.RegistrationDate,
+
+                    // ASIGNACIÓN CORREGIDA:
+                    // Usamos ?? DateTime.MinValue para convertir DateTime? a DateTime de forma segura
+                    RegistrationDate = user.RegistrationDate ?? DateTime.MinValue,
                     LastLoginDate = user.LastLoginDate,
                     IsActive = user.IsActive
                 });
@@ -76,8 +78,6 @@ namespace NotebookValidator.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-
-        // --- Los demás métodos (EditQuota, ManageRoles, ResetPassword) se mantienen IGUAL ---
         [HttpGet]
         public async Task<IActionResult> EditQuota(string id)
         {

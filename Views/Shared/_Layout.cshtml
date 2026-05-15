@@ -82,6 +82,9 @@
             text-transform: uppercase;
         }
     </style>
+
+    @* --- LÍNEA AÑADIDA PARA SOLUCIONAR EL ERROR --- *@
+    @RenderSection("Styles", required: false)
 </head>
 <body>
     <div class="main-wrapper">
@@ -168,7 +171,6 @@
                     @if (User.IsInRole("Admin"))
                     {
                         <li class="nav-item mt-2">
-                            @* NUEVO: Se agregó FunctionsAdmin a la lista de validación para desplegar *@
                             <a class="nav-link @(currentController == "AdminDashboard" || currentController == "Admin" || currentController == "ValidationRuleAdmin" || currentController == "AuditLog" || currentController == "ParameterAdmin" || currentController == "RegexSandbox" || currentController == "FunctionsAdmin" ? "active" : "text-warning fw-bold")"
                                data-bs-toggle="collapse" href="#adminCollapse" role="button" aria-expanded="false" aria-controls="adminCollapse">
                                 <i class="bi bi-shield-lock-fill me-2"></i> Administración
@@ -191,7 +193,6 @@
                                             <i class="bi bi-list-check me-2"></i> Reglas Validador
                                         </a>
                                     </li>
-                                    @* NUEVO ENLACE: MANTENEDOR DE FUNCIONES *@
                                     <li class="nav-item">
                                         <a class="nav-link py-1 @(currentController == "FunctionsAdmin" ? "active" : "")" asp-controller="FunctionsAdmin" asp-action="Index">
                                             <i class="bi bi-braces-asterisk me-2"></i> Funciones (Maestro)

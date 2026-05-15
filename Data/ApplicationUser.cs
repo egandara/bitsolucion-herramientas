@@ -8,9 +8,10 @@ namespace NotebookValidator.Web.Data
         public int AnalysisQuota { get; set; }
         public bool MustChangePassword { get; set; }
 
-        // NUEVOS CAMPOS PARA AUDITORÍA
-        public DateTime RegistrationDate { get; set; } = DateTime.Now;
+        // CAMPOS NULABLES (Importante el ?)
+        public DateTime? RegistrationDate { get; set; } = DateTime.Now;
         public DateTime? LastLoginDate { get; set; }
-        public bool IsActive { get; set; } = true; // Para desactivar cuentas sin borrarlas
+        public DateTime? LastPasswordChangedDate { get; set; }
+        public bool IsActive { get; set; } = true;
     }
 }
