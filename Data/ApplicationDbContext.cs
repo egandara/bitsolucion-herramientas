@@ -13,6 +13,7 @@ namespace NotebookValidator.Web.Data
         }
 
         public DbSet<AnalysisRun> AnalysisRuns { get; set; }
+        public DbSet<AnalysisSummary> AnalysisSummaries { get; set; } // <-- NUEVA TABLA
         public DbSet<AllowedParameter> AllowedParameters { get; set; }
         public DbSet<ValidationRule> ValidationRules { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }

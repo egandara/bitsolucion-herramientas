@@ -556,5 +556,26 @@ namespace NotebookValidator.Web.Services
             workbook.SaveAs(ms);
             return ms.ToArray();
         }
+        public AnalysisSummary CreateSummary(List<Finding> findings, int analysisRunId, DateTime timestamp)
+        {
+            // 1. Agrupamos por severidad
+            var summary = new AnalysisSummary
+            {
+                AnalysisRunId = analysisRunId,
+                AnalysisTimestamp = timestamp,
+                CriticalCount = findings.Count(f => f.Severity == "Critical"),
+                WarningCount = findings.Count(f => f.Severity == "Warning"),
+                InfoCount = findings.Count(f => f.Severity == "Info")
+            };
+
+            // 2. Agrupamos por tipo de hallazgo para el gráfico de dona
+            var typesSummary = findings
+                .GroupBy(f => f.FindingType)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            summary.FindingTypesSummaryJson = JsonSerializer.Serialize(typesSummary);
+
+            return summary;
+        }
     }
 }
