@@ -1,66 +1,182 @@
-﻿@page
+@page
 @model RegisterModel
 @{
-    ViewData["Title"] = "Registro";
+    ViewData["Title"] = "Crear Cuenta";
+    Layout = null; // Eliminamos el layout general para mantener la estética inmersiva
 }
 
-<h1>@ViewData["Title"]</h1>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Bit Solución</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 
-<div class="row">
-    <div class="col-md-4">
-        <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" method="post">
-            <h2>Crear una cuenta nueva.</h2>
-            <hr />
-            <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
-            <div class="form-floating mb-3">
-                <input asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
-                <label asp-for="Input.Email">Correo electrónico</label>
-                <span asp-validation-for="Input.Email" class="text-danger"></span>
-            </div>
-            <div class="form-floating mb-3">
-                <input asp-for="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                <label asp-for="Input.Password">Contraseña</label>
-                <span asp-validation-for="Input.Password" class="text-danger"></span>
-            </div>
-            <div class="form-floating mb-3">
-                <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                <label asp-for="Input.ConfirmPassword">Confirmar contraseña</label>
-                <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
-            </div>
-            <button id="registerSubmit" type="submit" class="w-100 btn btn-lg btn-primary">Registrar</button>
-        </form>
-    </div>
-    <div class="col-md-6 col-md-offset-2">
-        <section>
-            <h3>Utilice otro servicio para registrarse.</h3>
-            <hr />
-            @{
-                if ((Model.ExternalLogins?.Count ?? 0) == 0)
-                {
-                    <div>
-                        <p>
-                            No hay servicios de autenticación externos configurados. Ver esto <a href="https://go.microsoft.com/fwlink/?LinkID=532715">Artículo sobre la configuración de esta aplicación ASP.NET para permitir el inicio de sesión mediante servicios externos.</a>.
-                        </p>
-                    </div>
-                }
-                else
-                {
-                    <form id="external-account" asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="form-horizontal">
-                        <div>
-                            <p>
-                                @foreach (var provider in Model.ExternalLogins!)
-                                {
-                                    <button type="submit" class="btn btn-primary" name="provider" value="@provider.Name" title="Inicie sesión con su @provider.DisplayName cuenta">@provider.DisplayName</button>
-                                }
-                            </p>
-                        </div>
-                    </form>
-                }
+    <style>
+        :root {
+            --primary-yellow: #f39c12;
+            --glass-bg: rgba(255, 255, 255, 0.07);
+            --glass-border: rgba(255, 255, 255, 0.15);
+        }
+
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at center, #1a3a5f 0%, #000 100%);
+            overflow-x: hidden;
+        }
+
+        .login-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .glass-input {
+            background: rgba(0, 0, 0, 0.2) !important;
+            border: 1px solid var(--glass-border) !important;
+            color: white !important;
+            padding: 0.75rem;
+        }
+
+            .glass-input::placeholder {
+                color: rgba(255, 255, 255, 0.4);
             }
-        </section>
-    </div>
-</div>
 
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-}
+            .glass-input:focus {
+                border-color: var(--primary-yellow) !important;
+                box-shadow: 0 0 15px rgba(243, 156, 18, 0.3) !important;
+            }
+
+        .input-group-text {
+            background: rgba(0, 0, 0, 0.3) !important;
+            border: 1px solid var(--glass-border) !important;
+            color: var(--primary-yellow) !important;
+        }
+
+        .logo-img {
+            max-width: 180px;
+            filter: drop-shadow(0 0 8px rgba(255,255,255,0.2));
+        }
+
+        .btn-register {
+            background-color: var(--primary-yellow);
+            border: none;
+            color: #000;
+            font-weight: 700;
+            padding: 0.8rem;
+            transition: all 0.3s ease;
+            border-radius: 50px;
+        }
+
+            .btn-register:hover {
+                background-color: #e67e22;
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(243, 156, 18, 0.4);
+            }
+
+        @@keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-wrapper">
+        <div class="glass-card">
+            <div class="text-center mb-4">
+                <img src="~/img/Bit-solucion-logo-menu.png" alt="Logo" class="logo-img mb-3" />
+                <h4 class="text-white fw-bold">Crear nueva cuenta</h4>
+                <p class="text-white-50 small">Únete a la plataforma de Bit Solución</p>
+            </div>
+
+            <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger small mb-3" role="alert"></div>
+
+                <div class="mb-3">
+                    <label asp-for="Input.Email" class="form-label text-white-50 small">Correo electrónico</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                        <input asp-for="Input.Email" class="form-control glass-input" autocomplete="username" placeholder="nombre@ejemplo.com" />
+                    </div>
+                    <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Input.Password" class="form-label text-white-50 small">Contraseña</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                        <input asp-for="Input.Password" id="pass" class="form-control glass-input" autocomplete="new-password" placeholder="Mínimo 6 caracteres" />
+                        <button class="btn btn-outline-secondary border-glass" type="button" onclick="toggleView('pass', 'icon1')">
+                            <i class="bi bi-eye text-white-50" id="icon1"></i>
+                        </button>
+                    </div>
+                    <span asp-validation-for="Input.Password" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="Input.ConfirmPassword" class="form-label text-white-50 small">Confirmar contraseña</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-check2-circle"></i></span>
+                        <input asp-for="Input.ConfirmPassword" id="conf" class="form-control glass-input" autocomplete="new-password" placeholder="Repite tu contraseña" />
+                        <button class="btn btn-outline-secondary border-glass" type="button" onclick="toggleView('conf', 'icon2')">
+                            <i class="bi bi-eye text-white-50" id="icon2"></i>
+                        </button>
+                    </div>
+                    <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
+                </div>
+
+                <button id="registerSubmit" type="submit" class="btn btn-register w-100 mb-4">
+                    REGISTRAR CUENTA
+                </button>
+
+                <div class="text-center">
+                    <p class="text-white-50 small mb-0">¿Ya tienes una cuenta?</p>
+                    <a asp-page="./Login" class="text-warning fw-bold text-decoration-none small">Iniciar sesión aquí</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function toggleView(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.replace("bi-eye", "bi-eye-slash");
+            } else {
+                input.type = "password";
+                icon.classList.replace("bi-eye-slash", "bi-eye");
+            }
+        }
+    </script>
+
+</body>
+</html>
