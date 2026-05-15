@@ -107,54 +107,5 @@ namespace NotebookValidator.Web.Controllers
 
             return View(viewModel);
         }
-
-        [HttpGet]
-        public async Task<IActionResult> MigrateHistory([FromServices] NotebookValidatorService validatorService)
-        {
-            // 1. Obtener solo los IDs que faltan (esto es muy rápido y ligero)
-            var existingIds = await _context.AnalysisSummaries.Select(s => s.AnalysisRunId).ToListAsync();
-            var idsToMigrate = await _context.AnalysisRuns
-                .Where(r => !existingIds.Contains(r.Id))
-                .Select(r => r.Id) // Solo traemos el ID, ignoramos el JSON pesado por ahora
-                .ToListAsync();
-
-            int successCount = 0;
-            int errorCount = 0;
-
-            // 2. Procesamos cada registro de forma individual
-            foreach (var runId in idsToMigrate)
-            {
-                try
-                {
-                    // Traemos el registro completo (incluyendo el JSON) solo para este ID
-                    var run = await _context.AnalysisRuns
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(r => r.Id == runId);
-
-                    if (run == null || string.IsNullOrEmpty(run.ResultsJson)) continue;
-
-                    // Deserializamos y creamos el resumen
-                    var findings = JsonSerializer.Deserialize<List<Finding>>(run.ResultsJson);
-                    if (findings != null)
-                    {
-                        var summary = validatorService.CreateSummary(findings, run.Id, run.AnalysisTimestamp);
-
-                        _context.AnalysisSummaries.Add(summary);
-
-                        // 3. Guardamos inmediatamente después de cada registro
-                        // Esto evita que la transacción de SQL sea demasiado grande
-                        await _context.SaveChangesAsync();
-                        successCount++;
-                    }
-                }
-                catch (Exception)
-                {
-                    errorCount++;
-                    // Si un registro falla (ej. JSON corrupto), continuamos con el siguiente
-                }
-            }
-
-            return Content($"Migración finalizada. Procesados con éxito: {successCount}, Errores: {errorCount}.");
-        }
     }
 }
