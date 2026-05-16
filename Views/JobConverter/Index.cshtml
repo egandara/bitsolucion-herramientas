@@ -1,56 +1,369 @@
-﻿@{
+@{
     ViewData["Title"] = "Generador de Jobs Multi-Ambiente";
 }
 
-<div class="container mt-4">
-    <div class="card shadow-sm border-0">
-        <div class="card-header bg-dark text-white">
-            <h3><i class="bi bi-shuffle"></i> Transformador de Jobs Databricks</h3>
+<div class="mb-4">
+    <h1 class="h2 fw-bold mb-1" style="font-family: 'Poppins', sans-serif; color: #fff;">Generador de Jobs Multi-Ambiente</h1>
+    <p class="mb-0 small" style="color: var(--medium-text);">Transforma, parametriza y limpia las cabeceras de tus configuraciones de tareas para Databricks en bloque.</p>
+</div>
+
+<div id="panel-fase1" class="row g-4">
+    <div class="col-12 col-lg-6">
+        <div class="card p-4 border-0 h-100" style="background-color: #0b0d16; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2);">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 24px; height: 24px; font-size: 0.8rem;">1</div>
+                    <h5 class="card-title fw-bold text-white mb-0" style="font-family: 'Poppins', sans-serif;">Carga en lote de Jobs (Dev)</h5>
+                </div>
+                <button id="clear-jobs-btn" class="btn btn-sm btn-outline-secondary" style="display: none; border-radius: 6px;">Limpiar Cola</button>
+            </div>
+
+            <div id="job-drop-zone" class="gemini-drop-zone my-3 p-5" style="border: 2px dashed rgba(255,255,255,0.1); border-radius: 10px; cursor: pointer;">
+                <div>
+                    <i class="bi bi-filetype-json fs-1 mb-2 d-block" style="opacity: 0.3; color: #fff;"></i>
+                    <label for="job-file-upload" class="btn btn-sm btn-secondary px-3" style="cursor: pointer; border-radius: 6px;">
+                        <span>Elegir Archivos JSON</span>
+                        <input id="job-file-upload" type="file" class="d-none" accept=".json" multiple>
+                    </label>
+                    <p class="mt-2 small mb-0" style="color: var(--medium-text);">o arrastra tus estructuras JSON aquí</p>
+                </div>
+            </div>
+
+            <div id="job-file-list" class="mb-3"></div>
+
+            <button type="button" id="btnProcesarFase1" class="btn btn-primary w-100 py-2.5 fw-bold mt-auto" style="border-radius: 8px;" disabled>
+                <span id="spinner-fase1" class="spinner-border spinner-border-sm me-2 d-none"></span>
+                <i class="bi bi-arrow-right-circle me-2"></i>Procesar y Revisar Nombres
+            </button>
         </div>
+    </div>
 
-        <div class="card-body bg-primary text-white">
+    <div class="col-12 col-lg-6">
+        <div class="card p-4 border-0 h-100" style="background-color: #0b0d16; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); display: flex; flex-direction: column;">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 24px; height: 24px; font-size: 0.8rem;">2</div>
+                <h5 class="card-title fw-bold text-white mb-0" style="font-family: 'Poppins', sans-serif;">Spark Configurations de Destino</h5>
+            </div>
 
-            <p class="text-white fs-5">
-                Sube el JSON de <strong>Desarrollo</strong>. El sistema aplicará las reglas de renombrado (rutas, parámetros `dsr_` -> `crt_`/`prd_`, cuentas de almacenamiento) y aplicará la configuración de Spark que definas abajo.
-            </p>
-
-            <form asp-action="Convert" method="post" enctype="multipart/form-data">
-
-                <div class="mb-4">
-                    <label for="jsonFile" class="form-label fw-bold text-white">Archivo JSON (Dev)</label>
-                    <input class="form-control" type="file" id="jsonFile" name="jsonFile" accept=".json" required>
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <label class="form-label font-monospace small" style="color: rgba(255,255,255,0.7);">Spark Config (Certificación)</label>
+                    <span id="badge-json-cert" class="badge font-monospace mb-1 bg-secondary text-white-50" style="font-size: 0.65rem;">Vacío / Opcional</span>
                 </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="certSparkConf" class="form-label fw-bold text-white">Spark Config (Certificación)</label>
-                        <textarea class="form-control font-monospace small" id="certSparkConf" name="certSparkConf" rows="8" placeholder='{
-  "spark.hadoop.fs.azure.account.oauth2.client.secret": "{{secrets/bciadlssecrets/qa_secret}}",
+                <textarea class="form-control font-monospace small text-white custom-placeholder json-linter-input" id="globalCertSpark" rows="4"
+                          placeholder='{
+  "spark.hadoop.fs.azure.account.oauth2.client.secret": "{{secrets/qa_secret}}",
   "spark.master": "local[*, 4]"
-}'></textarea>
-                        <div class="form-text text-white-50">
-                            Pega el objeto JSON correspondiente a <code>spark_conf</code> para QA.
-                        </div>
-                    </div>
+}' style="background-color: #172a45; border-color: #233554; transition: border-color 0.2s;"></textarea>
+            </div>
 
-                    <div class="col-md-6 mb-3">
-                        <label for="prodSparkConf" class="form-label fw-bold text-white">Spark Config (Producción)</label>
-                        <textarea class="form-control font-monospace small" id="prodSparkConf" name="prodSparkConf" rows="8" placeholder='{
-  "spark.hadoop.fs.azure.account.oauth2.client.secret": "{{secrets/bciadlssecrets/prod_secret}}",
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <label class="form-label font-monospace small" style="color: rgba(255,255,255,0.7);">Spark Config (Producción)</label>
+                    <span id="badge-json-prod" class="badge font-monospace mb-1 bg-secondary text-white-50" style="font-size: 0.65rem;">Vacío / Opcional</span>
+                </div>
+                <textarea class="form-control font-monospace small text-white custom-placeholder json-linter-input" id="globalProdSpark" rows="4"
+                          placeholder='{
+  "spark.hadoop.fs.azure.account.oauth2.client.secret": "{{secrets/prod_secret}}",
   "spark.databricks.cluster.profile": "serverless"
-}'></textarea>
-                        <div class="form-text text-white-50">
-                            Pega el objeto JSON correspondiente a <code>spark_conf</code> para PROD.
-                        </div>
-                    </div>
-                </div>
+}' style="background-color: #172a45; border-color: #233554; transition: border-color 0.2s;"></textarea>
+            </div>
 
-                <div class="d-grid gap-2 mt-3">
-                    <button type="submit" class="btn btn-light btn-lg fw-bold text-primary">
-                        <i class="bi bi-file-earmark-zip"></i> Generar Archivos
-                    </button>
-                </div>
-            </form>
+            <div class="p-3 rounded-3 mt-auto border border-secondary border-opacity-10" style="background-color: rgba(0,0,0,0.15);">
+                <span class="small font-weight-bold text-warning font-monospace d-block mb-1.5"><i class="bi bi-shield-check me-1"></i>Reglas del Motor de Transformación Activas:</span>
+                <ul class="m-0 p-0 list-unstyled d-flex flex-column gap-1 small text-secondary" style="font-size: 0.78rem;">
+                    <li><span class="text-success me-1">✓</span> Reemplazo automático de parámetros de entorno de <code class="text-info">dsr_</code> a <code class="text-info">crt_ / prd_</code>.</li>
+                    <li><span class="text-success me-1">✓</span> Re-mapeo del Storage Corporativo: <code class="text-white-50">bcirg2dlssbx ➔ dev / prd</code>.</li>
+                    <li><span class="text-success me-1">✓</span> Re-direccionamiento de Git Repos: de <code class="text-white-50">/Repos/Develop/</code> a carpetas operativas de producción.</li>
+                </ul>
+            </div>
         </div>
     </div>
 </div>
+
+<div id="panel-fase2" class="mt-4 d-none" style="animation: fadeIn 0.4s ease-in-out;">
+    <form asp-action="DownloadPackage" method="post">
+        <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3 border-bottom border-secondary border-opacity-10 pb-3">
+                <div>
+                    <h4 class="h5 fw-bold text-warning mb-1" style="font-family: 'Poppins', sans-serif;"><i class="bi bi-shield-fill-exclamation me-2"></i>Fase de Confirmación de Gobernanza</h4>
+                    <p class="mb-0 small text-secondary">Asegura y modifica libremente los nombres de cada Job. Removimos automáticamente los prefijos de desarrollo.</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" id="btnVolverFase1" class="btn btn-sm btn-outline-secondary px-3" style="border-radius: 6px;">Modificar Carga</button>
+                    <button type="submit" class="btn btn-sm btn-success px-4 fw-bold d-flex align-items-center gap-1.5" style="border-radius: 6px;">
+                        <i class="bi bi-cloud-arrow-down-fill"></i> Confirmar y Descargar ZIP
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle m-0" id="staging-table">
+                    <thead>
+                        <tr>
+                            <th style="color: #ffffff !important; font-weight: 600;">Archivo Original</th>
+                            <th style="color: #ffffff !important; font-weight: 600; width: 28%;">Nombre Desarrollo (Limpio)</th>
+                            <th style="color: #ffffff !important; font-weight: 600; width: 28%;">Nombre Certificación</th>
+                            <th style="color: #ffffff !important; font-weight: 600; width: 28%;">Nombre Producción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="staging-tbody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const fileUpload = document.getElementById('job-file-upload');
+            const dropZone = document.getElementById('job-drop-zone');
+            const fileListContainer = document.getElementById('job-file-list');
+            const btnProcesarFase1 = document.getElementById('btnProcesarFase1');
+            const clearJobsBtn = document.getElementById('clear-jobs-btn');
+
+            let jobStore = new DataTransfer();
+            let jsonConfigsValid = true;
+
+            // --- NUEVO VALIDADOR E INTERCEPTOR SINTÁCTICO DE ARCHIVO COMPLETO ---
+            const validateFileJsonStructure = (file) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            JSON.parse(e.target.result); // Intenta parsear la estructura completa
+                            resolve(); // Sintaxis perfecta
+                        } catch (err) {
+                            reject(err); // Estructura rota (falta llave, comas, etc.)
+                        }
+                    };
+                    reader.onerror = () => reject(new Error("Error físico de lectura de archivo."));
+                    reader.readAsText(file);
+                });
+            };
+
+            // Convertido a asíncrono para evaluar de forma elástica archivo por archivo en caliente
+            const handleFiles = async (files) => {
+                btnProcesarFase1.disabled = true; // Bloqueo preventivo en procesamiento de hilos
+
+                for (const file of files) {
+                    if (!file.name.endsWith('.json')) {
+                        toastr.warning(`El archivo ${file.name} fue omitido. Solo se admiten archivos estructurados .json`);
+                        continue;
+                    }
+
+                    try {
+                        // Invoca la validación estructural antes de ingresar el archivo a la cola
+                        await validateFileJsonStructure(file);
+                        jobStore.items.add(file);
+                    } catch (error) {
+                        // Ataja el fallo sintáctico sin romper la cola ni colapsar la página
+                        toastr.error(`❌ Estructura Corrupta en "${file.name}": El archivo completo no es un JSON válido. Verifique que no falte la llave final de cierre '}' o alguna comilla.`);
+                        console.error("JSON Lint Error: ", error);
+                    }
+                }
+                renderJobList();
+            };
+
+            if(fileUpload) fileUpload.addEventListener('change', (e) => handleFiles(e.target.files));
+            if(dropZone) {
+                dropZone.addEventListener('dragover', (e) => e.preventDefault());
+                dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    handleFiles(e.dataTransfer.files);
+                });
+            }
+
+            function renderJobList() {
+                fileListContainer.innerHTML = '';
+                clearJobsBtn.style.display = 'none';
+                evalProcesarBtnState();
+
+                if (jobStore.files.length > 0) {
+                    const list = document.createElement('ul');
+                    list.className = 'list-group';
+
+                    Array.from(jobStore.files).forEach((file, index) => {
+                        const listItem = document.createElement('li');
+                        listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        listItem.style.color = 'var(--light-text)';
+                        listItem.style.backgroundColor = 'var(--dark-navy)';
+                        listItem.textContent = file.name;
+
+                        const removeBtn = document.createElement('button');
+                        removeBtn.className = 'btn btn-danger btn-sm';
+                        removeBtn.innerHTML = '&times;';
+                        removeBtn.type = 'button';
+                        removeBtn.onclick = () => {
+                            const newFiles = new DataTransfer();
+                            Array.from(jobStore.files).forEach((f, i) => { if (i !== index) newFiles.items.add(f); });
+                            jobStore = newFiles;
+                            renderJobList();
+                        };
+
+                        listItem.appendChild(removeBtn);
+                        list.appendChild(listItem);
+                    });
+                    fileListContainer.appendChild(list);
+                    clearJobsBtn.style.display = 'block';
+                    evalProcesarBtnState();
+                }
+            }
+
+            if(clearJobsBtn) {
+                clearJobsBtn.addEventListener('click', () => {
+                    jobStore = new DataTransfer();
+                    fileUpload.value = '';
+                    renderJobList();
+                });
+            }
+
+            // Linter de texto para los textareas laterales
+            function validateJsonInput(textareaId, badgeId) {
+                const txtArea = document.getElementById(textareaId);
+                const badge = document.getElementById(badgeId);
+                const val = txtArea.value.trim();
+
+                if (!val) {
+                    badge.className = "badge font-monospace bg-secondary text-white-50";
+                    badge.textContent = "Vacío / Opcional";
+                    txtArea.style.borderColor = "#233554";
+                    return true;
+                }
+
+                try {
+                    JSON.parse(val);
+                    badge.className = "badge font-monospace bg-success text-white";
+                    badge.textContent = "✓ JSON Válido";
+                    txtArea.style.borderColor = "#198754";
+                    return true;
+                } catch (e) {
+                    badge.className = "badge font-monospace bg-danger text-white";
+                    badge.textContent = "✗ JSON Inválido";
+                    txtArea.style.borderColor = "#dc3545";
+                    return false;
+                }
+            }
+
+            function evalProcesarBtnState() {
+                const isCertValid = validateJsonInput('globalCertSpark', 'badge-json-cert');
+                const isProdValid = validateJsonInput('globalProdSpark', 'badge-json-prod');
+
+                jsonConfigsValid = isCertValid && isProdValid;
+
+                if (jobStore.files.length > 0 && jsonConfigsValid) {
+                    btnProcesarFase1.disabled = false;
+                } else {
+                    btnProcesarFase1.disabled = true;
+                }
+            }
+
+            $('.json-linter-input').on('input', function() {
+                evalProcesarBtnState();
+            });
+
+            // ENLACE ASÍNCRONO FASE 1 -> FASE 2
+            $('#btnProcesarFase1').on('click', function(e) {
+                e.preventDefault();
+                if (!jsonConfigsValid) return;
+
+                var ajaxData = new FormData();
+                Array.from(jobStore.files).forEach(file => { ajaxData.append('files', file); });
+                ajaxData.append('certSparkConf', $('#globalCertSpark').val());
+                ajaxData.append('prodSparkConf', $('#globalProdSpark').val());
+
+                $('#spinner-fase1').removeClass('d-none');
+                btnProcesarFase1.disabled = true;
+
+                $.ajax({
+                    url: '/JobConverter/PrepareStaging',
+                    type: 'POST',
+                    data: ajaxData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        $('#spinner-fase1').addClass('d-none');
+                        btnProcesarFase1.disabled = false;
+
+                        if (response.success) {
+                            $('#staging-tbody').empty();
+
+                            response.jobs.forEach((job, index) => {
+                                var rowHtml = `
+                                    <tr data-row-idx="${index}" data-suggested-name="${job.suggestedDevName}">
+                                        <td class="small fw-bold text-wrap" style="color: var(--dark-navy) !important; max-width:180px;">
+                                            <div class="d-flex align-items-center justify-content-between">
+                                                <span><i class="bi bi-file-code text-secondary me-1"></i>${job.originalFileName}</span>
+                                                <button type="button" class="btn btn-xs btn-outline-secondary btn-reset-row ms-2" title="Restablecer nombre sugerido base">
+                                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                                </button>
+                                            </div>
+                                            <input type="hidden" name="fileKeys" value="${job.fileKey}" />
+                                        </td>
+                                        <td>
+                                            <input type="text" name="devNames" class="form-control form-control-sm font-monospace fw-bold text-white bg-dark border-secondary dev-name-input" value="${job.suggestedDevName}" />
+                                        </td>
+                                        <td>
+                                            <input type="text" name="certNames" class="form-control form-control-sm font-monospace fw-bold text-white bg-dark border-secondary cert-name-input" value="${job.suggestedCertName}" />
+                                        </td>
+                                        <td>
+                                            <input type="text" name="prodNames" class="form-control form-control-sm font-monospace fw-bold text-white bg-dark border-secondary prod-name-input" value="${job.suggestedProdName}" />
+                                        </td>
+                                    </tr>`;
+                                $('#staging-tbody').append(rowHtml);
+                            });
+
+                            $('#panel-fase1').addClass('d-none');
+                            $('#panel-fase2').removeClass('d-none');
+                            toastr.success('Jobs analizados. Modifica o confirma los nombres.');
+                        } else {
+                            toastr.error(response.message);
+                        }
+                    },
+                    error: function() {
+                        $('#spinner-fase1').addClass('d-none');
+                        btnProcesarFase1.disabled = false;
+                        toastr.error('Error de comunicación con el motor de empaquetado.');
+                    }
+                });
+            });
+
+            // Evento de Espejo Inteligente
+            $(document).on('input', '.dev-name-input', function() {
+                var parentRow = $(this).closest('tr');
+                var currentVal = $(this).val();
+                parentRow.find('.cert-name-input').val(currentVal);
+                parentRow.find('.prod-name-input').val(currentVal);
+            });
+
+            // Lógica interactiva del botón Smart Reset por fila
+            $(document).on('click', '.btn-reset-row', function() {
+                var parentRow = $(this).closest('tr');
+                var baseSuggestedName = parentRow.data('suggested-name');
+
+                parentRow.find('.dev-name-input').val(baseSuggestedName);
+                parentRow.find('.cert-name-input').val(baseSuggestedName);
+                parentRow.find('.prod-name-input').val(baseSuggestedName);
+
+                toastr.info('Valores de la fila restaurados al patrón original.');
+            });
+
+            $('#btnVolverFase1').on('click', function() {
+                $('#panel-fase2').addClass('d-none');
+                $('#panel-fase1').removeClass('d-none');
+            });
+
+            var inlineScrollStyles = `
+                .custom-placeholder::placeholder {
+                    color: rgba(255, 255, 255, 0.45) !important;
+                    opacity: 1 !important;
+                }
+                #staging-table th { background-color: var(--dark-navy) !important; }
+                #staging-table td { background-color: #ffffff !important; }
+            `;
+            $('<style>').text(inlineScrollStyles).appendTo('head');
+        });
+    </script>
+}

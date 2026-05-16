@@ -27,7 +27,8 @@ namespace NotebookValidator.Web.Services
         {
             var tempDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempDirectory);
-            var allNotebooksContent = new List<string>();
+
+            var filesToProcess = new List<(string Content, string Extension)>();
 
             try
             {
@@ -39,56 +40,81 @@ namespace NotebookValidator.Web.Services
                         await file.CopyToAsync(stream);
                     }
 
-                    if (Path.GetExtension(file.FileName).Equals(".zip", StringComparison.OrdinalIgnoreCase))
+                    string ext = Path.GetExtension(file.FileName).ToLower();
+
+                    if (ext == ".zip")
                     {
                         var extractPath = Path.Combine(tempDirectory, Guid.NewGuid().ToString());
                         Directory.CreateDirectory(extractPath);
                         ZipFile.ExtractToDirectory(tempFilePath, extractPath);
-                        var notebookFilesInZip = Directory.GetFiles(extractPath, "*.ipynb", SearchOption.AllDirectories);
+
+                        var notebookFilesInZip = Directory.GetFiles(extractPath, "*.*", SearchOption.AllDirectories)
+                            .Where(f => f.EndsWith(".ipynb", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".py", StringComparison.OrdinalIgnoreCase));
+
                         foreach (var notebookPath in notebookFilesInZip)
                         {
-                            allNotebooksContent.Add(await File.ReadAllTextAsync(notebookPath));
+                            string fileContent = await File.ReadAllTextAsync(notebookPath);
+                            string fileExt = Path.GetExtension(notebookPath).ToLower();
+                            filesToProcess.Add((fileContent, fileExt));
                         }
                     }
-                    else if (file.FileName.EndsWith(".ipynb"))
+                    else if (ext == ".ipynb" || ext == ".py")
                     {
-                        allNotebooksContent.Add(await File.ReadAllTextAsync(tempFilePath));
+                        string fileContent = await File.ReadAllTextAsync(tempFilePath);
+                        filesToProcess.Add((fileContent, ext));
                     }
                 }
 
                 var tempTableNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var content in allNotebooksContent)
-                {
-                    try
-                    {
-                        var notebook = JsonSerializer.Deserialize<Notebook>(content, new JsonSerializerOptions { AllowTrailingCommas = true });
-                        if (notebook?.Cells == null) continue;
 
-                        foreach (var cell in notebook.Cells)
+                foreach (var fileItem in filesToProcess)
+                {
+                    if (fileItem.Extension == ".ipynb")
+                    {
+                        try
                         {
-                            if (cell.CellType == "code")
+                            var notebook = JsonSerializer.Deserialize<Notebook>(fileItem.Content, new JsonSerializerOptions { AllowTrailingCommas = true });
+                            if (notebook?.Cells != null)
                             {
-                                var code = string.Join(" ", cell.Source);
-                                var matches = CreateTableWithDbVarRegex.Matches(code);
-                                foreach (Match match in matches)
+                                foreach (var cell in notebook.Cells)
                                 {
-                                    if (match.Groups.Count > 1) tempTableNames.Add(match.Groups[1].Value);
+                                    if (cell.CellType == "code")
+                                    {
+                                        var code = string.Join(" ", cell.Source);
+                                        ParseCodeContent(code, tempTableNames);
+                                    }
                                 }
                             }
                         }
+                        catch
+                        {
+                            ParseCodeContent(fileItem.Content, tempTableNames);
+                        }
                     }
-                    catch { }
+                    else
+                    {
+                        ParseCodeContent(fileItem.Content, tempTableNames);
+                    }
                 }
 
                 var tablesList = tempTableNames.OrderBy(t => t).ToList();
                 var notebookContent = BuildOutputNotebook(tablesList, baseFileName, platinumTempDb, dbLocationPlatinumTemp);
 
-                // IMPORTANTE: Devolvemos el JSON y la lista de tablas
                 return (notebookContent, tablesList);
             }
             finally
             {
                 if (Directory.Exists(tempDirectory)) Directory.Delete(tempDirectory, true);
+            }
+        }
+
+        private void ParseCodeContent(string code, HashSet<string> tempTableNames)
+        {
+            var matches = CreateTableWithDbVarRegex.Matches(code);
+            foreach (Match match in matches)
+            {
+                if (match.Groups.Count > 1)
+                    tempTableNames.Add(match.Groups[1].Value);
             }
         }
 
@@ -117,6 +143,8 @@ namespace NotebookValidator.Web.Services
         }
 
         private object CreateMarkdownCell(string source) => new { cell_type = "markdown", metadata = new { }, source = source.Split('\n') };
+
+        // CORRECCIÓN: Se removió el punto y coma erróneo antes de la llave de cierre
         private object CreateCodeCell(string source) => new { cell_type = "code", execution_count = (object)null, metadata = new { }, outputs = new List<object>(), source = source.Split('\n') };
     }
 }
