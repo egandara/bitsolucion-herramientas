@@ -2,102 +2,108 @@
     ViewData["Title"] = "Eliminar Tablas Temporales";
 }
 
-<style>
-    .drop-zone {
-        border: 2px dashed #ccc;
-        border-radius: 8px;
-        padding: 32px 16px;
-        text-align: center;
-        background-color: #f8f9fa;
-        transition: border-color 0.2s, background-color 0.2s;
-        cursor: pointer;
-    }
-
-        .drop-zone.dragover {
-            border: 2px dashed #007bff;
-            background-color: #f0f8ff;
-        }
-
-    .progress {
-        height: 24px;
-    }
-
-    #file-list {
-        max-height: 160px;
-        overflow-y: auto;
-    }
-</style>
-
-<div class="text-center">
-    <h1 class="display-4">Generador de Notebook para Eliminar Tablas Temporales</h1>
-    <p>Sube uno o más notebooks (.ipynb) o un archivo .zip para detectar las tablas temporales y generar un notebook de limpieza.</p>
+<div class="mb-4">
+    <h1 class="h2 fw-bold mb-1" style="font-family: 'Poppins', sans-serif; color: #fff;">Limpieza de Tablas Temporales</h1>
+    <p class="mb-0 small" style="color: var(--medium-text);">Sube uno o más notebooks (.ipynb, .py) o un archivo .zip para detectar de manera automatizada las tablas temporales y generar un script centralizado de borrado.</p>
 </div>
 
-<div class="row mt-4">
-    <div class="col-md-8 offset-md-2">
-        <div class="card">
-            <div class="card-header">
-                <strong>Selecciona los archivos</strong>
+<div class="row g-4">
+
+    <div class="col-12 col-lg-7">
+        <div class="card p-4 border-0 h-100" style="background-color: #0b0d16; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); display: flex; flex-direction: column;">
+
+            <div id="feedback-message"></div>
+
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 24px; height: 24px; font-size: 0.8rem;">1</div>
+                    <h5 class="card-title fw-bold text-white mb-0" style="font-family: 'Poppins', sans-serif;">Cargar Notebooks de Trabajo</h5>
+                </div>
+                <button type="button" id="clear-files-button" class="btn btn-sm btn-outline-secondary" style="display:none; border-radius: 6px;">
+                    Limpiar Lista
+                </button>
             </div>
 
-            <div class="card-body">
-                <div id="feedback-message"></div>
-
-                <div id="drop-zone" class="drop-zone mb-3">
-                    <svg class="mx-auto mb-2" width="48" height="48" fill="#007bff" viewBox="0 0 24 24">
+            <div id="drop-zone" class="gemini-drop-zone my-3 p-5" style="border: 2px dashed rgba(255,255,255,0.1); border-radius: 10px; cursor: pointer; transition: all 0.2s ease;">
+                <div>
+                    <svg class="mx-auto mb-2" width="45" height="45" fill="rgba(255,255,255,0.4)" viewBox="0 0 24 24">
                         <path d="M19.35 10.04A7.49 7.49 0 005.3 6.16 5.994 5.994 0 006 20h13a5 5 0 00.35-9.96zM16 13h-3v3h-2v-3H8l4-4 4 4z" />
                     </svg>
-                    <div>
-                        <label for="file-input" class="btn btn-secondary mb-2">
-                            Seleccionar Archivos
-                            <input id="file-input" type="file" class="d-none" accept=".ipynb,.zip" multiple>
+                    <div class="mt-2">
+                        <label for="file-input" class="btn btn-sm btn-secondary px-3" style="cursor: pointer; border-radius: 6px;">
+                            <span>Seleccionar Archivos</span>
+                            <input id="file-input" type="file" class="d-none" accept=".ipynb,.zip,.py" multiple>
                         </label>
-                        <p class="text-muted mb-0">o arrástralos aquí</p>
+                        <p class="mt-2 small mb-0" style="color: var(--medium-text);">o arrástralos aquí (.ipynb, .zip, .py)</p>
                     </div>
                 </div>
-
-                <div>
-                    <strong>Archivos seleccionados:</strong>
-                    <ul id="file-list" class="list-group mt-2 mb-2">
-                        <li id="empty-list-item" class="list-group-item text-muted">No se han seleccionado archivos.</li>
-                    </ul>
-                    <div class="mb-3 text-end">
-                        <button type="button" id="clear-files-button" class="btn btn-outline-secondary btn-sm" style="display:none;">
-                            Limpiar Lista
-                        </button>
-                    </div>
-                </div>
-
-                <div class="progress mb-3" id="progressBarContainer" style="display:none;">
-                    <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%;">0%</div>
-                </div>
-
-                <form id="upload-form" asp-action="Generate" method="post" enctype="multipart/form-data">
-                    <input type="file" name="files" id="hidden-file-input" class="d-none" multiple accept=".ipynb,.zip" />
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="platinum_temp_db" class="form-label fw-bold">01 DB Platinum Temp:</label>
-                            <input type="text" id="platinum_temp_db" name="platinum_temp_db" class="form-control" value="platinum_temp_dbW">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="db_location_platinum_temp" class="form-label fw-bold">02 Location Platinum Temp DB:</label>
-                            <input type="text" id="db_location_platinum_temp" name="db_location_platinum_temp" class="form-control" value="db_location_platinum_tempW">
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary w-100" id="submit-button" disabled>
-                        Generar Notebook de Limpieza
-                    </button>
-                </form>
             </div>
+
+            <div class="mb-3">
+                <span class="small font-monospace mb-2 d-block" style="color: rgba(255,255,255,0.5);">Archivos en cola para procesar:</span>
+                <ul id="file-list" class="list-group rounded-3" style="max-height: 140px; overflow-y: auto;">
+                    <li id="empty-list-item" class="list-group-item text-muted small font-monospace py-2.5" style="background-color: rgba(0,0,0,0.15) !important; border-color: rgba(255,255,255,0.03) !important;">No se han seleccionado archivos.</li>
+                </ul>
+            </div>
+
+            <div class="progress mb-3" id="progressBarContainer" style="display:none; height: 18px; background-color: rgba(0,0,0,0.3); border-radius: 6px;">
+                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning text-dark font-monospace fw-bold" role="progressbar" style="width: 0%; font-size: 0.75rem;">0%</div>
+            </div>
+
+            <form id="upload-form" asp-action="Generate" method="post" enctype="multipart/form-data" class="mt-auto">
+                <input type="file" name="files" id="hidden-file-input" class="d-none" multiple accept=".ipynb,.zip,.py" />
+
+                <div class="row g-3 mb-3.5">
+                    <div class="col-md-6">
+                        <label for="platinum_temp_db" class="form-label font-monospace small" style="color: rgba(255,255,255,0.7);">01 DB Platinum Temp:</label>
+                        <input type="text" id="platinum_temp_db" name="platinum_temp_db" class="form-control text-white font-monospace custom-placeholder" value="platinum_temp_dbW" style="background-color: #172a45; border-color: #233554;">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="db_location_platinum_temp" class="form-label font-monospace small" style="color: rgba(255,255,255,0.7);">02 Location Platinum Temp DB:</label>
+                        <input type="text" id="db_location_platinum_temp" name="db_location_platinum_temp" class="form-control text-white font-monospace custom-placeholder" value="db_location_platinum_tempW" style="background-color: #172a45; border-color: #233554;">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 py-2.5 fw-bold" id="submit-button" style="border-radius: 8px;" disabled>
+                    <i class="bi bi-terminal-fill me-2"></i>Generar Notebook de Limpieza
+                </button>
+            </form>
         </div>
+    </div>
 
-        <div class="card mt-4">
-            <div class="card-header">
-                <strong>Historial de Notebooks Generados</strong>
+    <div class="col-12 col-lg-5">
+        <div class="card p-4 border-0 h-100" style="background-color: #0b0d16; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); display: flex; flex-direction: column;">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <i class="bi bi-journal-code text-warning fs-5"></i>
+                <h5 class="card-title fw-bold text-white mb-0" style="font-family: 'Poppins', sans-serif;">Marco de Gobernanza de Limpieza</h5>
             </div>
-            <ul id="history-list" class="list-group list-group-flush"></ul>
+
+            <p class="small mb-4" style="color: var(--medium-text);">Este módulo automatiza la sanitización del clúster de Databricks, identificando tablas volátiles para evitar la acumulación de archivos huérfanos en el Data Lake.</p>
+
+            <div class="mb-4">
+                <span class="small font-weight-bold text-white font-monospace d-block mb-2"><i class="bi bi-regex text-warning me-1"></i>Variables de Base de Datos Escaneadas:</span>
+                <p class="small text-secondary mb-2" style="font-size: 0.82rem;">El motor analiza el código buscando instrucciones <code class="text-white-50">CREATE TABLE</code> mapeadas a los siguientes tokens corporativos autorizados:</p>
+                <div class="d-flex flex-wrap gap-1.5 font-monospace" style="font-size: 0.72rem;">
+                    <span class="px-2 py-1 rounded text-white-50" style="background-color: rgba(255,255,255,0.03);">platinum_temp_db(X)</span>
+                    <span class="px-2 py-1 rounded text-white-50" style="background-color: rgba(255,255,255,0.03);">db_plat_temp(X)</span>
+                    <span class="px-2 py-1 rounded text-white-50" style="background-color: rgba(255,255,255,0.03);">db_platinum_tmp(X)</span>
+                    <span class="px-2 py-1 rounded text-white-50" style="background-color: rgba(255,255,255,0.03);">db_plat_tmp(X)</span>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <span class="small font-weight-bold text-white font-monospace d-block mb-2"><i class="bi bi-signpost-2 text-info me-1"></i>Guía de Despliegue Seguro:</span>
+                <ol class="small text-secondary ps-3 mb-0 d-flex flex-column gap-2" style="font-size: 0.8rem; line-height: 1.4;">
+                    <li>Carga los archivos fuentes del pipeline de datos (<code class="text-white-50">.ipynb</code>, <code class="text-white-50">.py</code> o empaquetados <code class="text-white-50">.zip</code>).</li>
+                    <li>Asegura que las cajas de variables a la izquierda correspondan a las bases de datos transitorias configuradas en tu entorno.</li>
+                    <li>Descarga el Notebook de sanitización generado e impórtalo a Databricks para su calendarización (Workflow) o ejecución manual.</li>
+                </ol>
+            </div>
+
+            <div class="p-3 rounded-3 mt-auto border border-danger border-opacity-10" style="background-color: rgba(220, 53, 69, 0.03);">
+                <span class="small font-weight-bold text-danger font-monospace d-block mb-1.5"><i class="bi bi-exclamation-triangle-fill me-1"></i>Impacto de la Purga en Databricks:</span>
+                <p class="small text-secondary mb-0" style="font-size: 0.78rem; line-height: 1.4;">El script de salida desregistra de forma atómica la metadata mediante cláusulas <code class="text-white">DROP TABLE IF EXISTS</code> y ejecuta un borrado físico recursivo sobre las carpetas del ADLS invocando <code class="text-warning">dbutils.fs.rm(..., True)</code>.</p>
+            </div>
         </div>
     </div>
 </div>
@@ -117,12 +123,10 @@
             const feedbackMessage = document.getElementById('feedback-message');
             const uploadForm = document.getElementById('upload-form');
             const submitButton = document.getElementById('submit-button');
-            const historyList = document.getElementById('history-list');
 
             let fileStore = new DataTransfer();
-            let notebookHistory = [];
 
-            // --- Feedback al arrastrar archivos ---
+            // Drag and Drop handlers
             dropZone.addEventListener('dragover', e => {
                 e.preventDefault();
                 dropZone.classList.add('dragover');
@@ -134,17 +138,14 @@
                 addFilesToStore(e.dataTransfer.files);
             });
 
-            // Selección de archivos por botón
             fileInput.addEventListener('change', e => addFilesToStore(e.target.files));
 
-            // Limpiar lista de archivos
             clearFilesButton.addEventListener('click', function () {
                 fileStore = new DataTransfer();
-                fileInput.value = ''; // [BUG FIX 1] Resetea el input para permitir re-seleccionar mismos archivos
+                fileInput.value = '';
                 renderFileList();
             });
 
-            // Añadir archivos a la lista interna
             function addFilesToStore(files) {
                 if (files.length > 0) {
                     for (const file of files) {
@@ -157,17 +158,12 @@
                         }
                         if (!exists) fileStore.items.add(file);
                     }
-
-                    // [BUG FIX 2] Usa setTimeout(0) para asegurar que fileStore.files.length se actualice
-                    // antes de que renderFileList() intente leerlo.
                     setTimeout(renderFileList, 0);
                 }
             }
 
-            // Renderizar lista de archivos seleccionados
             function renderFileList() {
                 fileListUl.innerHTML = '';
-                // Esta lógica ahora se ejecuta después de que fileStore.files.length es correcto:
                 if (fileStore.files.length === 0) {
                     fileListUl.appendChild(emptyListItem);
                     clearFilesButton.style.display = 'none';
@@ -177,44 +173,43 @@
                 for (let i = 0; i < fileStore.files.length; i++) {
                     const file = fileStore.files[i];
                     const listItem = document.createElement('li');
-                    listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    listItem.className = 'list-group-item d-flex justify-content-between align-items-center font-monospace py-2';
+                    listItem.style.color = 'var(--light-text)';
+                    listItem.style.backgroundColor = 'rgba(255,255,255,0.01)';
+                    listItem.style.borderColor = 'rgba(255,255,255,0.03)';
                     listItem.textContent = file.name;
+
                     const removeBtn = document.createElement('button');
                     removeBtn.className = 'btn btn-danger btn-sm';
                     removeBtn.innerHTML = '&times;';
                     removeBtn.type = 'button';
-                    removeBtn.ariaLabel = 'Eliminar ' + file.name;
                     removeBtn.addEventListener('click', () => removeFile(i));
+
                     listItem.appendChild(removeBtn);
                     fileListUl.appendChild(listItem);
                 }
                 clearFilesButton.style.display = 'inline-block';
-                submitButton.disabled = false; // <-- Esto ahora se habilitará correctamente
+                submitButton.disabled = false;
             }
 
-            // Quitar archivo individual
             function removeFile(indexToRemove) {
                 const newFiles = new DataTransfer();
                 for (let i = 0; i < fileStore.files.length; i++) {
-                    if (i !== indexToRemove) { newFiles.items.add(fileStore.files[i]);
-                    }
+                    if (i !== indexToRemove) { newFiles.items.add(fileStore.files[i]); }
                 }
                 fileStore = newFiles;
-                fileInput.value = ''; // [BUG FIX 3] Resetea el input
+                fileInput.value = '';
                 renderFileList();
             }
 
-            // Sincronizar archivos seleccionados con el input oculto del formulario
             function syncHiddenInput() {
                 hiddenFileInput.value = '';
                 const dt = new DataTransfer();
-                for (let i = 0; i < fileStore.files.length; i++) {
-                    dt.items.add(fileStore.files[i]);
-                }
+                for (let i = 0; i < fileStore.files.length; i++) { dt.items.add(fileStore.files[i]); }
                 hiddenFileInput.files = dt.files;
             }
 
-            // Al enviar el formulario
+            // Lógica de Envío AJAX
             uploadForm.addEventListener('submit', function (e) {
                 e.preventDefault();
                 feedbackMessage.innerHTML = '';
@@ -224,14 +219,12 @@
                 submitButton.disabled = true;
 
                 syncHiddenInput();
-
                 const formData = new FormData();
 
                 for (const file of fileStore.files) {
                     formData.append('files', file);
                 }
 
-                // Añade los valores de los widgets al FormData
                 formData.append('platinum_temp_db', document.getElementById('platinum_temp_db').value);
                 formData.append('db_location_platinum_temp', document.getElementById('db_location_platinum_temp').value);
 
@@ -269,7 +262,7 @@
                         }
 
                         const blob = await response.blob();
-                        feedbackMessage.innerHTML = `<div class="alert alert-success mt-2">Notebook de limpieza generado correctamente. <a href="#" id="download-link">Descargar</a></div>`;
+                        toastr.success('Notebook de sanitización generado correctamente.');
 
                         const url = window.URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -280,27 +273,8 @@
                         a.click();
                         window.URL.revokeObjectURL(url);
 
-                        notebookHistory.push({ name: filename, blob: blob });
-                        renderHistory();
-
-                        setTimeout(() => {
-                            const downloadLink = document.getElementById('download-link');
-                            if (downloadLink) {
-                                downloadLink.addEventListener('click', function (ev) {
-                                    ev.preventDefault();
-                                    const url2 = window.URL.createObjectURL(blob);
-                                    const a2 = document.createElement('a');
-                                    a2.href = url2;
-                                    a2.download = filename;
-                                    document.body.appendChild(a2);
-                                    a2.click();
-                                    window.URL.revokeObjectURL(url2);
-                                });
-                            }
-                        }, 100);
-
                         fileStore = new DataTransfer();
-                        fileInput.value = ''; // [BUG FIX 4] Resetea el input
+                        fileInput.value = '';
                         renderFileList();
                     } else {
                         const errorText = await response.text();
@@ -315,40 +289,16 @@
                 });
             });
 
-            // Renderizar historial de notebooks generados
-            function renderHistory() {
-                historyList.innerHTML = '';
-                if (notebookHistory.length === 0) {
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item text-muted';
-                    li.textContent = 'No hay notebooks generados en esta sesión.';
-                    historyList.appendChild(li);
-                    return;
-                }
-                notebookHistory.slice().reverse().forEach((doc) => {
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                    li.textContent = doc.name;
+            var inlineScrollStyles = `
+                .custom-placeholder::placeholder { color: rgba(255, 255, 255, 0.45) !important; opacity: 1 !important; }
+                .gemini-drop-zone.dragover { border-color: #ffc107 !important; background-color: rgba(255, 193, 7, 0.04) !important; }
+                #file-list::-webkit-scrollbar { width: 4px; }
+                #file-list::-webkit-scrollbar-track { background: transparent; }
+                #file-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 10px; }
+            `;
+            $('<style>').text(inlineScrollStyles).appendTo('head');
 
-                    const downloadBtn = document.createElement('button');
-                    downloadBtn.className = 'btn btn-link btn-sm';
-                    downloadBtn.textContent = 'Descargar';
-                    downloadBtn.onclick = () => {
-                        const url = window.URL.createObjectURL(doc.blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = doc.name;
-                        document.body.appendChild(a);
-                        a.click();
-                        window.URL.revokeObjectURL(url);
-                    };
-
-                    li.appendChild(downloadBtn);
-                    historyList.appendChild(li);
-                });
-            }
             renderFileList();
-            renderHistory();
         });
     </script>
 }

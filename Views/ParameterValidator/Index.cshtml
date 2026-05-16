@@ -2,43 +2,162 @@
 @model List<ParameterFinding>
 @{
     ViewData["Title"] = "Validador de Parámetros";
+    var allowedParameters = ViewBag.AllowedParameters as List<NotebookValidator.Web.Models.AllowedParameter> ?? new List<NotebookValidator.Web.Models.AllowedParameter>();
+    var summaries = ViewBag.FileSummaries as List<FileValidationSummary>;
 }
 
-<div class="text-center">
-    <h1 class="display-4">@ViewData["Title"]</h1>
-    <p>Sube notebooks para validar que todos los parámetros de widgets estén en la lista de permitidos.</p>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <div>
+        <h1 class="h2 fw-bold mb-1" style="font-family: 'Poppins', sans-serif; color: #fff;">@ViewData["Title"]</h1>
+        <p class="mb-0 small" style="color: var(--medium-text);">Valida que las variables de tus widgets cumplan estrictamente con las reglas del gobierno de datos.</p>
+    </div>
+
+    @if (User.IsInRole("Admin"))
+    {
+        <a id="btn-config-master" asp-controller="ParameterAdmin" asp-action="Index" class="btn btn-sm py-2 px-3 d-flex align-items-center gap-2"
+           style="background-color: rgba(255, 193, 7, 0.1); border: 1px solid #ffc107; color: #ffc107; border-radius: 8px; font-weight: 600; transition: all 0.2s ease;">
+            <i class="bi bi-gear-fill"></i>
+            <span>Configurar Maestro de Parámetros</span>
+        </a>
+    }
 </div>
 
-<div class="row mt-4">
-    <div class="col-md-8 offset-md-2">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <strong>1. Selecciona tus archivos</strong>
-                <button id="clear-list-button" class="btn btn-sm btn-outline-secondary" style="display: none;">Limpiar Lista</button>
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-md-4">
+        <div class="card p-3 border-0" style="background-color: #0b0d16; border-radius: 12px; border-left: 4px solid #ffc107 !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-uppercase fw-bold font-monospace mb-1" style="font-size: 0.7rem; letter-spacing: 1px; color: var(--medium-text);">Gobernanza Activa</h6>
+                    <p class="h4 fw-bold text-white mb-0" style="font-family: 'Poppins', sans-serif;"><span id="kpi-count">@ViewBag.TotalParameters</span> Permitidos</p>
+                </div>
+                <div class="rounded-3 p-2" style="background-color: rgba(255, 193, 7, 0.05); color: #ffc107;">
+                    <i class="bi bi-tags-fill fs-4"></i>
+                </div>
             </div>
-            <div class="card-body">
-                <div id="drop-zone" class="gemini-drop-zone mb-3">
-                    <div>
-                        <svg class="mx-auto h-12 w-12 text-gray-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <path fill-rule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12a2.25 2.25 0 01-20.25 20.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5a.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clip-rule="evenodd" />
-                        </svg>
-                        <div class="mt-4">
-                            <label for="file-upload" class="btn btn-secondary">
-                                <span>Elegir Archivos</span>
-                                <input id="file-upload" type="file" class="d-none" accept=".py,.ipynb,.zip" multiple>
-                            </label>
-                            <p class="mt-2 text-muted">o arrástralos aquí</p>
-                        </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-md-4">
+        <div class="card p-3 border-0" style="background-color: #0b0d16; border-radius: 12px; border-left: 4px solid #0dcaf0 !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-uppercase fw-bold font-monospace mb-1" style="font-size: 0.7rem; letter-spacing: 1px; color: var(--medium-text);">Última Sincronización</h6>
+                    <p class="h4 fw-bold text-white mb-0" style="font-family: 'Poppins', sans-serif; font-size: 1.15rem; padding-top: 4px;">@DateTime.Now.ToString("dd/MM/yyyy HH:mm")</p>
+                </div>
+                <div class="rounded-3 p-2" style="background-color: rgba(13, 202, 240, 0.05); color: #0dcaf0;">
+                    <i class="bi bi-arrow-repeat fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-4">
+        <div class="card p-3 border-0" style="background-color: #198754; border-radius: 12px; border-left: 4px solid #198754 !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-uppercase fw-bold font-monospace mb-1" style="font-size: 0.7rem; letter-spacing: 1px; color: rgba(255,255,255,0.6);">Estado del Motor</h6>
+                    <p class="h4 fw-bold text-white mb-0" style="font-family: 'Poppins', sans-serif; font-size: 1.15rem; padding-top: 4px;">
+                        <i class="bi bi-check-circle-fill me-1"></i> Línea Conectada
+                    </p>
+                </div>
+                <div class="rounded-3 p-2" style="background-color: rgba(255, 255, 255, 0.1); color: #fff;">
+                    <i class="bi bi-cpu-fill fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (summaries != null && summaries.Any())
+{
+    <div class="card p-3 border-0 mb-4" style="background-color: #0b0d16; border-radius: 12px;">
+        <div class="d-flex justify-content-between align-items-center mb-2.5">
+            <h6 class="fw-bold mb-0 text-white" style="font-family: 'Poppins', sans-serif;"><i class="bi bi-folder-check text-warning me-2"></i>Estatus de Archivos Cargados</h6>
+            <a asp-action="DownloadCorrectedFiles" class="btn btn-sm btn-success px-3 fw-bold d-flex align-items-center gap-1.5" style="border-radius: 6px;">
+                <i class="bi bi-cloud-arrow-down-fill"></i> Descargar Solución Corregida
+            </a>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            @foreach (var fileSummary in summaries)
+            {
+                var targetId = fileSummary.FileName.Replace(".", "_").Replace(" ", "_");
+                var badgeClass = fileSummary.Status == "Correcto" ? "bg-success text-white" : "bg-danger text-white";
+                var statusText = fileSummary.Status == "Correcto" ? "Limpio" : $"{fileSummary.TotalFindings} hallazgos";
+
+                <div class="px-3 py-2 rounded-3 d-flex align-items-center gap-3 border border-secondary border-opacity-10 file-health-card"
+                     id="summary-card-@targetId" data-file-status="@fileSummary.Status" style="background-color: rgba(0,0,0,0.2);">
+                    <span class="small font-monospace text-truncate" style="max-width: 220px; color: var(--light-text);">@fileSummary.FileName</span>
+                    <span class="badge @badgeClass font-monospace font-weight-bold" id="badge-status-@targetId" style="font-size: 0.65rem; padding: 4px 8px !important;">@statusText</span>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-12 col-lg-7">
+        <div class="card p-4 border-0 h-100" style="background-color: #0b0d16; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); display: flex; flex-direction: column;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 24px; height: 24px; font-size: 0.8rem;">1</div>
+                    <h5 class="card-title fw-bold text-white mb-0" style="font-family: 'Poppins', sans-serif;">Selecciona tus archivos</h5>
+                </div>
+                <button id="clear-list-button" class="btn btn-sm btn-outline-secondary" style="display: none; border-radius: 6px;">Limpiar Lista</button>
+            </div>
+
+            <div id="drop-zone" class="gemini-drop-zone my-3 p-5" style="border: 2px dashed rgba(255,255,255,0.1); border-radius: 10px; cursor: pointer;">
+                <div>
+                    <svg class="mx-auto h-12 w-12 text-gray-300" viewBox="0 0 24 24" fill="currentColor" style="width: 45px; height: 45px; opacity: 0.4; margin-bottom: 10px;">
+                        <path fill-rule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12a2.25 2.25 0 01-20.25 20.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5a.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clip-rule="evenodd" />
+                    </svg>
+                    <div class="mt-2">
+                        <label for="file-upload" class="btn btn-sm btn-secondary px-3" style="cursor: pointer; border-radius: 6px;">
+                            <span>Elegir Archivos</span>
+                            <input id="file-upload" type="file" class="d-none" accept=".py,.ipynb,.zip" multiple>
+                        </label>
+                        <p class="mt-2 small" style="color: var(--medium-text);">o arrástralos aquí (.py, .ipynb, .zip)</p>
                     </div>
                 </div>
-
-                <div id="file-list-container">
-                </div>
             </div>
-            <div class="card-footer">
+
+            <div id="file-list-container" class="mb-3"></div>
+            <div class="mt-auto">
                 <form asp-action="Validate" method="post" enctype="multipart/form-data" id="validation-form">
-                    <button type="submit" class="btn btn-primary w-100">Validar Parámetros</button>
+                    <button type="submit" id="submit-validation-btn" class="btn btn-primary w-100 py-2.5 fw-bold" style="border-radius: 8px;" disabled>
+                        <i class="bi bi-shield-check me-2"></i>Validar Parámetros
+                    </button>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+        <div class="card p-4 border-0 h-100" style="background-color: #0b0d16; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); display: flex; flex-direction: column;">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-bookmark-star-fill text-warning fs-5"></i>
+                    <h5 class="card-title fw-bold text-white mb-0" style="font-family: 'Poppins', sans-serif;">Gobernanza Activa</h5>
+                </div>
+                <span class="badge rounded-pill font-monospace px-2.5 py-1" style="background-color: rgba(255,193,7,0.1) !important; color: #ffc107 !important; font-size: 0.65rem;">Diccionario</span>
+            </div>
+            <p class="small mb-3" style="color: var(--medium-text);">Lista oficial de variables aprobadas. El validador marcará como hallazgo crítico cualquier parámetro ausente.</p>
+
+            <div class="input-group input-group-sm mb-3">
+                <span class="input-group-text border-0 text-white-50" style="background-color: rgba(255,255,255,0.06);"><i class="bi bi-search"></i></span>
+                <input type="text" id="searchParameterMaster" class="form-control form-control-sm border-0 text-white custom-placeholder" placeholder="Filtrar parámetros permitidos..." style="background-color: rgba(255,255,255,0.06);" />
+            </div>
+
+            <div class="flex-grow-1 overflow-y-auto pe-1" id="masterParametersScroll" style="max-height: 250px;">
+                <div class="d-flex flex-column gap-2" id="master-list-container">
+                    @foreach (var param in allowedParameters)
+                    {
+                        <div class="p-2 rounded-3 d-flex justify-content-between align-items-center font-monospace parameter-row-item"
+                             style="background-color: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.03); font-size: 0.8rem;">
+                            <span style="color: var(--light-text);"><i class="bi bi-braces text-secondary me-2"></i><span class="raw-param-name">@param.Name</span></span>
+                            <span class="badge font-monospace" style="font-size: 0.6rem; background-color: rgba(255,193,7,0.15) !important; color: #ffc107 !important;">@param.Category</span>
+                        </div>
+                    }
+                </div>
             </div>
         </div>
     </div>
@@ -46,31 +165,167 @@
 
 @if (Model != null)
 {
-    <div class="mt-4">
-        <h3>Resultados de la Validación</h3>
+    <div class="mt-4 p-4 rounded-3" style="background-color: #0b0d16;">
+        <h3 class="h5 fw-bold text-white mb-3" style="font-family: 'Poppins', sans-serif;"><i class="bi bi-bar-chart-line me-2 text-warning"></i>Resultados de la Validación</h3>
         @if (Model.Any())
         {
-            <table class="table">
-                <thead><tr><th>Notebook</th><th>Parámetro No Permitido</th><th>Línea</th><th>Contenido</th></tr></thead>
-                <tbody>
-                    @foreach (var finding in Model)
-                    {
+            <div class="table-responsive">
+                <table class="table align-middle m-0">
+                    <thead>
                         <tr>
-                            <td>@finding.NotebookName</td>
-                            <td><code>@finding.ParameterName</code></td>
-                            <td>@finding.LineNumber</td>
-                            <td><code>@finding.Content</code></td>
+                            <th style="color: #ffffff !important; font-weight: 600;">Notebook / Ubicación</th>
+                            <th style="color: #ffffff !important; font-weight: 600;">Parámetro No Permitido</th>
+                            <th style="color: #ffffff !important; font-weight: 600; text-align: center; width: 80px;">Línea</th>
+                            <th style="color: #ffffff !important; font-weight: 600;">Contenido Encontrado</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var group in Model.GroupBy(f => f.ParameterName))
+                        {
+                            var paramId = group.Key.Replace(".", "_").Replace(" ", "_");
+
+                            <tr class="table-dark" id="group-header-@paramId" style="background-color: #172a45 !important; border-bottom: 2px solid #ffc107;">
+                                <td colspan="4" class="p-3">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                                        <div class="d-flex align-items-center gap-2.5">
+                                            <span class="badge bg-danger text-white font-monospace p-1.5 bulk-badge-indicator" style="font-size: 0.7rem;">@group.Count() Alertas</span>
+                                            <span class="text-white-50 small">Variable No Declarada:</span>
+                                            <code class="px-2 py-1 rounded bg-dark border text-warning target-code-label" style="font-weight: 600; font-size: 0.95rem;">@group.Key</code>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-xs py-1.5 px-2.5 btn-info text-white btn-fast-correct d-flex align-items-center gap-1"
+                                                    style="font-size: 0.72rem; border-radius: 6px; font-weight:600;"
+                                                    data-param-name="@group.Key" data-notebook="">
+                                                <i class="bi bi-pencil-square"></i> Corregir en Todos
+                                            </button>
+                                            @if (User.IsInRole("Admin"))
+                                            {
+                                                <button type="button" class="btn btn-xs py-1.5 px-2.5 btn-warning text-dark btn-fast-add d-flex align-items-center gap-1"
+                                                        style="font-size: 0.72rem; border-radius: 6px; font-weight:600;"
+                                                        data-param-name="@group.Key">
+                                                    <i class="bi bi-plus-circle-fill"></i> Añadir al Maestro
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            @foreach (var finding in group)
+                            {
+                                <tr class="finding-row-item group-instance-@paramId" data-file-origin="@finding.NotebookName" data-param-token="@finding.ParameterName">
+                                    <td class="small fw-bold" style="color: var(--dark-navy) !important; padding-left: 1.5rem !important;">@finding.NotebookName</td>
+                                    <td>
+                                        <code class="px-2 py-1 rounded bg-dark border text-warning font-monospace" style="font-size: 0.8rem;">@finding.ParameterName</code>
+                                    </td>
+                                    <td class="fw-bold text-center" style="color: var(--dark-navy) !important; font-size: 0.95rem;">@finding.LineNumber</td>
+                                    <td><code class="code-line-preview">@finding.Content</code></td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
         }
         else
         {
-            <div class="alert alert-success">¡Excelente! No se encontraron parámetros no permitidos.</div>
+            <div class="alert border-0 text-success mb-0 d-flex align-items-center gap-2" style="background-color: rgba(25, 135, 84, 0.1);">
+                <i class="bi bi-patch-check-fill fs-5"></i>
+                <span class="fw-medium">¡Excelente! No se encontraron parámetros fuera del marco de gobernanza corporativo.</span>
+            </div>
         }
     </div>
 }
+
+@if (User.IsInRole("Admin"))
+{
+    <div class="modal fade" id="fastParamModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="background-color: #112240; color: #E6F1FF; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                <div class="modal-header border-bottom border-secondary border-opacity-25 py-3">
+                    <h5 class="modal-title fw-bold text-warning" style="font-family: 'Poppins', sans-serif;"><i class="bi bi-plus-square-fill me-2"></i>Añadir Parámetro al Maestro</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="fastParamForm">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-body py-4 d-flex flex-column gap-3">
+                        <div class="form-group">
+                            <label class="form-label font-monospace small" style="color: rgba(255,255,255,0.7);">Nombre del Parámetro</label>
+                            <input type="text" name="Name" id="modalParamName" class="form-control text-white" readonly style="background-color: #07091e; border-color: #233554;" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label font-monospace small" style="color: rgba(255,255,255,0.7);">Valor por Defecto (Opcional)</label>
+                            <input type="text" name="DefaultValue" class="form-control text-white custom-placeholder" placeholder="Ej. 20260101" style="background-color: #172a45; border-color: #233554;" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label font-monospace small" style="color: rgba(255,255,255,0.7);">Etiqueta Visual (Opcional)</label>
+                            <input type="text" name="Label" class="form-control text-white custom-placeholder" placeholder="Ej. Fecha de Proceso:" style="background-color: #172a45; border-color: #233554;" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label font-monospace small" style="color: rgba(255,255,255,0.7);">Categoría Corporativa</label>
+                            <select name="Category" class="form-select text-white" style="background-color: #172a45; border-color: #233554;">
+                                <option value="Widget de Entrada (W)">Widget de Entrada (W)</option>
+                                <option value="Variable de Sistema (X)">Variable de Sistema (X)</option>
+                                <option value="Configuración General">Configuración General</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top border-secondary border-opacity-25 py-3">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal" style="border-radius: 6px;">Cancelar</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold" style="border-radius: 6px;">
+                            <span id="btnSaveSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+                            Guardar Parámetro
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="modal fade" id="correctionModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0" style="background-color: #112240; color: #E6F1FF; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <div class="modal-header border-bottom border-secondary border-opacity-25 py-3">
+                <h5 class="modal-title fw-bold text-info" style="font-family: 'Poppins', sans-serif;"><i class="bi bi-pencil-square me-2"></i>Vincular Parámetro Oficial</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4 d-flex flex-column gap-3">
+                <div>
+                    <span class="small d-block mb-1" style="color: rgba(255,255,255,0.7);">Variable detectada en el análisis:</span>
+                    <input type="text" id="correctionOldParam" class="form-control text-warning fw-bold font-monospace" readonly style="background-color: #07091e; border-color: #233554;" />
+                    <input type="hidden" id="correctionNotebookTarget" />
+                </div>
+
+                <div>
+                    <label class="form-label font-monospace small" style="color: rgba(255,255,255,0.7);">Selecciona el reemplazo autorizado</label>
+                    <div class="input-group input-group-sm mb-2">
+                        <span class="input-group-text border-0 text-white-50" style="background-color: rgba(255,255,255,0.06);"><i class="bi bi-filter"></i></span>
+                        <input type="text" id="searchInModalSelector" class="form-control form-control-sm border-0 text-white custom-placeholder" placeholder="Escribe para buscar o filtrar..." style="background-color: rgba(255,255,255,0.06);" />
+                    </div>
+                    <select id="correctionNewParamSelect" class="form-select text-white font-monospace" size="6" style="background-color: #172a45; border-color: #233554;">
+                        @foreach (var param in allowedParameters)
+                        {
+                            <option value="@param.Name">@param.Name (@param.Category)</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="p-2.5 rounded-3 border border-info border-opacity-25 d-none" id="smart-suggestion-box" style="background-color: rgba(13, 202, 240, 0.04);">
+                    <span class="small font-weight-bold text-info font-monospace d-block mb-0.5"><i class="bi bi-lightbulb-fill me-1"></i>Sugerencia de Coincidencia:</span>
+                    <p class="small mb-0 text-secondary">Detectamos un parámetro con similitud alta: <strong class="text-white font-monospace" id="suggested-param-text"></strong></p>
+                </div>
+            </div>
+            <div class="modal-footer border-top border-secondary border-opacity-25 py-3">
+                <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal" style="border-radius: 6px;">Cancelar</button>
+                <button type="button" id="btnSubmitCorrection" class="btn btn-info px-4 font-weight-bold text-dark" style="border-radius: 6px; font-weight: 700;">
+                    <span id="btnCorrectSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+                    Aplicar Reemplazo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     <script>
@@ -79,11 +334,11 @@
             const dropZone = document.getElementById('drop-zone');
             const fileListContainer = document.getElementById('file-list-container');
             const validationForm = document.getElementById('validation-form');
+            const submitValidationBtn = document.getElementById('submit-validation-btn');
             const clearListButton = document.getElementById('clear-list-button');
 
             let fileStore = new DataTransfer();
 
-            // --- Lógica de Manejo de Archivos ---
             const handleFiles = (files) => {
                 for (const file of files) {
                     fileStore.items.add(file);
@@ -91,16 +346,19 @@
                 renderFileList();
             };
 
-            fileUpload.addEventListener('change', (e) => handleFiles(e.target.files));
-            dropZone.addEventListener('dragover', (e) => e.preventDefault());
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                handleFiles(e.dataTransfer.files);
-            });
+            if(fileUpload) fileUpload.addEventListener('change', (e) => handleFiles(e.target.files));
+            if(dropZone) {
+                dropZone.addEventListener('dragover', (e) => e.preventDefault());
+                dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    handleFiles(e.dataTransfer.files);
+                });
+            }
 
             function renderFileList() {
                 fileListContainer.innerHTML = '';
                 clearListButton.style.display = 'none';
+                if (submitValidationBtn) submitValidationBtn.disabled = true;
 
                 if (fileStore.files.length > 0) {
                     const list = document.createElement('ul');
@@ -124,37 +382,193 @@
                     });
                     fileListContainer.appendChild(list);
                     clearListButton.style.display = 'block';
+                    if (submitValidationBtn) submitValidationBtn.disabled = false;
                 }
             }
 
             function removeFile(indexToRemove) {
                 const newFiles = new DataTransfer();
                 Array.from(fileStore.files).forEach((file, index) => {
-                    if (index !== indexToRemove) {
-                        newFiles.items.add(file);
-                    }
+                    if (index !== indexToRemove) newFiles.items.add(file);
                 });
                 fileStore = newFiles;
                 renderFileList();
             }
 
-            clearListButton.addEventListener('click', () => {
-                fileStore = new DataTransfer();
-                fileUpload.value = ''; // Limpia el input de archivo por si acaso
-                renderFileList();
+            if(clearListButton) {
+                clearListButton.addEventListener('click', () => {
+                    fileStore = new DataTransfer();
+                    fileUpload.value = '';
+                    renderFileList();
+                });
+            }
+
+            if(validationForm) {
+                validationForm.addEventListener('submit', function(e) {
+                    const fileInput = document.createElement('input');
+                    fileInput.type = 'file';
+                    fileInput.name = 'files';
+                    fileInput.files = fileStore.files;
+                    fileInput.multiple = true;
+                    fileInput.style.display = 'none';
+                    this.appendChild(fileInput);
+                });
+            }
+
+            // Filtro del panel lateral
+            $('#searchParameterMaster').on('keyup', function() {
+                var value = $(this).val().toLowerCase();
+                $('#masterParametersScroll .parameter-row-item').filter(function() {
+                    $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+                });
             });
 
-            // --- Lógica de Envío del Formulario ---
-            validationForm.addEventListener('submit', function(e) {
-                // Adjuntamos los archivos de nuestra lista al formulario justo antes de enviarlo
-                const fileInput = document.createElement('input');
-                fileInput.type = 'file';
-                fileInput.name = 'files';
-                fileInput.files = fileStore.files;
-                fileInput.multiple = true;
-                fileInput.style.display = 'none';
-                this.appendChild(fileInput);
+            // Filtro del buscador interno del modal
+            $('#searchInModalSelector').on('keyup', function() {
+                var value = $(this).val().toLowerCase();
+                $('#correctionNewParamSelect option').filter(function() {
+                    $(this).toggle($(this).val().toLowerCase().indexOf(value) > -1)
+                });
             });
+
+            // Guardián de navegación al salir
+            $('#btn-config-master').on('click', function (e) {
+                const hasActiveReview = @(Model != null ? "true" : "false");
+                if (hasActiveReview) {
+                    const confirmExit = confirm("⚠️ Tienes un análisis de parámetros activo en pantalla con hallazgos detectados. Si abandonas este módulo, perderás el progreso actual y los archivos en caché de sesión. ¿Estás seguro de que deseas salir?");
+                    if (!confirmExit) e.preventDefault();
+                }
+            });
+
+            // --- Lógica de Alta en Maestro ---
+            var addModal = $('#fastParamModal').length > 0 ? new bootstrap.Modal(document.getElementById('fastParamModal')) : null;
+            $(document).on('click', '.btn-fast-add', function(e) {
+                e.preventDefault();
+                $('#modalParamName').val($(this).data('param-name'));
+                if(addModal) addModal.show();
+            });
+
+            $('#fastParamForm').on('submit', function(e) {
+                e.preventDefault();
+                $('#btnSaveSpinner').removeClass('d-none');
+                $.post('/ParameterAdmin/CreateJson', $(this).serialize())
+                    .done(function(response) {
+                        $('#btnSaveSpinner').addClass('d-none');
+                        if (response.success) {
+                            toastr.success('Parámetro registrado en el maestro.');
+                            location.reload();
+                        } else {
+                            toastr.error(response.message);
+                        }
+                    });
+            });
+
+            // --- Lógica de Corrección ---
+            var correctModal = new bootstrap.Modal(document.getElementById('correctionModal'));
+
+            function findSmartMatch(target) {
+                let bestMatch = "";
+                $('#correctionNewParamSelect option').each(function() {
+                    let optionVal = $(this).val();
+                    if (optionVal.toLowerCase().includes(target.toLowerCase()) || target.toLowerCase().includes(optionVal.toLowerCase())) {
+                        bestMatch = optionVal;
+                        return false;
+                    }
+                });
+                return bestMatch;
+            }
+
+            $(document).on('click', '.btn-fast-correct', function(e) {
+                e.preventDefault();
+                var oldParam = $(this).data('param-name');
+                var notebook = $(this).data('notebook');
+
+                $('#correctionOldParam').val(oldParam);
+                $('#correctionNotebookTarget').val(notebook);
+                $('#searchInModalSelector').val('');
+                $('#correctionNewParamSelect option').show();
+
+                var match = findSmartMatch(oldParam);
+                if (match) {
+                    $('#correctionNewParamSelect').val(match);
+                    $('#suggested-param-text').text(match);
+                    $('#smart-suggestion-box').removeClass('d-none');
+                } else {
+                    $('#smart-suggestion-box').addClass('d-none');
+                    $('#correctionNewParamSelect').val('');
+                }
+                correctModal.show();
+            });
+
+            $('#btnSubmitCorrection').on('click', function() {
+                var oldParam = $('#correctionOldParam').val();
+                var newParam = $('#correctionNewParamSelect').val();
+                var notebook = $('#correctionNotebookTarget').val();
+
+                if (!newParam) {
+                    toastr.warning('Por favor, selecciona un parámetro de reemplazo autorizado.');
+                    return;
+                }
+
+                $('#btnCorrectSpinner').removeClass('d-none');
+
+                $.post('/ParameterValidator/ApplyCorrection', { oldParam: oldParam, newParam: newParam, notebookName: notebook })
+                    .done(function(response) {
+                        $('#btnCorrectSpinner').addClass('d-none');
+                        if (response.success) {
+                            correctModal.hide();
+                            var safeId = response.paramName.replaceAll(".", "_").replaceAll(" ", "_");
+
+                            toastr.success(`Sustitución masiva completada con éxito en ${response.files.length} archivos.`);
+
+                            $(`.group-instance-${safeId}`).each(function() {
+                                var fileOrigin = $(this).data('file-origin');
+
+                                $(this).find('code.text-warning').removeClass('text-warning').addClass('text-info').text(response.newParamName);
+                                $(this).find('.code-line-preview').each(function() {
+                                    let rawHtml = $(this).html();
+                                    $(this).html(rawHtml.replaceAll(response.paramName, response.newParamName));
+                                });
+
+                                var fileSafeId = fileOrigin.replaceAll(".", "_").replaceAll(" ", "_");
+                                $(`#badge-status-${fileSafeId}`).removeClass('bg-danger').addClass('bg-primary').text('Corregido');
+                                $(`#summary-card-${fileSafeId}`).attr('data-file-status', 'Corregido');
+                            });
+
+                            var headerRow = $(`#group-header-${safeId}`);
+                            headerRow.css('border-bottom', '2px solid #0dcaf0');
+                            headerRow.find('.bulk-badge-indicator').removeClass('bg-danger').addClass('bg-primary').text('Corregido');
+                            headerRow.find('.target-code-label').removeClass('text-warning').addClass('text-info').text(response.newParamName);
+                            headerRow.find('.btn-fast-correct, .btn-fast-add').fadeOut();
+                        } else {
+                            toastr.error(response.message);
+                        }
+                    })
+                    .fail(function() {
+                        $('#btnCorrectSpinner').addClass('d-none');
+                        toastr.error('Error de red al aplicar el reemplazo masivo.');
+                    });
+            });
+
+            var inlineScrollStyles = `
+                #masterParametersScroll::-webkit-scrollbar, .overflow-y-auto::-webkit-scrollbar { width: 4px; }
+                #masterParametersScroll::-webkit-scrollbar-track, .overflow-y-auto::-webkit-scrollbar-track { background: transparent; }
+                #masterParametersScroll::-webkit-scrollbar-thumb, .overflow-y-auto::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 10px; }
+                #masterParametersScroll::-webkit-scrollbar-thumb:hover, .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: rgba(255,193,7,0.2); }
+                .btn-xs { padding: 0.25rem 0.4rem; font-size: 0.75rem; border-radius: 4px; }
+
+                .custom-placeholder::placeholder {
+                    color: rgba(255, 255, 255, 0.58) !important;
+                    opacity: 1 !important;
+                }
+                .custom-placeholder:-ms-input-placeholder {
+                    color: rgba(255, 255, 255, 0.58) !important;
+                }
+                .custom-placeholder::-ms-input-placeholder {
+                    color: rgba(255, 255, 255, 0.58) !important;
+                }
+            `;
+            $('<style>').text(inlineScrollStyles).appendTo('head');
         });
     </script>
 }

@@ -77,5 +77,32 @@ namespace NotebookValidator.Web.Controllers
             }
             return RedirectToAction(nameof(Index));
         }
+
+        // ACCIÓN DE INSERCIÓN RÁPIDA (AJAX/JSON) DESDE EL VALIDADOR
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateJson(AllowedParameter allowedParameter)
+        {
+            if (ModelState.IsValid)
+            {
+                // Validar que no exista duplicado preventivamente
+                var exists = await _context.AllowedParameters.AnyAsync(p => p.Name.ToLower() == allowedParameter.Name.ToLower());
+                if (exists)
+                {
+                    return Json(new { success = false, message = "El parámetro ya existe en el maestro oficial." });
+                }
+
+                _context.Add(allowedParameter);
+                await _context.SaveChangesAsync();
+                return Json(new
+                {
+                    success = true,
+                    name = allowedParameter.Name,
+                    label = allowedParameter.Label,
+                    category = allowedParameter.Category
+                });
+            }
+            return Json(new { success = false, message = "Los datos ingresados no cumplen con las reglas de validación." });
+        }
     }
 }
