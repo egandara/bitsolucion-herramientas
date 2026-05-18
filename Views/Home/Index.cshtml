@@ -5,15 +5,54 @@
 
 <style>
     .welcome-section {
-        padding: 4rem 1rem;
+        padding: 3rem 1rem;
         text-align: center;
     }
 
-    /* Módulos interactivos elásticos */
+    /* BARRA LATERAL (SIDEBAR): Compresión extrema al 75% erradicando márgenes heredados de listas */
+    nav a, aside a, [class*="sidebar"] a, .nav-sidebar a, .main-sidebar a, .nav-link {
+        padding-top: 0.12rem !important;
+        padding-bottom: 0.12rem !important;
+        font-size: 0.78rem !important;
+        line-height: 1.2 !important;
+    }
+
+    nav li, aside li, [class*="sidebar"] li, .nav-sidebar li, .nav-item {
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+    }
+
+    nav .text-muted, aside .text-muted, [class*="sidebar"] div small, [class*="sidebar"] .text-uppercase, h6[class*="sidebar"], [class*="sidebar"] .nav-header, .sidebar .nav-header {
+        margin-top: 0.25rem !important;
+        margin-bottom: 0.05rem !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+        font-size: 0.62rem !important;
+        letter-spacing: 0.3px;
+    }
+
+    /* CONFIGURACIÓN CRÍTICA: Fuerza la escala compacta del zoom 80% de forma nativa en pantallas 1080p */
+    .dashboard-master-container {
+        max-width: 1160px !important;
+        margin: 0 auto;
+    }
+
+    h1.display-4 {
+        font-size: 2.3rem !important;
+    }
+
+    p.lead-dashboard {
+        font-size: 0.95rem !important;
+        margin-bottom: 2rem !important;
+    }
+
     .card-module {
         transition: transform 0.2s ease, border-color 0.2s ease;
         cursor: grab;
         position: relative;
+        border-radius: 10px !important;
     }
 
         .card-module:active {
@@ -26,15 +65,32 @@
             background-color: rgba(255, 193, 7, 0.03) !important;
         }
 
-    .card-text {
-        color: rgba(255, 255, 255, 0.7) !important;
-    }
+        /* Proporciones reducidas internas para emular look de alta densidad */
+        .card-module .card-body {
+            padding: 1.25rem 1rem !important;
+        }
+
+        .card-module i.text-warning {
+            font-size: 1.9rem !important;
+            margin-bottom: 0.6rem !important;
+        }
+
+        .card-module .card-title {
+            font-size: 1rem !important;
+            margin-bottom: 0.4rem !important;
+        }
+
+        .card-module .card-text {
+            font-size: 0.78rem !important;
+            line-height: 1.4 !important;
+            color: rgba(255, 255, 255, 0.5) !important;
+        }
 
     /* Controles superiores flotantes de tamaño */
     .card-actions {
         position: absolute;
-        top: 12px;
-        right: 12px;
+        top: 8px;
+        right: 8px;
         opacity: 0;
         transition: opacity 0.2s ease;
         z-index: 5;
@@ -48,9 +104,9 @@
         background: rgba(255,255,255,0.05);
         border: 1px solid rgba(255,255,255,0.1);
         color: rgba(255,255,255,0.6);
-        padding: 2px 6px;
+        padding: 1px 5px;
         border-radius: 4px;
-        font-size: 0.75rem;
+        font-size: 0.68rem;
         cursor: pointer;
     }
 
@@ -60,18 +116,18 @@
             border-color: #ffc107;
         }
 
-    /* MEJORA 3: Silueta Limpia Tipo Wireframe (Oculta contenido interior al arrastrar) */
+    /* Silueta Limpia Tipo Wireframe (Oculta contenido interior al arrastrar) */
     .sortable-ghost {
         border: 2px dashed #ffc107 !important;
         background-color: rgba(255, 193, 7, 0.02) !important;
-        border-radius: 15px;
+        border-radius: 10px;
     }
 
         .sortable-ghost * {
             opacity: 0 !important;
         }
 
-    /* CONFIGURACIÓN ULTRA-LIMPIA PARA EL BAÚL DE MÓDULOS OCULTOS (CSS Avanzado) */
+    /* CONFIGURACIÓN ULTRA-LIMPIA PARA EL BAÚL DE MÓDULOS OCULTOS */
     #modules-pool .grid-item {
         width: 100% !important;
         max-width: 100% !important;
@@ -83,7 +139,7 @@
     }
 
     #modules-pool .btn-action-size:first-child {
-        display: none !important; /* Oculta expandir tamaño en el baúl */
+        display: none !important;
     }
 
     #modules-pool .btn-toggle-view {
@@ -93,34 +149,34 @@
     }
 
     #modules-pool .bi-eye-slash-fill::before {
-        content: "\f4fe"; /* Transforma el icono de ojo oculto en un signo más (+) */
+        content: "\f4fe";
     }
 
     #modules-pool .card-text {
-        display: none !important; /* Compacta el diseño ocultando la descripción larga */
+        display: none !important;
     }
 
     #modules-pool .card-body {
-        padding: 1.2rem !important;
+        padding: 1rem !important;
         display: flex !important;
         align-items: center !important;
-        gap: 15px !important;
+        gap: 12px !important;
         text-align: left !important;
     }
 
     #modules-pool a {
-        pointer-events: none; /* Evita la navegación accidental al hacer clic en el baúl */
+        pointer-events: none;
     }
 
     #modules-pool i.fs-1 {
-        font-size: 1.6rem !important;
+        font-size: 1.4rem !important;
         margin-bottom: 0 !important;
         display: inline-block !important;
     }
 
     #modules-pool .card-title {
         margin-bottom: 0 !important;
-        font-size: 1.05rem !important;
+        font-size: 0.95rem !important;
         display: inline-block !important;
     }
 
@@ -134,8 +190,8 @@
         }
 </style>
 
-<div class="container text-center mt-5">
-    <h1 class="display-4 fw-bold text-white mb-3">
+<div class="container dashboard-master-container text-center mt-4" id="dashboard-root" data-layout="@userLayoutJson">
+    <h1 class="display-4 fw-bold text-white mb-2">
         @{
             var rawName = User.Identity?.Name?.Split('@')[0] ?? "Usuario";
             var firstName = rawName.Split('.')[0];
@@ -145,16 +201,16 @@
             }
         }
         ¡Hola @firstName!
-        <span id="sync-indicator" class="ms-2 small text-warning d-inline-block" style="font-size: 1rem; font-weight: normal; opacity: 0; transition: opacity 0.3s ease;"></span>
+        <span id="sync-indicator" class="ms-2 small text-warning d-inline-block" style="font-size: 0.95rem; font-weight: normal; opacity: 0; transition: opacity 0.3s ease;"></span>
     </h1>
 
-    <p class="lead text-light mb-5" style="opacity: 0.85;">
+    <p class="lead lead-dashboard text-light mb-4" style="opacity: 0.8;">
         Organiza tus módulos arrastrándolos o cambiando su tamaño.
-        <button class="btn btn-outline-warning btn-sm ms-3 px-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasModules" style="border-radius: 6px;"><i class="bi bi-grid-3x3-gap-fill me-1"></i> Gestionar Módulos</button>
-        <button id="btn-reset-layout" class="btn btn-link btn-sm text-white-50 ms-2 p-0 text-decoration-none" style="font-size: 0.9rem; vertical-align: baseline;"><i class="bi bi-arrow-counterclockwise"></i> Restablecer Layout</button>
+        <button class="btn btn-outline-warning btn-sm ms-3 px-3 py-1" data-bs-toggle="offcanvas" data-bs-target="#offcanvasModules" style="border-radius: 6px; font-size: 0.85rem;"><i class="bi bi-grid-3x3-gap-fill me-1"></i> Gestionar Módulos</button>
+        <button id="btn-reset-layout" class="btn btn-link btn-sm text-white-50 ms-2 p-0 text-decoration-none" style="font-size: 0.85rem; vertical-align: baseline;"><i class="bi bi-arrow-counterclockwise"></i> Restablecer Layout</button>
     </p>
 
-    <div class="row g-4 justify-content-center" id="dashboard-grid">
+    <div class="row g-3 justify-content-center" id="dashboard-grid">
 
         @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
         {
@@ -311,7 +367,7 @@
                         <button class="btn-action-size" title="Cambiar tamaño" onclick="toggleSize(this, event)"><i class="bi bi-arrows-angle-expand"></i></button>
                         <button class="btn-action-size btn-toggle-view text-danger ms-1" title="Ocultar del panel" onclick="toggleVisibilityClick(this, event)"><i class="bi bi-eye-slash-fill"></i></button>
                     </div>
-                    <a asp-controller="Admin" asp-action="GestionarUsuarios" class="text-decoration-none card-body py-4 d-block h-100">
+                    <a asp-controller="Admin" asp-action="Index" class="text-decoration-none card-body py-4 d-block h-100">
                         <i class="bi bi-people-fill text-warning fs-1 mb-3 d-block"></i>
                         <h5 class="card-title fw-bold text-white">Gestionar Usuarios</h5>
                         <p class="card-text small text-white-50">Administración de cuentas activas, asignación de roles y cuotas de análisis.</p>
@@ -396,7 +452,10 @@
     <script>
         const gridContainer = document.getElementById('dashboard-grid');
         const poolContainer = document.getElementById('modules-pool');
-        const databaseLayout = @Html.Raw(userLayoutJson);
+        const rootContainer = document.getElementById('dashboard-root');
+
+        // RESOLUCIÓN DEFINITIVA TS1109: Leemos el JSON desde el atributo HTML del DOM de forma 100% segura para el editor
+        const databaseLayout = JSON.parse(rootContainer.getAttribute('data-layout') || 'null');
 
         document.addEventListener('DOMContentLoaded', function() {
         // Sincronización inicial inteligente basada en la Base de Datos
@@ -494,7 +553,7 @@
         saveCurrentLayout();
         }
 
-        // CONTROL: Si el componente está en el baúl, hacer clic en cualquier parte de la fila lo devuelve a la grilla principal
+        // CONTROL: Si el componente está en el baúl, devuelve a la grilla principal
         function handlePoolCardClick(card, event) {
         const item = card.closest('.grid-item');
         const isInPool = item.parentElement.id === 'modules-pool';
