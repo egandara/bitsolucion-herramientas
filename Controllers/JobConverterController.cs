@@ -24,17 +24,16 @@ namespace NotebookValidator.Web.Controllers
         [HttpGet]
         public IActionResult Index()
         {
-            TempData.Remove("JobAnalysisToken"); // Limpiar sesiones de jobs previas
+            TempData.Remove("JobAnalysisToken");
             return View();
         }
 
-        // FASE 1: Recibe los archivos múltiples y los almacena temporalmente en caché de sesión
         [HttpPost]
         public async Task<IActionResult> PrepareStaging(List<IFormFile> files, string certSparkConf, string prodSparkConf)
         {
             if (files == null || !files.Any())
             {
-                return Json(new { success = false, message = "Por favor, selecciona al menos un archivo JSON de Job." });
+                return Json(new { success = false, message = "Por favor, selecciona al menos un archivo JSON o YAML de Job." });
             }
 
             string token = Guid.NewGuid().ToString("N");
@@ -42,32 +41,39 @@ namespace NotebookValidator.Web.Controllers
             Directory.CreateDirectory(cachePath);
 
             var stagedJobs = new List<object>();
-            var regexName = new Regex(@"""name""\s*:\s*""([^""]+)""");
+            var regexJsonName = new Regex(@"""name""\s*:\s*""([^""]+)""");
+            var regexYamlName = new Regex(@"name:\s*[""']?([^""'\n]+)[""']?");
 
             foreach (var file in files)
             {
-                if (!Path.GetExtension(file.FileName).Equals(".json", StringComparison.OrdinalIgnoreCase)) continue;
+                string ext = Path.GetExtension(file.FileName).ToLower();
+                if (ext != ".json" && ext != ".yml" && ext != ".yaml") continue;
 
-                string fileKey = Guid.NewGuid().ToString("N") + ".json";
+                string fileKey = Guid.NewGuid().ToString("N") + ext;
                 string fullPath = Path.Combine(cachePath, fileKey);
 
-                string jsonContent;
+                string content;
                 using (var reader = new StreamReader(file.OpenReadStream()))
                 {
-                    jsonContent = await reader.ReadToEndAsync();
+                    content = await reader.ReadToEndAsync();
                 }
 
-                // Guardar el original en la caché de trabajo
-                await System.IO.File.WriteAllTextAsync(fullPath, jsonContent);
+                await System.IO.File.WriteAllTextAsync(fullPath, content);
 
-                // Intentar extraer el nombre interno del Job Databricks vía Regex
-                var match = regexName.Match(jsonContent);
-                string originalJobName = match.Success ? match.Groups[1].Value : Path.GetFileNameWithoutExtension(file.FileName);
+                string originalJobName = "";
+                if (ext == ".json")
+                {
+                    var match = regexJsonName.Match(content);
+                    originalJobName = match.Success ? match.Groups[1].Value : Path.GetFileNameWithoutExtension(file.FileName);
+                }
+                else
+                {
+                    var match = regexYamlName.Match(content);
+                    originalJobName = match.Success ? match.Groups[1].Value : Path.GetFileNameWithoutExtension(file.FileName);
+                }
 
-                // Algoritmo de limpieza inteligente: remueve [dev], [DEV], dev_, dev- al inicio
                 string cleanedName = Regex.Replace(originalJobName, @"^\[dev\]|^\[DEV\]|^dev_|^dev-", "", RegexOptions.IgnoreCase).Trim();
 
-                // CORRECCIÓN: Los tres ambientes sugieren exactamente el mismo nombre limpio por defecto
                 stagedJobs.Add(new
                 {
                     fileKey = fileKey,
@@ -75,11 +81,11 @@ namespace NotebookValidator.Web.Controllers
                     originalJobName = originalJobName,
                     suggestedDevName = cleanedName,
                     suggestedCertName = cleanedName,
-                    suggestedProdName = cleanedName
+                    suggestedProdName = cleanedName,
+                    isYaml = (ext == ".yml" || ext == ".yaml")
                 });
             }
 
-            // Persistir los configs globales en TempData para la fase de descarga final
             TempData["JobAnalysisToken"] = token;
             TempData["CertSparkConfGlobal"] = certSparkConf ?? "";
             TempData["ProdSparkConfGlobal"] = prodSparkConf ?? "";
@@ -87,9 +93,17 @@ namespace NotebookValidator.Web.Controllers
             return Json(new { success = true, token = token, jobs = stagedJobs });
         }
 
-        // FASE 3: Aplica los nombres confirmados por el usuario, corre el servicio y descarga el ZIP
         [HttpPost]
-        public async Task<IActionResult> DownloadPackage(List<string> fileKeys, List<string> devNames, List<string> certNames, List<string> prodNames)
+        public async Task<IActionResult> DownloadPackage(
+            List<string> fileKeys,
+            List<string> devNames,
+            List<string> certNames,
+            List<string> prodNames,
+            List<string> permLevels,
+            List<string> permUsers,
+            List<string> devAutocert,    // NUEVO: Recepción de flags booleanos mapeados desde la vista
+            List<string> certAutocert,   // NUEVO: Recepción de flags booleanos mapeados desde la vista
+            List<string> prodAutocert)   // NUEVO: Recepción de flags booleanos mapeados desde la vista
         {
             string token = TempData.Peek("JobAnalysisToken")?.ToString();
             if (string.IsNullOrEmpty(token)) return BadRequest("La sesión de configuración de Jobs ha expirado.");
@@ -112,29 +126,41 @@ namespace NotebookValidator.Web.Controllers
                         {
                             string fileKey = fileKeys[i];
                             string filePath = Path.Combine(cacheFolder, fileKey);
-
                             if (!System.IO.File.Exists(filePath)) continue;
 
-                            string rawJson = await System.IO.File.ReadAllTextAsync(filePath);
+                            string rawContent = await System.IO.File.ReadAllTextAsync(filePath);
+                            bool isYaml = fileKey.EndsWith(".yml") || fileKey.EndsWith(".yaml");
 
-                            // 1. Invocar tu servicio original para obtener las transformaciones base de rutas y storage
-                            var envConfigs = _transformationService.GenerateEnvironmentConfigs(rawJson, certSparkConf, prodSparkConf);
+                            if (isYaml)
+                            {
+                                // Inyección de los valores individuales de Autocert seleccionados por el usuario
+                                bool dAuto = (devAutocert != null && devAutocert.Count > i) && devAutocert[i] == "true";
+                                bool cAuto = (certAutocert != null && certAutocert.Count > i) && certAutocert[i] == "true";
+                                bool pAuto = (prodAutocert != null && prodAutocert.Count > i) && prodAutocert[i] == "true";
 
-                            // 2. Modificar dinámicamente la propiedad raíz "name" del JSON con las confirmaciones del formulario
-                            string devJsonFinal = regexNameReplace.Replace(envConfigs["Desarrollo.json"], $"\"name\": \"{devNames[i]}\"", 1);
-                            string certJsonFinal = regexNameReplace.Replace(envConfigs["Certificacion.json"], $"\"name\": \"{certNames[i]}\"", 1);
-                            string prodJsonFinal = regexNameReplace.Replace(envConfigs["Produccion.json"], $"\"name\": \"{prodNames[i]}\"", 1);
+                                var bundleConfigs = _transformationService.GenerateBundleConfigs(rawContent, devNames[i], permLevels, permUsers, dAuto, cAuto, pAuto);
 
-                            // 3. Crear estructura de carpetas organizadas dentro del ZIP usando el nombre asignado a cada ambiente
-                            WriteZipEntry(archive, $"Desarrollo/{devNames[i].Replace(" ", "_")}.json", devJsonFinal);
-                            WriteZipEntry(archive, $"Certificacion/{certNames[i].Replace(" ", "_")}.json", certJsonFinal);
-                            WriteZipEntry(archive, $"Produccion/{prodNames[i].Replace(" ", "_")}.json", prodJsonFinal);
+                                foreach (var config in bundleConfigs)
+                                {
+                                    WriteZipEntry(archive, config.Key, config.Value);
+                                }
+                            }
+                            else
+                            {
+                                var envConfigs = _transformationService.GenerateEnvironmentConfigs(rawContent, certSparkConf, prodSparkConf);
+
+                                string devJsonFinal = regexNameReplace.Replace(envConfigs["Desarrollo.json"], $"\"name\": \"{devNames[i]}\"", 1);
+                                string certJsonFinal = regexNameReplace.Replace(envConfigs["Certificacion.json"], $"\"name\": \"{certNames[i]}\"", 1);
+                                string prodJsonFinal = regexNameReplace.Replace(envConfigs["Produccion.json"], $"\"name\": \"{prodNames[i]}\"", 1);
+
+                                WriteZipEntry(archive, $"Desarrollo/{devNames[i].Replace(" ", "_")}.json", devJsonFinal);
+                                WriteZipEntry(archive, $"Certificacion/{certNames[i].Replace(" ", "_")}.json", certJsonFinal);
+                                WriteZipEntry(archive, $"Produccion/{prodNames[i].Replace(" ", "_")}.json", prodJsonFinal);
+                            }
                         }
                     }
 
-                    // Limpieza de caché
-                    Directory.Delete(cacheFolder, true);
-
+                    if (Directory.Exists(cacheFolder)) Directory.Delete(cacheFolder, true);
                     return File(memoryStream.ToArray(), "application/zip", $"Pipeline_Jobs_BCI_{DateTime.Now:yyyyMMdd}.zip");
                 }
             }

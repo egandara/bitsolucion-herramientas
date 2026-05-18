@@ -2,113 +2,178 @@
     ViewData["Title"] = "Generador de Jobs Multi-Ambiente";
 }
 
-<div class="mb-4">
-    <h1 class="h2 fw-bold mb-1" style="font-family: 'Poppins', sans-serif; color: #fff;">Generador de Jobs Multi-Ambiente</h1>
-    <p class="mb-0 small" style="color: var(--medium-text);">Transforma, parametriza y limpia las cabeceras de tus configuraciones de tareas para Databricks en bloque.</p>
+<style>
+    /* COMPRESIÓN AGRESIVA ESTILO SIDEBOX: Mantiene la densidad técnica de información */
+    nav a, aside a, [class*="sidebar"] a, .nav-sidebar a, .main-sidebar a, .nav-link {
+        padding-top: 0.18rem !important;
+        padding-bottom: 0.18rem !important;
+        font-size: 0.8rem !important;
+        line-height: 1.2 !important;
+    }
+
+    nav li, aside li, [class*="sidebar"] li, .nav-sidebar li, .nav-item {
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+    }
+
+    .custom-placeholder::placeholder {
+        color: rgba(255, 255, 255, 0.35) !important;
+        opacity: 1 !important;
+    }
+
+    #staging-table th {
+        background-color: var(--dark-navy) !important;
+        color: #fff !important;
+        font-size: 0.82rem;
+        padding: 6px;
+    }
+
+    #staging-table td {
+        background-color: #ffffff !important;
+        padding: 5px;
+    }
+
+    .perm-table th {
+        background-color: #161b22 !important;
+        color: rgba(255,255,255,0.7) !important;
+        font-size: 0.75rem;
+        padding: 4px;
+    }
+
+    .perm-table td {
+        background-color: #0b0d16 !important;
+        padding: 3px;
+        border-color: rgba(255,255,255,0.05) !important;
+    }
+</style>
+
+<div class="mb-3">
+    <h1 class="h3 fw-bold mb-1" style="font-family: 'Poppins', sans-serif; color: #fff; font-size: 1.8rem;">Generador de Jobs Multi-Ambiente</h1>
+    <p class="mb-0 small text-white-50" style="font-size: 0.85rem;">Transforma, parametriza y limpia configuraciones de tareas para Databricks (JSON Tradicional y Asset Bundles YAML) en lote.</p>
 </div>
 
-<div id="panel-fase1" class="row g-4">
+<div id="panel-fase1" class="row g-3">
     <div class="col-12 col-lg-6">
-        <div class="card p-4 border-0 h-100" style="background-color: #0b0d16; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2);">
-            <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="card p-3 border-0 h-100" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.2);">
+            <div class="d-flex justify-content-between align-items-center mb-2">
                 <div class="d-flex align-items-center gap-2">
-                    <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 24px; height: 24px; font-size: 0.8rem;">1</div>
-                    <h5 class="card-title fw-bold text-white mb-0" style="font-family: 'Poppins', sans-serif;">Carga en lote de Jobs (Dev)</h5>
+                    <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 22px; height: 22px; font-size: 0.75rem;">1</div>
+                    <h6 class="card-title fw-bold text-white mb-0" style="font-family: 'Poppins', sans-serif; font-size: 0.95rem;">Carga en lote de Jobs (Dev)</h6>
                 </div>
-                <button id="clear-jobs-btn" class="btn btn-sm btn-outline-secondary" style="display: none; border-radius: 6px;">Limpiar Cola</button>
+                <button id="clear-jobs-btn" class="btn btn-xs btn-outline-secondary" style="display: none; border-radius: 4px; font-size: 0.7rem; padding: 2px 6px;">Limpiar Cola</button>
             </div>
 
-            <div id="job-drop-zone" class="gemini-drop-zone my-3 p-5" style="border: 2px dashed rgba(255,255,255,0.1); border-radius: 10px; cursor: pointer;">
+            <div id="job-drop-zone" class="gemini-drop-zone my-2 p-4 text-center" style="border: 2px dashed rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer; background: rgba(255,255,255,0.01);">
                 <div>
-                    <i class="bi bi-filetype-json fs-1 mb-2 d-block" style="opacity: 0.3; color: #fff;"></i>
-                    <label for="job-file-upload" class="btn btn-sm btn-secondary px-3" style="cursor: pointer; border-radius: 6px;">
-                        <span>Elegir Archivos JSON</span>
-                        <input id="job-file-upload" type="file" class="d-none" accept=".json" multiple>
+                    <i class="bi bi-folder-symlink fs-2 mb-1 d-block style_icon" style="opacity: 0.4; color: #ffc107;"></i>
+                    <label for="job-file-upload" class="btn btn-xs btn-secondary px-3" style="cursor: pointer; border-radius: 4px; font-size: 0.75rem;">
+                        <span>Elegir Archivos JSON / YAML</span>
+                        <input id="job-file-upload" type="file" class="d-none" accept=".json,.yml,.yaml" multiple>
                     </label>
-                    <p class="mt-2 small mb-0" style="color: var(--medium-text);">o arrastra tus estructuras JSON aquí</p>
+                    <p class="mt-1 small mb-0 text-white-50" style="font-size: 0.75rem;">o arrastra tus estructuras aquí</p>
                 </div>
             </div>
 
-            <div id="job-file-list" class="mb-3"></div>
+            <div id="job-file-list" class="mb-2 font-monospace" style="font-size: 0.75rem;"></div>
 
-            <button type="button" id="btnProcesarFase1" class="btn btn-primary w-100 py-2.5 fw-bold mt-auto" style="border-radius: 8px;" disabled>
+            <button type="button" id="btnProcesarFase1" class="btn btn-warning w-100 py-2 fw-bold mt-auto" style="border-radius: 6px; font-size: 0.85rem;" disabled>
                 <span id="spinner-fase1" class="spinner-border spinner-border-sm me-2 d-none"></span>
-                <i class="bi bi-arrow-right-circle me-2"></i>Procesar y Revisar Nombres
+                <i class="bi bi-arrow-right-circle me-1"></i>Procesar y Confirmar Gobernanza
             </button>
         </div>
     </div>
 
-    <div class="col-12 col-lg-6">
-        <div class="card p-4 border-0 h-100" style="background-color: #0b0d16; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); display: flex; flex-direction: column;">
-            <div class="d-flex align-items-center gap-2 mb-3">
-                <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 24px; height: 24px; font-size: 0.8rem;">2</div>
-                <h5 class="card-title fw-bold text-white mb-0" style="font-family: 'Poppins', sans-serif;">Spark Configurations de Destino</h5>
+    <div class="col-12 col-lg-6 d-flex flex-column gap-3">
+        <div class="card p-3 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.2);">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 22px; height: 22px; font-size: 0.75rem;">2</div>
+                <h6 class="card-title fw-bold text-white mb-0" style="font-family: 'Poppins', sans-serif; font-size: 0.95rem;">Spark Configurations de Destino (Solo JSON)</h6>
             </div>
 
-            <div class="mb-3">
+            <div class="mb-2">
                 <div class="d-flex justify-content-between align-items-center">
-                    <label class="form-label font-monospace small" style="color: rgba(255,255,255,0.7);">Spark Config (Certificación)</label>
-                    <span id="badge-json-cert" class="badge font-monospace mb-1 bg-secondary text-white-50" style="font-size: 0.65rem;">Vacío / Opcional</span>
+                    <label class="form-label font-monospace small mb-1" style="color: rgba(255,255,255,0.7); font-size: 0.72rem;">Spark Config (Certificación)</label>
+                    <span id="badge-json-cert" class="badge font-monospace mb-1 bg-secondary text-white-50" style="font-size: 0.6rem;">Vacío / Opcional</span>
                 </div>
-                <textarea class="form-control font-monospace small text-white custom-placeholder json-linter-input" id="globalCertSpark" rows="4"
-                          placeholder='{
-  "spark.hadoop.fs.azure.account.oauth2.client.secret": "{{secrets/qa_secret}}",
-  "spark.master": "local[*, 4]"
-}' style="background-color: #172a45; border-color: #233554; transition: border-color 0.2s;"></textarea>
+                <textarea class="form-control font-monospace small text-white custom-placeholder json-linter-input" id="globalCertSpark" rows="2" placeholder='{"spark.master": "local[*, 4]"}' style="background-color: #172a45; border-color: #233554; font-size: 0.72rem; border-radius: 4px;"></textarea>
             </div>
 
-            <div class="mb-3">
+            <div class="mb-1">
                 <div class="d-flex justify-content-between align-items-center">
-                    <label class="form-label font-monospace small" style="color: rgba(255,255,255,0.7);">Spark Config (Producción)</label>
-                    <span id="badge-json-prod" class="badge font-monospace mb-1 bg-secondary text-white-50" style="font-size: 0.65rem;">Vacío / Opcional</span>
+                    <label class="form-label font-monospace small mb-1" style="color: rgba(255,255,255,0.7); font-size: 0.72rem;">Spark Config (Producción)</label>
+                    <span id="badge-json-prod" class="badge font-monospace mb-1 bg-secondary text-white-50" style="font-size: 0.6rem;">Vacío / Opcional</span>
                 </div>
-                <textarea class="form-control font-monospace small text-white custom-placeholder json-linter-input" id="globalProdSpark" rows="4"
-                          placeholder='{
-  "spark.hadoop.fs.azure.account.oauth2.client.secret": "{{secrets/prod_secret}}",
-  "spark.databricks.cluster.profile": "serverless"
-}' style="background-color: #172a45; border-color: #233554; transition: border-color 0.2s;"></textarea>
+                <textarea class="form-control font-monospace small text-white custom-placeholder json-linter-input" id="globalProdSpark" rows="2" placeholder='{"spark.databricks.cluster.profile": "serverless"}' style="background-color: #172a45; border-color: #233554; font-size: 0.72rem; border-radius: 4px;"></textarea>
+            </div>
+        </div>
+
+        <div class="card p-3 border-0 flex-grow-1" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); display: flex; flex-direction: column;">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 22px; height: 22px; font-size: 0.75rem;">3</div>
+                <h6 class="card-title fw-bold text-white mb-0" style="font-family: 'Poppins', sans-serif; font-size: 0.95rem;">Gobernanza de Permisos (Solo YAML Bundles)</h6>
             </div>
 
-            <div class="p-3 rounded-3 mt-auto border border-secondary border-opacity-10" style="background-color: rgba(0,0,0,0.15);">
-                <span class="small font-weight-bold text-warning font-monospace d-block mb-1.5"><i class="bi bi-shield-check me-1"></i>Reglas del Motor de Transformación Activas:</span>
-                <ul class="m-0 p-0 list-unstyled d-flex flex-column gap-1 small text-secondary" style="font-size: 0.78rem;">
-                    <li><span class="text-success me-1">✓</span> Reemplazo automático de parámetros de entorno de <code class="text-info">dsr_</code> a <code class="text-info">crt_ / prd_</code>.</li>
-                    <li><span class="text-success me-1">✓</span> Re-mapeo del Storage Corporativo: <code class="text-white-50">bcirg2dlssbx ➔ dev / prd</code>.</li>
-                    <li><span class="text-success me-1">✓</span> Re-direccionamiento de Git Repos: de <code class="text-white-50">/Repos/Develop/</code> a carpetas operativas de producción.</li>
-                </ul>
+            <div class="table-responsive flex-grow-1" style="max-height: 120px; overflow-y: auto;">
+                <table class="table perm-table align-middle m-0" id="permissions-table">
+                    <thead>
+                        <tr>
+                            <th>Nivel de Acceso</th>
+                            <th>Usuario / Grupo Corporativo BCI</th>
+                            <th style="width: 40px; text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="permissions-tbody">
+                        <tr>
+                            <td>
+                                <select class="form-select form-select-sm font-monospace py-0 bg-dark text-white border-secondary" style="font-size: 0.72rem; height: 24px;">
+                                    <option value="CAN_MANAGE" selected>Can Manage</option>
+                                    <option value="IS_OWNER">Is Owner</option>
+                                    <option value="CAN_MANAGE_RUN">Can Manage Run</option>
+                                    <option value="CAN_VIEW">Can View</option>
+                                </select>
+                            </td>
+                            <td><input type="text" class="form-control form-control-sm font-monospace py-0 bg-dark text-white border-secondary" value="mcordof@bci.cl" style="font-size: 0.72rem; height: 24px;" /></td>
+                            <td class="text-center"><button type="button" class="btn btn-xs btn-outline-danger py-0" onclick="$(this).closest('tr').remove()" style="height: 22px; line-height: 1;">&times;</button></td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
+            <button type="button" class="btn btn-xs btn-outline-warning mt-2 ms-auto" id="add-permission-row" style="font-size: 0.7rem; padding: 2px 8px; border-radius: 4px;"><i class="bi bi-plus-circle me-1"></i>Añadir Permiso</button>
         </div>
     </div>
 </div>
 
-<div id="panel-fase2" class="mt-4 d-none" style="animation: fadeIn 0.4s ease-in-out;">
-    <form asp-action="DownloadPackage" method="post">
-        <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3 border-bottom border-secondary border-opacity-10 pb-3">
+<div id="panel-fase2" class="mt-3 d-none" style="animation: fadeIn 0.3s ease-in-out;">
+    <form asp-action="DownloadPackage" method="post" id="package-form">
+        <div id="hidden-permissions-container"></div>
+
+        <div class="card p-3 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2 border-bottom border-secondary border-opacity-10 pb-2">
                 <div>
-                    <h4 class="h5 fw-bold text-warning mb-1" style="font-family: 'Poppins', sans-serif;"><i class="bi bi-shield-fill-exclamation me-2"></i>Fase de Confirmación de Gobernanza</h4>
-                    <p class="mb-0 small text-secondary">Asegura y modifica libremente los nombres de cada Job. Removimos automáticamente los prefijos de desarrollo.</p>
+                    <h5 class="fw-bold text-warning mb-0" style="font-family: 'Poppins', sans-serif; font-size: 1.1rem;"><i class="bi bi-shield-fill-exclamation me-2"></i>Fase de Confirmación de Nombres</h5>
+                    <p class="mb-0 small text-white-50" style="font-size: 0.75rem;">Modifica o confirma el nombre comercial del Job. Los prefijos e impurezas se limpian de manera automática.</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="button" id="btnVolverFase1" class="btn btn-sm btn-outline-secondary px-3" style="border-radius: 6px;">Modificar Carga</button>
-                    <button type="submit" class="btn btn-sm btn-success px-4 fw-bold d-flex align-items-center gap-1.5" style="border-radius: 6px;">
-                        <i class="bi bi-cloud-arrow-down-fill"></i> Confirmar y Descargar ZIP
+                    <button type="button" id="btnVolverFase1" class="btn btn-sm btn-outline-secondary px-3" style="border-radius: 4px; font-size: 0.75rem;">Modificar Carga</button>
+                    <button type="submit" class="btn btn-sm btn-success px-4 fw-bold d-flex align-items-center gap-1" style="border-radius: 4px; font-size: 0.8rem;">
+                        <i class="bi bi-cloud-arrow-down-fill"></i> Descargar Estructuras ZIP
                     </button>
                 </div>
             </div>
 
             <div class="table-responsive">
-                <table class="table align-middle m-0" id="staging-table">
+                <table class="table align-middle m-0 font-monospace" id="staging-table" style="font-size: 0.75rem;">
                     <thead>
                         <tr>
-                            <th style="color: #ffffff !important; font-weight: 600;">Archivo Original</th>
-                            <th style="color: #ffffff !important; font-weight: 600; width: 28%;">Nombre Desarrollo (Limpio)</th>
-                            <th style="color: #ffffff !important; font-weight: 600; width: 28%;">Nombre Certificación</th>
-                            <th style="color: #ffffff !important; font-weight: 600; width: 28%;">Nombre Producción</th>
+                            <th>Archivo Cargado</th>
+                            <th style="width: 28%;">Nombre Desarrollo (Limpio)</th>
+                            <th style="width: 28%;">Nombre Certificación</th>
+                            <th style="width: 28%;">Nombre Producción</th>
                         </tr>
                     </thead>
-                    <tbody id="staging-tbody">
-                    </tbody>
+                    <tbody id="staging-tbody"></tbody>
                 </table>
             </div>
         </div>
@@ -127,41 +192,38 @@
             let jobStore = new DataTransfer();
             let jsonConfigsValid = true;
 
-            // --- NUEVO VALIDADOR E INTERCEPTOR SINTÁCTICO DE ARCHIVO COMPLETO ---
-            const validateFileJsonStructure = (file) => {
+            const validateFileStructure = (file) => {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = function(e) {
-                        try {
-                            JSON.parse(e.target.result); // Intenta parsear la estructura completa
-                            resolve(); // Sintaxis perfecta
-                        } catch (err) {
-                            reject(err); // Estructura rota (falta llave, comas, etc.)
+                        const text = e.target.result;
+                        if (file.name.endsWith('.json')) {
+                            try { JSON.parse(text); resolve(); }
+                            catch (err) { reject(new Error("Faltan llaves, comillas o comas finales.")); }
+                        } else {
+                            if (text.includes('resources:') || text.includes('tasks:')) { resolve(); }
+                            else { reject(new Error("No se detectó una cabecera de recursos válida de Databricks.")); }
                         }
                     };
-                    reader.onerror = () => reject(new Error("Error físico de lectura de archivo."));
+                    reader.onerror = () => reject(new Error("Error físico de lectura."));
                     reader.readAsText(file);
                 });
             };
 
-            // Convertido a asíncrono para evaluar de forma elástica archivo por archivo en caliente
             const handleFiles = async (files) => {
-                btnProcesarFase1.disabled = true; // Bloqueo preventivo en procesamiento de hilos
-
+                btnProcesarFase1.disabled = true;
                 for (const file of files) {
-                    if (!file.name.endsWith('.json')) {
-                        toastr.warning(`El archivo ${file.name} fue omitido. Solo se admiten archivos estructurados .json`);
+                    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+                    if (ext !== '.json' && ext !== '.yml' && ext !== '.yaml') {
+                        toastr.warning(`Archivo ${file.name} omitido. Formatos válidos: .json, .yml, .yaml`);
                         continue;
                     }
 
                     try {
-                        // Invoca la validación estructural antes de ingresar el archivo a la cola
-                        await validateFileJsonStructure(file);
+                        await validateFileStructure(file);
                         jobStore.items.add(file);
                     } catch (error) {
-                        // Ataja el fallo sintáctico sin romper la cola ni colapsar la página
-                        toastr.error(`❌ Estructura Corrupta en "${file.name}": El archivo completo no es un JSON válido. Verifique que no falte la llave final de cierre '}' o alguna comilla.`);
-                        console.error("JSON Lint Error: ", error);
+                        toastr.error(`❌ Estructura Inválida en "${file.name}": ${error.message}`);
                     }
                 }
                 renderJobList();
@@ -170,10 +232,7 @@
             if(fileUpload) fileUpload.addEventListener('change', (e) => handleFiles(e.target.files));
             if(dropZone) {
                 dropZone.addEventListener('dragover', (e) => e.preventDefault());
-                dropZone.addEventListener('drop', (e) => {
-                    e.preventDefault();
-                    handleFiles(e.dataTransfer.files);
-                });
+                dropZone.addEventListener('drop', (e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); });
             }
 
             function renderJobList() {
@@ -183,17 +242,14 @@
 
                 if (jobStore.files.length > 0) {
                     const list = document.createElement('ul');
-                    list.className = 'list-group';
-
+                    list.className = 'list-group m-0 p-0';
                     Array.from(jobStore.files).forEach((file, index) => {
                         const listItem = document.createElement('li');
-                        listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
-                        listItem.style.color = 'var(--light-text)';
-                        listItem.style.backgroundColor = 'var(--dark-navy)';
+                        listItem.className = 'list-group-item d-flex justify-content-between align-items-center py-1 px-2 border-secondary bg-dark text-white-50';
                         listItem.textContent = file.name;
 
                         const removeBtn = document.createElement('button');
-                        removeBtn.className = 'btn btn-danger btn-sm';
+                        removeBtn.className = 'btn btn-danger btn-xs py-0 px-1';
                         removeBtn.innerHTML = '&times;';
                         removeBtn.type = 'button';
                         removeBtn.onclick = () => {
@@ -202,7 +258,6 @@
                             jobStore = newFiles;
                             renderJobList();
                         };
-
                         listItem.appendChild(removeBtn);
                         list.appendChild(listItem);
                     });
@@ -212,7 +267,7 @@
                 }
             }
 
-            if(clearJobsBtn) {
+            if (clearJobsBtn) {
                 clearJobsBtn.addEventListener('click', () => {
                     jobStore = new DataTransfer();
                     fileUpload.value = '';
@@ -220,7 +275,22 @@
                 });
             }
 
-            // Linter de texto para los textareas laterales
+            document.getElementById('add-permission-row').addEventListener('click', function() {
+                const rowHtml = `<tr>
+                    <td>
+                        <select class="form-select form-select-sm font-monospace py-0 bg-dark text-white border-secondary" style="font-size: 0.72rem; height: 24px;">
+                            <option value="CAN_MANAGE" selected>Can Manage</option>
+                            <option value="IS_OWNER">Is Owner</option>
+                            <option value="CAN_MANAGE_RUN">Can Manage Run</option>
+                            <option value="CAN_VIEW">Can View</option>
+                        </select>
+                    </td>
+                    <td><input type="text" class="form-control form-control-sm font-monospace py-0 bg-dark text-white border-secondary" placeholder="usuario@bci.cl o grupo" style="font-size: 0.72rem; height: 24px;" /></td>
+                    <td class="text-center"><button type="button" class="btn btn-xs btn-outline-danger py-0" onclick="$(this).closest('tr').remove()" style="height: 22px; line-height: 1;">&times;</button></td>
+                </tr>`;
+                $('#permissions-tbody').append(rowHtml);
+            });
+
             function validateJsonInput(textareaId, badgeId) {
                 const txtArea = document.getElementById(textareaId);
                 const badge = document.getElementById(badgeId);
@@ -232,7 +302,6 @@
                     txtArea.style.borderColor = "#233554";
                     return true;
                 }
-
                 try {
                     JSON.parse(val);
                     badge.className = "badge font-monospace bg-success text-white";
@@ -250,21 +319,12 @@
             function evalProcesarBtnState() {
                 const isCertValid = validateJsonInput('globalCertSpark', 'badge-json-cert');
                 const isProdValid = validateJsonInput('globalProdSpark', 'badge-json-prod');
-
                 jsonConfigsValid = isCertValid && isProdValid;
-
-                if (jobStore.files.length > 0 && jsonConfigsValid) {
-                    btnProcesarFase1.disabled = false;
-                } else {
-                    btnProcesarFase1.disabled = true;
-                }
+                btnProcesarFase1.disabled = !(jobStore.files.length > 0 && jsonConfigsValid);
             }
 
-            $('.json-linter-input').on('input', function() {
-                evalProcesarBtnState();
-            });
+            $('.json-linter-input').on('input', function() { evalProcesarBtnState(); });
 
-            // ENLACE ASÍNCRONO FASE 1 -> FASE 2
             $('#btnProcesarFase1').on('click', function(e) {
                 e.preventDefault();
                 if (!jsonConfigsValid) return;
@@ -286,38 +346,84 @@
                     success: function(response) {
                         $('#spinner-fase1').addClass('d-none');
                         btnProcesarFase1.disabled = false;
-
                         if (response.success) {
                             $('#staging-tbody').empty();
-
                             response.jobs.forEach((job, index) => {
-                                var rowHtml = `
-                                    <tr data-row-idx="${index}" data-suggested-name="${job.suggestedDevName}">
-                                        <td class="small fw-bold text-wrap" style="color: var(--dark-navy) !important; max-width:180px;">
-                                            <div class="d-flex align-items-center justify-content-between">
-                                                <span><i class="bi bi-file-code text-secondary me-1"></i>${job.originalFileName}</span>
-                                                <button type="button" class="btn btn-xs btn-outline-secondary btn-reset-row ms-2" title="Restablecer nombre sugerido base">
-                                                    <i class="bi bi-arrow-counterclockwise"></i>
-                                                </button>
-                                            </div>
-                                            <input type="hidden" name="fileKeys" value="${job.fileKey}" />
-                                        </td>
-                                        <td>
-                                            <input type="text" name="devNames" class="form-control form-control-sm font-monospace fw-bold text-white bg-dark border-secondary dev-name-input" value="${job.suggestedDevName}" />
-                                        </td>
-                                        <td>
-                                            <input type="text" name="certNames" class="form-control form-control-sm font-monospace fw-bold text-white bg-dark border-secondary cert-name-input" value="${job.suggestedCertName}" />
-                                        </td>
-                                        <td>
-                                            <input type="text" name="prodNames" class="form-control form-control-sm font-monospace fw-bold text-white bg-dark border-secondary prod-name-input" value="${job.suggestedProdName}" />
-                                        </td>
-                                    </tr>`;
+                                var badgeType = job.isYaml ? '<span class="badge bg-warning text-dark me-1" style="font-size:0.6rem;">YAML BUNDLE</span>' : '<span class="badge bg-info text-dark me-1" style="font-size:0.6rem;">JSON PLANO</span>';
+
+                                // MEJORA INTERACTIVA: Si el archivo es YAML, reemplaza la caja de texto muerta de Cert y Prod por selectores en caliente para flagAutocertificacion
+                                var rowHtml = '';
+                                if (job.isYaml) {
+                                    rowHtml = `
+                                        <tr data-row-idx="${index}" data-suggested-name="${job.suggestedDevName}">
+                                            <td class="small fw-bold text-wrap" style="color: var(--dark-navy) !important; max-width:180px; padding: 4px;">
+                                                <div class="d-flex align-items-center justify-content-between">
+                                                    <span>${badgeType}${job.originalFileName}</span>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary btn-reset-row ms-2" title="Restablecer" style="padding:0px 4px; font-size:0.65rem;"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                                </div>
+                                                <input type="hidden" name="fileKeys" value="${job.fileKey}" />
+                                            </td>
+                                            <td>
+                                                <input type="text" name="devNames" class="form-control form-control-sm font-monospace fw-bold text-white bg-dark border-secondary dev-name-input" value="${job.suggestedDevName}" style="font-size:0.72rem; height:24px; padding:2px;" />
+                                                <div class="d-flex align-items-center gap-1 mt-1">
+                                                    <span class="text-white-50" style="font-size:0.65rem;">Autocert:</span>
+                                                    <select name="devAutocert" class="form-select form-select-sm font-monospace bg-dark text-white border-secondary py-0" style="font-size:0.65rem; height:20px; width:70px; padding:0 2px;">
+                                                        <option value="true">true</option>
+                                                        <option value="false" selected>false</option>
+                                                    </select>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input type="text" name="certNames" class="form-control form-control-sm font-monospace fw-bold text-white bg-dark border-secondary cert-name-input text-white-50" value="${job.suggestedCertName}" readonly style="opacity:0.4; font-size:0.72rem; height:24px; padding:2px;" />
+                                                <div class="d-flex align-items-center gap-1 mt-1">
+                                                    <span class="text-white-50" style="font-size:0.65rem;">Autocert:</span>
+                                                    <select name="certAutocert" class="form-select form-select-sm font-monospace bg-dark text-white border-secondary py-0" style="font-size:0.65rem; height:20px; width:70px; padding:0 2px;">
+                                                        <option value="true">true</option>
+                                                        <option value="false" selected>false</option>
+                                                    </select>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input type="text" name="prodNames" class="form-control form-control-sm font-monospace fw-bold text-white bg-dark border-secondary prod-name-input text-white-50" value="${job.suggestedProdName}" readonly style="opacity:0.4; font-size:0.72rem; height:24px; padding:2px;" />
+                                                <div class="d-flex align-items-center gap-1 mt-1">
+                                                    <span class="text-white-50" style="font-size:0.65rem;">Autocert:</span>
+                                                    <select name="prodAutocert" class="form-select form-select-sm font-monospace bg-dark text-white border-secondary py-0" style="font-size:0.65rem; height:20px; width:70px; padding:0 2px;">
+                                                        <option value="true">true</option>
+                                                        <option value="false" selected>false</option>
+                                                    </select>
+                                                </div>
+                                            </td>
+                                        </tr>`;
+                                } else {
+                                    rowHtml = `
+                                        <tr data-row-idx="${index}" data-suggested-name="${job.suggestedDevName}">
+                                            <td class="small fw-bold text-wrap" style="color: var(--dark-navy) !important; max-width:180px; padding: 4px;">
+                                                <div class="d-flex align-items-center justify-content-between">
+                                                    <span>${badgeType}${job.originalFileName}</span>
+                                                    <button type="button" class="btn btn-xs btn-outline-secondary btn-reset-row ms-2" title="Restablecer" style="padding:0px 4px; font-size:0.65rem;"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                                </div>
+                                                <input type="hidden" name="fileKeys" value="${job.fileKey}" />
+                                            </td>
+                                            <td>
+                                                <input type="text" name="devNames" class="form-control form-control-sm font-monospace fw-bold text-white bg-dark border-secondary dev-name-input" value="${job.suggestedDevName}" style="font-size:0.72rem; height:24px; padding:2px;" />
+                                                <input type="hidden" name="devAutocert" value="false" />
+                                            </td>
+                                            <td>
+                                                <input type="text" name="certNames" class="form-control form-control-sm font-monospace fw-bold text-white bg-dark border-secondary cert-name-input" value="${job.suggestedCertName}" style="font-size:0.72rem; height:24px; padding:2px;" />
+                                                <input type="hidden" name="certAutocert" value="false" />
+                                            </td>
+                                            <td>
+                                                <input type="text" name="prodNames" class="form-control form-control-sm font-monospace fw-bold text-white bg-dark border-secondary prod-name-input" value="${job.suggestedProdName}" style="font-size:0.72rem; height:24px; padding:2px;" />
+                                                <input type="hidden" name="prodAutocert" value="false" />
+                                            </td>
+                                        </tr>`;
+                                }
                                 $('#staging-tbody').append(rowHtml);
                             });
 
                             $('#panel-fase1').addClass('d-none');
                             $('#panel-fase2').removeClass('d-none');
-                            toastr.success('Jobs analizados. Modifica o confirma los nombres.');
+                            toastr.success('Jobs analizados correctamente.');
                         } else {
                             toastr.error(response.message);
                         }
@@ -330,24 +436,21 @@
                 });
             });
 
-            // Evento de Espejo Inteligente
             $(document).on('input', '.dev-name-input', function() {
                 var parentRow = $(this).closest('tr');
                 var currentVal = $(this).val();
-                parentRow.find('.cert-name-input').val(currentVal);
-                parentRow.find('.prod-name-input').val(currentVal);
+                if(parentRow.find('.cert-name-input').attr('readonly') === undefined) {
+                    parentRow.find('.cert-name-input').val(currentVal);
+                    parentRow.find('.prod-name-input').val(currentVal);
+                }
             });
 
-            // Lógica interactiva del botón Smart Reset por fila
             $(document).on('click', '.btn-reset-row', function() {
                 var parentRow = $(this).closest('tr');
                 var baseSuggestedName = parentRow.data('suggested-name');
-
                 parentRow.find('.dev-name-input').val(baseSuggestedName);
                 parentRow.find('.cert-name-input').val(baseSuggestedName);
                 parentRow.find('.prod-name-input').val(baseSuggestedName);
-
-                toastr.info('Valores de la fila restaurados al patrón original.');
             });
 
             $('#btnVolverFase1').on('click', function() {
@@ -355,15 +458,20 @@
                 $('#panel-fase1').removeClass('d-none');
             });
 
-            var inlineScrollStyles = `
-                .custom-placeholder::placeholder {
-                    color: rgba(255, 255, 255, 0.45) !important;
-                    opacity: 1 !important;
-                }
-                #staging-table th { background-color: var(--dark-navy) !important; }
-                #staging-table td { background-color: #ffffff !important; }
-            `;
-            $('<style>').text(inlineScrollStyles).appendTo('head');
+            $('#package-form').on('submit', function() {
+                const hiddenContainer = document.getElementById('hidden-permissions-container');
+                hiddenContainer.innerHTML = '';
+
+                $('#permissions-tbody tr').each(function() {
+                    const level = $(this).find('select').val();
+                    const user = $(this).find('input').val().trim();
+                    if(user) {
+                        $(hiddenContainer).append(`<input type="hidden" name="permLevels" value="${level}" />`);
+                        $(hiddenContainer).append(`<input type="hidden" name="permUsers" value="${user}" />`);
+                    }
+                });
+                return true;
+            });
         });
     </script>
 }
