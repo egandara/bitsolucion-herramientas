@@ -1,0 +1,293 @@
+@{
+	ViewData["Title"] = "Generador de Documentación";
+}
+
+<div class="mb-4">
+	<h1 class="h2 fw-bold mb-1" style="font-family: 'Poppins', sans-serif; color: #fff;">Documentador Técnico de Notebooks</h1>
+	<p class="mb-0 small" style="color: var(--medium-text);">Genera fichas técnicas automáticas en formato Markdown (.md) y Microsoft Word (.doc) libres de costos de tokens de Inteligencia Artificial.</p>
+</div>
+
+<div id="panel-carga" class="row g-4 mb-4">
+    <div class="col-12 col-lg-10 offset-lg-1 col-xl-8 offset-xl-2">
+        <div class="card p-0 border-0 overflow-hidden" style="background-color: #0b0d16; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);">
+
+            <div class="row g-0">
+                <div class="col-md-7 p-4 p-lg-5">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="bi bi-file-earmark-medical text-warning fs-5"></i>
+                        <h5 class="fw-bold text-white mb-0" style="font-family: 'Poppins', sans-serif;">Cargar Fuentes de Datos</h5>
+                    </div>
+
+                    <div id="doc-drop-zone" class="gemini-drop-zone my-3 p-5 text-center" style="border: 2px dashed rgba(255,255,255,0.1); border-radius: 10px; cursor: pointer; transition: all 0.3s ease;">
+                        <div>
+                            <i class="bi bi-cloud-arrow-up-fill fs-1 mb-2 d-block" style="color: #ffc107; opacity: 0.8;"></i>
+                            <label for="doc-file-upload" class="btn btn-sm btn-outline-light px-4 mt-2" style="cursor: pointer; border-radius: 6px;">
+                                <span>Explorar Archivos</span>
+                                <input id="doc-file-upload" type="file" class="d-none" accept=".ipynb,.py" multiple>
+                            </label>
+                            <p class="mt-3 small mb-0" style="color: var(--medium-text);">o arrastra tus notebooks (.ipynb, .py) aquí</p>
+                        </div>
+                    </div>
+
+                    <div id="doc-file-list" class="mb-0"></div>
+                </div>
+
+                <div class="col-md-5 p-4 p-lg-5 d-flex flex-column justify-content-center" style="background-color: rgba(255,255,255,0.02); border-left: 1px solid rgba(255,255,255,0.05);">
+                    <h6 class="text-warning fw-bold mb-4" style="letter-spacing: 0.5px;">
+                        <i class="bi bi-cpu-fill me-2"></i>CAPACIDADES DEL MOTOR
+                    </h6>
+
+                    <ul class="list-unstyled text-white-50 small mb-0" style="line-height: 1.8;">
+                        <li class="mb-3 d-flex align-items-start">
+                            <i class="bi bi-check-circle-fill text-success me-3 mt-1"></i>
+                            <div>
+                                <strong class="text-white opacity-75 d-block">Jerarquía Estructural</strong>
+                                Mapea títulos preservando su indentación.
+                            </div>
+                        </li>
+                        <li class="mb-3 d-flex align-items-start">
+                            <i class="bi bi-check-circle-fill text-success me-3 mt-1"></i>
+                            <div>
+                                <strong class="text-white opacity-75 d-block">Inventario de Dependencias</strong>
+                                Detecta importaciones y paquetes Python.
+                            </div>
+                        </li>
+                        <li class="mb-3 d-flex align-items-start">
+                            <i class="bi bi-check-circle-fill text-success me-3 mt-1"></i>
+                            <div>
+                                <strong class="text-white opacity-75 d-block">Estructuras Volátiles</strong>
+                                Escanea Dataframes alojados en memoria.
+                            </div>
+                        </li>
+                        <li class="mb-3 d-flex align-items-start">
+                            <i class="bi bi-check-circle-fill text-success me-3 mt-1"></i>
+                            <div>
+                                <strong class="text-white opacity-75 d-block">Álgebra de Conjuntos</strong>
+                                Discrimina tablas de Entrada y Salida reales.
+                            </div>
+                        </li>
+                        <li class="d-flex align-items-start">
+                            <i class="bi bi-check-circle-fill text-success me-3 mt-1"></i>
+                            <div>
+                                <strong class="text-white opacity-75 d-block">Linaje de Datos CRUD</strong>
+                                Extrae DML/DDL y esquemas de campos limpios.
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="p-4 p-lg-5 pt-0 mt-2">
+                <button type="button" id="btnProcesarDocs" class="btn btn-primary w-100 py-3 fw-bold shadow-sm" style="border-radius: 8px; font-size: 1.05rem;" disabled>
+                    <span id="spinner-docs" class="spinner-border spinner-border-sm me-2 d-none"></span>
+                    <i class="bi bi-journal-check me-2"></i>Escanear e Inyectar Fichas
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div id="panel-resultados" class="row g-4 d-none" style="animation: fadeIn 0.4s ease-in-out;">
+	<div class="col-12 col-md-4">
+		<div class="card p-3 border-0" style="background-color: #0b0d16; border-radius: 12px; max-height: 500px; overflow-y:auto;">
+			<div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary border-opacity-10 pb-2">
+				<span class="small font-monospace text-white-50 fw-bold">Archivos Analizados</span>
+				<button type="button" id="btnVolverCarga" class="btn btn-xs btn-outline-secondary px-2 py-1" style="font-size:0.7rem;">Nueva Carga</button>
+			</div>
+			<div class="d-flex flex-column gap-2" id="doc-sidebar-menu"></div>
+		</div>
+	</div>
+
+	<div class="col-12 col-md-8">
+		<div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 12px; display: flex; flex-direction: column; height: 500px;">
+			<div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary border-opacity-10 pb-2">
+				<h5 class="fw-bold text-warning mb-0 font-monospace small" id="active-doc-title">Ficha_Tecnica.md</h5>
+				<div class="d-flex gap-2">
+					<button type="button" id="btnDownloadWord" class="btn btn-sm btn-primary px-3 d-flex align-items-center gap-1.5" style="border-radius: 6px; font-size:0.8rem; font-weight: 600;">
+						<i class="bi bi-file-earmark-word-fill"></i> Exportar a Word
+					</button>
+					<button type="button" id="btnCopyClipboard" class="btn btn-sm btn-success px-3 d-flex align-items-center gap-1.5" style="border-radius: 6px; font-size:0.8rem; font-weight: 600;">
+						<i class="bi bi-clipboard-check"></i> Copiar Markdown
+					</button>
+				</div>
+			</div>
+			<div class="flex-grow-1">
+				<textarea id="markdown-viewer-textarea" class="form-control h-100 font-monospace text-white small p-3" readonly
+						  style="background-color: #112240; border-color: #233554; resize: none; color: #E6F1FF !important;"></textarea>
+			</div>
+		</div>
+	</div>
+</div>
+
+<form id="hiddenWordForm" method="post" action="/DocGen/DownloadWordPackage" style="display:none;">
+	<input type="hidden" name="fileName" id="wordFileName" />
+	<input type="hidden" name="htmlContent" id="wordHtmlContent" />
+</form>
+
+@section Scripts {
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+			const fileUpload = document.getElementById('doc-file-upload');
+			const dropZone = document.getElementById('doc-drop-zone');
+			const fileListContainer = document.getElementById('doc-file-list');
+			const btnProcesarDocs = document.getElementById('btnProcesarDocs');
+
+			let docStore = new DataTransfer();
+			let documentCache = [];
+
+			const handleFiles = (files) => {
+				for (const file of files) {
+					if (file.name.endsWith('.ipynb') || file.name.endsWith('.py')) {
+						docStore.items.add(file);
+					} else {
+						toastr.warning(`El formato del archivo ${file.name} no es soportado.`);
+					}
+				}
+				renderFileList();
+			};
+
+			if(fileUpload) fileUpload.addEventListener('change', (e) => handleFiles(e.target.files));
+			if(dropZone) {
+				dropZone.addEventListener('dragover', (e) => e.preventDefault());
+				dropZone.addEventListener('drop', (e) => {
+					e.preventDefault();
+					handleFiles(e.dataTransfer.files);
+				});
+			}
+
+			function renderFileList() {
+				fileListContainer.innerHTML = '';
+				btnProcesarDocs.disabled = true;
+
+				if (docStore.files.length > 0) {
+					const list = document.createElement('ul');
+					list.className = 'list-group';
+
+					Array.from(docStore.files).forEach((file, index) => {
+						const listItem = document.createElement('li');
+						listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+						listItem.style.color = 'var(--light-text)';
+						listItem.style.backgroundColor = 'var(--dark-navy)';
+						listItem.textContent = file.name;
+
+						const removeBtn = document.createElement('button');
+						removeBtn.className = 'btn btn-danger btn-sm';
+						removeBtn.innerHTML = '&times;';
+						removeBtn.type = 'button';
+						removeBtn.onclick = () => {
+							const newFiles = new DataTransfer();
+							Array.from(docStore.files).forEach((f, i) => { if (i !== index) newFiles.items.add(f); });
+							docStore = newFiles;
+							renderFileList();
+						};
+
+						listItem.appendChild(removeBtn);
+						list.appendChild(listItem);
+					});
+					fileListContainer.appendChild(list);
+					btnProcesarDocs.disabled = false;
+				}
+			}
+
+			$('#btnProcesarDocs').on('click', function() {
+				var ajaxData = new FormData();
+				Array.from(docStore.files).forEach(file => { ajaxData.append('files', file); });
+
+				$('#spinner-docs').removeClass('d-none');
+				btnProcesarDocs.disabled = true;
+
+				$.ajax({
+					url: '/DocGen/ProcessNotebooks',
+					type: 'POST',
+					data: ajaxData,
+					processData: false,
+					contentType: false,
+					success: function(response) {
+						$('#spinner-docs').addClass('d-none');
+						btnProcesarDocs.disabled = false;
+
+						if (response.success && response.documents.length > 0) {
+							documentCache = response.documents;
+							$('#doc-sidebar-menu').empty();
+
+							documentCache.forEach((doc, idx) => {
+								var activeClass = idx === 0 ? 'border-warning text-warning bg-warning bg-opacity-10' : 'text-white-50 border-secondary border-opacity-10';
+								var navItem = `<div class="p-2.5 rounded-3 border font-monospace sidebar-doc-link cursor-pointer small ${activeClass}" data-idx="${idx}" style="font-size:0.78rem; transition:all 0.2s;">
+									<i class="bi bi-markdown-fill me-1.5"></i>${doc.fileName}
+								</div>`;
+								$('#doc-sidebar-menu').append(navItem);
+							});
+
+							displayDocument(0);
+
+							$('#panel-carga').addClass('d-none');
+							$('#panel-resultados').removeClass('d-none');
+							toastr.success('Fichas de gobernanza inyectadas en consola.');
+						} else {
+							toastr.error(response.message || 'No se pudo extraer métricas de los archivos.');
+						}
+					},
+					error: function() {
+						$('#spinner-docs').addClass('d-none');
+						btnProcesarDocs.disabled = false;
+						toastr.error('Error de red al procesar el linaje estructural.');
+					}
+				});
+			});
+
+			function displayDocument(idx) {
+				var doc = documentCache[idx];
+				if (!doc) return;
+				$('#active-doc-title').text(`Ficha_${doc.cleanName}.md`);
+				$('#markdown-viewer-textarea').val(doc.markdown);
+				$('.sidebar-doc-link').removeClass('border-warning text-warning bg-warning bg-opacity-10').addClass('text-white-50 border-secondary border-opacity-10');
+				$(`.sidebar-doc-link[data-idx="${idx}"]`).removeClass('text-white-50 border-opacity-10').addClass('border-warning text-warning bg-warning bg-opacity-10');
+			}
+
+			$(document).on('click', '.sidebar-doc-link', function() {
+				var idx = $(this).data('idx');
+				displayDocument(idx);
+			});
+
+			$('#btnCopyClipboard').on('click', function() {
+				var textToCopy = $('#markdown-viewer-textarea').val();
+				if(!textToCopy) return;
+
+				navigator.clipboard.writeText(textToCopy).then(function() {
+					toastr.info('Estructura Markdown copiada al portapapeles corporativo.');
+				}, function() {
+					toastr.error('No se pudo acceder al portapapeles.');
+				});
+			});
+
+			// ACCIÓN DESCARGA WORD ASÍNCRONA VIA HIDDEN FORM
+			$('#btnDownloadWord').on('click', function() {
+				var activeLink = $('.sidebar-doc-link.text-warning');
+				var idx = activeLink.length > 0 ? activeLink.data('idx') : 0;
+				var doc = documentCache[idx];
+
+				if (!doc) {
+					toastr.warning('No hay un documento activo seleccionado.');
+					return;
+				}
+
+				$('#wordFileName').val(doc.cleanName);
+				$('#wordHtmlContent').val(doc.html);
+				$('#hiddenWordForm').submit();
+
+				toastr.success(`Descargando Ficha_Tecnica_${doc.cleanName}.doc`);
+			});
+
+			$('#btnVolverCarga').on('click', function() {
+				docStore = new DataTransfer();
+				fileUpload.value = '';
+				$('#doc-file-list').empty();
+				btnProcesarDocs.disabled = true;
+
+				$('#panel-resultados').addClass('d-none');
+				$('#panel-carga').removeClass('d-none');
+			});
+		});
+	</script>
+}

@@ -39,7 +39,84 @@ namespace NotebookValidator.Web.Controllers
             _auditService = auditService;
         }
 
-        public IActionResult Index() => View();
+        [HttpGet]
+        public async Task<IActionResult> Index()
+        {
+            string userEmail = User.Identity?.Name;
+            if (!string.IsNullOrEmpty(userEmail))
+            {
+                var preference = await _context.UserDashboardPreferences
+                    .FirstOrDefaultAsync(p => p.UserEmail == userEmail);
+
+                ViewBag.UserLayout = preference?.LayoutJson;
+            }
+
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveDashboardLayout([FromBody] DashboardLayoutDto model)
+        {
+            if (model == null || string.IsNullOrEmpty(model.LayoutJson))
+                return Json(new { success = false, message = "Datos nulos o inválidos." });
+
+            string userEmail = User.Identity?.Name;
+            if (string.IsNullOrEmpty(userEmail)) return Json(new { success = false, message = "Sesión inválida." });
+
+            try
+            {
+                var preference = await _context.UserDashboardPreferences
+                    .FirstOrDefaultAsync(p => p.UserEmail == userEmail);
+
+                if (preference == null)
+                {
+                    _context.UserDashboardPreferences.Add(new UserDashboardPreference
+                    {
+                        UserEmail = userEmail,
+                        LayoutJson = model.LayoutJson,
+                        LastUpdated = DateTime.Now
+                    });
+                }
+                else
+                {
+                    preference.LayoutJson = model.LayoutJson;
+                    preference.LastUpdated = DateTime.Now;
+                    _context.UserDashboardPreferences.Update(preference);
+                }
+
+                await _context.SaveChangesAsync();
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ResetDashboardLayout()
+        {
+            string userEmail = User.Identity?.Name;
+            if (string.IsNullOrEmpty(userEmail)) return Json(new { success = false, message = "Sesión inválida." });
+
+            try
+            {
+                var preference = await _context.UserDashboardPreferences
+                    .FirstOrDefaultAsync(p => p.UserEmail == userEmail);
+
+                if (preference != null)
+                {
+                    _context.UserDashboardPreferences.Remove(preference);
+                    await _context.SaveChangesAsync();
+                }
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
         public IActionResult Validador() => View();
 
         public async Task<IActionResult> History()
@@ -114,7 +191,6 @@ namespace NotebookValidator.Web.Controllers
             user.AnalysisQuota -= processedCount;
             await _userManager.UpdateAsync(user);
 
-            // 1. Guardar el Análisis Completo (Como estaba antes)
             var run = new AnalysisRun
             {
                 UserId = user.Id,
@@ -125,14 +201,11 @@ namespace NotebookValidator.Web.Controllers
             };
 
             _context.AnalysisRuns.Add(run);
-            await _context.SaveChangesAsync(); // Guardamos para obtener el ID generado
+            await _context.SaveChangesAsync();
 
-            // --- NUEVO: INTEGRACIÓN DE ESTADÍSTICAS PRE-CALCULADAS ---
-            // Creamos el resumen ligero usando el nuevo método del servicio
             var summary = _validatorService.CreateSummary(allFindings, run.Id, run.AnalysisTimestamp);
             _context.AnalysisSummaries.Add(summary);
             await _context.SaveChangesAsync();
-            // ---------------------------------------------------------
 
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
             var auditDetails = new { Modulo = "Validador", Accion = "Análisis", Hallazgos = allFindings.Count, RunId = run.Id };
@@ -204,5 +277,10 @@ namespace NotebookValidator.Web.Controllers
                 return Json(new { success = false, message = "Error al guardar en el maestro: " + ex.Message });
             }
         }
+    }
+
+    public class DashboardLayoutDto
+    {
+        public string LayoutJson { get; set; }
     }
 }

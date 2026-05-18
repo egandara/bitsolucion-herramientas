@@ -17,5 +17,8 @@ namespace NotebookValidator.Web.Data
         public DbSet<AllowedParameter> AllowedParameters { get; set; }
         public DbSet<ValidationRule> ValidationRules { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
+
+        // NUEVA TABLA PARA PREFERENCIAS DE DASHBOARD
+        public DbSet<UserDashboardPreference> UserDashboardPreferences { get; set; }
     }
 }

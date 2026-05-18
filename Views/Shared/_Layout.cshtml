@@ -1,424 +1,421 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Bit Solución</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>@ViewData["Title"] - Bit Solución</title>
 
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+	<link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+	<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet" />
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+	<link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 
-    <style>
-        /* ==========================================================================
-                   SOBREELESCRITURA ESTÁTICA DE ANCHOS (SOPORTE PREMIUM PARA SITE.CSS)
-                   ========================================================================== */
-        :root {
-            --sidebar-width: 295px !important; /* Espacio extendido perfecto anti-recortes */
-            --topbar-height: 70px !important;
-        }
+	<style>
+			/* ==========================================================================
+					   SOBREELESCRITURA ESTÁTICA DE ANCHOS (SOPORTE PREMIUM PARA SITE.CSS)
+					   ========================================================================== */
+			:root {
+				--sidebar-width: 295px !important;
+				--topbar-height: 70px !important;
+			}
 
-        html, body {
-            height: 100% !important;
-            margin: 0 !important;
-            background-color: #0f111a !important;
-            overflow-x: hidden !important;
-        }
+			html, body {
+				height: 100% !important;
+				margin: 0 !important;
+				background-color: #0f111a !important;
+				overflow-x: hidden !important;
+			}
 
-        /* BARRA LATERAL CONTENIDA */
-        .sidebar {
-            width: var(--sidebar-width) !important;
-            background-color: #0b0d16 !important;
-            border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
-            display: flex !important;
-            flex-direction: column !important;
-            overflow-y: hidden !important; /* Mantiene bloqueado el scroll del contenedor general */
-            overflow-x: hidden !important;
-            height: 100vh !important;
-        }
+			/* BARRA LATERAL CONTENIDA */
+			.sidebar {
+				width: var(--sidebar-width) !important;
+				background-color: #0b0d16 !important;
+				border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+				display: flex !important;
+				flex-direction: column !important;
+				overflow-y: hidden !important;
+				overflow-x: hidden !important;
+				height: 100vh !important;
+			}
 
-        /* Cabecera del Logo Ampliada y Convertida en Flex-Column para el Badge */
-        .sidebar-brand {
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: center !important;
-            align-items: center !important;
-            padding: 1.2rem 1.2rem 0.8rem !important;
-            height: 95px !important; /* Incrementado para albergar limpiamente el indicador de entorno */
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
-            background-color: #0b0d16 !important;
-            flex-shrink: 0 !important;
-            z-index: 10 !important;
-        }
+			.sidebar-brand {
+				display: flex !important;
+				flex-direction: column !important;
+				justify-content: center !important;
+				align-items: center !important;
+				padding: 1.2rem 1.2rem 0.8rem !important;
+				height: 95px !important;
+				border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
+				background-color: #0b0d16 !important;
+				flex-shrink: 0 !important;
+				z-index: 10 !important;
+			}
 
-        /* SCROLL EXCLUSIVO PARA LAS OPCIONES DEL MENÚ */
-        .sidebar-nav {
-            overflow-y: auto !important;
-            overflow-x: hidden !important;
-            flex-grow: 1 !important;
-            padding: 0 0.75rem !important;
-        }
+			.sidebar-nav {
+				overflow-y: auto !important;
+				overflow-x: hidden !important;
+				flex-grow: 1 !important;
+				padding: 0 0.75rem !important;
+			}
 
-            .sidebar-nav .nav {
-                gap: 4px !important;
-            }
+				.sidebar-nav .nav {
+					gap: 4px !important;
+				}
 
-            /* DISEÑO DE ENLACES CON AIRE PREMIUM */
-            .sidebar-nav .nav-link {
-                color: rgba(255, 255, 255, 0.6) !important;
-                border-left: 4px solid transparent !important;
-                padding: 0.75rem 1.2rem !important;
-                border-radius: 8px !important;
-                font-weight: 500 !important;
-                transition: all 0.2s ease !important;
-                display: flex !important;
-                align-items: center !important;
-                background-color: transparent !important;
-                text-decoration: none;
-                margin-bottom: 0 !important;
-                white-space: nowrap !important;
-            }
+				.sidebar-nav .nav-link {
+					color: rgba(255, 255, 255, 0.6) !important;
+					border-left: 4px solid transparent !important;
+					padding: 0.75rem 1.2rem !important;
+					border-radius: 8px !important;
+					font-weight: 500 !important;
+					transition: all 0.2s ease !important;
+					display: flex !important;
+					align-items: center !important;
+					background-color: transparent !important;
+					text-decoration: none;
+					margin-bottom: 0 !important;
+					white-space: nowrap !important;
+				}
 
-                /* SUGE RENCIA 2: Transición de desplazamiento suave en el icono en Hover */
-                .sidebar-nav .nav-link i,
-                .sidebar-nav .nav-link i.bi {
-                    font-size: 1.15rem !important;
-                    margin-right: 0.85rem !important;
-                    width: 20px !important;
-                    text-align: center !important;
-                    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important; /* Animación fluida */
-                }
+					.sidebar-nav .nav-link i,
+					.sidebar-nav .nav-link i.bi {
+						font-size: 1.15rem !important;
+						margin-right: 0.85rem !important;
+						width: 20px !important;
+						text-align: center !important;
+						transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+					}
 
-                .sidebar-nav .nav-link:hover {
-                    color: #fff !important;
-                    background-color: rgba(255, 255, 255, 0.04) !important;
-                }
+					.sidebar-nav .nav-link:hover {
+						color: #fff !important;
+						background-color: rgba(255, 255, 255, 0.04) !important;
+					}
 
-                    /* Empuje sutil hacia la derecha al pasar el cursor */
-                    .sidebar-nav .nav-link:hover i,
-                    .sidebar-nav .nav-link:hover i.bi {
-                        transform: translateX(3px) !important;
-                    }
+						.sidebar-nav .nav-link:hover i,
+						.sidebar-nav .nav-link:hover i.bi {
+							transform: translateX(3px) !important;
+						}
 
-                .sidebar-nav .nav-link.active {
-                    color: #fff !important;
-                    background-color: rgba(255, 193, 7, 0.08) !important;
-                    border-left: 4px solid #ffc107 !important;
-                    font-weight: 600 !important;
-                }
+					.sidebar-nav .nav-link.active {
+						color: #fff !important;
+						background-color: rgba(255, 193, 7, 0.08) !important;
+						border-left: 4px solid #ffc107 !important;
+						font-weight: 600 !important;
+					}
 
-                    .sidebar-nav .nav-link.active i,
-                    .sidebar-nav .nav-link.active i.bi {
-                        color: #ffc107 !important;
-                    }
+						.sidebar-nav .nav-link.active i,
+						.sidebar-nav .nav-link.active i.bi {
+							color: #ffc107 !important;
+						}
 
-        /* Encabezados de categorías estilizadas */
-        .nav-header-custom {
-            font-size: 0.68rem !important;
-            letter-spacing: 1.6px !important;
-            font-weight: 700 !important;
-            color: rgba(255, 255, 255, 0.28) !important;
-            padding: 1.6rem 1.2rem 0.5rem !important;
-            text-transform: uppercase !important;
-            white-space: nowrap;
-        }
+			.nav-header-custom {
+				font-size: 0.68rem !important;
+				letter-spacing: 1.6px !important;
+				font-weight: 700 !important;
+				color: rgba(255, 255, 255, 0.28) !important;
+				padding: 1.6rem 1.2rem 0.5rem !important;
+				text-transform: uppercase !important;
+				white-space: nowrap;
+			}
 
-            .nav-header-custom:first-child {
-                padding-top: 0.8rem !important;
-            }
+				.nav-header-custom:first-child {
+					padding-top: 0.8rem !important;
+				}
 
-        /* Rotación sutil del chevron de administración */
-        .sidebar-nav .nav-link[aria-expanded="true"] .transition-icon {
-            transform: rotate(180deg) !important;
-            color: #ffc107 !important;
-        }
+			.sidebar-nav .nav-link[aria-expanded="true"] .transition-icon {
+				transform: rotate(180deg) !important;
+				color: #ffc107 !important;
+			}
 
-        .transition-icon {
-            transition: transform 0.2s ease !important;
-        }
+			.transition-icon {
+				transition: transform 0.2s ease !important;
+			}
 
-        .sidebar-nav .collapse .nav-link {
-            border-left: none !important;
-            padding: 0.6rem 1.2rem 0.6rem 2.5rem !important;
-            color: rgba(255, 255, 255, 0.48) !important;
-            font-size: 0.88rem !important;
-        }
+			.sidebar-nav .collapse .nav-link {
+				border-left: none !important;
+				padding: 0.6rem 1.2rem 0.6rem 2.5rem !important;
+				color: rgba(255, 255, 255, 0.48) !important;
+				font-size: 0.88rem !important;
+			}
 
-        .logo-full {
-            display: block !important;
-            height: 38px;
-        }
+			.logo-full {
+				display: block !important;
+				height: 38px;
+			}
 
-        /* Contenedor principal elástico */
-        .main-content {
-            background-color: #0f111a !important;
-            min-width: 0;
-        }
+			.main-content {
+				background-color: #0f111a !important;
+				min-width: 0;
+			}
 
-        .top-bar {
-            background-color: #0f111a !important;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
-            height: 70px !important;
-        }
+			.top-bar {
+				background-color: #0f111a !important;
+				border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
+				height: 70px !important;
+			}
 
-        /* ==========================================================================
-                   SUGERENCIA 3: SCROLLBAR FANTASMA INTELIGENTE (SOLO VISIBLE EN HOVER)
-                   ========================================================================== */
-        .sidebar-nav::-webkit-scrollbar {
-            width: 5px !important;
-        }
+			/* SCROLLBAR FANTASMA INTELIGENTE */
+			.sidebar-nav::-webkit-scrollbar {
+				width: 5px !important;
+			}
 
-        .sidebar-nav::-webkit-scrollbar-track {
-            background: transparent !important;
-        }
+			.sidebar-nav::-webkit-scrollbar-track {
+				background: transparent !important;
+			}
 
-        .sidebar-nav::-webkit-scrollbar-thumb {
-            background: transparent !important; /* Invisible por defecto */
-            border-radius: 10px !important;
-            transition: background 0.3s ease !important;
-        }
+			.sidebar-nav::-webkit-scrollbar-thumb {
+				background: transparent !important;
+				border-radius: 10px !important;
+				transition: background 0.3s ease !important;
+			}
 
-        /* Se activa únicamente cuando el usuario pasa el mouse sobre la barra lateral */
-        .sidebar:hover .sidebar-nav::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.08) !important;
-        }
+			.sidebar:hover .sidebar-nav::-webkit-scrollbar-thumb {
+				background: rgba(255, 255, 255, 0.08) !important;
+			}
 
-            .sidebar:hover .sidebar-nav::-webkit-scrollbar-thumb:hover {
-                background: rgba(255, 193, 7, 0.25) !important;
-            }
-    </style>
+				.sidebar:hover .sidebar-nav::-webkit-scrollbar-thumb:hover {
+					background: rgba(255, 193, 7, 0.25) !important;
+				}
+	</style>
 
-    @RenderSection("Styles", required: false)
+	@RenderSection("Styles", required: false)
 </head>
 <body>
-    @{
-        var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
-        var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+	@{
+		var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+		var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
 
-        var isHomePage = currentController == "Home" && currentAction == "Index";
+		var isHomePage = currentController == "Home" && currentAction == "Index";
+		var isAdminActive = currentController == "AdminDashboard" ||
+		currentController == "Admin" ||
+		currentController == "ValidationRuleAdmin" ||
+		currentController == "AuditLog" ||
+		currentController == "ParameterAdmin" ||
+		currentController == "FunctionsAdmin";
 
-        var isAdminActive = currentController == "AdminDashboard" ||
-        currentController == "Admin" ||
-        currentController == "ValidationRuleAdmin" ||
-        currentController == "AuditLog" ||
-        currentController == "ParameterAdmin" ||
-        currentController == "FunctionsAdmin";
+		var buildDate = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+	}
 
-        var buildDate = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
-    }
+	<div class="main-wrapper">
+		<aside class="sidebar">
+			<div class="sidebar-brand">
+				<a class="d-flex align-items-center justify-content-center w-100 mb-1" asp-controller="Home" asp-action="Index">
+					<img src="~/img/Bit-solucion-logo-menu.png" alt="Bit Solución Logo" class="logo-full" />
+				</a>
 
-    <div class="main-wrapper">
-        <aside class="sidebar">
-            <div class="sidebar-brand">
-                <a class="d-flex align-items-center justify-content-center w-100 mb-1" asp-controller="Home" asp-action="Index">
-                    <img src="~/img/Bit-solucion-logo-menu.png" alt="Bit Solución Logo" class="logo-full" />
-                </a>
+				<div class="environment-badge text-uppercase text-center text-white-50 font-monospace" style="font-size: 0.62rem; letter-spacing: 1.5px; opacity: 0.7;">
+					@if (Context.Request.Host.Host.Contains("localhost") || Context.Request.Host.Host.Contains("127.0.0.1"))
+					{
+						<span style="color: #ffc107;"><i class="bi bi-lightning-fill me-1"></i>Entorno: Local</span>
+					}
+					else
+					{
+						<span style="color: #0ddb78;"><i class="bi bi-shield-fill-check me-1"></i>Entorno: Cloud</span>
+					}
+				</div>
+			</div>
 
-                <div class="environment-badge text-uppercase text-center text-white-50 font-monospace" style="font-size: 0.62rem; letter-spacing: 1.5px; opacity: 0.7;">
-                    @if (Context.Request.Host.Host.Contains("localhost") || Context.Request.Host.Host.Contains("127.0.0.1"))
-                    {
-                        <span style="color: #ffc107;"><i class="bi bi-lightning-fill me-1"></i>Entorno: Local</span>
-                    }
-                    else
-                    {
-                        <span style="color: #0ddb78;"><i class="bi bi-shield-fill-check me-1"></i>Entorno: Cloud</span>
-                    }
-                </div>
-            </div>
+			<nav class="sidebar-nav mt-3">
+				<ul class="nav flex-column">
+					<li class="nav-header-custom">General</li>
+					<li class="nav-item">
+						<a class="nav-link @(isHomePage ? "active" : "")" asp-controller="Home" asp-action="Index">
+							<i class="bi bi-house-door"></i> <span>Inicio</span>
+						</a>
+					</li>
 
-            <nav class="sidebar-nav mt-3">
-                <ul class="nav flex-column">
-                    <li class="nav-header-custom">General</li>
-                    <li class="nav-item">
-                        <a class="nav-link @(isHomePage ? "active" : "")" asp-controller="Home" asp-action="Index">
-                            <i class="bi bi-house-door"></i> <span>Inicio</span>
-                        </a>
-                    </li>
+					<li><hr class="border-secondary opacity-10 my-2 mx-3"></li>
 
-                    <li><hr class="border-secondary opacity-10 my-2 mx-3"></li>
+					<li class="nav-header-custom">Motor de Validación</li>
 
-                    <li class="nav-header-custom">Motor de Validación</li>
+					@if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+					{
+						<li class="nav-item">
+							<a class="nav-link @(currentController == "Home" && currentAction == "Validador" ? "active" : "")" asp-controller="Home" asp-action="Validador">
+								<i class="bi bi-journal-code"></i> <span>Validador de Notebooks</span>
+							</a>
+						</li>
+					}
 
-                    @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "Home" && currentAction == "Validador" ? "active" : "")" asp-controller="Home" asp-action="Validador">
-                                <i class="bi bi-journal-code"></i> <span>Validador de Notebooks</span>
-                            </a>
-                        </li>
-                    }
+					@if (User.IsInRole("Admin") || User.IsInRole("ParameterValidatorUser"))
+					{
+						<li class="nav-item">
+							<a class="nav-link @(currentController == "ParameterValidator" ? "active" : "")" asp-controller="ParameterValidator" asp-action="Index">
+								<i class="bi bi-filetype-py"></i> <span>Validador de Parámetros</span>
+							</a>
+						</li>
+					}
 
-                    @if (User.IsInRole("Admin") || User.IsInRole("ParameterValidatorUser"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "ParameterValidator" ? "active" : "")" asp-controller="ParameterValidator" asp-action="Index">
-                                <i class="bi bi-filetype-py"></i> <span>Validador de Parámetros</span>
-                            </a>
-                        </li>
-                    }
+					@if (User.IsInRole("Admin"))
+					{
+						<li class="nav-item">
+							<a class="nav-link @(currentController == "RegexSandbox" ? "active" : "")" asp-controller="RegexSandbox" asp-action="Index">
+								<i class="bi bi-shield-shaded"></i> <span>Sandbox de Reglas</span>
+							</a>
+						</li>
+					}
 
-                    @if (User.IsInRole("Admin"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "RegexSandbox" ? "active" : "")" asp-controller="RegexSandbox" asp-action="Index">
-                                <i class="bi bi-shield-shaded"></i> <span>Sandbox de Reglas</span>
-                            </a>
-                        </li>
-                    }
+					<li><hr class="border-secondary opacity-10 my-2 mx-3"></li>
 
-                    <li><hr class="border-secondary opacity-10 my-2 mx-3"></li>
+					<li class="nav-header-custom">Datos y Procesamiento</li>
 
-                    <li class="nav-header-custom">Datos y Procesamiento</li>
+					@if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+					{
+						<li class="nav-item">
+							<a class="nav-link @(currentController == "DataProfiling" ? "active" : "")" asp-controller="DataProfiling" asp-action="Index">
+								<i class="bi bi-bar-chart-steps"></i> <span>Perfilamiento de Datos</span>
+							</a>
+						</li>
+					}
 
-                    @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "DataProfiling" ? "active" : "")" asp-controller="DataProfiling" asp-action="Index">
-                                <i class="bi bi-bar-chart-steps"></i> <span>Perfilamiento de Datos</span>
-                            </a>
-                        </li>
-                    }
+					@if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+					{
+						<li class="nav-item">
+							<a class="nav-link @(currentController == "Cuadratura" ? "active" : "")" asp-controller="Cuadratura" asp-action="Index">
+								<i class="bi bi-table"></i> <span>Cuadratura de Datos</span>
+							</a>
+						</li>
+					}
 
-                    @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "Cuadratura" ? "active" : "")" asp-controller="Cuadratura" asp-action="Index">
-                                <i class="bi bi-table"></i> <span>Cuadratura de Datos</span>
-                            </a>
-                        </li>
-                    }
+					@if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+					{
+						<li class="nav-item">
+							<a class="nav-link @(currentController == "NotebookGenerator" ? "active" : "")" asp-controller="NotebookGenerator" asp-action="Index">
+								<i class="bi bi-file-earmark-plus"></i> <span>Generador de Notebooks</span>
+							</a>
+						</li>
+					}
 
-                    @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "NotebookGenerator" ? "active" : "")" asp-controller="NotebookGenerator" asp-action="Index">
-                                <i class="bi bi-file-earmark-plus"></i> <span>Generador de Notebooks</span>
-                            </a>
-                        </li>
-                    }
+					@if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+					{
+						<li class="nav-item">
+							<a class="nav-link @(currentController == "DocGen" ? "active" : "")" asp-controller="DocGen" asp-action="Index">
+								<i class="bi bi-journal-text"></i> <span>Documentador Técnico</span>
+							</a>
+						</li>
+					}
 
-                    <li class="nav-item">
-                        <a class="nav-link @(currentController == "JobConverter" ? "active" : "")" asp-controller="JobConverter" asp-action="Index">
-                            <i class="bi bi-wrench-adjustable-circle-fill"></i> <span>Generador de Jobs</span>
-                        </a>
-                    </li>
+					<li class="nav-item">
+						<a class="nav-link @(currentController == "JobConverter" ? "active" : "")" asp-controller="JobConverter" asp-action="Index">
+							<i class="bi bi-wrench-adjustable-circle-fill"></i> <span>Generador de Jobs</span>
+						</a>
+					</li>
 
-                    @if (User.IsInRole("Admin") || User.IsInRole("TempCleanerUser"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "TempTable" ? "active" : "")" asp-controller="TempTable" asp-action="Index">
-                                <i class="bi bi-trash3"></i> <span>Limpieza Temporal</span>
-                            </a>
-                        </li>
-                    }
+					@if (User.IsInRole("Admin") || User.IsInRole("TempCleanerUser"))
+					{
+						<li class="nav-item">
+							<a class="nav-link @(currentController == "TempTable" ? "active" : "")" asp-controller="TempTable" asp-action="Index">
+								<i class="bi bi-trash3"></i> <span>Limpieza Temporal</span>
+							</a>
+						</li>
+					}
 
-                    @if (User.IsInRole("Admin"))
-                    {
-                        <li><hr class="border-secondary opacity-10 my-2 mx-3"></li>
-                        <li class="nav-header-custom" style="color: #ffc107 !important; opacity: 0.85;">Sistema</li>
-                        <li class="nav-item">
-                            <a class="nav-link @(isAdminActive ? "active" : "text-warning fw-bold") d-flex align-items-center"
-                               data-bs-toggle="collapse" href="#adminCollapse" role="button" aria-expanded="@(isAdminActive ? "true" : "false")" aria-controls="adminCollapse">
-                                <i class="bi bi-shield-lock-fill"></i> <span>Administración</span>
-                                <i class="bi bi-chevron-down ms-auto small transition-icon"></i>
-                            </a>
-                            <div class="collapse @(isAdminActive ? "show" : "")" id="adminCollapse">
-                                <ul class="nav flex-column ms-3 mt-1 border-start border-secondary" style="border-width: 2px !important;">
-                                    <li class="nav-item">
-                                        <a class="nav-link py-2 @(currentController == "AdminDashboard" ? "active" : "")" asp-controller="AdminDashboard" asp-action="Index">
-                                            <i class="bi bi-speedometer2"></i> <span>Dashboard Global</span>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link py-2 @(currentController == "Admin" ? "active" : "")" asp-controller="Admin" asp-action="Index">
-                                            <i class="bi bi-people"></i> <span>Gestionar Usuarios</span>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link py-2 @(currentController == "ValidationRuleAdmin" ? "active" : "")" asp-controller="ValidationRuleAdmin" asp-action="Index">
-                                            <i class="bi bi-list-check"></i> <span>Reglas Validador</span>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link py-2 @(currentController == "FunctionsAdmin" ? "active" : "")" asp-controller="FunctionsAdmin" asp-action="Index">
-                                            <i class="bi bi-braces-asterisk"></i> <span>Funciones (Maestro)</span>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link py-2 @(currentController == "AuditLog" ? "active" : "")" asp-controller="AuditLog" asp-action="Index">
-                                            <i class="bi bi-shield-check"></i> <span>Log de Auditoría</span>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link py-2 @(currentController == "ParameterAdmin" ? "active" : "")" asp-controller="ParameterAdmin" asp-action="Index">
-                                            <i class="bi bi-tags-fill"></i> <span>Admin. Parámetros</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                    }
-                </ul>
-            </nav>
-        </aside>
+					@if (User.IsInRole("Admin"))
+					{
+						<li><hr class="border-secondary opacity-10 my-2 mx-3"></li>
+						<li class="nav-header-custom" style="color: #ffc107 !important; opacity: 0.85;">Sistema</li>
+						<li class="nav-item">
+							<a class="nav-link @(isAdminActive ? "active" : "text-warning fw-bold") d-flex align-items-center"
+							   data-bs-toggle="collapse" href="#adminCollapse" role="button" aria-expanded="@(isAdminActive ? "true" : "false")" aria-controls="adminCollapse">
+								<i class="bi bi-shield-lock-fill"></i> <span>Administración</span>
+								<i class="bi bi-chevron-down ms-auto small transition-icon"></i>
+							</a>
+							<div class="collapse @(isAdminActive ? "show" : "")" id="adminCollapse">
+								<ul class="nav flex-column ms-3 mt-1 border-start border-secondary" style="border-width: 2px !important;">
+									<li class="nav-item">
+										<a class="nav-link py-2 @(currentController == "AdminDashboard" ? "active" : "")" asp-controller="AdminDashboard" asp-action="Index">
+											<i class="bi bi-speedometer2"></i> <span>Dashboard Global</span>
+										</a>
+									</li>
+									<li class="nav-item">
+										<a class="nav-link py-2 @(currentController == "Admin" ? "active" : "")" asp-controller="Admin" asp-action="Index">
+											<i class="bi bi-people"></i> <span>Gestionar Usuarios</span>
+										</a>
+									</li>
+									<li class="nav-item">
+										<a class="nav-link py-2 @(currentController == "ValidationRuleAdmin" ? "active" : "")" asp-controller="ValidationRuleAdmin" asp-action="Index">
+											<i class="bi bi-list-check"></i> <span>Reglas Validador</span>
+										</a>
+									</li>
+									<li class="nav-item">
+										<a class="nav-link py-2 @(currentController == "FunctionsAdmin" ? "active" : "")" asp-controller="FunctionsAdmin" asp-action="Index">
+											<i class="bi bi-braces-asterisk"></i> <span>Funciones (Maestro)</span>
+										</a>
+									</li>
+									<li class="nav-item">
+										<a class="nav-link py-2 @(currentController == "AuditLog" ? "active" : "")" asp-controller="AuditLog" asp-action="Index">
+											<i class="bi bi-shield-check"></i> <span>Log de Auditoría</span>
+										</a>
+									</li>
+									<li class="nav-item">
+										<a class="nav-link py-2 @(currentController == "ParameterAdmin" ? "active" : "")" asp-controller="ParameterAdmin" asp-action="Index">
+											<i class="bi bi-tags-fill"></i> <span>Admin. Parámetros</span>
+										</a>
+									</li>
+								</ul>
+							</div>
+						</li>
+					}
+				</ul>
+			</nav>
+		</aside>
 
-        <main class="main-content">
-            <header class="top-bar px-4 d-flex justify-content-end align-items-center">
-                <div>
-                    <partial name="_LoginPartial" />
-                </div>
-            </header>
+		<main class="main-content">
+			<header class="top-bar px-4 d-flex justify-content-end align-items-center">
+				<div>
+					<partial name="_LoginPartial" />
+				</div>
+			</header>
 
-            <div class="content-body container-fluid py-4">
-                @RenderBody()
-            </div>
+			<div class="content-body container-fluid py-4">
+				@RenderBody()
+			</div>
 
-            <footer class="border-top py-3 mt-auto" style="border-color: rgba(255,255,255,0.05) !important; background-color: #0b0b0b;">
-                <div class="container-fluid px-4 d-flex flex-column flex-md-row justify-content-between align-items-center small">
-                    <div class="mb-1 mb-md-0 d-flex align-items-center">
-                        <span class="me-2" style="color:#FFD43B;">⚡</span>
-                        <strong style="color:#FFD43B;">Bitsolución Herramientas</strong>
-                        <span class="text-secondary ms-1">© @DateTime.Now.Year</span>
-                    </div>
-                    <div class="d-flex align-items-center" data-bs-toggle="tooltip" title="Versión completa: @VersionHelper.GetVersion() | Compilado el @buildDate">
-                        <span class="text-secondary me-2">Versión</span>
-                        <span class="px-2 py-1 rounded" style="background-color:#FFD43B; color:#000; font-family: monospace; font-weight: bold;">
-                            @{
-                                var fullVersion = VersionHelper.GetVersion();
-                                var shortVersion = fullVersion.Length > 7 ? fullVersion.Substring(0, 7) : fullVersion;
-                            }
-                            @shortVersion
-                        </span>
-                    </div>
-                </div>
-            </footer>
-        </main>
-    </div>
+			<footer class="border-top py-3 mt-auto" style="border-color: rgba(255,255,255,0.05) !important; background-color: #0b0b0b;">
+				<div class="container-fluid px-4 d-flex flex-column flex-md-row justify-content-between align-items-center small">
+					<div class="mb-1 mb-md-0 d-flex align-items-center">
+						<span class="me-2" style="color:#FFD43B;">⚡</span>
+						<strong style="color:#FFD43B;">Bitsolución Herramientas</strong>
+						<span class="text-secondary ms-1">© @DateTime.Now.Year</span>
+					</div>
+					<div class="d-flex align-items-center" data-bs-toggle="tooltip" title="Versión completa: @VersionHelper.GetVersion() | Compilado el @buildDate">
+						<span class="text-secondary me-2">Versión</span>
+						<span class="px-2 py-1 rounded" style="background-color:#FFD43B; color:#000; font-family: monospace; font-weight: bold;">
+							@{
+								var fullVersion = VersionHelper.GetVersion();
+								var shortVersion = fullVersion.Length > 7 ? fullVersion.Substring(0, 7) : fullVersion;
+							}
+							@shortVersion
+						</span>
+					</div>
+				</div>
+			</footer>
+		</main>
+	</div>
 
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <script src="~/lib/qrcode/qrcode.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
+	<script src="~/lib/jquery/dist/jquery.min.js"></script>
+	<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+	<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+	<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+	<script src="~/lib/qrcode/qrcode.min.js"></script>
+	<script src="~/js/site.js" asp-append-version="true"></script>
 
-    <script>
-        $(document).ready(function() {
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl)
-            });
-        });
-    </script>
+	<script>
+		$(document).ready(function() {
+		var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+		var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+		return new bootstrap.Tooltip(tooltipTriggerEl)
+		});
+		});
+	</script>
 
-    @await RenderSectionAsync("Scripts", required: false)
+	@await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

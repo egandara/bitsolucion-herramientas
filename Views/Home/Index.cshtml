@@ -1,5 +1,6 @@
 @{
     ViewData["Title"] = "Panel Principal";
+    string userLayoutJson = ViewBag.UserLayout ?? "null";
 }
 
 <style>
@@ -8,61 +9,129 @@
         text-align: center;
     }
 
+    /* Módulos interactivos elásticos */
     .card-module {
-        transition: all 0.3s ease;
-        cursor: pointer;
+        transition: transform 0.2s ease, border-color 0.2s ease;
+        cursor: grab;
+        position: relative;
     }
 
-        .card-module:hover {
-            transform: translateY(-5px);
-            border-color: #ffc107 !important;
-            background-color: rgba(255, 193, 7, 0.05) !important;
+        .card-module:active {
+            cursor: grabbing;
         }
-    /* Asegurar que el texto descriptivo sea visible siempre */
+
+        .card-module:hover {
+            transform: translateY(-3px);
+            border-color: #ffc107 !important;
+            background-color: rgba(255, 193, 7, 0.03) !important;
+        }
+
     .card-text {
         color: rgba(255, 255, 255, 0.7) !important;
     }
 
-    .home-card {
-        background-color: var(--card-bg, #1a1a1a);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 15px;
-        padding: 2.5rem;
-        text-align: center;
-        transition: all 0.3s ease;
-        text-decoration: none !important;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
+    /* Controles superiores flotantes de tamaño */
+    .card-actions {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        z-index: 5;
     }
 
-        .home-card:hover {
-            transform: translateY(-10px);
+    .card-module:hover .card-actions {
+        opacity: 1;
+    }
+
+    .btn-action-size {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: rgba(255,255,255,0.6);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        cursor: pointer;
+    }
+
+        .btn-action-size:hover {
+            background: #ffc107;
+            color: #000;
             border-color: #ffc107;
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
-            background-color: rgba(255, 255, 255, 0.05);
         }
 
-    .home-icon {
-        font-size: 3.5rem;
-        color: #ffc107;
-        margin-bottom: 1.5rem;
+    /* MEJORA 3: Silueta Limpia Tipo Wireframe (Oculta contenido interior al arrastrar) */
+    .sortable-ghost {
+        border: 2px dashed #ffc107 !important;
+        background-color: rgba(255, 193, 7, 0.02) !important;
+        border-radius: 15px;
     }
 
-    .card-title {
-        color: #ffffff;
-        font-size: 1.5rem;
-        font-weight: 700;
-        margin-bottom: 1rem;
+        .sortable-ghost * {
+            opacity: 0 !important;
+        }
+
+    /* CONFIGURACIÓN ULTRA-LIMPIA PARA EL BAÚL DE MÓDULOS OCULTOS (CSS Avanzado) */
+    #modules-pool .grid-item {
+        width: 100% !important;
+        max-width: 100% !important;
+        cursor: pointer;
     }
 
-    .card-text {
-        color: #b0b0b0;
-        font-size: 0.95rem;
-        line-height: 1.6;
+    #modules-pool .card-actions {
+        opacity: 1 !important;
     }
+
+    #modules-pool .btn-action-size:first-child {
+        display: none !important; /* Oculta expandir tamaño en el baúl */
+    }
+
+    #modules-pool .btn-toggle-view {
+        background: rgba(255, 193, 7, 0.1) !important;
+        color: #ffc107 !important;
+        border-color: #ffc107 !important;
+    }
+
+    #modules-pool .bi-eye-slash-fill::before {
+        content: "\f4fe"; /* Transforma el icono de ojo oculto en un signo más (+) */
+    }
+
+    #modules-pool .card-text {
+        display: none !important; /* Compacta el diseño ocultando la descripción larga */
+    }
+
+    #modules-pool .card-body {
+        padding: 1.2rem !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 15px !important;
+        text-align: left !important;
+    }
+
+    #modules-pool a {
+        pointer-events: none; /* Evita la navegación accidental al hacer clic en el baúl */
+    }
+
+    #modules-pool i.fs-1 {
+        font-size: 1.6rem !important;
+        margin-bottom: 0 !important;
+        display: inline-block !important;
+    }
+
+    #modules-pool .card-title {
+        margin-bottom: 0 !important;
+        font-size: 1.05rem !important;
+        display: inline-block !important;
+    }
+
+    #modules-pool .card-module {
+        background-color: rgba(255,255,255,0.01) !important;
+    }
+
+        #modules-pool .card-module:hover {
+            border-color: #ffc107 !important;
+            background-color: rgba(255, 193, 7, 0.05) !important;
+        }
 </style>
 
 <div class="container text-center mt-5">
@@ -76,111 +145,406 @@
             }
         }
         ¡Hola @firstName!
+        <span id="sync-indicator" class="ms-2 small text-warning d-inline-block" style="font-size: 1rem; font-weight: normal; opacity: 0; transition: opacity 0.3s ease;"></span>
     </h1>
-    <p class="lead text-light mb-5" style="opacity: 0.85;">¿Con qué módulo deseas trabajar hoy?</p>
 
-    <div class="row g-4 justify-content-center">
+    <p class="lead text-light mb-5" style="opacity: 0.85;">
+        Organiza tus módulos arrastrándolos o cambiando su tamaño.
+        <button class="btn btn-outline-warning btn-sm ms-3 px-3" data-bs-toggle="offcanvas" data-bs-target="#offcanvasModules" style="border-radius: 6px;"><i class="bi bi-grid-3x3-gap-fill me-1"></i> Gestionar Módulos</button>
+        <button id="btn-reset-layout" class="btn btn-link btn-sm text-white-50 ms-2 p-0 text-decoration-none" style="font-size: 0.9rem; vertical-align: baseline;"><i class="bi bi-arrow-counterclockwise"></i> Restablecer Layout</button>
+    </p>
+
+    <div class="row g-4 justify-content-center" id="dashboard-grid">
 
         @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
         {
-            <div class="col-md-4 col-lg-3">
-                <a asp-controller="Home" asp-action="Validador" class="text-decoration-none">
-                    <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module">
-                        <div class="card-body py-4">
-                            <i class="bi bi-journal-code text-warning fs-1 mb-3 d-block"></i>
-                            <h5 class="card-title fw-bold">Validador de Notebooks</h5>
-                            <p class="card-text small text-white-50">Analiza archivos .py e .ipynb buscando malas prácticas.</p>
-                        </div>
+            <div class="col-md-4 col-lg-3 grid-item" data-id="validador" data-size="small">
+                <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module" onclick="handlePoolCardClick(this, event)">
+                    <div class="card-actions">
+                        <button class="btn-action-size" title="Cambiar tamaño" onclick="toggleSize(this, event)"><i class="bi bi-arrows-angle-expand"></i></button>
+                        <button class="btn-action-size btn-toggle-view text-danger ms-1" title="Ocultar del panel" onclick="toggleVisibilityClick(this, event)"><i class="bi bi-eye-slash-fill"></i></button>
                     </div>
-                </a>
+                    <a asp-controller="Home" asp-action="Validador" class="text-decoration-none card-body py-4 d-block h-100">
+                        <i class="bi bi-journal-code text-warning fs-1 mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold text-white">Validador de Notebooks</h5>
+                        <p class="card-text small text-white-50">Analiza archivos .py e .ipynb buscando malas prácticas.</p>
+                    </a>
+                </div>
             </div>
         }
 
         @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
         {
-            <div class="col-md-4 col-lg-3">
-                <a asp-controller="DataProfiling" asp-action="Index" class="text-decoration-none">
-                    <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module">
-                        <div class="card-body py-4">
-                            <i class="bi bi-bar-chart-steps text-warning fs-1 mb-3 d-block"></i>
-                            <h5 class="card-title fw-bold">Perfilamiento de Datos</h5>
-                            <p class="card-text small text-white-50">Radiografía completa de archivos con detección de datos sensibles.</p>
-                        </div>
+            <div class="col-md-4 col-lg-3 grid-item" data-id="perfilamiento" data-size="small">
+                <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module" onclick="handlePoolCardClick(this, event)">
+                    <div class="card-actions">
+                        <button class="btn-action-size" title="Cambiar tamaño" onclick="toggleSize(this, event)"><i class="bi bi-arrows-angle-expand"></i></button>
+                        <button class="btn-action-size btn-toggle-view text-danger ms-1" title="Ocultar del panel" onclick="toggleVisibilityClick(this, event)"><i class="bi bi-eye-slash-fill"></i></button>
                     </div>
-                </a>
+                    <a asp-controller="DataProfiling" asp-action="Index" class="text-decoration-none card-body py-4 d-block h-100">
+                        <i class="bi bi-bar-chart-steps text-warning fs-1 mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold text-white">Perfilamiento de Datos</h5>
+                        <p class="card-text small text-white-50">Radiografía completa de archivos con detección de datos sensibles.</p>
+                    </a>
+                </div>
             </div>
         }
 
         @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
         {
-            <div class="col-md-4 col-lg-3">
-                <a asp-controller="Cuadratura" asp-action="Index" class="text-decoration-none">
-                    <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module">
-                        <div class="card-body py-4">
-                            <i class="bi bi-table text-warning fs-1 mb-3 d-block"></i>
-                            <h5 class="card-title fw-bold">Cuadratura de Datos</h5>
-                            <p class="card-text small text-white-50">Compara y concilia múltiples fuentes para asegurar consistencia y buscar diferencias.</p>
-                        </div>
+            <div class="col-md-4 col-lg-3 grid-item" data-id="cuadratura" data-size="small">
+                <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module" onclick="handlePoolCardClick(this, event)">
+                    <div class="card-actions">
+                        <button class="btn-action-size" title="Cambiar tamaño" onclick="toggleSize(this, event)"><i class="bi bi-arrows-angle-expand"></i></button>
+                        <button class="btn-action-size btn-toggle-view text-danger ms-1" title="Ocultar del panel" onclick="toggleVisibilityClick(this, event)"><i class="bi bi-eye-slash-fill"></i></button>
                     </div>
-                </a>
+                    <a asp-controller="Cuadratura" asp-action="Index" class="text-decoration-none card-body py-4 d-block h-100">
+                        <i class="bi bi-table text-warning fs-1 mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold text-white">Cuadratura de Datos</h5>
+                        <p class="card-text small text-white-50">Compara y concilia múltiples fuentes para asegurar consistencia y buscar diferencias.</p>
+                    </a>
+                </div>
             </div>
         }
 
         @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
         {
-            <div class="col-md-4 col-lg-3">
-                <a asp-controller="NotebookGenerator" asp-action="Index" class="text-decoration-none">
-                    <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module">
-                        <div class="card-body py-4">
-                            <i class="bi bi-file-earmark-plus text-warning fs-1 mb-3 d-block"></i>
-                            <h5 class="card-title fw-bold">Generador Notebooks</h5>
-                            <p class="card-text small text-white-50">Crea estructuras base de notebooks bajo estándares establecidos.</p>
-                        </div>
+            <div class="col-md-4 col-lg-3 grid-item" data-id="generador_nb" data-size="small">
+                <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module" onclick="handlePoolCardClick(this, event)">
+                    <div class="card-actions">
+                        <button class="btn-action-size" title="Cambiar tamaño" onclick="toggleSize(this, event)"><i class="bi bi-arrows-angle-expand"></i></button>
+                        <button class="btn-action-size btn-toggle-view text-danger ms-1" title="Ocultar del panel" onclick="toggleVisibilityClick(this, event)"><i class="bi bi-eye-slash-fill"></i></button>
                     </div>
-                </a>
+                    <a asp-controller="NotebookGenerator" asp-action="Index" class="text-decoration-none card-body py-4 d-block h-100">
+                        <i class="bi bi-file-earmark-plus text-warning fs-1 mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold text-white">Generador Notebooks</h5>
+                        <p class="card-text small text-white-50">Crea estructuras base de notebooks bajo estándares establecidos.</p>
+                    </a>
+                </div>
+            </div>
+        }
+
+        @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+        {
+            <div class="col-md-4 col-lg-3 grid-item" data-id="doc_gen" data-size="small">
+                <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module" onclick="handlePoolCardClick(this, event)">
+                    <div class="card-actions">
+                        <button class="btn-action-size" title="Cambiar tamaño" onclick="toggleSize(this, event)"><i class="bi bi-arrows-angle-expand"></i></button>
+                        <button class="btn-action-size btn-toggle-view text-danger ms-1" title="Ocultar del panel" onclick="toggleVisibilityClick(this, event)"><i class="bi bi-eye-slash-fill"></i></button>
+                    </div>
+                    <a asp-controller="DocGen" asp-action="Index" class="text-decoration-none card-body py-4 d-block h-100">
+                        <i class="bi bi-journal-text text-warning fs-1 mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold text-white">Documentador Técnico</h5>
+                        <p class="card-text small text-white-50">Genera fichas técnicas automáticas y linaje CRUD en Markdown y Word.</p>
+                    </a>
+                </div>
             </div>
         }
 
         @if (User.IsInRole("Admin") || User.IsInRole("ParameterValidatorUser"))
         {
-            <div class="col-md-4 col-lg-3">
-                <a asp-controller="ParameterValidator" asp-action="Index" class="text-decoration-none">
-                    <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module">
-                        <div class="card-body py-4">
-                            <i class="bi bi-filetype-py text-warning fs-1 mb-3 d-block"></i>
-                            <h5 class="card-title fw-bold">Validador Parámetros</h5>
-                            <p class="card-text small text-white-50">Verifica que los parámetros usados en los notebooks sean los permitidos.</p>
-                        </div>
+            <div class="col-md-4 col-lg-3 grid-item" data-id="validador_param" data-size="small">
+                <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module" onclick="handlePoolCardClick(this, event)">
+                    <div class="card-actions">
+                        <button class="btn-action-size" title="Cambiar tamaño" onclick="toggleSize(this, event)"><i class="bi bi-arrows-angle-expand"></i></button>
+                        <button class="btn-action-size btn-toggle-view text-danger ms-1" title="Ocultar del panel" onclick="toggleVisibilityClick(this, event)"><i class="bi bi-eye-slash-fill"></i></button>
                     </div>
-                </a>
+                    <a asp-controller="ParameterValidator" asp-action="Index" class="text-decoration-none card-body py-4 d-block h-100">
+                        <i class="bi bi-filetype-py text-warning fs-1 mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold text-white">Validador Parámetros</h5>
+                        <p class="card-text small text-white-50">Verifica que los parámetros usados en los notebooks sean los permitidos.</p>
+                    </a>
+                </div>
             </div>
         }
 
-        <div class="col-md-4 col-lg-3">
-            <a asp-controller="JobConverter" asp-action="Index" class="text-decoration-none">
-                <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module">
-                    <div class="card-body py-4">
-                        <i class="bi bi-wrench-adjustable-circle-fill text-warning fs-1 mb-3 d-block"></i>
-                        <h5 class="card-title fw-bold">Generador de Jobs</h5>
-                        <p class="card-text small text-white-50">Replica Jobs creados para ser usados en distintos ambientes.</p>
-                    </div>
+        <div class="col-md-4 col-lg-3 grid-item" data-id="jobs_gen" data-size="small">
+            <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module" onclick="handlePoolCardClick(this, event)">
+                <div class="card-actions">
+                    <button class="btn-action-size" title="Cambiar tamaño" onclick="toggleSize(this, event)"><i class="bi bi-arrows-angle-expand"></i></button>
+                    <button class="btn-action-size btn-toggle-view text-danger ms-1" title="Ocultar del panel" onclick="toggleVisibilityClick(this, event)"><i class="bi bi-eye-slash-fill"></i></button>
                 </div>
-            </a>
+                <a asp-controller="JobConverter" asp-action="Index" class="text-decoration-none card-body py-4 d-block h-100">
+                    <i class="bi bi-wrench-adjustable-circle-fill text-warning fs-1 mb-3 d-block"></i>
+                    <h5 class="card-title fw-bold text-white">Generador de Jobs</h5>
+                    <p class="card-text small text-white-50">Replica Jobs creados para ser usados en distintos ambientes.</p>
+                </a>
+            </div>
         </div>
 
         @if (User.IsInRole("Admin") || User.IsInRole("TempCleanerUser"))
         {
-            <div class="col-md-4 col-lg-3">
-                <a asp-controller="TempTable" asp-action="Index" class="text-decoration-none">
-                    <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module">
-                        <div class="card-body py-4">
-                            <i class="bi bi-trash3 text-warning fs-1 mb-3 d-block"></i>
-                            <h5 class="card-title fw-bold">Limpieza Tmp</h5>
-                            <p class="card-text small text-white-50">Gestiona, en un notebook centralizado, el borrado de todas las tablas temporales de un proceso, en el storage y en la base de datos.</p>
-                        </div>
+            <div class="col-md-4 col-lg-3 grid-item" data-id="limpieza_tmp" data-size="small">
+                <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module" onclick="handlePoolCardClick(this, event)">
+                    <div class="card-actions">
+                        <button class="btn-action-size" title="Cambiar tamaño" onclick="toggleSize(this, event)"><i class="bi bi-arrows-angle-expand"></i></button>
+                        <button class="btn-action-size btn-toggle-view text-danger ms-1" title="Ocultar del panel" onclick="toggleVisibilityClick(this, event)"><i class="bi bi-eye-slash-fill"></i></button>
                     </div>
-                </a>
+                    <a asp-controller="TempTable" asp-action="Index" class="text-decoration-none card-body py-4 d-block h-100">
+                        <i class="bi bi-trash3 text-warning fs-1 mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold text-white">Limpieza Tmp</h5>
+                        <p class="card-text small text-white-50">Gestiona, en un notebook centralizado, el borrado de todas las tablas temporales de un proceso, en el storage y en la base de datos.</p>
+                    </a>
+                </div>
+            </div>
+        }
+
+        @if (User.IsInRole("Admin"))
+        {
+            <div class="col-md-4 col-lg-3 grid-item" data-id="admin_dashboard_global" data-size="small">
+                <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module" onclick="handlePoolCardClick(this, event)">
+                    <div class="card-actions">
+                        <button class="btn-action-size" title="Cambiar tamaño" onclick="toggleSize(this, event)"><i class="bi bi-arrows-angle-expand"></i></button>
+                        <button class="btn-action-size btn-toggle-view text-danger ms-1" title="Ocultar del panel" onclick="toggleVisibilityClick(this, event)"><i class="bi bi-eye-slash-fill"></i></button>
+                    </div>
+                    <a asp-controller="Admin" asp-action="DashboardGlobal" class="text-decoration-none card-body py-4 d-block h-100">
+                        <i class="bi bi-speedometer2 text-warning fs-1 mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold text-white">Dashboard Global</h5>
+                        <p class="card-text small text-white-50">Vista unificada de métricas generales, uso y consumo global del motor.</p>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-md-4 col-lg-3 grid-item" data-id="admin_gestionar_usuarios" data-size="small">
+                <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module" onclick="handlePoolCardClick(this, event)">
+                    <div class="card-actions">
+                        <button class="btn-action-size" title="Cambiar tamaño" onclick="toggleSize(this, event)"><i class="bi bi-arrows-angle-expand"></i></button>
+                        <button class="btn-action-size btn-toggle-view text-danger ms-1" title="Ocultar del panel" onclick="toggleVisibilityClick(this, event)"><i class="bi bi-eye-slash-fill"></i></button>
+                    </div>
+                    <a asp-controller="Admin" asp-action="GestionarUsuarios" class="text-decoration-none card-body py-4 d-block h-100">
+                        <i class="bi bi-people-fill text-warning fs-1 mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold text-white">Gestionar Usuarios</h5>
+                        <p class="card-text small text-white-50">Administración de cuentas activas, asignación de roles y cuotas de análisis.</p>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-md-4 col-lg-3 grid-item" data-id="admin_reglas_validador" data-size="small">
+                <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module" onclick="handlePoolCardClick(this, event)">
+                    <div class="card-actions">
+                        <button class="btn-action-size" title="Cambiar tamaño" onclick="toggleSize(this, event)"><i class="bi bi-arrows-angle-expand"></i></button>
+                        <button class="btn-action-size btn-toggle-view text-danger ms-1" title="Ocultar del panel" onclick="toggleVisibilityClick(this, event)"><i class="bi bi-eye-slash-fill"></i></button>
+                    </div>
+                    <a asp-controller="ValidationRuleAdmin" asp-action="Index" class="text-decoration-none card-body py-4 d-block h-100">
+                        <i class="bi bi-list-check text-warning fs-1 mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold text-white">Reglas Validador</h5>
+                        <p class="card-text small text-white-50">Configuración, alta y modificación de las reglas pasivas del motor de validación.</p>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-md-4 col-lg-3 grid-item" data-id="admin_funciones_maestro" data-size="small">
+                <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module" onclick="handlePoolCardClick(this, event)">
+                    <div class="card-actions">
+                        <button class="btn-action-size" title="Cambiar tamaño" onclick="toggleSize(this, event)"><i class="bi bi-arrows-angle-expand"></i></button>
+                        <button class="btn-action-size btn-toggle-view text-danger ms-1" title="Ocultar del panel" onclick="toggleVisibilityClick(this, event)"><i class="bi bi-eye-slash-fill"></i></button>
+                    </div>
+                    <a asp-controller="FunctionsAdmin" asp-action="Index" class="text-decoration-none card-body py-4 d-block h-100">
+                        <i class="bi bi-braces-asterisk text-warning fs-1 mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold text-white">Funciones (Maestro)</h5>
+                        <p class="card-text small text-white-50">Repositorio centralizado de bloques funcionales y código maestro reutilizable.</p>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-md-4 col-lg-3 grid-item" data-id="admin_log_auditoria" data-size="small">
+                <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module" onclick="handlePoolCardClick(this, event)">
+                    <div class="card-actions">
+                        <button class="btn-action-size" title="Cambiar tamaño" onclick="toggleSize(this, event)"><i class="bi bi-arrows-angle-expand"></i></button>
+                        <button class="btn-action-size btn-toggle-view text-danger ms-1" title="Ocultar del panel" onclick="toggleVisibilityClick(this, event)"><i class="bi bi-eye-slash-fill"></i></button>
+                    </div>
+                    <a asp-controller="Admin" asp-action="LogAuditoria" class="text-decoration-none card-body py-4 d-block h-100">
+                        <i class="bi bi-shield-check text-warning fs-1 mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold text-white">Log de Auditoría</h5>
+                        <p class="card-text small text-white-50">Historial completo de acciones ejecutadas en el ecosistema para trazabilidad y seguridad.</p>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-md-4 col-lg-3 grid-item" data-id="admin_parametros" data-size="small">
+                <div class="card bg-dark text-white border-secondary h-100 shadow-sm card-module" onclick="handlePoolCardClick(this, event)">
+                    <div class="card-actions">
+                        <button class="btn-action-size" title="Cambiar tamaño" onclick="toggleSize(this, event)"><i class="bi bi-arrows-angle-expand"></i></button>
+                        <button class="btn-action-size btn-toggle-view text-danger ms-1" title="Ocultar del panel" onclick="toggleVisibilityClick(this, event)"><i class="bi bi-eye-slash-fill"></i></button>
+                    </div>
+                    <a asp-controller="Admin" asp-action="AdminParametros" class="text-decoration-none card-body py-4 d-block h-100">
+                        <i class="bi bi-tags-fill text-warning fs-1 mb-3 d-block"></i>
+                        <h5 class="card-title fw-bold text-white">Admin. Parámetros</h5>
+                        <p class="card-text small text-white-50">Control maestro de variables globales, entornos y parámetros permitidos por célula.</p>
+                    </a>
+                </div>
             </div>
         }
     </div>
 </div>
+
+<div class="offcanvas offcanvas-end text-white border-start border-secondary" tabindex="-1" id="offcanvasModules" aria-labelledby="offcanvasModulesLabel" style="background-color: #0b0d16 !important; width: 380px;">
+    <div class="offcanvas-header border-bottom border-secondary py-3">
+        <h5 class="offcanvas-title fw-bold text-warning" id="offcanvasModulesLabel"><i class="bi bi-grid-3x3-gap-fill me-2"></i>Módulos Ocultos</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body py-4">
+        <p class="small text-white-50 mb-4">Los módulos que remuevas aparecerán aquí. Haz clic sobre cualquiera para restaurarlo en tu pantalla principal de inmediato.</p>
+        <div id="modules-pool" class="d-flex flex-column gap-3">
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+    <script>
+        const gridContainer = document.getElementById('dashboard-grid');
+        const poolContainer = document.getElementById('modules-pool');
+        const databaseLayout = @Html.Raw(userLayoutJson);
+
+        document.addEventListener('DOMContentLoaded', function() {
+        // Sincronización inicial inteligente basada en la Base de Datos
+        if (databaseLayout && databaseLayout.length > 0) {
+        // 1. Re-ordenar y dar tamaño a los componentes declarados como activos
+        databaseLayout.forEach(item => {
+        const element = gridContainer.querySelector(`[data-id="${item.id}"]`);
+        if (element) {
+        if (item.size === 'large') {
+        element.classList.remove('col-md-4', 'col-lg-3');
+        element.classList.add('col-md-8', 'col-lg-6');
+        element.setAttribute('data-size', 'large');
+        element.querySelector('.btn-action-size i').className = 'bi bi-arrows-angle-contract';
+        }
+        gridContainer.appendChild(element);
+        }
+        });
+
+        // 2. Todo componente que el usuario tenga permitido ver por rol, pero que NO esté en la DB, se envía al baúl
+        const currentItems = Array.from(gridContainer.querySelectorAll('.grid-item'));
+        currentItems.forEach(element => {
+        const id = element.getAttribute('data-id');
+        const isFound = databaseLayout.find(x => x.id === id);
+        if (!isFound) {
+        poolContainer.appendChild(element);
+        const hideBtn = element.querySelector('.btn-toggle-view');
+        if(hideBtn) {
+        hideBtn.querySelector('i').className = 'bi bi-eye-slash-fill';
+        hideBtn.setAttribute('title', 'Activar Módulo');
+        }
+        }
+        });
+        }
+
+        // Inicialización de SortableJS para la grilla activa
+        Sortable.create(gridContainer, {
+        animation: 250,
+        ghostClass: 'sortable-ghost',
+        handle: '.card-module',
+        filter: '.card-actions, button',
+        preventOnFilter: false,
+        onEnd: function() {
+        saveCurrentLayout();
+        }
+        });
+
+        // Escuchador para restablecer el diseño de fábrica
+        document.getElementById('btn-reset-layout').addEventListener('click', function(e) {
+        e.preventDefault();
+        if (confirm('¿Estás seguro de que deseas restablecer el diseño original y mostrar todos tus módulos autorizados?')) {
+        fetch('/Home/ResetDashboardLayout', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+        if (data.success) {
+        window.location.reload();
+        } else {
+        alert('No se pudo restablecer el diseño: ' + data.message);
+        }
+        })
+        .catch(err => console.error("Error al restablecer layout:", err));
+        }
+        });
+        });
+
+        // CONTROL: Alterna el tamaño de la tarjeta de col-3 a col-6
+        function toggleSize(button, event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const item = button.closest('.grid-item');
+        const icon = button.querySelector('i');
+        const isSmall = item.getAttribute('data-size') === 'small';
+
+        if (isSmall) {
+        item.classList.remove('col-md-4', 'col-lg-3');
+        item.classList.add('col-md-8', 'col-lg-6');
+        item.setAttribute('data-size', 'large');
+        icon.className = 'bi bi-arrows-angle-contract';
+        } else {
+        item.classList.remove('col-md-8', 'col-lg-6');
+        item.classList.add('col-md-4', 'col-lg-3');
+        item.setAttribute('data-size', 'small');
+        icon.className = 'bi bi-arrows-angle-expand';
+        }
+
+        saveCurrentLayout();
+        }
+
+        // CONTROL: Remueve un componente activo enviándolo al baúl lateral
+        function toggleVisibilityClick(button, event) {
+        event.preventDefault();
+        event.stopPropagation();
+        const item = button.closest('.grid-item');
+        poolContainer.appendChild(item);
+        saveCurrentLayout();
+        }
+
+        // CONTROL: Si el componente está en el baúl, hacer clic en cualquier parte de la fila lo devuelve a la grilla principal
+        function handlePoolCardClick(card, event) {
+        const item = card.closest('.grid-item');
+        const isInPool = item.parentElement.id === 'modules-pool';
+
+        if (isInPool) {
+        event.preventDefault();
+        event.stopPropagation();
+        gridContainer.appendChild(item);
+        saveCurrentLayout();
+        }
+        }
+
+        // FUNCIÓN AJAX: Serializa la grilla y persiste el estado en la Base de Datos en caliente
+        function saveCurrentLayout() {
+        const syncIndicator = document.getElementById('sync-indicator');
+        syncIndicator.innerHTML = '<i class="bi bi-cloud-arrow-up-fill text-warning"></i> Sincronizando...';
+        syncIndicator.style.opacity = '1';
+
+        const currentLayout = [];
+        const activeItems = gridContainer.querySelectorAll('.grid-item');
+
+        activeItems.forEach(item => {
+        currentLayout.push({
+        id: item.getAttribute('data-id'),
+        size: item.getAttribute('data-size')
+        });
+        });
+
+        fetch('/Home/SaveDashboardLayout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ layoutJson: JSON.stringify(currentLayout) })
+        })
+        .then(res => res.json())
+        .then(data => {
+        if (data.success) {
+        currentLayout.forEach(item => {
+        const el = gridContainer.querySelector(`[data-id="${item.id}"] .btn-toggle-view`);
+        if (el) el.setAttribute('title', 'Ocultar del panel');
+        });
+        syncIndicator.innerHTML = '<i class="bi bi-cloud-check-fill text-success"></i> Cambios guardados';
+        setTimeout(() => { syncIndicator.style.opacity = '0'; }, 2000);
+        } else {
+        syncIndicator.innerHTML = '<i class="bi bi-cloud-slash-fill text-danger"></i> Error al guardar';
+        }
+        })
+        .catch(err => {
+        console.error("Error al asignar layout:", err);
+        syncIndicator.innerHTML = '<i class="bi bi-cloud-slash-fill text-danger"></i> Error de conexión';
+        });
+        }
+    </script>
+}

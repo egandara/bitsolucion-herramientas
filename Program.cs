@@ -71,6 +71,7 @@ builder.Services.AddControllersWithViews()
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 
+builder.Services.AddScoped<DocGenService>();
 builder.Services.AddScoped<NotebookBuilderService>();
 builder.Services.AddSignalR();
 builder.Services.AddMemoryCache();
