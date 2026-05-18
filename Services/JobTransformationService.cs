@@ -156,9 +156,6 @@ namespace NotebookValidator.Web.Services
             return json;
         }
 
-        // ====================================================================================
-        // MEJORADO: COMPILACIÓN INYECTANDO CAMPO DESCRIPTION Y FLAGAUTOCERTIFICACION DINÁMICO
-        // ====================================================================================
         public Dictionary<string, string> GenerateBundleConfigs(
             string yamlContent,
             string cleanedJobName,
@@ -170,7 +167,6 @@ namespace NotebookValidator.Web.Services
         {
             string cleanYaml = yamlContent;
 
-            // 1. Extraer dinámicamente las propiedades de hardware del clúster original
             string sparkVersion = "16.4.x-scala2.12";
             string nodeTypeId = "Standard_D4a_v4";
             string dataSecurityMode = "SINGLE_USER";
@@ -192,7 +188,6 @@ namespace NotebookValidator.Web.Services
             var mClusterKey = Regex.Match(yamlContent, @"job_cluster_key:\s*([^\r\n]+)");
             if (mClusterKey.Success) clusterKey = mClusterKey.Groups[1].Value.Trim().Trim('"').Trim('\'');
 
-            // 2. Escanear y compilar el inventario de parámetros originales para el databricks.yml
             var paramMatches = Regex.Matches(cleanYaml, @"-\s*name:\s*([A-Za-z0-9_]+)[\s\r\n]*default:\s*[""']?([^""'\r\n]+)[""']?");
             var parametersList = new List<KeyValuePair<string, string>>();
             foreach (Match m in paramMatches)
@@ -205,7 +200,6 @@ namespace NotebookValidator.Web.Services
                 }
             }
 
-            // 3. Sanitización masiva de rutas de repositorios a la máscara de bundles
             cleanYaml = Regex.Replace(cleanYaml, @"notebook_path:\s*/Repos/[^/]+/[^/]+/", "notebook_path: /Repos/${var.databricks_folder}/${bundle.name}/");
             foreach (var param in parametersList)
             {
@@ -213,11 +207,9 @@ namespace NotebookValidator.Web.Services
                 cleanYaml = Regex.Replace(cleanYaml, pattern, "$1${var." + param.Key + "}$2");
             }
 
-            // 4. Aislamiento estable de la grilla de tareas (tasks)
             var mTasks = Regex.Match(cleanYaml, @"(^[ \t]*tasks:[\s\S]*?)(?=(^[ \t]*job_clusters:))", RegexOptions.Multiline | RegexOptions.IgnoreCase);
             string tasksBody = mTasks.Success ? mTasks.Groups[1].Value.TrimEnd() : "";
 
-            // 5. Ensamblado secuencial del recurso yml (Estructura de cluster arriba)
             var resourceYml = new StringBuilder();
             resourceYml.AppendLine("new_cluster: &new_cluster");
             resourceYml.AppendLine("  new_cluster:");
@@ -260,7 +252,6 @@ namespace NotebookValidator.Web.Services
             }
             resourceYml.AppendLine("      permissions: \"${var.jobPermissions}\"");
 
-            // 6. Construcción del Manifiesto Global databricks.yml inyectando description y flagAutocertificacion
             var databricksYml = new StringBuilder();
             databricksYml.AppendLine("bundle:");
             databricksYml.AppendLine($"  name: Data-dbs-datosriesgo-gld-{cleanedJobName.Replace(" ", "_")}");
@@ -273,7 +264,6 @@ namespace NotebookValidator.Web.Services
             databricksYml.AppendLine("    description: Nombre del job orquestado");
             databricksYml.AppendLine("    default: ${bundle.target}-datosriesgo-plt-" + cleanedJobName.Replace(" ", "-"));
 
-            // MEJORA 1: Inyección del campo description: "" vacío de respaldo para evitar fallos del linter de BCI
             foreach (var param in parametersList)
             {
                 databricksYml.AppendLine($"  {param.Key}:");
@@ -281,7 +271,6 @@ namespace NotebookValidator.Web.Services
                 databricksYml.AppendLine($"    default: \"{TransformValue(param.Value, "DEV")}\"");
             }
 
-            // MEJORA 2: Inyección de flagAutocertificacion global por defecto (DEV)
             databricksYml.AppendLine("  flagAutocertificacion:");
             databricksYml.AppendLine("    description: Flag para ejecutar certificacion");
             databricksYml.AppendLine($"    default: {devAutocert.ToString().ToLower()}");
