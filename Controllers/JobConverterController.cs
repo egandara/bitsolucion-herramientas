@@ -101,9 +101,9 @@ namespace NotebookValidator.Web.Controllers
             List<string> prodNames,
             List<string> permLevels,
             List<string> permUsers,
-            List<string> devAutocert,    // NUEVO: Recepción de flags booleanos mapeados desde la vista
-            List<string> certAutocert,   // NUEVO: Recepción de flags booleanos mapeados desde la vista
-            List<string> prodAutocert)   // NUEVO: Recepción de flags booleanos mapeados desde la vista
+            List<string> devAutocert,
+            List<string> certAutocert,
+            List<string> prodAutocert)
         {
             string token = TempData.Peek("JobAnalysisToken")?.ToString();
             if (string.IsNullOrEmpty(token)) return BadRequest("La sesión de configuración de Jobs ha expirado.");
@@ -133,7 +133,6 @@ namespace NotebookValidator.Web.Controllers
 
                             if (isYaml)
                             {
-                                // Inyección de los valores individuales de Autocert seleccionados por el usuario
                                 bool dAuto = (devAutocert != null && devAutocert.Count > i) && devAutocert[i] == "true";
                                 bool cAuto = (certAutocert != null && certAutocert.Count > i) && certAutocert[i] == "true";
                                 bool pAuto = (prodAutocert != null && prodAutocert.Count > i) && prodAutocert[i] == "true";
