@@ -253,7 +253,6 @@ namespace NotebookValidator.Web.Services
             finally { if (Directory.Exists(tempDirectory)) Directory.Delete(tempDirectory, true); }
         }
 
-        // --- MÉTODO LIMPIADOR DE ARTEFACTOS DE DATABRICKS PARA VALIDACIÓN ---
         private string GetCleanedCellText(IEnumerable<string> sourceLines)
         {
             var cleaned = sourceLines
@@ -378,6 +377,30 @@ namespace NotebookValidator.Web.Services
                         string fSev = rule.Severity;
                         string fDet = rule.DetailsMessage;
 
+                        // ===================================================================================
+                        // ESCUDO DE PROTECCIÓN C# QUIRÚRGICO: Valida f-strings y frena falsos positivos de librerías
+                        // ===================================================================================
+                        if (fType.Contains("Base", StringComparison.OrdinalIgnoreCase) ||
+                            fType.Contains("Datos", StringComparison.OrdinalIgnoreCase) ||
+                            fType.Contains("Hardcode", StringComparison.OrdinalIgnoreCase) ||
+                            fType.Contains("Esquema", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (m.Value.Contains("{") || m.Value.Contains("}")) continue;
+
+                            if (lineNum > 0 && lineNum <= cellLines.Count)
+                            {
+                                string exactLine = cellLines[lineNum - 1].Trim();
+
+                                if (exactLine.Contains("{") && exactLine.Contains("}")) continue;
+
+                                // CORRECCIÓN DEFINITIVA: 'from' requiere obligatoriamente tener 'import' en la misma línea para ser perdonado como librería Python.
+                                // Si dice "from base1.tabla1" sin la palabra "import", NO es una librería, por lo tanto SÍ es una base de datos en duro y se reportará.
+                                if ((exactLine.StartsWith("from ", StringComparison.OrdinalIgnoreCase) && exactLine.Contains("import ", StringComparison.OrdinalIgnoreCase)) ||
+                                    exactLine.StartsWith("import ", StringComparison.OrdinalIgnoreCase)) continue;
+                            }
+                        }
+                        // ===================================================================================
+
                         if (fType.Contains("SQL", StringComparison.OrdinalIgnoreCase))
                         {
                             var sqlMatch = SqlOperationalRegex.Match(cellSource);
@@ -492,7 +515,6 @@ namespace NotebookValidator.Web.Services
             if (!cells.Any()) yield break;
             var expected = $"# {Path.GetFileNameWithoutExtension(fileName)}";
 
-            // Usamos la nueva función limpiadora para ignorar las basuras de Databricks
             var actualCleaned = GetCleanedCellText(cells[0].Source);
 
             if (!actualCleaned.StartsWith(expected, StringComparison.OrdinalIgnoreCase))
@@ -505,12 +527,11 @@ namespace NotebookValidator.Web.Services
         private IEnumerable<Finding> ValidateFooter(List<Cell> cells, string fileName)
         {
             string targetExit = "dbutils.notebook.exit";
-            int messagePairIndex = -1;
             bool pairFound = false;
+            int messagePairIndex = -1;
 
             for (int i = 0; i < cells.Count - 1; i++)
             {
-                // Limpiamos la celda actual para asegurar que detecte ## Mensaje Final
                 var currentCleaned = GetCleanedCellText(cells[i].Source);
                 var nextCleaned = string.Join("\n", cells[i + 1].Source).Trim();
 
@@ -528,7 +549,6 @@ namespace NotebookValidator.Web.Services
             }
             else if (messagePairIndex + 2 < cells.Count)
             {
-                // Validación adicional para asegurar que no salte el error por celdas totalmente vacías
                 bool hasRealCode = false;
                 for (int k = messagePairIndex + 2; k < cells.Count; k++)
                 {
@@ -556,9 +576,9 @@ namespace NotebookValidator.Web.Services
             workbook.SaveAs(ms);
             return ms.ToArray();
         }
+
         public AnalysisSummary CreateSummary(List<Finding> findings, int analysisRunId, DateTime timestamp)
         {
-            // 1. Agrupamos por severidad
             var summary = new AnalysisSummary
             {
                 AnalysisRunId = analysisRunId,
@@ -568,7 +588,6 @@ namespace NotebookValidator.Web.Services
                 InfoCount = findings.Count(f => f.Severity == "Info")
             };
 
-            // 2. Agrupamos por tipo de hallazgo para el gráfico de dona
             var typesSummary = findings
                 .GroupBy(f => f.FindingType)
                 .ToDictionary(g => g.Key, g => g.Count());
