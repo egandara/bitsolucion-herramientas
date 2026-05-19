@@ -116,6 +116,13 @@ namespace NotebookValidator.Web.Controllers
 
             var regexNameReplace = new Regex(@"""name""\s*:\s*""[^""]*""");
 
+            // Colecciones para agrupar múltiples Jobs tipo YAML en un único DAB centralizado
+            var yamlContents = new List<string>();
+            var yamlCleanedNames = new List<string>();
+            var yamlDevAutocerts = new List<bool>();
+            var yamlCertAutocerts = new List<bool>();
+            var yamlProdAutocerts = new List<bool>();
+
             try
             {
                 using (var memoryStream = new MemoryStream())
@@ -137,12 +144,11 @@ namespace NotebookValidator.Web.Controllers
                                 bool cAuto = (certAutocert != null && certAutocert.Count > i) && certAutocert[i] == "true";
                                 bool pAuto = (prodAutocert != null && prodAutocert.Count > i) && prodAutocert[i] == "true";
 
-                                var bundleConfigs = _transformationService.GenerateBundleConfigs(rawContent, devNames[i], permLevels, permUsers, dAuto, cAuto, pAuto);
-
-                                foreach (var config in bundleConfigs)
-                                {
-                                    WriteZipEntry(archive, config.Key, config.Value);
-                                }
+                                yamlContents.Add(rawContent);
+                                yamlCleanedNames.Add(devNames[i]);
+                                yamlDevAutocerts.Add(dAuto);
+                                yamlCertAutocerts.Add(cAuto);
+                                yamlProdAutocerts.Add(pAuto);
                             }
                             else
                             {
@@ -155,6 +161,19 @@ namespace NotebookValidator.Web.Controllers
                                 WriteZipEntry(archive, $"Desarrollo/{devNames[i].Replace(" ", "_")}.json", devJsonFinal);
                                 WriteZipEntry(archive, $"Certificacion/{certNames[i].Replace(" ", "_")}.json", certJsonFinal);
                                 WriteZipEntry(archive, $"Produccion/{prodNames[i].Replace(" ", "_")}.json", prodJsonFinal);
+                            }
+                        }
+
+                        // Compilar el Bundle unificado si se detectaron archivos de configuración YAML
+                        if (yamlContents.Count > 0)
+                        {
+                            var bundleConfigs = _transformationService.GenerateBundleConfigs(
+                                yamlContents, yamlCleanedNames, permLevels, permUsers,
+                                yamlDevAutocerts, yamlCertAutocerts, yamlProdAutocerts);
+
+                            foreach (var config in bundleConfigs)
+                            {
+                                WriteZipEntry(archive, config.Key, config.Value);
                             }
                         }
                     }

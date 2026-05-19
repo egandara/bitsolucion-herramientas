@@ -3,7 +3,6 @@
 }
 
 <style>
-    /* COMPRESIÓN AGRESIVA ESTILO SIDEBOX: Mantiene la densidad técnica de información */
     nav a, aside a, [class*="sidebar"] a, .nav-sidebar a, .main-sidebar a, .nav-link {
         padding-top: 0.18rem !important;
         padding-bottom: 0.18rem !important;
@@ -23,9 +22,8 @@
         opacity: 1 !important;
     }
 
-    /* REDISEÑO DE TABLAS DE CONFIRMACIÓN (FASE 2 DESPLEGADA AL MÁXIMO) */
     .dashboard-xl-container {
-        max-width: 1420px !important; /* Expansión horizontal para pantallas de 24 pulgadas */
+        max-width: 1420px !important;
         margin: 0 auto;
     }
 
@@ -38,12 +36,11 @@
     }
 
     #staging-table td {
-        background-color: #0d0f1d !important; /* Fondo oscuro premium integrado con la suite */
+        background-color: #0d0f1d !important;
         padding: 10px 8px;
         border-color: rgba(255,255,255,0.06) !important;
     }
 
-    /* REDISEÑO DE LA GRILLA DE PERMISOS (IMAGEN 1 AMPLIADA COMODAMENTE) */
     .perm-table th {
         background-color: #161b22 !important;
         color: rgba(255,255,255,0.7) !important;
@@ -58,13 +55,12 @@
     }
 
     .perm-scroll-box {
-        max-height: 220px !important; /* Altura cómoda de visualización ampliada (Resuelve Imagen 1) */
+        max-height: 220px !important;
         overflow-y: auto;
         border: 1px solid rgba(255,255,255,0.05);
         border-radius: 6px;
     }
 
-    /* ESTILOS DE RADIO-DOTS INLINE (PUNTOS EXCLUSIVOS HIGHDENSITY) */
     .radio-dot-container {
         display: inline-flex;
         align-items: center;
@@ -239,7 +235,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const fileUpload = document.getElementById('job-file-upload');
-            const dropZone = document.getElementById('job-drop-zone');
+            const dropZone = document.getElementById('job-drop zone');
             const fileListContainer = document.getElementById('job-file-list');
             const btnProcesarFase1 = document.getElementById('btnProcesarFase1');
             const clearJobsBtn = document.getElementById('clear-jobs-btn');
@@ -317,7 +313,6 @@
                         list.appendChild(listItem);
                     });
                     fileListContainer.appendChild(list);
-                    clearJobsBtn.style.with = 'block';
                     clearJobsBtn.style.display = 'block';
                     evalProcesarBtnState();
                 }
@@ -409,7 +404,6 @@
 
                                 var rowHtml = '';
                                 if (job.isYaml) {
-                                    // REFORMADO: Radio-dots inline exclusivos de alta definición con etiquetas de alto contraste (Resuelve Imagen 2)
                                     rowHtml = `
                                         <tr data-row-idx="${index}" data-suggested-name="${job.suggestedDevName}">
                                             <td class="small fw-bold text-wrap" style="color: #ffffff !important; max-width:180px; padding: 12px 6px;">
@@ -535,7 +529,6 @@
             });
         });
 
-        // REGLA INTELLIGENT DE FLUJO: Sincroniza los radio-dots exclusivos con el array ordenado de inputs ocultos
         function syncRadioToHidden(radio, baseName, index) {
             document.getElementById(`${baseName}_${index}`).value = radio.value;
         }
