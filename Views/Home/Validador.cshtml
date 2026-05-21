@@ -7,39 +7,210 @@
 <style>
     /* 1. CORRECCIÓN DE VISIBILIDAD EN CARGA */
     .text-light-muted {
-        color: #abb2bf !important;
-        /* Gris claro legible */
+        color: #abb2bf !important; /* Gris claro legible */
     }
 
     #upload-card .card-body strong {
-        color: #ffc107;
-        /* Título de sección en dorado */
+        color: #ffc107; /* Título de sección en dorado */
     }
 
-    /* 2. ESTILOS DE LA LISTA DE ARCHIVOS */
-    #file-list .list-group-item {
-        background-color: #0d1117;
-        border: 1px solid #30363d;
-        color: #c9d1d9;
-        box-sizing: border-box;
-        overflow: hidden;
+    /* ======================================================================== */
+    /* DISEÑO DE LA LISTA DE ARCHIVOS CON SCROLL PERSONALIZADO */
+    /* ======================================================================== */
+    #file-list {
+        max-height: 260px !important; /* Altura elástica para soportar cargas masivas sin romper layouts */
+        overflow-y: auto !important; /* Habilita el scrollbar vertical sutil */
+        background-color: #0d1117 !important;
+        border: 1px solid #30363d !important;
+        border-radius: 6px;
+        padding: 5px !important;
     }
 
-    #file-list .file-left {
-        display: flex;
-        align-items: center;
-        flex: 1 1 auto;
-        min-width: 0;
-        gap: 0.5rem;
+        /* Estilización del Scrollbar para Integración de Interfaz Oscura */
+        #file-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #file-list::-webkit-scrollbar-track {
+            background: #0d1117;
+        }
+
+        #file-list::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 3px;
+        }
+
+            #file-list::-webkit-scrollbar-thumb:hover {
+                background: #ffc107;
+            }
+
+        #file-list .list-group-item {
+            background-color: #161b22 !important;
+            border: 1px solid #30363d !important;
+            color: #c9d1d9;
+            box-sizing: border-box;
+            padding: 5px 8px !important;
+            font-size: 0.75rem !important;
+            margin-bottom: 4px !important;
+            border-radius: 4px !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+        }
+
+        #file-list .file-left {
+            display: flex;
+            align-items: center;
+            flex: 1 1 auto;
+            min-width: 0;
+            gap: 0.5rem;
+        }
+
+            #file-list .file-left .file-name {
+                display: block;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                max-width: 200px; /* Seguridad de truncado elástico para no empujar la columna derecha */
+                color: #c9d1d9;
+            }
+
+        #file-list .file-heading-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0; /* Impide que la columna del tamaño y botón colapse por nombres largos */
+        }
+
+        #file-list .file-right .text-muted {
+            color: #8b949e !important;
+            font-size: 0.72rem !important;
+            font-weight: bold;
+        }
+
+        #file-list .file-right .btn-danger {
+            padding: 1px 6px !important;
+            font-size: 0.75rem !important;
+            line-height: 1.2 !important;
+            height: 20px !important;
+            border-radius: 3px !important;
+        }
+
+    /* ======================================================================== */
+    /* CORREGIDO: CONTROL DE ENCABEZADOS UNIFORMES (AMARILLO CORPORATIVO) */
+    /* ======================================================================== */
+    #resultsTable {
+        table-layout: fixed !important; /* Fuerza el control estricto de los porcentajes configurados abajo */
+        width: 100% !important;
+        margin-top: 15px !important;
+        border-collapse: collapse !important;
     }
 
-        #file-list .file-left .file-name {
-            display: block;
+        #resultsTable th, #resultsTable td {
+            padding: 8px 10px !important;
+            vertical-align: middle !important;
+            font-size: 0.76rem !important;
+            line-height: 1.35 !important;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        /* Forzar que todos los encabezados y sus pseudo-elementos internos de ordenamiento de DataTables sean amarillos */
+        #resultsTable thead th,
+        #resultsTable thead th *,
+        #resultsTable thead th::after,
+        #resultsTable thead th::before {
+            background-color: #121620 !important;
+            color: #ffc107 !important;
+            font-weight: 600 !important;
+        }
+
+        #resultsTable thead th {
+            border-bottom: 2px solid #ffc107 !important;
+        }
+
+        #resultsTable tbody tr.clickable-row:hover {
+            background-color: rgba(255, 193, 7, 0.05) !important;
+            transition: background-color 0.1s ease-in-out;
+        }
+
+        /* Bloque A: Estructura y anchos proporcionales (Afecta a TH y TD por igual) */
+        #resultsTable .col-archivo {
+            width: 32% !important;
+            white-space: normal !important;
+            word-break: break-all !important;
+            overflow-wrap: break-word !important;
+        }
+
+        #resultsTable .col-tipo {
+            width: 12% !important;
+            white-space: normal !important;
+        }
+
+        #resultsTable .col-celda {
+            width: 4% !important;
+            text-align: center !important;
+        }
+
+        #resultsTable .col-linea {
+            width: 4% !important;
+            text-align: center !important;
+        }
+
+        #resultsTable .col-contenido {
+            width: 15% !important;
+            word-break: break-all !important;
+        }
+
+        #resultsTable .col-detalle {
+            width: 26% !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+        }
+
+        #resultsTable .col-acciones {
+            width: 7% !important;
+            text-align: center !important;
+        }
+
+        /* Bloque B: Colores de fuente específicos EXCLUSIVOS para las celdas del cuerpo (Evita oscurecer los TH) */
+        #resultsTable tbody td.col-archivo {
+            color: #0f172a !important; /* Slate oscuro profundo sobre el fondo blanco */
+            font-weight: 500 !important;
+        }
+
+        #resultsTable tbody td.col-celda {
+            color: #334155 !important;
+        }
+
+        #resultsTable tbody td.col-linea {
+            color: #334155 !important;
+        }
+
+        #resultsTable tbody td.col-detalle {
+            color: #1e293b !important; /* Gris carbón de alto contraste técnico para las descripciones */
+        }
+
+        /* Estilo de micro-ajuste para los botones de acción dentro de la tabla */
+        #resultsTable .btn-sm {
+            padding: 2px 6px !important;
+            font-size: 0.72rem !important;
+            line-height: 1.2 !important;
+            height: 22px !important;
+        }
+
+        #resultsTable code {
+            background-color: #0d1117 !important;
+            color: #f8f8f2 !important;
+            padding: 2px 4px !important;
+            border-radius: 4px !important;
+            border: 1px solid #21262d !important;
+            display: inline-block;
+            max-width: 100%;
             overflow: hidden;
             text-overflow: ellipsis;
-            white-space: nowrap;
-            max-width: 100%;
         }
+    /* ======================================================================== */
 
     /* 3. REDISEÑO TOTAL DEL POPUP (codeModal) */
     #codeModal .modal-content {
@@ -63,7 +234,6 @@
         padding: 1.5rem;
     }
 
-    /* Bloque de código estandarizado */
     .code-view-container {
         background-color: #0d1117;
         color: #58a6ff;
@@ -73,13 +243,9 @@
         font-family: 'Cascadia Code', 'Consolas', 'Monaco', monospace;
         font-size: 0.9rem;
         white-space: pre-wrap;
-        /* Evita scroll horizontal */
         word-wrap: break-word;
-        /* Rompe palabras largas */
         max-height: 500px;
-        /* Controla extensión vertical */
         overflow-y: auto;
-        /* Scroll vertical sutil */
         line-height: 1.5;
         text-align: left;
     }
@@ -94,7 +260,6 @@
         letter-spacing: 1px;
     }
 
-    /* Ajuste para el Smart Fix Modal (Mantener consistencia) */
     #smartFixModal .modal-content {
         background-color: #0f111a;
         border: 1px solid #495057;
@@ -152,11 +317,9 @@
             </div>
             <div class="card-body" id="summary-content"></div>
             <div class="card-footer border-top border-secondary d-flex justify-content-between align-items-center bg-transparent py-3">
-
                 <button type="button" id="btn-download-fixed" class="btn btn-outline-warning fw-bold" style="display: none;" onclick="downloadCorrectedNotebook()">
                     <i class="bi bi-magic me-1"></i> Descargar Versión Corregida
                 </button>
-
                 <a asp-action="ExportToExcel" asp-controller="Home" id="export-button" class="btn btn-success fw-bold" style="display: none;">
                     <i class="bi bi-file-earmark-excel me-1"></i> Exportar a Excel
                 </a>
