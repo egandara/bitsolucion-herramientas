@@ -9,30 +9,6 @@
         text-align: center;
     }
 
-    /* BARRA LATERAL (SIDEBAR): Compresión extrema al 75% erradicando márgenes heredados de listas */
-    nav a, aside a, [class*="sidebar"] a, .nav-sidebar a, .main-sidebar a, .nav-link {
-        padding-top: 0.12rem !important;
-        padding-bottom: 0.12rem !important;
-        font-size: 0.78rem !important;
-        line-height: 1.2 !important;
-    }
-
-    nav li, aside li, [class*="sidebar"] li, .nav-sidebar li, .nav-item {
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
-    }
-
-    nav .text-muted, aside .text-muted, [class*="sidebar"] div small, [class*="sidebar"] .text-uppercase, h6[class*="sidebar"], [class*="sidebar"] .nav-header, .sidebar .nav-header {
-        margin-top: 0.25rem !important;
-        margin-bottom: 0.05rem !important;
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
-        font-size: 0.62rem !important;
-        letter-spacing: 0.3px;
-    }
-
     /* CONFIGURACIÓN CRÍTICA: Fuerza la escala compacta del zoom 80% de forma nativa en pantallas 1080p */
     .dashboard-master-container {
         max-width: 1160px !important;
@@ -454,156 +430,143 @@
         const poolContainer = document.getElementById('modules-pool');
         const rootContainer = document.getElementById('dashboard-root');
 
-        // RESOLUCIÓN DEFINITIVA TS1109: Leemos el JSON desde el atributo HTML del DOM de forma 100% segura para el editor
         const databaseLayout = JSON.parse(rootContainer.getAttribute('data-layout') || 'null');
-
         document.addEventListener('DOMContentLoaded', function() {
-        // Sincronización inicial inteligente basada en la Base de Datos
-        if (databaseLayout && databaseLayout.length > 0) {
-        // 1. Re-ordenar y dar tamaño a los componentes declarados como activos
-        databaseLayout.forEach(item => {
-        const element = gridContainer.querySelector(`[data-id="${item.id}"]`);
-        if (element) {
-        if (item.size === 'large') {
-        element.classList.remove('col-md-4', 'col-lg-3');
-        element.classList.add('col-md-8', 'col-lg-6');
-        element.setAttribute('data-size', 'large');
-        element.querySelector('.btn-action-size i').className = 'bi bi-arrows-angle-contract';
-        }
-        gridContainer.appendChild(element);
-        }
+            if (databaseLayout && databaseLayout.length > 0) {
+                databaseLayout.forEach(item => {
+                    const element = gridContainer.querySelector(`[data-id="${item.id}"]`);
+                    if (element) {
+                        if (item.size === 'large') {
+                            element.classList.remove('col-md-4', 'col-lg-3');
+                            element.classList.add('col-md-8', 'col-lg-6');
+                            element.setAttribute('data-size', 'large');
+                            element.querySelector('.btn-action-size i').className = 'bi bi-arrows-angle-contract';
+                        }
+                        gridContainer.appendChild(element);
+                    }
+                });
+
+                const currentItems = Array.from(gridContainer.querySelectorAll('.grid-item'));
+                currentItems.forEach(element => {
+                    const id = element.getAttribute('data-id');
+                    const isFound = databaseLayout.find(x => x.id === id);
+                    if (!isFound) {
+                        poolContainer.appendChild(element);
+                        const hideBtn = element.querySelector('.btn-toggle-view');
+                        if(hideBtn) {
+                            hideBtn.querySelector('i').className = 'bi bi-eye-slash-fill';
+                            hideBtn.setAttribute('title', 'Activar Módulo');
+                        }
+                    }
+                });
+            }
+
+            Sortable.create(gridContainer, {
+                animation: 250,
+                ghostClass: 'sortable-ghost',
+                handle: '.card-module',
+                filter: '.card-actions, button',
+                preventOnFilter: false,
+                onEnd: function() {
+                    saveCurrentLayout();
+                }
+            });
+
+            document.getElementById('btn-reset-layout').addEventListener('click', function(e) {
+                e.preventDefault();
+                if (confirm('¿Estás seguro de que deseas restablecer el diseño original y mostrar todos tus módulos autorizados?')) {
+                    fetch('/Home/ResetDashboardLayout', { method: 'POST' })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                window.location.reload();
+                            } else {
+                                alert('No se pudo restablecer el diseño: ' + data.message);
+                            }
+                        })
+                        .catch(err => console.error("Error al restablecer layout:", err));
+                }
+            });
         });
 
-        // 2. Todo componente que el usuario tenga permitido ver por rol, pero que NO esté en la DB, se envía al baúl
-        const currentItems = Array.from(gridContainer.querySelectorAll('.grid-item'));
-        currentItems.forEach(element => {
-        const id = element.getAttribute('data-id');
-        const isFound = databaseLayout.find(x => x.id === id);
-        if (!isFound) {
-        poolContainer.appendChild(element);
-        const hideBtn = element.querySelector('.btn-toggle-view');
-        if(hideBtn) {
-        hideBtn.querySelector('i').className = 'bi bi-eye-slash-fill';
-        hideBtn.setAttribute('title', 'Activar Módulo');
-        }
-        }
-        });
-        }
-
-        // Inicialización de SortableJS para la grilla activa
-        Sortable.create(gridContainer, {
-        animation: 250,
-        ghostClass: 'sortable-ghost',
-        handle: '.card-module',
-        filter: '.card-actions, button',
-        preventOnFilter: false,
-        onEnd: function() {
-        saveCurrentLayout();
-        }
-        });
-
-        // Escuchador para restablecer el diseño de fábrica
-        document.getElementById('btn-reset-layout').addEventListener('click', function(e) {
-        e.preventDefault();
-        if (confirm('¿Estás seguro de que deseas restablecer el diseño original y mostrar todos tus módulos autorizados?')) {
-        fetch('/Home/ResetDashboardLayout', { method: 'POST' })
-        .then(res => res.json())
-        .then(data => {
-        if (data.success) {
-        window.location.reload();
-        } else {
-        alert('No se pudo restablecer el diseño: ' + data.message);
-        }
-        })
-        .catch(err => console.error("Error al restablecer layout:", err));
-        }
-        });
-        });
-
-        // CONTROL: Alterna el tamaño de la tarjeta de col-3 a col-6
         function toggleSize(button, event) {
-        event.preventDefault();
-        event.stopPropagation();
+            event.preventDefault();
+            event.stopPropagation();
 
-        const item = button.closest('.grid-item');
-        const icon = button.querySelector('i');
-        const isSmall = item.getAttribute('data-size') === 'small';
+            const item = button.closest('.grid-item');
+            const icon = button.querySelector('i');
+            const isSmall = item.getAttribute('data-size') === 'small';
+            if (isSmall) {
+                item.classList.remove('col-md-4', 'col-lg-3');
+                item.classList.add('col-md-8', 'col-lg-6');
+                item.setAttribute('data-size', 'large');
+                icon.className = 'bi bi-arrows-angle-contract';
+            } else {
+                item.classList.remove('col-md-8', 'col-lg-6');
+                item.classList.add('col-md-4', 'col-lg-3');
+                item.setAttribute('data-size', 'small');
+                icon.className = 'bi bi-arrows-angle-expand';
+            }
 
-        if (isSmall) {
-        item.classList.remove('col-md-4', 'col-lg-3');
-        item.classList.add('col-md-8', 'col-lg-6');
-        item.setAttribute('data-size', 'large');
-        icon.className = 'bi bi-arrows-angle-contract';
-        } else {
-        item.classList.remove('col-md-8', 'col-lg-6');
-        item.classList.add('col-md-4', 'col-lg-3');
-        item.setAttribute('data-size', 'small');
-        icon.className = 'bi bi-arrows-angle-expand';
+            saveCurrentLayout();
         }
 
-        saveCurrentLayout();
-        }
-
-        // CONTROL: Remueve un componente activo enviándolo al baúl lateral
         function toggleVisibilityClick(button, event) {
-        event.preventDefault();
-        event.stopPropagation();
-        const item = button.closest('.grid-item');
-        poolContainer.appendChild(item);
-        saveCurrentLayout();
+            event.preventDefault();
+            event.stopPropagation();
+            const item = button.closest('.grid-item');
+            poolContainer.appendChild(item);
+            saveCurrentLayout();
         }
 
-        // CONTROL: Si el componente está en el baúl, devuelve a la grilla principal
         function handlePoolCardClick(card, event) {
-        const item = card.closest('.grid-item');
-        const isInPool = item.parentElement.id === 'modules-pool';
+            const item = card.closest('.grid-item');
+            const isInPool = item.parentElement.id === 'modules-pool';
 
-        if (isInPool) {
-        event.preventDefault();
-        event.stopPropagation();
-        gridContainer.appendChild(item);
-        saveCurrentLayout();
-        }
+            if (isInPool) {
+                event.preventDefault();
+                event.stopPropagation();
+                gridContainer.appendChild(item);
+                saveCurrentLayout();
+            }
         }
 
-        // FUNCIÓN AJAX: Serializa la grilla y persiste el estado en la Base de Datos en caliente
         function saveCurrentLayout() {
-        const syncIndicator = document.getElementById('sync-indicator');
-        syncIndicator.innerHTML = '<i class="bi bi-cloud-arrow-up-fill text-warning"></i> Sincronizando...';
-        syncIndicator.style.opacity = '1';
+            const syncIndicator = document.getElementById('sync-indicator');
+            syncIndicator.innerHTML = '<i class="bi bi-cloud-arrow-up-fill text-warning"></i> Sincronizando...';
+            syncIndicator.style.opacity = '1';
 
-        const currentLayout = [];
-        const activeItems = gridContainer.querySelectorAll('.grid-item');
+            const currentLayout = [];
+            const activeItems = gridContainer.querySelectorAll('.grid-item');
+            activeItems.forEach(item => {
+                currentLayout.push({
+                    id: item.getAttribute('data-id'),
+                    size: item.getAttribute('data-size')
+                });
+            });
 
-        activeItems.forEach(item => {
-        currentLayout.push({
-        id: item.getAttribute('data-id'),
-        size: item.getAttribute('data-size')
-        });
-        });
-
-        fetch('/Home/SaveDashboardLayout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ layoutJson: JSON.stringify(currentLayout) })
-        })
-        .then(res => res.json())
-        .then(data => {
-        if (data.success) {
-        currentLayout.forEach(item => {
-        const el = gridContainer.querySelector(`[data-id="${item.id}"] .btn-toggle-view`);
-        if (el) el.setAttribute('title', 'Ocultar del panel');
-        });
-        syncIndicator.innerHTML = '<i class="bi bi-cloud-check-fill text-success"></i> Cambios guardados';
-        setTimeout(() => { syncIndicator.style.opacity = '0'; }, 2000);
-        } else {
-        syncIndicator.innerHTML = '<i class="bi bi-cloud-slash-fill text-danger"></i> Error al guardar';
-        }
-        })
-        .catch(err => {
-        console.error("Error al asignar layout:", err);
-        syncIndicator.innerHTML = '<i class="bi bi-cloud-slash-fill text-danger"></i> Error de conexión';
-        });
+            fetch('/Home/SaveDashboardLayout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ layoutJson: JSON.stringify(currentLayout) })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        currentLayout.forEach(item => {
+                            const el = gridContainer.querySelector(`[data-id="${item.id}"] .btn-toggle-view`);
+                            if (el) el.setAttribute('title', 'Ocultar del panel');
+                        });
+                        syncIndicator.innerHTML = '<i class="bi bi-cloud-check-fill text-success"></i> Cambios guardados';
+                        setTimeout(() => { syncIndicator.style.opacity = '0'; }, 2000);
+                    } else {
+                        syncIndicator.innerHTML = '<i class="bi bi-cloud-slash-fill text-danger"></i> Error al guardar';
+                    }
+                })
+                .catch(err => {
+                    console.error("Error al asignar layout:", err);
+                    syncIndicator.innerHTML = '<i class="bi bi-cloud-slash-fill text-danger"></i> Error de conexión';
+                });
         }
     </script>
 }

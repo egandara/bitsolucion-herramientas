@@ -28,6 +28,9 @@ namespace NotebookValidator.Web.Services
             _context = context;
         }
 
+        // ===================================================================================
+        // GENERACIÓN DE ARCHIVOS CORREGIDOS: Soporta la reconstrucción estructurada de ZIPs
+        // ===================================================================================
         public async Task<byte[]> GenerateCorrectedFilesZipAsync(IEnumerable<(Stream stream, string fileName)> files, List<string> typesToClean)
         {
             using var ms = new MemoryStream();
@@ -35,26 +38,74 @@ namespace NotebookValidator.Web.Services
             {
                 foreach (var file in files)
                 {
-                    var baseName = Path.GetFileNameWithoutExtension(file.fileName);
-                    string correctedContent;
+                    string ext = Path.GetExtension(file.fileName).ToLower();
 
-                    if (file.fileName.EndsWith(".ipynb"))
+                    if (ext == ".zip")
                     {
-                        var notebook = await JsonSerializer.DeserializeAsync<Notebook>(file.stream);
-                        ApplySmartFix(notebook!, baseName, typesToClean);
-                        correctedContent = JsonSerializer.Serialize(notebook, new JsonSerializerOptions { WriteIndented = true });
-                    }
-                    else
-                    {
-                        using var reader = new StreamReader(file.stream);
-                        var pyContent = await reader.ReadToEndAsync();
-                        correctedContent = ApplySmartFixToPython(pyContent, baseName, typesToClean);
-                    }
+                        // Descomprimir el paquete original para corregir sus componentes internos
+                        using (var inputZip = new ZipArchive(file.stream, ZipArchiveMode.Read))
+                        {
+                            foreach (var entry in inputZip.Entries)
+                            {
+                                if (entry.Length == 0 || string.IsNullOrEmpty(entry.Name)) continue;
 
-                    var entry = archive.CreateEntry(file.fileName);
-                    using var entryStream = entry.Open();
-                    using var writer = new StreamWriter(entryStream);
-                    await writer.WriteAsync(correctedContent);
+                                string entryExt = Path.GetExtension(entry.Name).ToLower();
+                                if (entryExt == ".py" || entryExt == ".ipynb")
+                                {
+                                    // Omitir manifiestos y metadatos de exportación de Databricks
+                                    if (entry.FullName.Contains("manifest.mf", StringComparison.OrdinalIgnoreCase)) continue;
+
+                                    var baseName = Path.GetFileNameWithoutExtension(entry.Name);
+                                    string correctedContent;
+
+                                    using (var entryStream = entry.Open())
+                                    {
+                                        if (entryExt == ".ipynb")
+                                        {
+                                            var notebook = await JsonSerializer.DeserializeAsync<Notebook>(entryStream);
+                                            ApplySmartFix(notebook!, baseName, typesToClean);
+                                            correctedContent = JsonSerializer.Serialize(notebook, new JsonSerializerOptions { WriteIndented = true });
+                                        }
+                                        else
+                                        {
+                                            using var reader = new StreamReader(entryStream);
+                                            var pyContent = await reader.ReadToEndAsync();
+                                            correctedContent = ApplySmartFixToPython(pyContent, baseName, typesToClean);
+                                        }
+                                    }
+
+                                    // Guardar la versión corregida manteniendo la jerarquía de carpetas original del comprimido
+                                    var zipEntry = archive.CreateEntry($"📦_[{Path.GetFileNameWithoutExtension(file.fileName)}]_/{entry.FullName}");
+                                    using var entryZipStream = zipEntry.Open();
+                                    using var writer = new StreamWriter(entryZipStream);
+                                    await writer.WriteAsync(correctedContent);
+                                }
+                            }
+                        }
+                    }
+                    else if (ext == ".py" || ext == ".ipynb")
+                    {
+                        var baseName = Path.GetFileNameWithoutExtension(file.fileName);
+                        string correctedContent;
+
+                        if (file.fileName.EndsWith(".ipynb"))
+                        {
+                            var notebook = await JsonSerializer.DeserializeAsync<Notebook>(file.stream);
+                            ApplySmartFix(notebook!, baseName, typesToClean);
+                            correctedContent = JsonSerializer.Serialize(notebook, new JsonSerializerOptions { WriteIndented = true });
+                        }
+                        else
+                        {
+                            using var reader = new StreamReader(file.stream);
+                            var pyContent = await reader.ReadToEndAsync();
+                            correctedContent = ApplySmartFixToPython(pyContent, baseName, typesToClean);
+                        }
+
+                        var entry = archive.CreateEntry(file.fileName);
+                        using var entryStream = entry.Open();
+                        using var writer = new StreamWriter(entryStream);
+                        await writer.WriteAsync(correctedContent);
+                    }
                 }
             }
             return ms.ToArray();
@@ -224,6 +275,9 @@ namespace NotebookValidator.Web.Services
             return string.Join("\n" + PyCommandSeparator + "\n", nb.Cells.Select(c => string.Join("\n", c.Source)));
         }
 
+        // ===================================================================================
+        // PROCESAMIENTO CENTRAL: Apertura iterativa y extracción semántica de archivos ZIP
+        // ===================================================================================
         public async Task<(List<Finding> allFindings, int filesCount, Dictionary<string, List<string>> fileVariables)> ProcessFilesAsync(IEnumerable<(Stream stream, string fileName)> files)
         {
             var notebooksToProcess = new List<(string tempPath, string originalName)>();
@@ -236,10 +290,44 @@ namespace NotebookValidator.Web.Services
             {
                 foreach (var file in files)
                 {
-                    var tempFilePath = Path.Combine(tempDirectory, file.fileName);
-                    using (var fs = new FileStream(tempFilePath, FileMode.Create)) { await file.stream.CopyToAsync(fs); }
-                    if (file.fileName.EndsWith(".py") || file.fileName.EndsWith(".ipynb"))
+                    string ext = Path.GetExtension(file.fileName).ToLower();
+
+                    if (ext == ".zip")
+                    {
+                        // Descomprimir de forma recursiva mapeando rutas jerárquicas internas
+                        using (var archive = new ZipArchive(file.stream, ZipArchiveMode.Read))
+                        {
+                            foreach (var entry in archive.Entries)
+                            {
+                                if (entry.Length == 0 || string.IsNullOrEmpty(entry.Name)) continue;
+
+                                string entryExt = Path.GetExtension(entry.Name).ToLower();
+                                if (entryExt == ".py" || entryExt == ".ipynb")
+                                {
+                                    if (entry.FullName.Contains("manifest.mf", StringComparison.OrdinalIgnoreCase)) continue;
+
+                                    string entryTempKey = Guid.NewGuid().ToString("N") + entryExt;
+                                    string tempFilePath = Path.Combine(tempDirectory, entryTempKey);
+
+                                    using (var entryStream = entry.Open())
+                                    using (var fs = new FileStream(tempFilePath, FileMode.Create))
+                                    {
+                                        await entryStream.CopyToAsync(fs);
+                                    }
+
+                                    // Formato Solicitado: Agrega el prefijo visual de pertenencia al paquete
+                                    string displayName = $"📦 [{file.fileName}] /{entry.FullName}";
+                                    notebooksToProcess.Add((tempFilePath, displayName));
+                                }
+                            }
+                        }
+                    }
+                    else if (ext == ".py" || ext == ".ipynb")
+                    {
+                        var tempFilePath = Path.Combine(tempDirectory, file.fileName);
+                        using (var fs = new FileStream(tempFilePath, FileMode.Create)) { await file.stream.CopyToAsync(fs); }
                         notebooksToProcess.Add((tempFilePath, file.fileName));
+                    }
                 }
 
                 foreach (var (tempPath, originalName) in notebooksToProcess)
@@ -377,9 +465,6 @@ namespace NotebookValidator.Web.Services
                         string fSev = rule.Severity;
                         string fDet = rule.DetailsMessage;
 
-                        // ===================================================================================
-                        // ESCUDO DE PROTECCIÓN C# QUIRÚRGICO: Valida f-strings y frena falsos positivos de librerías
-                        // ===================================================================================
                         if (fType.Contains("Base", StringComparison.OrdinalIgnoreCase) ||
                             fType.Contains("Datos", StringComparison.OrdinalIgnoreCase) ||
                             fType.Contains("Hardcode", StringComparison.OrdinalIgnoreCase) ||
@@ -393,13 +478,10 @@ namespace NotebookValidator.Web.Services
 
                                 if (exactLine.Contains("{") && exactLine.Contains("}")) continue;
 
-                                // CORRECCIÓN DEFINITIVA: 'from' requiere obligatoriamente tener 'import' en la misma línea para ser perdonado como librería Python.
-                                // Si dice "from base1.tabla1" sin la palabra "import", NO es una librería, por lo tanto SÍ es una base de datos en duro y se reportará.
                                 if ((exactLine.StartsWith("from ", StringComparison.OrdinalIgnoreCase) && exactLine.Contains("import ", StringComparison.OrdinalIgnoreCase)) ||
                                     exactLine.StartsWith("import ", StringComparison.OrdinalIgnoreCase)) continue;
                             }
                         }
-                        // ===================================================================================
 
                         if (fType.Contains("SQL", StringComparison.OrdinalIgnoreCase))
                         {

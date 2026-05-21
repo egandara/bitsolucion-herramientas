@@ -207,9 +207,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     );
                     if (hasCleanable && bulkBtn) bulkBtn.style.display = 'inline-block';
 
+                    // Sincronización de autoWidth inactivo para forzar las clases CSS de anchos estrictos
                     $('#resultsTable').DataTable({
                         language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' },
                         pageLength: 10,
+                        autoWidth: false,
                         order: [[0, 'asc']]
                     });
 
@@ -384,17 +386,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const table = document.createElement('table');
         table.id = 'resultsTable';
-        table.className = 'table table-bordered table-striped mt-3 bg-dark text-white border-secondary';
+        table.className = 'table table-bordered table-striped mt-3 align-middle';
         table.innerHTML = `
             <thead class="thead-dark">
                 <tr>
-                    <th>Archivo</th>
-                    <th>Tipo de Problema</th>
-                    <th>Celda</th>
-                    <th>Línea</th>
-                    <th>Contenido</th>
-                    <th>Detalle</th>
-                    <th class="text-center" style="min-width: 60px;">Acciones</th>
+                    <th class="col-archivo">Archivo</th>
+                    <th class="col-tipo">Tipo de Problema</th>
+                    <th class="col-celda text-center">Celda</th>
+                    <th class="col-linea text-center">Línea</th>
+                    <th class="col-contenido">Contenido</th>
+                    <th class="col-detalle">Detalle</th>
+                    <th class="col-acciones text-center">Acciones</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -417,7 +419,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const fileName = finding.FileName ?? finding.fileName ?? 'N/A';
             const type = finding.FindingType ?? finding.findingType ?? 'N/A';
             const content = finding.Content ?? finding.content ?? '';
-            const details = finding.Details ?? finding.details ?? '';
+            const details = finding.Details ?? finding.details ?? 'N/A';
             const cellNum = finding.CellNumber ?? finding.cellNumber ?? 'N/A';
             const lineNum = finding.LineNumber ?? finding.lineNumber ?? 'N/A';
 
@@ -433,13 +435,13 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             tr.innerHTML = `
-                <td>${escapeHtml(fileName)}</td>
-                <td><span class="${badgeClass}">${escapeHtml(type)}</span></td>
-                <td>${escapeHtml(cellNum.toString())}</td>
-                <td>${escapeHtml(lineNum.toString())}</td>
-                <td><code>${escapeHtml(content)}</code></td>
-                <td>${escapeHtml(details)}</td>
-                <td class="text-center">${actionHtml}</td>
+                <td class="col-archivo">${escapeHtml(fileName)}</td>
+                <td class="col-tipo"><span class="${badgeClass}">${escapeHtml(type)}</span></td>
+                <td class="col-celda text-center">${escapeHtml(cellNum.toString())}</td>
+                <td class="col-linea text-center">${escapeHtml(lineNum.toString())}</td>
+                <td class="col-contenido"><code>${escapeHtml(content)}</code></td>
+                <td class="col-detalle">${escapeHtml(details)}</td>
+                <td class="col-acciones text-center">${actionHtml}</td>
             `;
             tbody.appendChild(tr);
         }
@@ -477,10 +479,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         } catch (e) { }
                     }
 
-                    // --- SOLUCIÓN: FORZAR MARCADOR DE LÍNEA EN MODAL PARA FUNCIONES ---
                     let highlightLineNum = lineNumber;
                     if (findingType.includes("Función") || findingType.includes("sqlsafe")) {
-                        highlightLineNum = 1; // El source recibido ya viene cortado quirúrgicamente
+                        highlightLineNum = 1;
                     }
 
                     const sourceToLoop = prismLines || lines;
@@ -526,7 +527,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-// --- FUNCIONES SINTÁCTICAS (Compartidas) ---
 function validatePythonSyntax(code) {
     if (!code.trim()) return "El código no puede estar vacío.";
     if (!/def\s+\w+\s*\(/.test(code)) return "Sintaxis Inválida: El código debe contener una definición de función (ejemplo: 'def mi_funcion():').";
@@ -554,7 +554,6 @@ function validatePythonSyntax(code) {
     return null;
 }
 
-// --- DINAMISMO: CARGA DE CODEMIRROR E INYECCIÓN DE MODAL ---
 function injectCodeMirrorAndModal(callback) {
     if (!document.getElementById('addToMasterModal')) {
         const style = document.createElement('style');
@@ -613,7 +612,6 @@ function injectCodeMirrorAndModal(callback) {
     });
 }
 
-// --- EVENTOS GLOBALES ---
 let addToMasterEditor = null;
 window.openAddToMasterModal = function (sourceBase64) {
     const fullCellContent = decodeURIComponent(escape(atob(sourceBase64)));
@@ -747,12 +745,12 @@ window.openSmartFix = function (fileName, sourceBase64) {
 
     select.innerHTML = '<option value="">-- Seleccionar Variable DB --</option>';
     const vars = window.detectedVars[fileName] || [];
-    vars.forEach(v => { select.innerHTML += `<option value="${v}">${v}</option>`; });
+    vars.forEach(v => { select.innerHTML += `<option value=\"${v}\">${v}</option>`; });
 
     select.onchange = () => {
         const dbVar = select.value || '[VARIABLE_X]';
-        let standardizedSql = sqlContent.replace(fullTableName, `""" + ${dbVar} + ".${tableName}"""`);
-        previewCodeEl.innerText = `${varNameSugerida} = """${standardizedSql}"""\nsqlsafe(${varNameSugerida})`;
+        let standardizedSql = sqlContent.replace(fullTableName, `\"\"\" + ${dbVar} + \".${tableName}\"\"\"`);
+        previewCodeEl.innerText = `${varNameSugerida} = \"\"\"${standardizedSql}\"\"\"\\nsqlsafe(${varNameSugerida})`;
     };
 
     select.onchange();
