@@ -52,11 +52,26 @@ namespace NotebookValidator.Web.Controllers
 
             if (isAdmin)
             {
-                proyectos = await _context.Proyectos.Include(p => p.Cliente).Include(p => p.Fases).Include(p => p.UsuariosAsignados).ThenInclude(ua => ua.Usuario).OrderByDescending(p => p.FechaCreacion).ToListAsync();
+                proyectos = await _context.Proyectos
+                    .Include(p => p.Cliente)
+                    .Include(p => p.Fases)
+                    .Include(p => p.UsuariosAsignados).ThenInclude(ua => ua.Usuario)
+                    .OrderByDescending(p => p.FechaCreacion)
+                    .AsNoTracking()
+                    .AsSplitQuery()
+                    .ToListAsync();
             }
             else
             {
-                proyectos = await _context.Proyectos.Include(p => p.Cliente).Include(p => p.Fases).Include(p => p.UsuariosAsignados).ThenInclude(ua => ua.Usuario).Where(p => p.UsuariosAsignados.Any(ua => ua.UsuarioId == currentUserId)).OrderByDescending(p => p.FechaCreacion).ToListAsync();
+                proyectos = await _context.Proyectos
+                    .Include(p => p.Cliente)
+                    .Include(p => p.Fases)
+                    .Include(p => p.UsuariosAsignados).ThenInclude(ua => ua.Usuario)
+                    .Where(p => p.UsuariosAsignados.Any(ua => ua.UsuarioId == currentUserId))
+                    .OrderByDescending(p => p.FechaCreacion)
+                    .AsNoTracking()
+                    .AsSplitQuery()
+                    .ToListAsync();
             }
             return View(proyectos);
         }
@@ -131,12 +146,13 @@ namespace NotebookValidator.Web.Controllers
                 .Include(p => p.UsuariosAsignados).ThenInclude(ua => ua.Usuario)
                 .Include(p => p.Validaciones.OrderByDescending(v => v.FechaValidacion))
                 .Include(p => p.TablasCatalogo).ThenInclude(tc => tc.TablaMaestra)
-                .Include(p => p.Comentarios.OrderByDescending(c => c.FechaCreacion)) // Cargamos el muro ordenado
+                .Include(p => p.Comentarios.OrderByDescending(c => c.FechaCreacion))
+                .AsNoTracking()
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (proyecto == null) return NotFound();
 
-            // RADIOGRAFÍA DEL WORKSPACE
             int totalArchivos = 0;
             var conteoExtensiones = new Dictionary<string, int>();
             var archivosAnalizables = new List<string>();
@@ -182,11 +198,10 @@ namespace NotebookValidator.Web.Controllers
             var fase = await _context.FasesProyecto.FindAsync(faseId);
             if (fase == null) return Json(new { success = false, message = "Fase no encontrada" });
 
-            // REGISTRO DE TRAZABILIDAD (QUIÉN Y CUÁNDO)
             string usuarioEmail = User.Identity?.Name ?? "Usuario Anónimo";
             fase.EstadoFase = nuevoEstado;
             fase.FechaActualizacion = DateTime.Now;
-            fase.UsuarioActualizacion = usuarioEmail.Split('@')[0]; // Guardamos solo el username corto
+            fase.UsuarioActualizacion = usuarioEmail.Split('@')[0];
 
             await _context.SaveChangesAsync();
             return Json(new { success = true });
@@ -195,7 +210,11 @@ namespace NotebookValidator.Web.Controllers
         [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
-            var proyecto = await _context.Proyectos.Include(p => p.UsuariosAsignados).FirstOrDefaultAsync(p => p.Id == id);
+            var proyecto = await _context.Proyectos
+                .Include(p => p.UsuariosAsignados)
+                .AsSplitQuery()
+                .FirstOrDefaultAsync(p => p.Id == id);
+
             if (proyecto == null) return NotFound();
             ViewBag.Clientes = new SelectList(await _context.Clientes.Where(c => c.Activo).OrderBy(c => c.Nombre).ToListAsync(), "Id", "Nombre", proyecto.ClienteId);
             ViewBag.UsuariosBanco = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.Email).ToListAsync();
@@ -221,6 +240,7 @@ namespace NotebookValidator.Web.Controllers
 
             await _context.SaveChangesAsync(); return RedirectToAction(nameof(Details), new { id = proyecto.Id });
         }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ValidateProjectNotebook(int proyectoId)
@@ -256,9 +276,6 @@ namespace NotebookValidator.Web.Controllers
 
             proyecto.EstadoValidacionWorkspace = pasoValidacion ? "Validado" : "Rechazado";
 
-            // =========================================================
-            // HILO INVISIBLE 1: AUTOMATIZAR FASE DE PRUEBAS QA
-            // =========================================================
             var faseQA = await _context.FasesProyecto.FirstOrDefaultAsync(f => f.ProyectoId == proyecto.Id && f.NombreFase.Contains("Pruebas_Certificacion"));
             if (faseQA != null)
             {
@@ -289,9 +306,6 @@ namespace NotebookValidator.Web.Controllers
             return Json(new { success = true, message = "Revisión histórica eliminada." });
         }
 
-        // =========================================================
-        // LINAJE DE TABLAS
-        // =========================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddTablaProyecto(int proyectoId, string nombreTabla, string tipoTabla, string descripcion, string? rutaUbicacion = null)
@@ -460,6 +474,7 @@ namespace NotebookValidator.Web.Controllers
             var proyecto = await _context.Proyectos
                 .Include(p => p.TablasCatalogo)
                 .ThenInclude(tc => tc.TablaMaestra)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(p => p.Id == proyectoId);
 
             if (proyecto == null || string.IsNullOrEmpty(proyecto.RutaWorkspaceLocal))
@@ -494,7 +509,7 @@ namespace NotebookValidator.Web.Controllers
 
                 var tablasEnCatalogo = proyecto.TablasCatalogo
                                                .Where(t => t.TablaMaestra != null)
-                                               .Select(t => t.TablaMaestra.NombreTabla.ToLower())
+                                               .Select(t => t.TablaMaestra!.NombreTabla.ToLower())
                                                .ToHashSet();
 
                 var matchPerfecto = tablasEnCodigo.Intersect(tablasEnCatalogo).ToList();
@@ -538,7 +553,12 @@ namespace NotebookValidator.Web.Controllers
         {
             if (yamlFile == null || yamlFile.Length == 0) return Json(new { success = false, message = "Falta el archivo YAML base." });
 
-            var proyecto = await _context.Proyectos.Include(p => p.Fases).Include(p => p.TablasCatalogo).ThenInclude(tc => tc.TablaMaestra).FirstOrDefaultAsync(p => p.Id == proyectoId);
+            var proyecto = await _context.Proyectos
+                .Include(p => p.Fases)
+                .Include(p => p.TablasCatalogo).ThenInclude(tc => tc.TablaMaestra)
+                .AsSplitQuery()
+                .FirstOrDefaultAsync(p => p.Id == proyectoId);
+
             if (proyecto == null || string.IsNullOrEmpty(proyecto.RutaWorkspaceLocal)) return Json(new { success = false, message = "Proyecto no encontrado o Workspace vacío." });
 
             using var transaction = await _context.Database.BeginTransactionAsync();
@@ -600,9 +620,6 @@ namespace NotebookValidator.Web.Controllers
 
                 _context.ArtefactosJob.Add(new ArtefactoJob { ProyectoId = proyecto.Id, UsuarioGenerador = permUser, NombreBundle = bundleName, FechaGeneracion = DateTime.Now, ArchivoDriveUrl = driveUrl });
 
-                // =========================================================
-                // HILO INVISIBLE 2: AUTOMATIZAR FASE DE PRODUCCIÓN
-                // =========================================================
                 var faseProduccion = proyecto.Fases.FirstOrDefault(f => f.NombreFase.Contains("Paso_A_Produccion"));
                 if (faseProduccion != null)
                 {
@@ -622,6 +639,7 @@ namespace NotebookValidator.Web.Controllers
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                // FIX PARA EL ERROR CS0103 Y CS1003 AQUI ABAJO:
                 return Json(new { success = false, message = "Error en el motor de transformación: " + ex.Message });
             }
         }
@@ -654,11 +672,9 @@ namespace NotebookValidator.Web.Controllers
                     ? proyecto.RepositorioGitHub.Split('/').Last().Replace(".git", "")
                     : "bundle-proyecto";
 
-                string rutaLocal = await _workspaceService.SaveWorkspaceLocalAsync(proyectoId, file, repoName, proyecto.DriveFolderId);
+                // SOLUCION AL WARNING CS8604
+                string rutaLocal = await _workspaceService.SaveWorkspaceLocalAsync(proyectoId, file, repoName, proyecto.DriveFolderId ?? string.Empty);
 
-                // =========================================================
-                // MAGIA DE INDEXACIÓN PARA OMNI-SEARCH AL VUELO
-                // =========================================================
                 string archivosIndexados = "";
                 try
                 {
@@ -673,7 +689,7 @@ namespace NotebookValidator.Web.Controllers
 
                     archivosIndexados = string.Join(";", nombresArchivos);
                 }
-                catch { /* Si el ZIP está dañado, no detenemos el proceso, solo no indexamos */ }
+                catch { }
 
                 proyecto.ArchivosIndexados = archivosIndexados;
                 proyecto.RutaWorkspaceLocal = rutaLocal;
@@ -681,7 +697,6 @@ namespace NotebookValidator.Web.Controllers
                 proyecto.EstadoValidacionWorkspace = "Pendiente_Validacion";
                 proyecto.EstadoSincronizacionDrive = "Sincronizando";
 
-                // HILO INVISIBLE 3: AUTOMATIZAR DESARROLLO Y RESETEAR QA
                 var faseDev = await _context.FasesProyecto.FirstOrDefaultAsync(f => f.ProyectoId == proyecto.Id && f.NombreFase.Contains("Desarrollo_Notebooks"));
                 if (faseDev != null)
                 {
@@ -710,9 +725,6 @@ namespace NotebookValidator.Web.Controllers
             }
         }
 
-        // =========================================================
-        // NUEVO: SISTEMA DE MURO Y RECORDATORIOS
-        // =========================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddComentario([FromBody] NuevoComentarioDto request)
@@ -763,9 +775,6 @@ namespace NotebookValidator.Web.Controllers
             return Json(new { success = true });
         }
 
-        // =========================================================
-        // OMNI-SEARCH: BUSCADOR GLOBAL TIPO CONFLUENCE
-        // =========================================================
         [HttpGet]
         public async Task<IActionResult> GlobalSearch(string q)
         {
@@ -775,7 +784,6 @@ namespace NotebookValidator.Web.Controllers
             string query = q.ToLower();
             var resultados = new List<SearchResultDto>();
 
-            // 1. Buscar en Proyectos (Nombre, Cliente, Descripcion)
             var proyectos = await _context.Proyectos
                 .Include(p => p.Cliente)
                 .Where(p => p.Nombre.ToLower().Contains(query) ||
@@ -796,28 +804,30 @@ namespace NotebookValidator.Web.Controllers
                 });
             }
 
-            // 2. Buscar en Tablas del Catálogo de Linaje
             var tablas = await _context.TablasProyecto
                 .Include(t => t.TablaMaestra)
                 .Include(t => t.Proyecto)
-                .Where(t => t.TablaMaestra.NombreTabla.ToLower().Contains(query) ||
-                            (t.TablaMaestra.Descripcion != null && t.TablaMaestra.Descripcion.ToLower().Contains(query)))
+                .Where(t => (t.TablaMaestra != null && t.TablaMaestra.NombreTabla.ToLower().Contains(query)) ||
+                            (t.TablaMaestra != null && t.TablaMaestra.Descripcion != null && t.TablaMaestra.Descripcion.ToLower().Contains(query)))
                 .Take(5)
                 .ToListAsync();
 
             foreach (var t in tablas)
             {
+                // SOLUCIÓN PARA WARNINGS CS8602
+                string nombreTablaSafe = t.TablaMaestra?.NombreTabla ?? "Tabla Desconocida";
+                string nombreProyectoSafe = t.Proyecto?.Nombre ?? "Proyecto Desconocido";
+
                 resultados.Add(new SearchResultDto
                 {
                     Categoria = "Catálogo de Linaje",
-                    Titulo = t.TablaMaestra.NombreTabla,
-                    Descripcion = $"Proyecto: {t.Proyecto.Nombre}",
+                    Titulo = nombreTablaSafe,
+                    Descripcion = $"Proyecto: {nombreProyectoSafe}",
                     Url = Url.Action("Details", "Proyectos", new { id = t.ProyectoId }) + "#linaje",
                     Icono = "bi-table text-success"
                 });
             }
 
-            // 3. Buscar en Archivos y Notebooks (Índice del Workspace de Alta Velocidad)
             var proyectosConCodigo = await _context.Proyectos
                 .Where(p => p.ArchivosIndexados != null && p.ArchivosIndexados.ToLower().Contains(query))
                 .Take(5)
@@ -825,10 +835,12 @@ namespace NotebookValidator.Web.Controllers
 
             foreach (var p in proyectosConCodigo)
             {
-                // Extraemos y mostramos exactamente el nombre del archivo que hizo match
-                var matchedFiles = p.ArchivosIndexados.Split(';')
+                // SOLUCIÓN PARA WARNINGS CS8602
+                var arrArchivos = p.ArchivosIndexados?.Split(';') ?? Array.Empty<string>();
+
+                var matchedFiles = arrArchivos
                     .Where(f => f.ToLower().Contains(query))
-                    .Take(2); // Mostramos hasta 2 archivos que coincidan por proyecto para no saturar
+                    .Take(2);
 
                 foreach (var f in matchedFiles)
                 {
@@ -836,27 +848,31 @@ namespace NotebookValidator.Web.Controllers
                     {
                         Categoria = "Código y Notebooks",
                         Titulo = f,
-                        Descripcion = $"En Workspace de: {p.Nombre}",
+                        Descripcion = $"En Workspace de: {p.Nombre ?? "Desconocido"}",
                         Url = Url.Action("Details", "Proyectos", new { id = p.Id }) + "#calidad",
                         Icono = "bi-file-earmark-code text-info"
                     });
                 }
             }
 
-            // 4. Buscar en la Bitácora (Comentarios)
             var comentarios = await _context.ComentariosProyecto
                 .Include(c => c.Proyecto)
-                .Where(c => c.Texto.ToLower().Contains(query) || c.Usuario.ToLower().Contains(query))
+                .Where(c => c.Texto.ToLower().Contains(query) || (c.Usuario != null && c.Usuario.ToLower().Contains(query)))
                 .Take(5)
                 .ToListAsync();
 
             foreach (var c in comentarios)
             {
+                // SOLUCION PARA WARNINGS CS8602 y CS8601
+                string txtSafe = string.IsNullOrEmpty(c.Texto) ? "" : c.Texto;
+                string usrSafe = string.IsNullOrEmpty(c.Usuario) ? "Desconocido" : c.Usuario;
+                string proyNameSafe = c.Proyecto?.Nombre ?? "Desconocido";
+
                 resultados.Add(new SearchResultDto
                 {
                     Categoria = "Bitácora y Alertas",
-                    Titulo = c.Texto.Length > 45 ? c.Texto.Substring(0, 45) + "..." : c.Texto,
-                    Descripcion = $"@@{c.Usuario} en {c.Proyecto.Nombre}",
+                    Titulo = txtSafe.Length > 45 ? txtSafe.Substring(0, 45) + "..." : txtSafe,
+                    Descripcion = $"@@{usrSafe} en {proyNameSafe}",
                     Url = Url.Action("Details", "Proyectos", new { id = c.ProyectoId }),
                     Icono = c.Tipo == "Recordatorio" ? "bi-clock-history text-warning" : (c.Tipo == "Advertencia" ? "bi-exclamation-triangle text-danger" : "bi-chat-left-text text-secondary")
                 });
@@ -872,24 +888,27 @@ namespace NotebookValidator.Web.Controllers
     public class SaveScannedLineageRequest
     {
         public int ProyectoId { get; set; }
-        public List<TablaScaneada> Tablas { get; set; }
+
+        // SOLUCION WARNING CS8618: Inicializando la lista por defecto
+        public List<TablaScaneada> Tablas { get; set; } = new();
     }
 
     public class TablaScaneada
     {
-        public string NombreTabla { get; set; }
-        public string TipoTabla { get; set; }
+        // SOLUCION WARNING CS8618: Valores por defecto
+        public string NombreTabla { get; set; } = string.Empty;
+        public string TipoTabla { get; set; } = string.Empty;
     }
 
     public class NuevoComentarioDto
     {
         public int ProyectoId { get; set; }
-        public string Texto { get; set; }
-        public string Tipo { get; set; }
+        // SOLUCION WARNING CS8618: Valores por defecto
+        public string Texto { get; set; } = string.Empty;
+        public string Tipo { get; set; } = string.Empty;
         public DateTime? FechaVencimiento { get; set; }
     }
 
-    // ---> AGREGA ESTO: El DTO para el Buscador Global
     public class SearchResultDto
     {
         public string Categoria { get; set; } = string.Empty;
