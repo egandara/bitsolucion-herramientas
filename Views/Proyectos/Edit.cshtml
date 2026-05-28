@@ -1,0 +1,128 @@
+@model NotebookValidator.Web.Models.GestorProyectos.Proyecto
+@{
+    ViewData["Title"] = "Editar Proyecto";
+    var usuariosBanco = ViewBag.UsuariosBanco as IEnumerable<dynamic>;
+
+    // Lista de IDs de usuarios que ya están asignados para dejar sus checkboxes marcados
+    var asignadosActuales = Model.UsuariosAsignados.Select(u => u.UsuarioId).ToList();
+}
+
+<div class="container-fluid dashboard-xl-container mt-3" style="max-width: 900px !important;">
+    <div class="d-flex align-items-center mb-4">
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm me-3"><i class="bi bi-arrow-left"></i> Volver</a>
+        <div>
+            <h1 class="h4 fw-bold mb-0 text-white" style="font-family: 'Poppins', sans-serif;">Editar Proyecto: @Model.Nombre</h1>
+            <p class="mb-0 small text-white-50">Actualiza el cronograma, notas y equipo asignado.</p>
+        </div>
+    </div>
+
+    <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+        <form asp-action="Edit" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+
+            <h5 class="fw-bold text-warning mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-info-square me-2"></i>1. Metadatos Generales</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label text-white small fw-bold">Empresa / Cliente</label>
+                    <select name="clienteId" class="form-select bg-dark text-white border-secondary" asp-items="ViewBag.Clientes">
+                        <option value="">-- Interno / Sin Cliente --</option>
+                    </select>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-white small fw-bold">Repositorio GitHub</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-github"></i></span>
+                            <input type="text" name="repositorioGitHub" class="form-control bg-dark text-white border-secondary font-monospace"
+                                   value="@Model.RepositorioGitHub" placeholder="Ej: bitsolucion/repo-pipeline" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-white small fw-bold">Contraparte del Cliente</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-person-badge"></i></span>
+                            <input type="text" name="contraparteCliente" class="form-control bg-dark text-white border-secondary"
+                                   value="@Model.ContraparteCliente" placeholder="Ej: Juan Pérez (Líder QA)" />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-white small fw-bold">Estado del Proyecto</label>
+                    <select name="estado" class="form-select bg-dark text-white border-secondary">
+                        <!option value="Activo" @(Model.Estado == "Activo" ? "selected" : "")>Activo</!option>
+                        <!option value="Pausado" @(Model.Estado == "Pausado" ? "selected" : "")>Pausado</!option>
+                        <!option value="Finalizado" @(Model.Estado == "Finalizado" ? "selected" : "")>Finalizado</!option>
+                    </select>
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label text-white small fw-bold">Descripción</label>
+                    <textarea name="descripcion" class="form-control bg-dark text-white border-secondary" rows="2">@Model.Descripcion</textarea>
+                </div>
+            </div>
+
+            <h5 class="fw-bold text-info mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-calendar-event me-2"></i>2. Cronograma y Notas</h5>
+            <h5 class="fw-bold text-danger mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;">
+                <i class="bi bi-sliders me-2"></i>3. Configuración de Umbrales de Calidad (Gobernanza)
+            </h5>
+            <p class="text-white-50 small mb-3">
+                Define el nivel de exigencia para este proyecto. Las revisiones que superen estos límites serán rechazadas automáticamente. Los errores de tipo <strong class="text-danger">Critical</strong> nunca se perdonan (Tolerancia cero).
+            </p>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label text-white small fw-bold">Máximo de Warnings Permitidos por revisión</label>
+                    <input type="number" name="maxWarningsPermitidos" class="form-control bg-dark text-white border-secondary font-monospace"
+                           min="0" max="100" value="@Model.MaxWarningsPermitidos" required />
+                    <span class="text-white-50" style="font-size: 0.65rem;">Revisiones con más warnings que este límite se marcarán como "Rechazado".</span>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-white small fw-bold">Máximo de Infos Permitidos por revisión</label>
+                    <input type="number" name="maxInfosPermitidos" class="form-control bg-dark text-white border-secondary font-monospace"
+                           min="0" max="200" value="@Model.MaxInfosPermitidos" required />
+                    <span class="text-white-50" style="font-size: 0.65rem;">Filtro flexible para prints duras o avisos de documentación interna.</span>
+                </div>
+            </div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label text-white small fw-bold">Fecha de Inicio</label>
+                    <input type="date" name="fechaInicio" class="form-control bg-dark text-white border-secondary" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-white small fw-bold">Fin Estimado (Cierre)</label>
+                    <input type="date" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" value="@Model.FechaFinEstimada?.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-white small fw-bold">Paso a Producción</label>
+                    <input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" value="@Model.FechaPasoProduccion?.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label text-white small fw-bold">Notas o Reprogramaciones</label>
+                    <textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="3" placeholder="Añade comentarios sobre retrasos, cambios de alcance, etc.">@Model.Notas</textarea>
+                </div>
+            </div>
+
+            <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>3. Actualizar Equipo</h5>
+            <div class="bg-dark border border-secondary p-3 mb-4" style="border-radius: 6px; max-height: 200px; overflow-y: auto;">
+                @if (usuariosBanco != null)
+                {
+                    foreach (var user in usuariosBanco)
+                    {
+                        bool isChecked = asignadosActuales.Contains((string)user.Id);
+                        <div class="form-check mb-1">
+                            <input class="form-check-input" type="checkbox" name="usuariosAsignadosIds" value="@user.Id" id="user_@user.Id" @(isChecked ? "checked" : "")>
+                            <label class="form-check-label text-white small" for="user_@user.Id">
+                                @user.Email
+                            </label>
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="text-end border-top border-secondary border-opacity-25 pt-3 mt-2">
+                <button type="submit" class="btn btn-warning px-5 py-2 fw-bold">
+                    <i class="bi bi-save me-1"></i> Guardar Cambios
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

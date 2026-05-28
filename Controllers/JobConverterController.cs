@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -28,19 +27,34 @@ namespace NotebookValidator.Web.Controllers
             return View();
         }
 
+        // Clase auxiliar para el ordenamiento inteligente
+        private class StagedJobInfo
+        {
+            public string FileKey { get; set; }
+            public string OriginalFileName { get; set; }
+            public string OriginalJobName { get; set; }
+            public string CleanedName { get; set; }
+            public bool IsYaml { get; set; }
+            public List<string> ParametersList { get; set; }
+            public List<object> AutoSources { get; set; }
+            public List<object> AutoTargets { get; set; }
+            public string InferredBundleName { get; set; }
+            public bool IsProvisioning { get; set; }
+        }
+
         [HttpPost]
         public async Task<IActionResult> PrepareStaging(List<IFormFile> files, string certSparkConf, string prodSparkConf, bool masterAutocert = false)
         {
             if (files == null || !files.Any())
-            {
                 return Json(new { success = false, message = "Por favor, selecciona al menos un archivo de configuración o ZIP." });
-            }
 
             string token = Guid.NewGuid().ToString("N");
             string cachePath = Path.Combine(Path.GetTempPath(), "BitSolucion_JobCache", token);
             Directory.CreateDirectory(cachePath);
 
             var stagedJobs = new List<object>();
+            var tempStagedJobs = new List<StagedJobInfo>();
+
             var regexJsonName = new Regex(@"""name""\s*:\s*""([^""]+)""");
             var regexYamlName = new Regex(@"name:\s*[""']?([^""'\n]+)[""']?");
 
@@ -94,20 +108,16 @@ namespace NotebookValidator.Web.Controllers
             Func<string, bool> isTempOrJunk = s =>
             {
                 string low = s.ToLower();
-                return low.Contains("tmp") ||
-                       low.Contains("temp") ||
-                       low.Contains("vista") ||
-                       low.StartsWith("v_") ||
-                       low.StartsWith("vw_") ||
-                       low.StartsWith("vt_") ||
-                       low.Equals("dual") ||
-                       low.Length <= 3 ||
-                       !Regex.IsMatch(low, "[a-z]") ||
+                return low.Contains("tmp") || low.Contains("temp") || low.Contains("vista") ||
+                       low.StartsWith("v_") || low.StartsWith("vw_") || low.StartsWith("vt_") ||
+                       low.Equals("dual") || low.Length <= 3 || !Regex.IsMatch(low, "[a-z]") ||
                        !(s.Contains(".") || s.Contains("{") || s.Contains("$"));
             };
 
             var cleanSources = rawSources.Where(x => !isTempOrJunk(x)).ToList();
             var cleanTargets = rawTargets.Where(x => !isTempOrJunk(x)).ToList();
+
+            var provisioningKeywords = new[] { "creacion", "create", "tablas", "aprovisionamiento", "despliegue", "tables" };
 
             foreach (var file in configFiles)
             {
@@ -136,6 +146,29 @@ namespace NotebookValidator.Web.Controllers
                 }
 
                 string cleanedName = Regex.Replace(originalJobName, @"^\[dev\]|^\[DEV\]|^dev_|^dev-", "", RegexOptions.IgnoreCase).Trim();
+
+                // Detección de prioridades y etiquetado normativo de aprovisionamiento
+                bool isProv = provisioningKeywords.Any(k => originalJobName.Contains(k, StringComparison.OrdinalIgnoreCase) || file.FileName.Contains(k, StringComparison.OrdinalIgnoreCase));
+
+                if (isProv && !cleanedName.EndsWith("_aprovisionamiento", StringComparison.OrdinalIgnoreCase))
+                {
+                    cleanedName += "_aprovisionamiento";
+                }
+
+                string inferredBundleName = "";
+                if (ext == ".yml" || ext == ".yaml")
+                {
+                    var repoMatch = Regex.Match(content, @"(?i)(?:\.bundles/|/Repos/[^/]+/|/Shared/)([^/]+)/");
+                    if (repoMatch.Success)
+                    {
+                        inferredBundleName = repoMatch.Groups[1].Value;
+                    }
+                    else
+                    {
+                        var bundleMatch = Regex.Match(content, @"(?i)bundle:\s*\n\s*name:\s*([^\s]+)");
+                        if (bundleMatch.Success) inferredBundleName = bundleMatch.Groups[1].Value;
+                    }
+                }
 
                 var parametersList = new List<string>();
                 if (ext == ".yml" || ext == ".yaml")
@@ -167,18 +200,40 @@ namespace NotebookValidator.Web.Controllers
                     }
                 }
 
+                tempStagedJobs.Add(new StagedJobInfo
+                {
+                    FileKey = fileKey,
+                    OriginalFileName = file.FileName,
+                    OriginalJobName = originalJobName,
+                    CleanedName = cleanedName,
+                    IsYaml = (ext == ".yml" || ext == ".yaml"),
+                    ParametersList = parametersList,
+                    AutoSources = autoSources,
+                    AutoTargets = autoTargets,
+                    InferredBundleName = inferredBundleName,
+                    IsProvisioning = isProv
+                });
+            }
+
+            // Ordenamiento Mágico: Aprovisionamiento de primero.
+            var sortedJobs = tempStagedJobs.OrderByDescending(j => j.IsProvisioning).ThenBy(j => j.OriginalFileName).ToList();
+
+            foreach (var j in sortedJobs)
+            {
                 stagedJobs.Add(new
                 {
-                    fileKey = fileKey,
-                    originalFileName = file.FileName,
-                    originalJobName = originalJobName,
-                    suggestedDevName = cleanedName,
-                    suggestedCertName = cleanedName,
-                    suggestedProdName = cleanedName,
-                    isYaml = (ext == ".yml" || ext == ".yaml"),
-                    parameters = parametersList,
-                    autoSources = autoSources,
-                    autoTargets = autoTargets
+                    fileKey = j.FileKey,
+                    originalFileName = j.OriginalFileName,
+                    originalJobName = j.OriginalJobName,
+                    suggestedDevName = j.CleanedName,
+                    suggestedCertName = j.CleanedName,
+                    suggestedProdName = j.CleanedName,
+                    isYaml = j.IsYaml,
+                    parameters = j.ParametersList,
+                    autoSources = j.AutoSources,
+                    autoTargets = j.AutoTargets,
+                    inferredBundleName = j.InferredBundleName,
+                    isProvisioning = j.IsProvisioning
                 });
             }
 
@@ -200,7 +255,6 @@ namespace NotebookValidator.Web.Controllers
                 string tablePart = string.Join(".", parts.Skip(1));
 
                 var exactParam = knownParams.FirstOrDefault(p => p.Equals(possibleParam, StringComparison.OrdinalIgnoreCase));
-
                 if (exactParam == null)
                 {
                     string cleanPossible = Regex.Replace(possibleParam, @"(?i)_?[xw]$", "");
@@ -208,20 +262,12 @@ namespace NotebookValidator.Web.Controllers
                         Regex.Replace(p, @"(?i)_?[xw]$", "").Equals(cleanPossible, StringComparison.OrdinalIgnoreCase));
                 }
 
-                if (exactParam != null)
-                {
-                    return (exactParam, tablePart);
-                }
-
+                if (exactParam != null) return (exactParam, tablePart);
                 return ("", cleaned);
             }
-
             return ("", cleaned);
         }
 
-        // ===================================================================================================
-        // CORREGIDO: Inyección de BundleName y separación de nombres por entorno (Dev, Cert, Prod)
-        // ===================================================================================================
         [HttpPost]
         public async Task<IActionResult> DownloadPackage(
             List<string> fileKeys,
@@ -235,7 +281,7 @@ namespace NotebookValidator.Web.Controllers
             List<string> prodAutocert,
             List<string> sourceTables,
             List<string> targetTables,
-            string bundleName) // <--- Nuevo parámetro enviado desde la vista Fase 1
+            string bundleName)
         {
             string token = TempData.Peek("JobAnalysisToken")?.ToString();
             if (string.IsNullOrEmpty(token)) return BadRequest("La sesión de configuración de Jobs ha expirado.");
@@ -280,9 +326,9 @@ namespace NotebookValidator.Web.Controllers
                                 bool pAuto = (prodAutocert != null && prodAutocert.Count > i) && prodAutocert[i] == "true";
 
                                 yamlContents.Add(rawContent);
-                                yamlDevNames.Add(devNames[i]);
-                                yamlCertNames.Add(certNames[i]);
-                                yamlProdNames.Add(prodNames[i]);
+                                yamlDevNames.Add(devNames[i].Replace(".yml", "").Replace(".yaml", ""));
+                                yamlCertNames.Add(certNames[i].Replace(".yml", "").Replace(".yaml", ""));
+                                yamlProdNames.Add(prodNames[i].Replace(".yml", "").Replace(".yaml", ""));
                                 yamlDevAutocerts.Add(dAuto);
                                 yamlCertAutocerts.Add(cAuto);
                                 yamlProdAutocerts.Add(pAuto);
@@ -306,7 +352,6 @@ namespace NotebookValidator.Web.Controllers
 
                         if (yamlContents.Count > 0)
                         {
-                            // Inyección dinámica de todos los arreglos separados por entorno y el nombre del bundle
                             var bundleConfigs = _transformationService.GenerateBundleConfigs(
                                 yamlContents, yamlDevNames, yamlCertNames, yamlProdNames,
                                 permLevels, permUsers,
@@ -315,7 +360,73 @@ namespace NotebookValidator.Web.Controllers
 
                             foreach (var config in bundleConfigs)
                             {
-                                WriteZipEntry(archive, config.Key, config.Value);
+                                string path = config.Key;
+                                string content = config.Value;
+
+                                path = path.Replace(".yml.yml", ".yml").Replace(".yaml.yml", ".yml").Replace(".yml.scala", ".scala");
+
+                                if (path.EndsWith(".scala", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    string directory = Path.GetDirectoryName(path);
+                                    string fileName = Path.GetFileName(path);
+                                    string newFileName = Regex.Replace(fileName, @"(?i)\d{3}-(?:qa|noqa)-(?:run|norun)-", "");
+                                    path = string.IsNullOrEmpty(directory) ? newFileName : Path.Combine(directory, newFileName).Replace("\\", "/");
+                                }
+                                else if (path.EndsWith("databricks.yml"))
+                                {
+                                    string devPermsStr = "jobPermissions:\n";
+                                    if (permLevels != null && permUsers != null)
+                                    {
+                                        for (int p = 0; p < permLevels.Count; p++)
+                                        {
+                                            string key = permUsers[p].Contains("GRP") ? "group_name" : "user_name";
+                                            devPermsStr += $"        - level: {permLevels[p]}\n          {key}: {permUsers[p]}\n";
+                                        }
+                                    }
+
+                                    string certPermsStr = "jobPermissions:\n        - level: CAN_MANAGE\n          user_name: cmoreab@bci.cl\n        - level: CAN_MANAGE\n          user_name: mcordof@bci.cl\n";
+                                    string prodPermsStr = "jobPermissions:\n        - level: CAN_MANAGE\n          group_name: GRP_AZURE_DATABRICKS_PRODUCCION_BIGDATA_PRD\n";
+
+                                    content = UpdatePermissions(content, "develop", devPermsStr);
+                                    content = UpdatePermissions(content, "certification", certPermsStr);
+                                    content = UpdatePermissions(content, "production", prodPermsStr);
+
+                                    foreach (var fullJobName in yamlDevNames)
+                                    {
+                                        string cleanJobName = Regex.Replace(fullJobName, @"^\d{3}-(?:qa|noqa)-(?:run|norun)-", "");
+
+                                        // La llave de la variable limpia de _aprovisionamiento
+                                        string variableKeyName = Regex.Replace(cleanJobName, @"(?i)_aprovisionamiento$", "");
+
+                                        content = content.Replace($"jobName_{fullJobName}", $"jobName_{variableKeyName}");
+
+                                        string varKey = $"jobName_{variableKeyName}";
+                                        content = Regex.Replace(content, $@"{varKey}:\s*\n\s+description:.*?\n\s+default:\s*(?:""{fullJobName}""|{fullJobName})",
+                                            $"{varKey}:\n    description: {variableKeyName}\n    default: ${{bundle.target}}-{cleanJobName}");
+                                        content = Regex.Replace(content, $@"{varKey}:\s*""{fullJobName}""", $"{varKey}: {cleanJobName}");
+                                    }
+                                }
+                                else if (path.Contains("resources/") && path.EndsWith(".yml"))
+                                {
+                                    string fileNameWithoutExt = Path.GetFileNameWithoutExtension(path);
+                                    string cleanJobName = Regex.Replace(fileNameWithoutExt, @"^\d{3}-(?:qa|noqa)-(?:run|norun)-", "");
+                                    string variableKeyName = Regex.Replace(cleanJobName, @"(?i)_aprovisionamiento$", "");
+
+                                    content = Regex.Replace(content, $@"([ \t]+){Regex.Escape(fileNameWithoutExt)}:\s*\n", $"$1{cleanJobName}:\n");
+
+                                    var nameRegex = new Regex(@"name:\s*""?[^""\n]+""?");
+                                    content = nameRegex.Replace(content, $"name: ${{var.jobName_{variableKeyName}}}", 1);
+
+                                    string badTaskRegex = @"[ \t]+-[ \t]+task_key:\s*Auto_Certificacion\s*\r?\n(?:[ \t]+.*?\r?\n)*?(?=[ \t]+-[ \t]+task_key:|$)";
+                                    content = Regex.Replace(content, badTaskRegex, "");
+
+                                    content = Regex.Replace(content, @"(notebook_path:.*?)\d{3}-(?:qa|noqa)-(?:run|norun)-", "$1");
+
+                                    // Corrección del parámetro 'nombreJob' para usar siempre la variable limpia
+                                    content = Regex.Replace(content, @"(nombreJob:\s*""\$\{?var\.jobName_)[^""\}]+(\}?"")", $"$1{variableKeyName}$2");
+                                }
+
+                                WriteZipEntry(archive, path, content);
                             }
                         }
                     }
@@ -339,6 +450,22 @@ namespace NotebookValidator.Web.Controllers
             {
                 writer.Write(content);
             }
+        }
+
+        private string UpdatePermissions(string content, string env, string newPerms)
+        {
+            string envPattern = $@"(?s)({env}:.*?)(?=^\s{{2}}[a-zA-Z0-9_-]+:|\z)";
+            return Regex.Replace(content, envPattern, m =>
+            {
+                string block = m.Groups[1].Value;
+                string permPattern = @"jobPermissions:\s*\n(?:[ \t]+-[^\n]+\n(?:[ \t]+(?:user_name|group_name):[^\n]+\n)*)*";
+
+                if (Regex.IsMatch(block, permPattern))
+                {
+                    return Regex.Replace(block, permPattern, newPerms);
+                }
+                return block;
+            }, RegexOptions.Multiline);
         }
     }
 }

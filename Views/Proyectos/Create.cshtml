@@ -1,0 +1,139 @@
+@model NotebookValidator.Web.Models.GestorProyectos.Proyecto
+@{
+    ViewData["Title"] = "Crear Nuevo Proyecto";
+    var usuariosBanco = ViewBag.UsuariosBanco as IEnumerable<dynamic>;
+}
+
+<div class="container-fluid dashboard-xl-container mt-3" style="max-width: 900px !important;">
+    <div class="d-flex align-items-center mb-4">
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm me-3"><i class="bi bi-arrow-left"></i> Volver</a>
+        <div>
+            <h1 class="h4 fw-bold mb-0 text-white" style="font-family: 'Poppins', sans-serif;">Crear Nuevo Proyecto</h1>
+            <p class="mb-0 small text-white-50">El sistema orquestará las carpetas en Drive y registrará la gobernanza.</p>
+        </div>
+    </div>
+
+    <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+        <form asp-action="Create" method="post" id="formCreateProject">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+            <h5 class="fw-bold text-warning mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-info-square me-2"></i>1. Información General</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-8">
+                    <label class="form-label text-white small fw-bold">Nombre del Proyecto <span class="text-danger">*</span></label>
+                    <input type="text" name="nombre" class="form-control bg-dark text-white border-secondary" placeholder="Ej: Migración Base Normativa" required />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-white small fw-bold">Empresa / Cliente</label>
+                    <select name="clienteId" class="form-select bg-dark text-white border-secondary" asp-items="ViewBag.Clientes">
+                        <option value="">-- Interno / Sin Cliente --</option>
+                    </select>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-white small fw-bold">Repositorio GitHub</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-github"></i></span>
+                            <input type="text" name="repositorioGitHub" class="form-control bg-dark text-white border-secondary font-monospace" placeholder="Ej: bitsolucion/repo-pipeline" />
+                        </div>
+                        <span class="text-white-50" style="font-size: 0.65rem;">Ruta corta u organización/repositorio.</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-white small fw-bold">Contraparte del Cliente</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-person-badge"></i></span>
+                            <input type="text" name="contraparteCliente" class="form-control bg-dark text-white border-secondary" placeholder="Ej: Juan Pérez (Líder QA)" />
+                        </div>
+                        <span class="text-white-50" style="font-size: 0.65rem;">Nombre del contacto directo o validador técnico de la empresa.</span>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label text-white small fw-bold">Descripción Corta</label>
+                    <textarea name="descripcion" class="form-control bg-dark text-white border-secondary" rows="2" placeholder="Objetivo principal del proyecto..."></textarea>
+                </div>
+            </div>
+
+            <h5 class="fw-bold text-info mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-calendar-event me-2"></i>2. Cronograma y Notas</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label text-white small fw-bold">Fecha de Inicio</label>
+                    <input type="date" name="fechaInicio" class="form-control bg-dark text-white border-secondary" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-white small fw-bold">Fin Estimado (Cierre)</label>
+                    <input type="date" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-white small fw-bold">Paso a Producción</label>
+                    <input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" />
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label text-white small fw-bold">Notas Iniciales</label>
+                    <textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="2" placeholder="Añade contexto, riesgos iniciales o alcances..."></textarea>
+                </div>
+            </div>
+
+            <h5 class="fw-bold text-primary mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-diagram-3 me-2"></i>3. Fases y Artefactos Opcionales</h5>
+            <p class="text-white-50 small mb-2">Las fases core se crearán automáticamente. Selecciona entregables extra requeridos:</p>
+            <div class="row g-3 mb-4 ps-2">
+                <div class="col-md-6">
+                    <div class="form-check custom-switch-warning">
+                        <input class="form-check-input" type="checkbox" name="fasesSeleccionadas" value="Artefacto_NUAD" id="chkNuad">
+                        <label class="form-check-label text-white small" for="chkNuad">Documento NUAD (Arquitectura)</label>
+                    </div>
+                    <div class="form-check custom-switch-warning mt-2">
+                        <input class="form-check-input" type="checkbox" name="fasesSeleccionadas" value="Artefacto_RAT" id="chkRat">
+                        <label class="form-check-label text-white small" for="chkRat">Documento RAT (Seguridad)</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check custom-switch-warning">
+                        <input class="form-check-input" type="checkbox" name="fasesSeleccionadas" value="Artefacto_MatrizPruebas" id="chkMatriz">
+                        <label class="form-check-label text-white small" for="chkMatriz">Matriz de Pruebas QA</label>
+                    </div>
+                    <div class="form-check custom-switch-warning mt-2">
+                        <input class="form-check-input" type="checkbox" name="fasesSeleccionadas" value="Artefacto_ManualOperacion" id="chkManual">
+                        <label class="form-check-label text-white small" for="chkManual">Manual de Operación / Runbook</label>
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>4. Asignación de Equipo</h5>
+            <div class="bg-dark border border-secondary p-3 mb-4" style="border-radius: 6px; max-height: 200px; overflow-y: auto;">
+                @if (usuariosBanco != null)
+                {
+                    foreach (var user in usuariosBanco)
+                    {
+                        <div class="form-check mb-1">
+                            <input class="form-check-input" type="checkbox" name="usuariosAsignadosIds" value="@user.Id" id="user_@user.Id">
+                            <label class="form-check-label text-white small" for="user_@user.Id">@user.Email</label>
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="text-end border-top border-secondary border-opacity-25 pt-3 mt-2">
+                <button type="submit" class="btn btn-warning px-5 py-2 fw-bold" id="btnSubmit">
+                    <span id="spinnerSubmit" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
+                    <i class="bi bi-rocket-takeoff me-1" id="iconSubmit"></i> Orquestar y Crear
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('formCreateProject').addEventListener('submit', function() {
+            var btn = document.getElementById('btnSubmit');
+            var spinner = document.getElementById('spinnerSubmit');
+            var icon = document.getElementById('iconSubmit');
+
+            btn.disabled = true;
+            spinner.classList.remove('d-none');
+            icon.classList.add('d-none');
+            btn.innerHTML = spinner.outerHTML + ' Hablando con Google Drive... Por favor, no cierres la ventana.';
+        });
+    </script>
+}
