@@ -37,8 +37,9 @@
 
     #staging-table td {
         background-color: #0d0f1d !important;
-        padding: 10px 8px;
+        padding: 12px 10px;
         border-color: rgba(255,255,255,0.06) !important;
+        vertical-align: top;
     }
 
     .perm-table th {
@@ -97,6 +98,12 @@
             box-shadow: 0 0 6px rgba(255, 193, 7, 0.6);
         }
 
+        .radio-dot-input.run-check:checked {
+            border-color: #0dcaf0 !important;
+            background-color: #0dcaf0 !important;
+            box-shadow: 0 0 6px rgba(13, 202, 240, 0.6);
+        }
+
     .custom-switch-container {
         background-color: #111424 !important;
         border: 1px solid rgba(255, 193, 7, 0.15) !important;
@@ -144,6 +151,16 @@
     .accordion-button::after {
         filter: invert(1) grayscale(100%) brightness(200%);
     }
+
+    .filename-live-badge {
+        font-family: monospace;
+        font-size: 0.68rem;
+        background-color: rgba(0, 0, 0, 0.4);
+        padding: 3px 6px;
+        border-radius: 4px;
+        border: 1px solid rgba(255,255,255,0.05);
+        word-break: break-all;
+    }
 </style>
 
 <div class="container-fluid dashboard-xl-container">
@@ -186,6 +203,20 @@
 
                 <div id="job-file-list" class="mb-2 font-monospace" style="font-size: 0.75rem;"></div>
 
+                <div class="alert alert-info border border-info mb-2 p-2 text-white" style="background-color: rgba(13, 202, 240, 0.05); border-radius: 6px;">
+                    <h6 class="fw-bold mb-1 text-info" style="font-size: 0.75rem;"><i class="bi bi-lightbulb-fill me-1"></i>¿De dónde saco el YAML de mi Job?</h6>
+                    <ol class="mb-2 ps-3 text-white-50" style="font-size: 0.7rem; margin-bottom: 0.5rem !important;">
+                        <li>En Databricks ve a <strong>Workflows</strong> y abre tu Job de desarrollo.</li>
+                        <li>Haz clic en los tres puntos (<strong>⋮</strong>) en la esquina superior derecha.</li>
+                        <li>Selecciona <strong>"Edit as YAML"</strong> y guarda ese contenido en un archivo <code>.yml</code>.</li>
+                    </ol>
+                    <div class="p-2 rounded" style="background-color: rgba(255, 193, 7, 0.1); border-left: 3px solid #ffc107;">
+                        <p class="mb-0 text-warning" style="font-size: 0.7rem;">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i><strong>IMPORTANTE:</strong> Sube siempre el YAML puro recién extraído de Databricks. <strong>No recicles ni reutilices archivos generados anteriormente</strong>, la aplicación se encargará de hacer todo el trabajo pesado de limpieza y parametrización por ti.
+                        </p>
+                    </div>
+                </div>
+
                 <div id="health-check-panel" class="alert alert-dark border border-secondary mt-2 mb-3 d-none" style="background-color: #07091e; padding: 10px 14px; border-radius: 6px;">
                     <div class="d-flex align-items-center mb-1">
                         <i class="bi bi-activity text-info me-2 fs-6"></i>
@@ -206,7 +237,6 @@
         </div>
 
         <div class="col-12 col-lg-7 d-flex flex-column gap-3">
-
             <div id="card-spark" class="card p-3 border-0 d-none" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); display: flex; flex-direction: column;">
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 22px; height: 22px; font-size: 0.75rem;">2</div>
@@ -275,7 +305,7 @@
                 </div>
                 <div class="mb-1 px-1">
                     <label for="txtBundleName" class="form-label text-white small mb-1" style="font-size: 0.74rem; font-weight: 600;"><i class="bi bi-git me-1 text-warning"></i> Nombre del Repositorio / Bundle BCI:</label>
-                    <input type="text" id="txtBundleName" class="form-control form-control-sm font-monospace bg-dark text-white border-secondary custom-placeholder" placeholder="Ej: Data-dbs-datosnorm-plt-migraarchnorm" value="Data-dbs-datosnorm-plt-migraarchnorm" style="font-size:0.75rem; height:26px; padding:2px 6px; color:#fff !important;" />
+                    <input type="text" id="txtBundleName" class="form-control form-control-sm font-monospace bg-dark text-white border-secondary custom-placeholder shadow-sm" placeholder="Escaneando notebook_path automáticamente..." value="" style="font-size:0.75rem; height:26px; padding:2px 6px; color:#fff !important; border-width: 1px;" />
                 </div>
                 <p class="text-white-50 ms-1 mt-2 mb-0" style="font-size: 0.72rem; line-height: 1.3;">El nombre ingresado se asignará a la propiedad <code class="text-warning">bundle.name</code> y enlazará las rutas absolutas del CI.</p>
             </div>
@@ -307,7 +337,6 @@
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -316,7 +345,6 @@
             <div id="hidden-permissions-container"></div>
 
             <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 pb-2">
                     <div>
                         <h5 class="fw-bold text-warning mb-0" style="font-family: 'Poppins', sans-serif; font-size: 1.1rem;"><i class="bi bi-shield-fill-exclamation me-2"></i>Fase de Confirmación de Nombres y Flujos</h5>
@@ -331,10 +359,10 @@
                     <table class="table align-middle m-0 font-monospace" id="staging-table" style="font-size: 0.75rem;">
                         <thead>
                             <tr>
-                                <th style="width: 28%;">Archivo Cargado</th>
-                                <th style="width: 24%;">Nombre Desarrollo (Limpio)</th>
-                                <th style="width: 24%;">Nombre Certificación</th>
-                                <th style="width: 24%;">Nombre Producción</th>
+                                <th style="width: 25%;">Archivo Cargado</th>
+                                <th style="width: 25%;">Entorno Desarrollo</th>
+                                <th style="width: 25%;">Entorno Certificación</th>
+                                <th style="width: 25%;">Entorno Producción</th>
                             </tr>
                         </thead>
                         <tbody id="staging-tbody"></tbody>
@@ -342,7 +370,6 @@
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center pt-3 mt-2 border-top border-secondary border-opacity-25">
-
                     <button type="button" id="btn-guide-modal" class="btn btn-outline-info px-4 py-2 fw-bold d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#manualGuideModal" style="border-radius: 6px; font-size: 0.9rem;">
                         <i class="bi bi-journal-richtext fs-5"></i> Ver Guía de UI Databricks
                     </button>
@@ -423,7 +450,6 @@
 @section Scripts {
     <script>
         window.jobParametersMap = {};
-
         document.addEventListener('DOMContentLoaded', function () {
             const fileUpload = document.getElementById('job-file-upload');
             const dropZone = document.getElementById('job-drop-zone');
@@ -486,11 +512,23 @@
                     const reader = new FileReader();
                     reader.onload = function(e) {
                         const text = e.target.result;
+
+                        if (modeUC.checked && (file.name.endsWith('.yml') || file.name.endsWith('.yaml'))) {
+                            const repoMatch = text.match(/(?:\.bundles\/|\/Repos\/[^\/]+\/|\/Shared\/)([^\/]+)\//i);
+                            if (repoMatch && repoMatch[1]) {
+                                const bundleInput = document.getElementById('txtBundleName');
+                                if (!bundleInput.value) {
+                                    bundleInput.value = repoMatch[1];
+                                    toastr.info(`Repositorio inferido automáticamente: ${repoMatch[1]}`, "Inferencia Exitosa");
+                                }
+                            }
+                        }
+
                         if (file.name.endsWith('.json')) {
                             try { JSON.parse(text); resolve(); }
                             catch (err) { reject(new Error("Faltan llaves, comillas o comas finales.")); }
                         } else {
-                            if (text.includes('resources:') || text.includes('tasks:')) { resolve(); }
+                            if (text.includes('resources:') || text.includes('tasks:') || text.includes('bundle:')) { resolve(); }
                             else { reject(new Error("No se detectó una cabecera de recursos válida de Databricks.")); }
                         }
                     };
@@ -503,7 +541,6 @@
                 btnProcesarFase1.disabled = true;
                 for (const file of files) {
                     const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-
                     if (modeUC.checked && ext !== '.yml' && ext !== '.yaml' && ext !== '.zip') {
                         toastr.warning(`En Modo UC solo se admiten: .yml, .yaml, .zip`);
                         continue;
@@ -535,7 +572,6 @@
 
                 let configCount = 0;
                 let zipCount = 0;
-
                 if (jobStore.files.length > 0) {
                     const list = document.createElement('ul');
                     list.className = 'list-group m-0 p-0';
@@ -573,7 +609,6 @@
                     healthCheckPanel.classList.remove('d-none');
                     document.getElementById('hc-config-count').innerText = configCount;
                     document.getElementById('hc-zip-count').innerText = zipCount;
-
                     if(modeUC.checked && zipCount === 0 && configCount > 0) {
                         document.getElementById('hc-uc-warning').classList.remove('d-none');
                     } else {
@@ -646,7 +681,6 @@
                 jsonConfigsValid = isCertValid && isProdValid;
 
                 const hasValidJobConfig = Array.from(jobStore.files).some(f => !f.name.toLowerCase().endsWith('.zip'));
-
                 if (modeUC.checked) {
                     btnProcesarFase1.disabled = !hasValidJobConfig;
                 } else {
@@ -655,6 +689,31 @@
             }
 
             $('.json-linter-input').on('input', function() { evalProcesarBtnState(); });
+
+            window.updateJobFileName = function(index) {
+                const qaFlag = document.querySelector(`input[name="dev_radio_${index}"]:checked`)?.value || 'qa';
+                const runFlag = document.querySelector(`input[name="radRunProd_${index}"]:checked`)?.value || 'norun';
+                let baseDesc = document.getElementById(`baseDesc_${index}`).value.trim() || 'descripcion';
+
+                const seqStr = String(index + 1).padStart(3, '0');
+                const finalFileName = `${seqStr}-${qaFlag}-${runFlag}-${baseDesc}`;
+
+                document.getElementById(`devNames_${index}`).value = finalFileName;
+                document.getElementById(`certNames_${index}`).value = finalFileName;
+                document.getElementById(`prodNames_${index}`).value = finalFileName;
+
+                const badge = document.getElementById(`badgeDev_${index}`);
+                if (badge) badge.innerText = finalFileName + ".yml";
+
+                const mainRow = document.querySelector(`.main-job-row[data-row-idx="${index}"]`);
+                const isProv = mainRow ? mainRow.getAttribute('data-is-prov') === 'true' : false;
+
+                const govRow = document.getElementById(`govRow_${index}`);
+                if (govRow) {
+                    if (qaFlag === 'qa' && !isProv) govRow.classList.remove('d-none');
+                    else govRow.classList.add('d-none');
+                }
+            };
 
             $('#btnProcesarFase1').on('click', function(e) {
                 e.preventDefault();
@@ -684,6 +743,12 @@
                             $('#staging-tbody').empty();
                             window.jobParametersMap = {};
 
+                            if(modeUC.checked) {
+                                $('#staging-table thead').html(`<tr><th style="width: 30%;">Archivo Cargado</th><th style="width: 70%;">Configuración Final del Job (DABs)</th></tr>`);
+                            } else {
+                                $('#staging-table thead').html(`<tr><th style="width: 28%;">Archivo Cargado</th><th style="width: 24%;">Nombre Desarrollo</th><th style="width: 24%;">Nombre Certificación</th><th style="width: 24%;">Nombre Producción</th></tr>`);
+                            }
+
                             response.jobs.forEach((job, index) => {
                                 window.jobParametersMap[index] = job.parameters || [];
 
@@ -691,74 +756,72 @@
                                 var mainRow = '';
                                 var govRow = '';
 
-                                const isCheckedAttr = masterAutoCert ? "checked" : "";
-                                const isUncheckedAttr = masterAutoCert ? "" : "checked";
-                                const isGovRowHidden = masterAutoCert ? "" : "d-none";
+                                const isGovRowHidden = (masterAutoCert && !job.isProvisioning) ? "" : "d-none";
+
+                                let cleanBaseDesc = job.suggestedDevName.replace('.yml', '').replace('.yaml', '');
+                                cleanBaseDesc = cleanBaseDesc.replace(/^\d{3}-(?:qa|noqa)-(?:run|norun)-/, '');
+
+                                const runCheckedAttr = job.isProvisioning ? "checked" : "";
+                                const noRunCheckedAttr = job.isProvisioning ? "" : "checked";
 
                                 if (job.isYaml) {
                                     mainRow = `
-                                    <tr class="main-job-row" data-row-idx="${index}" data-suggested-name="${job.suggestedDevName}" data-is-yaml="true" style="border-bottom: transparent !important;">
+                                    <tr class="main-job-row" data-row-idx="${index}" data-is-prov="${job.isProvisioning}" data-suggested-name="${cleanBaseDesc}" data-is-yaml="true" style="border-bottom: transparent !important;">
                                         <td class="small fw-bold text-wrap" style="color: #ffffff !important; max-width:240px; padding: 12px 6px;">
                                             <div class="d-flex align-items-center justify-content-between mb-2">
                                                 <span>${badgeType}${job.originalFileName}</span>
-                                                <button type="button" class="btn btn-outline-secondary btn-reset-row ms-2" title="Restablecer" style="padding:0px 4px; font-size:0.65rem;"><i class="bi bi-arrow-counterclockwise"></i></button>
                                             </div>
                                             <input type="hidden" name="fileKeys" value="${job.fileKey}" />
                                         </td>
                                         <td>
-                                            <input type="text" name="devNames" class="form-control form-control-sm font-monospace fw-bold text-white bg-dark border-secondary dev-name-input" value="${job.suggestedDevName}" style="font-size:0.75rem; height:26px; padding:2px 4px;" />
-                                            <div class="d-flex align-items-center gap-2 mt-2 px-1">
-                                                <span class="text-warning fw-bold" style="font-size:0.68rem; letter-spacing:0.3px;">Autocert:</span>
-                                                <div class="radio-dot-container">
-                                                    <label class="radio-dot-label"><input type="radio" class="radio-dot-input" name="dev_radio_${index}" value="true" ${isCheckedAttr} onclick="syncRadioToHidden(this, 'devAutocert', ${index})"> true</label>
-                                                    <label class="radio-dot-label"><input type="radio" class="radio-dot-input" name="dev_radio_${index}" value="false" ${isUncheckedAttr} onclick="syncRadioToHidden(this, 'devAutocert', ${index})"> false</label>
+                                            <div class="d-flex flex-column gap-2 mb-2">
+                                                <label class="text-white-50 mb-0 fw-bold" style="font-size: 0.65rem;">Descripción Base BCI (Sin prefijos/flags):</label>
+                                                <input type="text" id="baseDesc_${index}" class="form-control form-control-sm font-monospace bg-dark text-warning border-secondary shadow-sm" value="${cleanBaseDesc}" style="font-size:0.75rem;" oninput="updateJobFileName(${index})" title="Edita el nombre base del Job." />
+
+                                                <div class="d-flex align-items-center gap-3 p-2 border border-secondary rounded mt-1 shadow-inner" style="background-color: #111424;">
+                                                    <div class="radio-dot-container">
+                                                        <span class="text-warning fw-bold" style="font-size:0.68rem; letter-spacing:0.3px;">Autocert QA:</span>
+                                                        <label class="radio-dot-label"><input type="radio" class="radio-dot-input" name="dev_radio_${index}" value="qa" checked onchange="updateJobFileName(${index})"> qa</label>
+                                                        <label class="radio-dot-label"><input type="radio" class="radio-dot-input" name="dev_radio_${index}" value="noqa" onchange="updateJobFileName(${index})"> noqa</label>
+                                                    </div>
+                                                    <div class="radio-dot-container border-start border-secondary ps-3">
+                                                        <span class="text-info fw-bold" style="font-size:0.68rem; letter-spacing:0.3px;">Producción:</span>
+                                                        <label class="radio-dot-label"><input type="radio" class="radio-dot-input run-check" name="radRunProd_${index}" value="norun" ${noRunCheckedAttr} onchange="updateJobFileName(${index})"> norun</label>
+                                                        <label class="radio-dot-label"><input type="radio" class="radio-dot-input run-check" name="radRunProd_${index}" value="run" ${runCheckedAttr} onchange="updateJobFileName(${index})"> run</label>
+                                                    </div>
                                                 </div>
-                                                <input type="hidden" id="devAutocert_${index}" name="devAutocert" value="${masterAutoCert}" />
+
+                                                <div class="filename-live-badge text-warning d-inline-block px-3 py-1 mt-1 text-center" id="badgeDev_${index}" style="font-size: 0.8rem; font-weight: bold;">Calculando...</div>
                                             </div>
-                                        </td>
-                                        <td>
-                                            <input type="text" name="certNames" class="form-control form-control-sm font-monospace fw-bold text-white bg-dark border-secondary cert-name-input" value="${job.suggestedCertName}" style="font-size:0.75rem; height:26px; padding:2px 4px;" />
-                                            <div class="d-flex align-items-center gap-2 mt-2 px-1">
-                                                <span class="text-warning fw-bold" style="font-size:0.68rem; letter-spacing:0.3px;">Autocert:</span>
-                                                <div class="radio-dot-container">
-                                                    <label class="radio-dot-label"><input type="radio" class="radio-dot-input" name="cert_radio_${index}" value="true" ${isCheckedAttr} onclick="syncRadioToHidden(this, 'certAutocert', ${index})"> true</label>
-                                                    <label class="radio-dot-label"><input type="radio" class="radio-dot-input" name="cert_radio_${index}" value="false" ${isUncheckedAttr} onclick="syncRadioToHidden(this, 'certAutocert', ${index})"> false</label>
-                                                </div>
-                                                <input type="hidden" id="certAutocert_${index}" name="certAutocert" value="${masterAutoCert}" />
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <input type="text" name="prodNames" class="form-control form-control-sm font-monospace fw-bold text-white bg-dark border-secondary prod-name-input" value="${job.suggestedProdName}" style="font-size:0.75rem; height:26px; padding:2px 4px;" />
-                                            <div class="d-flex align-items-center gap-2 mt-2 px-1">
-                                                <span class="text-warning fw-bold" style="font-size:0.68rem; letter-spacing:0.3px;">Autocert:</span>
-                                                <div class="radio-dot-container">
-                                                    <label class="radio-dot-label"><input type="radio" class="radio-dot-input" name="prod_radio_${index}" value="true" ${isCheckedAttr} onclick="syncRadioToHidden(this, 'prodAutocert', ${index})"> true</label>
-                                                    <label class="radio-dot-label"><input type="radio" class="radio-dot-input" name="prod_radio_${index}" value="false" ${isUncheckedAttr} onclick="syncRadioToHidden(this, 'prodAutocert', ${index})"> false</label>
-                                                </div>
-                                                <input type="hidden" id="prodAutocert_${index}" name="prodAutocert" value="${masterAutoCert}" />
-                                            </div>
+
+                                            <input type="hidden" id="devNames_${index}" name="devNames" value="" />
+                                            <input type="hidden" id="certNames_${index}" name="certNames" value="" />
+                                            <input type="hidden" id="prodNames_${index}" name="prodNames" value="" />
+
+                                            <input type="hidden" id="devAutocert_${index}" name="devAutocert" value="true" />
+                                            <input type="hidden" id="certAutocert_${index}" name="certAutocert" value="false" />
+                                            <input type="hidden" id="prodAutocert_${index}" name="prodAutocert" value="false" />
                                         </td>
                                     </tr>`;
 
                                     govRow = `
                                     <tr id="govRow_${index}" class="${isGovRowHidden} gov-row">
-                                        <td colspan="4" class="p-3 shadow-inner">
+                                        <td colspan="2" class="p-3 shadow-inner">
                                             <h6 class="text-warning fw-bold mb-3" style="font-size: 0.85rem;"><i class="bi bi-shield-check me-1"></i> Linaje de Tablas (Mapeo de Autocertificación)</h6>
                                             <div class="row g-3">
                                                 <div class="col-md-6 border-end border-secondary border-opacity-25">
                                                     <label class="text-warning fw-bold small mb-2"><i class="bi bi-box-arrow-in-right me-1"></i> Orígenes (Insumos BCI)</label>
                                                     <div id="sourceTablesContainer_${index}" class="d-flex flex-column gap-2"></div>
-                                                    <button type="button" class="btn btn-sm btn-outline-warning mt-2 py-1 w-100" onclick="addTableMappingRow(${index}, 'source')" style="font-size: 0.75rem;"><i class="bi bi-plus-lg"></i> Añadir Tabla Origen Manualmente</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-warning mt-2 py-1 w-100" onclick="addTableMappingRow(${index}, 'source')" style="font-size: 0.75rem;"><i class="bi bi-plus-lg"></i> Añadir Tabla Origen</button>
                                                 </div>
                                                 <div class="col-md-6">
                                                     <label class="text-success fw-bold small mb-2"><i class="bi bi-box-arrow-down-left me-1"></i> Destinos (Resultados)</label>
                                                     <div id="targetTablesContainer_${index}" class="d-flex flex-column gap-2"></div>
-                                                    <button type="button" class="btn btn-sm btn-outline-success mt-2 py-1 w-100" onclick="addTableMappingRow(${index}, 'target')" style="font-size: 0.75rem;"><i class="bi bi-plus-lg"></i> Añadir Tabla Destino Manualmente</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-success mt-2 py-1 w-100" onclick="addTableMappingRow(${index}, 'target')" style="font-size: 0.75rem;"><i class="bi bi-plus-lg"></i> Añadir Tabla Destino</button>
                                                 </div>
                                             </div>
                                         </td>
                                     </tr>`;
-
                                 } else {
                                     mainRow = `
                                     <tr class="main-job-row" data-row-idx="${index}" data-suggested-name="${job.suggestedDevName}" data-is-yaml="false">
@@ -786,21 +849,20 @@
                                 $('#staging-tbody').append(mainRow);
                                 if(govRow) $('#staging-tbody').append(govRow);
 
+                                if (job.isYaml) {
+                                    updateJobFileName(index);
+                                }
+
                                 if (job.isYaml && masterAutoCert) {
                                     if (job.autoSources && job.autoSources.length > 0) {
                                         job.autoSources.forEach(src => addTableMappingRow(index, 'source', src.param, src.table));
-                                    } else {
-                                        addTableMappingRow(index, 'source');
-                                    }
+                                    } else addTableMappingRow(index, 'source');
 
                                     if (job.autoTargets && job.autoTargets.length > 0) {
                                         job.autoTargets.forEach(tgt => addTableMappingRow(index, 'target', tgt.param, tgt.table));
-                                    } else {
-                                        addTableMappingRow(index, 'target');
-                                    }
+                                    } else addTableMappingRow(index, 'target');
                                 }
                             });
-
                             $('#panel-fase1').addClass('d-none');
                             $('#panel-fase2').removeClass('d-none');
                             toastr.success('Jobs analizados correctamente.');
@@ -836,18 +898,23 @@
                 $('#panel-fase1').removeClass('d-none');
             });
 
-            $('#package-form').on('submit', function() {
+            $('#package-form').on('submit', function(e) {
                 const hiddenContainer = document.getElementById('hidden-permissions-container');
                 hiddenContainer.innerHTML = '';
 
                 const bundleNameVal = modeUC.checked ? ($('#txtBundleName').val().trim() || "bundle") : "bundle";
+                if (modeUC.checked && bundleNameVal === "bundle" && $('#txtBundleName').val().trim() === "") {
+                    e.preventDefault();
+                    toastr.warning("El campo 'Nombre del Repositorio' es obligatorio.");
+                    return;
+                }
+
                 $(hiddenContainer).append(`<input type="hidden" name="bundleName" value="${bundleNameVal}" />`);
 
                 $('#permissions-tbody tr').each(function() {
                     const level = $(this).find('select').val();
                     const userName = $(this).find('.perm-user-name').val().trim();
                     const userDomain = $(this).find('.perm-user-domain').val().trim();
-
                     if(userName) {
                         const fullUser = userName + (userDomain.startsWith('@@') ? userDomain : '@@' + userDomain);
                         $(hiddenContainer).append(`<input type="hidden" name="permLevels" value="${level}" />`);
@@ -888,16 +955,14 @@
             });
         });
 
-        function addTableMappingRow(index, type, prefillParam = '', prefillTable = '') {
+        window.addTableMappingRow = function(index, type, prefillParam = '', prefillTable = '') {
             const container = document.getElementById(`${type}TablesContainer_${index}`);
             const params = window.jobParametersMap[index] || [];
-
             let optionsHtml = '<option value="">-- Sin Variable (Texto Libre) --</option>';
             params.forEach(p => {
                 const isSelected = (p === prefillParam) ? "selected" : "";
                 optionsHtml += `<option value="${p}" ${isSelected}>${p}</option>`;
             });
-
             const rowHtml = `
                 <div class="d-flex align-items-center gap-2 mb-1 mapping-row">
                     <select class="form-select form-select-sm bg-dark text-white border-secondary font-monospace" style="width: 48%; font-size: 0.7rem;">
@@ -909,20 +974,6 @@
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', rowHtml);
-        }
-
-        function syncRadioToHidden(radio, baseName, index) {
-            document.getElementById(`${baseName}_${index}`).value = radio.value;
-
-            const devVal = document.getElementById(`devAutocert_${index}`)?.value === "true";
-            const certVal = document.getElementById(`certAutocert_${index}`)?.value === "true";
-            const prodVal = document.getElementById(`prodAutocert_${index}`)?.value === "true";
-
-            const govRow = document.getElementById(`govRow_${index}`);
-            if (govRow) {
-                if (devVal || certVal || prodVal) govRow.classList.remove('d-none');
-                else govRow.classList.add('d-none');
-            }
         }
     </script>
 }

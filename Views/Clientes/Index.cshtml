@@ -1,0 +1,85 @@
+@model IEnumerable<NotebookValidator.Web.Models.GestorProyectos.Cliente>
+@{
+    ViewData["Title"] = "Mantenedor de Empresas";
+}
+
+<div class="container-fluid dashboard-xl-container mt-3" style="max-width: 900px !important;">
+    <div class="d-flex align-items-center mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-0 text-white" style="font-family: 'Poppins', sans-serif;">Gestión de Empresas / Clientes</h1>
+            <p class="mb-0 small text-white-50">Administra las empresas para la creación de carpetas corporativas.</p>
+        </div>
+    </div>
+
+    <div class="card p-4 border-0 mb-4" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+        <form asp-action="Create" method="post" class="d-flex gap-3 align-items-end">
+            @Html.AntiForgeryToken()
+            <div class="flex-grow-1">
+                <label class="form-label text-white small fw-bold mb-1">Nombre de la Empresa (Ej: BCI, Falabella)</label>
+                <input type="text" name="nombre" class="form-control bg-dark text-white border-secondary font-monospace" placeholder="Ingresa el nombre del nuevo cliente..." required autocomplete="off" />
+            </div>
+            <button type="submit" class="btn btn-success px-4 py-2 fw-bold">
+                <i class="bi bi-plus-circle me-1"></i> Agregar Cliente
+            </button>
+        </form>
+    </div>
+
+    <div class="card p-0 border-0 overflow-hidden" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+        <table class="table table-dark table-hover mb-0 align-middle">
+            <thead style="background-color: #111424;">
+                <tr>
+                    <th class="ps-4 border-secondary text-white-50 small">ID</th>
+                    <th class="border-secondary text-white-50 small w-50">Nombre de la Empresa</th>
+                    <th class="border-secondary text-white-50 small text-center">Estado</th>
+                    <th class="pe-4 border-secondary text-white-50 small text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="4" class="text-center py-4 text-white-50">No hay clientes registrados en el sistema.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var cliente in Model)
+                    {
+                        <tr style="background-color: #0b0d16;">
+                            <td class="ps-4 text-secondary font-monospace small">#@cliente.Id</td>
+                            <td class="fw-bold text-white">@cliente.Nombre</td>
+                            <td class="text-center">
+                                @if (cliente.Activo)
+                                {
+                                    <span class="badge bg-success" style="font-size: 0.7rem;">Activo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger" style="font-size: 0.7rem;">Inactivo</span>
+                                }
+                            </td>
+                            <td class="pe-4 text-end">
+                                <form asp-action="ToggleStatus" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@cliente.Id" />
+                                    @if (cliente.Activo)
+                                    {
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Desactivar">
+                                            <i class="bi bi-x-circle"></i> Desactivar
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Activar">
+                                            <i class="bi bi-check-circle"></i> Activar
+                                        </button>
+                                    }
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

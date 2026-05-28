@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NotebookValidator.Web.Data;
 
@@ -11,9 +12,11 @@ using NotebookValidator.Web.Data;
 namespace NotebookValidator.Web.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260526232212_InicializarGestorProyectos")]
+    partial class InicializarGestorProyectos
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -370,103 +373,6 @@ namespace NotebookValidator.Web.Migrations
                     b.ToTable("AuditLogs");
                 });
 
-            modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.ArtefactoJob", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ArchivoDriveUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime>("FechaGeneracion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("NombreBundle")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<int>("ProyectoId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UsuarioGenerador")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProyectoId");
-
-                    b.ToTable("ArtefactosJob");
-                });
-
-            modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.Cliente", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("Activo")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Clientes");
-                });
-
-            modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.ComentarioProyecto", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("FechaVencimiento")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("ProyectoId")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("Resuelto")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Texto")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Tipo")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Usuario")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProyectoId");
-
-                    b.ToTable("ComentariosProyecto");
-                });
-
             modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.FaseProyecto", b =>
                 {
                     b.Property<int>("Id")
@@ -484,9 +390,6 @@ namespace NotebookValidator.Web.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<DateTime?>("FechaActualizacion")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("NombreFase")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -498,55 +401,11 @@ namespace NotebookValidator.Web.Migrations
                     b.Property<int>("ProyectoId")
                         .HasColumnType("int");
 
-                    b.Property<string>("UsuarioActualizacion")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
                     b.HasKey("Id");
 
                     b.HasIndex("ProyectoId");
 
                     b.ToTable("FasesProyecto");
-                });
-
-            modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.NotebookValidacion", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("DetalleErrores")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("FechaValidacion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("NombreArchivo")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<bool>("PasoValidacion")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("ProyectoId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Score")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Usuario")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProyectoId");
-
-                    b.ToTable("NotebookValidaciones");
                 });
 
             modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.Proyecto", b =>
@@ -556,16 +415,6 @@ namespace NotebookValidator.Web.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ArchivosIndexados")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("ClienteId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ContraparteCliente")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Descripcion")
                         .IsRequired()
@@ -584,59 +433,15 @@ namespace NotebookValidator.Web.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<string>("EstadoSincronizacionDrive")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("EstadoValidacionWorkspace")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<DateTime?>("FechaActualizacionWorkspace")
-                        .HasColumnType("datetime2");
-
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("FechaFinEstimada")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("FechaInicio")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("FechaPasoProduccion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("FechaSincronizacionDrive")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("MaxInfosPermitidos")
-                        .HasColumnType("int");
-
-                    b.Property<int>("MaxWarningsPermitidos")
-                        .HasColumnType("int");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<string>("Notas")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RepositorioGitHub")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("RutaWorkspaceLocal")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("ClienteId");
 
                     b.ToTable("Proyectos");
                 });
@@ -663,68 +468,6 @@ namespace NotebookValidator.Web.Migrations
                     b.HasIndex("UsuarioId");
 
                     b.ToTable("ProyectosUsuarios");
-                });
-
-            modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.TablaMaestra", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("ClienteId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Descripcion")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("MetadataColumnasJson")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("NombreTabla")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ClienteId");
-
-                    b.ToTable("TablasMaestras");
-                });
-
-            modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.TablaProyecto", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ProyectoId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("RutaUbicacion")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("TablaMaestraId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("TipoTabla")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProyectoId");
-
-                    b.HasIndex("TablaMaestraId");
-
-                    b.ToTable("TablasProyecto");
                 });
 
             modelBuilder.Entity("NotebookValidator.Web.Models.UserDashboardPreference", b =>
@@ -868,28 +611,6 @@ namespace NotebookValidator.Web.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.ArtefactoJob", b =>
-                {
-                    b.HasOne("NotebookValidator.Web.Models.GestorProyectos.Proyecto", "Proyecto")
-                        .WithMany("ArtefactosGenerados")
-                        .HasForeignKey("ProyectoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Proyecto");
-                });
-
-            modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.ComentarioProyecto", b =>
-                {
-                    b.HasOne("NotebookValidator.Web.Models.GestorProyectos.Proyecto", "Proyecto")
-                        .WithMany("Comentarios")
-                        .HasForeignKey("ProyectoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Proyecto");
-                });
-
             modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.FaseProyecto", b =>
                 {
                     b.HasOne("NotebookValidator.Web.Models.GestorProyectos.Proyecto", "Proyecto")
@@ -899,26 +620,6 @@ namespace NotebookValidator.Web.Migrations
                         .IsRequired();
 
                     b.Navigation("Proyecto");
-                });
-
-            modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.NotebookValidacion", b =>
-                {
-                    b.HasOne("NotebookValidator.Web.Models.GestorProyectos.Proyecto", "Proyecto")
-                        .WithMany("Validaciones")
-                        .HasForeignKey("ProyectoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Proyecto");
-                });
-
-            modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.Proyecto", b =>
-                {
-                    b.HasOne("NotebookValidator.Web.Models.GestorProyectos.Cliente", "Cliente")
-                        .WithMany("Proyectos")
-                        .HasForeignKey("ClienteId");
-
-                    b.Navigation("Cliente");
                 });
 
             modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.ProyectoUsuario", b =>
@@ -940,52 +641,11 @@ namespace NotebookValidator.Web.Migrations
                     b.Navigation("Usuario");
                 });
 
-            modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.TablaMaestra", b =>
-                {
-                    b.HasOne("NotebookValidator.Web.Models.GestorProyectos.Cliente", "Cliente")
-                        .WithMany()
-                        .HasForeignKey("ClienteId");
-
-                    b.Navigation("Cliente");
-                });
-
-            modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.TablaProyecto", b =>
-                {
-                    b.HasOne("NotebookValidator.Web.Models.GestorProyectos.Proyecto", "Proyecto")
-                        .WithMany("TablasCatalogo")
-                        .HasForeignKey("ProyectoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("NotebookValidator.Web.Models.GestorProyectos.TablaMaestra", "TablaMaestra")
-                        .WithMany()
-                        .HasForeignKey("TablaMaestraId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Proyecto");
-
-                    b.Navigation("TablaMaestra");
-                });
-
-            modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.Cliente", b =>
-                {
-                    b.Navigation("Proyectos");
-                });
-
             modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.Proyecto", b =>
                 {
-                    b.Navigation("ArtefactosGenerados");
-
-                    b.Navigation("Comentarios");
-
                     b.Navigation("Fases");
 
-                    b.Navigation("TablasCatalogo");
-
                     b.Navigation("UsuariosAsignados");
-
-                    b.Navigation("Validaciones");
                 });
 #pragma warning restore 612, 618
         }

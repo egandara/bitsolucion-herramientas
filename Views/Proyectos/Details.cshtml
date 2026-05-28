@@ -1,0 +1,1383 @@
+@model NotebookValidator.Web.Models.GestorProyectos.Proyecto
+@{
+    ViewData["Title"] = "Detalles del Proyecto";
+    int totalFases = Model.Fases?.Count ?? 0;
+
+    string bundleName = "bundle-proyecto";
+    if (!string.IsNullOrEmpty(Model.RepositorioGitHub))
+    {
+        bundleName = Model.RepositorioGitHub.Split('/').Last().Replace(".git", "");
+    }
+
+    // ==========================================
+    // MÁQUINA DE ESTADOS Y FILTROS DE ALERTAS
+    // ==========================================
+    bool isPendienteWorkspace = Model.EstadoValidacionWorkspace == "Pendiente_Validacion";
+    bool isValidadoWorkspace = Model.EstadoValidacionWorkspace == "Validado";
+    bool isRechazadoWorkspace = Model.EstadoValidacionWorkspace == "Rechazado";
+
+    string validarTitle = isPendienteWorkspace ? "El código tiene cambios locales listos para ser validados."
+                        : (isValidadoWorkspace ? "El código actual ya se encuentra aprobado por el motor de QA."
+                        : (isRechazadoWorkspace ? "El código fue rechazado. Sube una nueva versión corregida (.zip) para re-validar."
+                        : "Sube el código al Workspace primero."));
+
+    string toolTipRequisito = isValidadoWorkspace ? "" : "Esta herramienta requiere una validación de código aprobada y vigente.";
+
+    // Extraer recordatorios activos (no resueltos) y vencidos/por vencer para el Banner superior
+    var recordatoriosActivos = Model.Comentarios?
+        .Where(c => c.Tipo == "Recordatorio" && !c.Resuelto && c.FechaVencimiento.HasValue)
+        .OrderBy(c => c.FechaVencimiento)
+        .ToList() ?? new List<NotebookValidator.Web.Models.GestorProyectos.ComentarioProyecto>();
+}
+
+<style>
+    /* COMPONENTES DE DISEÑO ORIGINALES Y REGLAS DE CONTROL */
+    .fase-row {
+        background-color: #0b0d16;
+        border: 1px solid rgba(255, 193, 7, 0.1);
+        border-radius: 8px;
+        transition: border-color 0.2s;
+    }
+
+        .fase-row:hover {
+            border-color: rgba(255, 193, 7, 0.25);
+        }
+
+    .status-select {
+        font-size: 0.75rem;
+        background-color: #111424 !important;
+        color: #fff !important;
+        border-color: rgba(255,255,255,0.15) !important;
+        cursor: pointer;
+        height: 30px;
+        padding: 2px 8px;
+        width: 120px;
+    }
+
+        .status-select:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            border-color: rgba(255,255,255,0.05) !important;
+        }
+
+    .fase-badge {
+        width: 90px;
+        text-align: center;
+        display: inline-block;
+    }
+
+    .status-select:focus {
+        border-color: #ffc107 !important;
+        box-shadow: none;
+    }
+
+    .progress-header {
+        height: 12px;
+        background-color: #111424;
+        border-radius: 6px;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    /* UX: CORRECCIÓN AL CONTRASTE DE LOS PLACEHOLDERS */
+    input::placeholder, textarea::placeholder, select::placeholder {
+        color: rgba(255, 255, 255, 0.45) !important;
+        font-style: italic !important;
+        opacity: 1 !important;
+    }
+
+    #searchTablaInput::placeholder {
+        color: rgba(255, 255, 255, 0.45) !important;
+        font-style: italic !important;
+        opacity: 1 !important;
+    }
+
+    /* BOTONES MAESTROS */
+    .btn-generate-job {
+        background-color: #07091e;
+        border: 1px solid rgba(13, 202, 240, 0.3);
+        color: #0dcaf0;
+        padding: 4px 12px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        transition: all 0.2s ease;
+    }
+
+        .btn-generate-job:hover:not(:disabled) {
+            background-color: rgba(13, 202, 240, 0.1);
+            border-color: #0dcaf0;
+            color: #ffffff;
+            box-shadow: 0 4px 10px rgba(13, 202, 240, 0.15);
+        }
+
+        .btn-generate-job:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            border-color: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.4);
+            background-color: transparent;
+        }
+
+    .job-dropzone {
+        border: 2px dashed rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.2);
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+
+        .job-dropzone.dragover {
+            border-color: #ffc107;
+            background: rgba(255, 193, 7, 0.1);
+        }
+
+    .file-slot {
+        background: #0b0d16;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 8px;
+    }
+
+    .tree-group {
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.2s;
+    }
+
+        .tree-group:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+    .tree-group-icon {
+        transition: transform 0.2s;
+    }
+
+    .tree-group.collapsed .tree-group-icon {
+        transform: rotate(-90deg);
+    }
+
+    .tree-children {
+        list-style-type: none;
+        border-left: 1px solid rgba(255,255,255,0.1);
+        margin-left: 0.5rem;
+        padding-left: 1rem;
+    }
+
+    /* UX: NAVEGACIÓN REESTRUCTURADA Y PANALES CON SCROLL */
+    .nav-tabs .nav-link {
+        color: rgba(255, 255, 255, 0.6) !important;
+        border: none !important;
+        border-bottom: 3px solid transparent !important;
+        transition: all 0.2s ease;
+        padding: 12px 20px;
+    }
+
+        .nav-tabs .nav-link:hover {
+            color: #ffffff !important;
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .nav-tabs .nav-link.active {
+            color: #0dcaf0 !important;
+            background-color: transparent !important;
+            border-bottom: 3px solid #0dcaf0 !important;
+            font-weight: bold;
+        }
+
+    .table-responsive-scroll {
+        max-height: 450px;
+        overflow-y: auto;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+    }
+
+        .table-responsive-scroll thead th {
+            position: sticky;
+            top: 0;
+            background-color: #111424;
+            z-index: 5;
+            box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+    /* ESTILOS DEL NUEVO MURO DE COMENTARIOS AVANZADO */
+    .muro-scroll {
+        max-height: 380px;
+        overflow-y: auto;
+        padding-right: 5px;
+    }
+
+    .comentario-item {
+        border-radius: 8px;
+        border-left: 4px solid #6c757d;
+        background-color: rgba(255, 255, 255, 0.02);
+        transition: transform 0.2s;
+    }
+
+        .comentario-item:hover {
+            transform: translateX(2px);
+            background-color: rgba(255, 255, 255, 0.04);
+        }
+
+    .comentario-nota {
+        border-left-color: #0dcaf0 !important;
+    }
+
+    .comentario-advertencia {
+        border-left-color: #ffc107 !important;
+        background-color: rgba(255, 193, 7, 0.03);
+    }
+
+    .comentario-recordatorio {
+        border-left-color: #fd7e14 !important;
+        background-color: rgba(253, 126, 20, 0.03);
+    }
+
+    .comentario-resuelto {
+        border-left-color: #198754 !important;
+        opacity: 0.6;
+        background-color: rgba(25, 135, 84, 0.01);
+    }
+</style>
+
+<div class="container-fluid dashboard-xl-container mt-3">
+
+    @if (recordatoriosActivos.Any())
+    {
+        <div class="alert alert-warning border-0 shadow-lg mb-4 p-3 d-flex flex-column gap-2 animate__animated animate__fadeIn" style="background-color: #1a1510; border-left: 5px solid #fd7e14 !important; border-radius: 8px;">
+            <div class="d-flex align-items-center gap-2 text-warning fw-bold small">
+                <i class="bi bi-bell-fill heartbeat text-danger"></i> CONTROL DE ALERTAS Y RECORDATORIOS ACTIVOS
+            </div>
+            <div style="max-height: 90px; overflow-y: auto;" class="pe-2">
+                <ul class="mb-0 font-monospace small text-white-50 list-unstyled ps-1">
+                    @foreach (var alert in recordatoriosActivos)
+                    {
+                        var esVencido = alert.FechaVencimiento.Value.Date < DateTime.Now.Date;
+                        <li class="py-1 border-bottom border-secondary border-opacity-10 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <span>
+                                <i class="bi bi-clock-history me-2 @(esVencido ? "text-danger fw-bold" : "text-warning")"></i>
+                                <strong class="@(esVencido ? "text-danger" : "text-warning")">[@alert.FechaVencimiento.Value.ToString("dd/MM")]:</strong>
+                                @alert.Texto <span class="text-white-50 opacity-50">(@alert.Usuario)</span>
+                            </span>
+                            <button class="btn btn-sm btn-outline-success py-0 px-2 fw-bold" style="font-size: 0.65rem;" onclick="resolverAlertaMuro(@alert.Id)">
+                                <i class="bi bi-check-lg"></i> Marcar Resuelto
+                            </button>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+
+    <div class="mb-4 pb-3 border-bottom border-secondary border-opacity-25">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-2">
+            <div class="d-flex align-items-center">
+                <a asp-action="Index" class="btn btn-outline-secondary btn-sm me-3"><i class="bi bi-arrow-left"></i> Volver</a>
+                <div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <h1 class="h3 fw-bold text-white mb-0" style="font-family: 'Poppins', sans-serif;">@Model.Nombre</h1>
+                        <span class="badge bg-secondary" style="font-size: 0.7rem;"><i class="bi bi-building me-1"></i>@(Model.Cliente?.Nombre ?? "Proyecto Interno")</span>
+                        <span class="badge bg-success" style="font-size: 0.7rem;">@Model.Estado</span>
+                        @if (!string.IsNullOrEmpty(Model.RepositorioGitHub))
+                        {
+                            <span class="badge border border-secondary text-white-50" style="background-color: #172a45; font-size: 0.7rem;"><i class="bi bi-github me-1"></i>@Model.RepositorioGitHub</span>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.ContraparteCliente))
+                        {
+                            <span class="badge border border-secondary text-white-50" style="background-color: #111424; font-size: 0.7rem;"><i class="bi bi-person-badge me-1"></i>@Model.ContraparteCliente</span>
+                        }
+                    </div>
+                    <p class="text-white-50 small mb-0 mt-1">@(string.IsNullOrEmpty(Model.Descripcion) ? "Sin descripción asignada." : Model.Descripcion)</p>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-primary fw-bold btn-sm d-flex align-items-center gap-2 px-3 shadow" style="height:36px; border-radius:6px;" data-bs-toggle="modal" data-bs-target="#modalValidacion" @(isPendienteWorkspace ? "" : "disabled") title="@validarTitle">
+                    <i class="bi bi-shield-check"></i> Validar Código
+                </button>
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-warning fw-bold btn-sm d-flex align-items-center gap-1 px-3" style="height:36px; border-radius:6px;"><i class="bi bi-pencil-square"></i> Editar</a>
+                @if (!string.IsNullOrEmpty(Model.DriveFolderUrl))
+                {
+                    <a href="@Model.DriveFolderUrl" target="_blank" class="btn btn-info fw-bold btn-sm d-flex align-items-center gap-1 px-3" style="height:36px; border-radius:6px;"><i class="bi bi-google"></i> Drive</a>
+                }
+            </div>
+        </div>
+
+        <div class="mt-4 pt-2 row align-items-center g-2" style="max-width: 600px;">
+            <div class="col-auto text-white-50 small text-uppercase fw-bold" style="letter-spacing: 0.5px; font-size: 0.7rem;">Completado:</div>
+            <div class="col"><div class="progress progress-header"><div id="mainProgressBar" class="progress-bar bg-gradient bg-info" role="progressbar" style="width: @Model.PorcentajeProgreso%;"></div></div></div>
+            <div class="col-auto text-info font-monospace fw-bold small" id="mainProgressText">@Model.PorcentajeProgreso%</div>
+        </div>
+    </div>
+
+    <div class="card p-4 border-0 mb-4" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); border-left: 4px solid @(isValidadoWorkspace ? "#198754" : (isRechazadoWorkspace ? "#dc3545" : "#0dcaf0")) !important;">
+        <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-3">
+            <div>
+                <h5 class="fw-bold text-info mb-1"><i class="bi bi-hdd-network me-2"></i>Workspace Central (Fuente de Verdad)</h5>
+                <p class="text-white-50 small mb-0">Sube tus notebooks (.zip) aquí. Todas las herramientas leerán automáticamente de esta bóveda.</p>
+            </div>
+            <div>
+                @if (Model.EstadoValidacionWorkspace == "Sin_Codigo")
+                {
+                    <span class="badge bg-secondary px-3 py-2"><i class="bi bi-dash-circle me-1"></i>Sin Código</span>
+                }
+                else if (Model.EstadoValidacionWorkspace == "Pendiente_Validacion")
+                {
+                    <span class="badge bg-warning text-dark heartbeat px-3 py-2"><i class="bi bi-exclamation-triangle me-1"></i>Pendiente de Validación</span>
+                }
+                else if (Model.EstadoValidacionWorkspace == "Rechazado")
+                {
+                    <span class="badge bg-danger heartbeat px-3 py-2"><i class="bi bi-x-circle-fill me-1"></i>Código Rechazado por QA</span>
+                }
+                else
+                {
+                    <span class="badge bg-success px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i>Validado y Vigente</span>
+                }
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-3 bg-dark bg-opacity-50 p-3 rounded border border-secondary border-opacity-25">
+            <button class="btn btn-sm btn-outline-info fw-bold px-3 shadow-sm" onclick="document.getElementById('workspaceFileInput').click()">
+                <i class="bi bi-cloud-arrow-up me-2"></i>Subir / Actualizar Código (.zip)
+            </button>
+            <input type="file" id="workspaceFileInput" class="d-none" accept=".zip" onchange="uploadWorkspaceCode(this)">
+
+            <div class="d-flex flex-column">
+                <span class="text-white-50 small font-monospace" id="workspaceFileStatus">
+                    <i class="bi bi-clock-history me-1"></i> @(Model.FechaActualizacionWorkspace.HasValue ? $"Última carga local: {Model.FechaActualizacionWorkspace.Value.ToString("dd/MM/yyyy HH:mm")}" : "Ningún archivo cargado en el servidor")
+                </span>
+
+                @if (Model.EstadoValidacionWorkspace != "Sin_Codigo" && ViewBag.TotalArchivos != null)
+                {
+                    <div class="mt-2 d-flex gap-2 flex-wrap font-monospace" style="font-size: 0.75rem;">
+                        <span class="badge bg-dark border border-secondary text-info px-2 py-1"><i class="bi bi-files me-1"></i>Total: @ViewBag.TotalArchivos archivos</span>
+                        @foreach (var ext in (Dictionary<string, int>)ViewBag.ConteoExtensiones)
+                        {
+                            <span class="badge bg-dark border border-secondary text-white-50 px-2 py-1">@ext.Key: @ext.Value</span>
+                        }
+                    </div>
+
+                    <div class="mt-2 d-flex align-items-center gap-2 font-monospace" style="font-size: 0.75rem;">
+                        <span class="text-white-50">Sincronización Drive:</span>
+                        @if (Model.EstadoSincronizacionDrive == "Pendiente")
+                        {
+                            <span class="badge bg-secondary"><i class="bi bi-cloud-slash me-1"></i>Pendiente</span>
+                        }
+                        else if (Model.EstadoSincronizacionDrive == "Sincronizando")
+                        {
+                            <span class="badge bg-primary heartbeat"><i class="bi bi-arrow-repeat me-1"></i>Sincronizando...</span>
+                        }
+                        else if (Model.EstadoSincronizacionDrive == "Sincronizado")
+                        {
+                            <span class="badge bg-success text-white"><i class="bi bi-cloud-check-fill me-1"></i>Sincronizado @(Model.FechaSincronizacionDrive?.ToString("(HH:mm)"))</span>
+                        }
+                        else if (Model.EstadoSincronizacionDrive == "Error")
+                        {
+                            <span class="badge bg-danger"><i class="bi bi-cloud-minus-fill me-1"></i>Error de Red</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <ul class="nav nav-tabs border-bottom border-secondary border-opacity-25 mb-4" id="projectTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard-pane" type="button" role="tab" aria-controls="dashboard-pane" aria-selected="true">
+                <i class="bi bi-grid-1x2-fill me-2 text-warning"></i>Panel de Control
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="calidad-tab" data-bs-toggle="tab" data-bs-target="#calidad-pane" type="button" role="tab" aria-controls="calidad-pane" aria-selected="false">
+                <i class="bi bi-shield-lock-fill me-2 text-primary"></i>Calidad y Certificación
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="linaje-tab" data-bs-toggle="tab" data-bs-target="#linaje-pane" type="button" role="tab" aria-controls="linaje-pane" aria-selected="false">
+                <i class="bi bi-diagram-3-fill me-2 text-success"></i>Catálogo de Linaje (@(Model.TablasCatalogo?.Count ?? 0))
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="projectTabsContent">
+
+        <div class="tab-pane fade show active" id="dashboard-pane" role="tabpanel" aria-labelledby="dashboard-tab" tabindex="0">
+            <div class="row g-4">
+                <div class="col-12 col-lg-8">
+                    <div class="card p-4 border-0 h-100" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                        <h5 class="fw-bold text-warning mb-3" style="font-size: 1.1rem;"><i class="bi bi-check2-square me-2"></i>Seguimiento de Fases Secuenciales</h5>
+                        <div class="d-flex flex-column gap-3">
+                            @if (Model.Fases != null)
+                            {
+                                var fasesLista = Model.Fases.OrderBy(f => f.Orden).ToList();
+                                for (int i = 0; i < fasesLista.Count; i++)
+                                {
+                                    var fase = fasesLista[i];
+                                    string badgeClass = "bg-secondary text-white-50";
+                                    if (fase.EstadoFase == "En Progreso") badgeClass = "bg-warning text-dark";
+                                    if (fase.EstadoFase == "Completado") badgeClass = "bg-success text-white";
+
+                                    // LÓGICA DE BLOQUEO SECUENCIAL:
+                                    // La primera fase siempre está libre. Las siguientes se bloquean si la anterior no está Completada.
+                                    bool faseBloqueada = false;
+                                    if (i > 0 && fasesLista[i - 1].EstadoFase != "Completado")
+                                    {
+                                        faseBloqueada = true;
+                                    }
+
+                                    <div class="fase-row p-3 d-flex flex-column gap-2" id="fase_row_@fase.Id" style="@(faseBloqueada ? "opacity: 0.55; background-color: rgba(0,0,0,0.15);" : "")">
+                                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <span class="text-secondary font-monospace fw-bold" style="font-size: 0.85rem;">#@fase.Orden</span>
+                                                <h6 class="text-white fw-bold mb-0" style="font-size: 0.9rem;">
+                                                    @if (faseBloqueada)
+                                                    {
+                                                        <i class="bi bi-lock-fill text-secondary me-1" title="Fase Bloqueada Sequence"></i>
+                                                    }
+                                                    @fase.NombreFase.Replace("_", " ")
+                                                </h6>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-3 ms-auto">
+                                                @if (fase.NombreFase.Contains("Paso_A_Produccion"))
+                                                {
+                                                    <button class="btn-generate-job me-3" data-bs-toggle="modal" data-bs-target="#modalGenerarJobs" @(isValidadoWorkspace && !faseBloqueada ? "" : "disabled") title="@toolTipRequisito">
+                                                        <i class="bi bi-box-seam me-2"></i> Generar Jobs
+                                                    </button>
+                                                }
+                                                <span class="badge @badgeClass id-badge-@fase.Id js-status-badge fase-badge" style="font-size: 0.7rem;">@fase.EstadoFase</span>
+                                                <select class="form-select form-select-sm status-select" onchange="changeFaseStatus(@fase.Id, this)" @(faseBloqueada ? "disabled" : "")>
+                                                    <option value="Pendiente" selected="@(fase.EstadoFase == "Pendiente")">Pendiente</option>
+                                                    <option value="En Progreso" selected="@(fase.EstadoFase == "En Progreso")">En Progreso</option>
+                                                    <option value="Completado" selected="@(fase.EstadoFase == "Completado")">Completado</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        @if (fase.FechaActualizacion.HasValue && !string.IsNullOrEmpty(fase.UsuarioActualizacion))
+                                        {
+                                            <div class="font-monospace text-white-50 opacity-75 border-top border-secondary border-opacity-10 pt-1" style="font-size: 0.65rem;">
+                                                <i class="bi bi-person-check-fill me-1 text-info"></i> Act: <strong>@fase.FechaActualizacion.Value.ToString("dd/MM/yyyy HH:mm")</strong> por <strong>@@@fase.UsuarioActualizacion</strong>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-4 d-flex flex-column gap-4">
+                    <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold text-info mb-0" style="font-size: 0.95rem;"><i class="bi bi-calendar-check me-2"></i>Línea de Tiempo</h6>
+                            @{
+                                string badgeRiesgo = "bg-secondary";
+                                if (Model.EstadoRiesgo == "A Tiempo" || Model.EstadoRiesgo == "Completado") { badgeRiesgo = "bg-success"; }
+                                if (Model.EstadoRiesgo == "En Riesgo") { badgeRiesgo = "bg-warning text-dark"; }
+                                if (Model.EstadoRiesgo == "Atrasado") { badgeRiesgo = "bg-danger heartbeat"; }
+                            }
+                            <span class="badge @badgeRiesgo" style="font-size: 0.65rem; text-transform: uppercase;">@Model.EstadoRiesgo</span>
+                        </div>
+                        <div class="d-flex flex-column gap-3 font-monospace" style="font-size: 0.75rem;">
+                            <div class="p-2 rounded border border-success border-opacity-25" style="background-color: rgba(25, 135, 84, 0.04);">
+                                <span class="text-success opacity-75 d-block mb-1 fw-bold" style="font-size: 0.65rem; uppercase; letter-spacing: 0.3px;">Fecha de Inicio:</span>
+                                <span class="text-white fw-bold"><i class="bi bi-play-circle me-1 text-success"></i>@(Model.FechaInicio?.ToString("dd/MM/yyyy") ?? "-")</span>
+                            </div>
+                            <div class="p-2 rounded border border-secondary border-opacity-25" style="background-color: #07091e;">
+                                <span class="text-white-50 d-block mb-1">Cierre Estimado:</span>
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-white fw-bold"><i class="bi bi-stop-circle me-1"></i>@(Model.FechaFinEstimada?.ToString("dd/MM/yyyy") ?? "-")</span>
+                                    <span class="text-info opacity-75" style="font-size: 0.65rem;">(@Model.MensajeTiempo)</span>
+                                </div>
+                            </div>
+                            <div class="p-2 bg-dark bg-opacity-50 border border-info border-opacity-25 rounded mt-1">
+                                <span class="text-info fw-bold d-block mb-1"><i class="bi bi-rocket-takeoff me-2"></i>Paso a Producción:</span>
+                                <span class="text-white fw-bold" style="font-size: 0.85rem;">@(Model.FechaPasoProduccion?.ToString("dd/MM/yyyy") ?? "No Programado")</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card p-4 border-0 flex-grow-1" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                        <h6 class="fw-bold text-success mb-3" style="font-size: 0.95rem;"><i class="bi bi-people me-2"></i>Equipo del Proyecto</h6>
+                        <div class="d-flex flex-wrap gap-2" style="max-height: 200px; overflow-y: auto;">
+                            @foreach (var user in Model.UsuariosAsignados)
+                            {
+                                var initials = user.Usuario.Email.Substring(0, 2).ToUpper();
+                                <div class="d-flex align-items-center gap-2 p-2 rounded border border-secondary border-opacity-25" style="background-color: #07091e; min-width: 135px; max-width: 170px;" data-bs-toggle="tooltip" title="@user.Usuario.Email">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold small shadow-sm" style="width: 28px; height: 28px; font-size: 0.75rem; background: linear-gradient(135deg, #172a45, #0dcaf0);">@initials</div>
+                                    <div class="text-truncate">
+                                        <div class="text-white font-monospace text-truncate" style="font-size: 0.7 10rem;">@user.Usuario.Email.Split('@')[0]</div>
+                                        <span class="badge @(user.RolEnProyecto == "Admin" ? "bg-danger" : "bg-primary")" style="font-size: 0.55rem; padding: 1px 4px;">@user.RolEnProyecto</span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-4 border-0 mt-4" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <h5 class="fw-bold text-info mb-0" style="font-size: 1.1rem;"><i class="bi bi-chat-left-text me-2"></i>Muro de Bitácora y Recordatorios Colectivos</h5>
+                    <span class="badge bg-dark text-white-50 border border-secondary font-monospace" style="font-size: 0.7rem;">@((Model.Comentarios?.Count ?? 0)) registros</span>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-12 col-md-5 border-end border-secondary border-opacity-10 pe-md-4">
+                        <form id="formAddComentarioMuro" class="d-flex flex-column gap-2">
+                            <div>
+                                <label class="text-white-50 small mb-1">Escribe tu comentario o alerta <span class="text-danger">*</span></label>
+                                <textarea id="txtComentarioMuro" rows="3" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace" placeholder="Ej: Validado el flujo completo de ingesta diaria sin pérdidas de esquema..." required></textarea>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="text-white-50 small mb-1">Categoría</label>
+                                    <select id="selectTipoComentario" class="form-select form-select-sm bg-dark text-white border-secondary" onchange="toggleMuroCalendar(this.value)">
+                                        <option value="Nota">📝 Nota Simple</option>
+                                        <option value="Advertencia">⚠️ Advertencia</option>
+                                        <option value="Recordatorio">⏰ Recordatorio</option>
+                                    </select>
+                                </div>
+                                <div class="col-6" id="divCalendarMuro" style="display: none;">
+                                    <label class="text-white-50 small mb-1">Vencimiento</label>
+                                    <input type="date" id="dateComentarioVence" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace">
+                                </div>
+                            </div>
+                            <div class="d-grid mt-2">
+                                <button type="submit" class="btn btn-sm btn-info fw-bold"><i class="bi bi-send-fill me-2"></i>Publicar en la Bitácora</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="col-12 col-md-7 ps-md-3">
+                        <div class="muro-scroll font-monospace small d-flex flex-column gap-2" id="contenedorMuroComentarios">
+                            @if (Model.Comentarios != null && Model.Comentarios.Any())
+                            {
+                                foreach (var c in Model.Comentarios.OrderByDescending(x => x.FechaCreacion))
+                                {
+                                    string claseTipo = c.Tipo == "Advertencia" ? "comentario-advertencia" : (c.Tipo == "Recordatorio" ? "comentario-recordatorio" : "comentario-nota");
+                                    if (c.Resuelto) { claseTipo = "comentario-resuelto"; }
+
+                                    <div class="comentario-item p-2.5 p-3 @claseTipo" id="item-comentario-@c.Id">
+                                        <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                                            <div>
+                                                <span class="text-info fw-bold">@@@c.Usuario</span>
+                                                <span class="text-white-50 opacity-50 ms-1" style="font-size: 0.7rem;">@c.FechaCreacion.ToString("dd/MM HH:mm")</span>
+                                            </div>
+                                            <div class="d-flex gap-1">
+                                                @if (c.Tipo == "Recordatorio" && !c.Resuelto)
+                                                {
+                                                    <button class="btn btn-sm btn-outline-success py-0 px-1 border-0" style="font-size: 0.65rem;" onclick="resolverAlertaMuro(@c.Id)" title="Resolver recordatorio"><i class="bi bi-check-circle"></i></button>
+                                                }
+                                                <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" style="font-size: 0.65rem;" onclick="eliminarComentarioMuro(@c.Id)" title="Eliminar registro"><i class="bi bi-trash"></i></button>
+                                            </div>
+                                        </div>
+                                        <p class="text-white mb-0 text-wrap font-monospace" style="font-size: 0.75rem;">@c.Texto</p>
+
+                                        @if (c.Tipo == "Recordatorio" && c.FechaVencimiento.HasValue)
+                                        {
+                                            <div class="mt-1 d-flex gap-2 align-items-center" style="font-size: 0.65rem;">
+                                                <span class="@(c.Resuelto ? "text-success" : (c.FechaVencimiento.Value.Date < DateTime.Now.Date ? "text-danger heartbeat font-weight-bold" : "text-warning"))">
+                                                    <i class="bi bi-calendar-event me-1"></i> Alerta: Vence @c.FechaVencimiento.Value.ToString("dd/MM/yyyy")
+                                                    @(c.Resuelto ? "[RESUELTO]" : "")
+                                                </span>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-center text-white-50 py-4 opacity-50" id="muro-vacio-msg"><i class="bi bi-chat-square-dots d-block fs-3 mb-1 text-secondary"></i>No hay comentarios ni alertas registradas en la bitácora de este proyecto.</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-pane fade" id="calidad-pane" role="tabpanel" aria-labelledby="calidad-tab" tabindex="0">
+            <div class="row g-4">
+                <div class="col-12 col-lg-8">
+                    <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold text-primary mb-0" style="font-size: 1.1rem;"><i class="bi bi-shield-check me-2"></i>Historial de Calidad de Código</h5>
+                        </div>
+
+                        @if (Model.Validaciones != null && Model.Validaciones.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-dark table-hover mb-0 align-middle font-monospace" style="font-size: 0.8rem;">
+                                    <thead style="background-color: #111424;">
+                                        <tr>
+                                            <th class="border-secondary text-white-50">Fecha</th>
+                                            <th class="border-secondary text-white-50">Archivo</th>
+                                            <th class="border-secondary text-white-50 text-center">Estado</th>
+                                            <th class="border-secondary text-white-50 text-center">Score</th>
+                                            <th class="border-secondary text-white-50">Analista</th>
+                                            <th class="border-secondary text-white-50 text-center">Detalle</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var val in Model.Validaciones)
+                                        {
+                                            <tr style="background-color: #07091e;">
+                                                <td class="text-white-50">@val.FechaValidacion.ToString("dd/MM HH:mm")</td>
+                                                <td class="text-info text-truncate" style="max-width: 220px;" title="@val.NombreArchivo">@val.NombreArchivo</td>
+                                                <td class="text-center">
+                                                    @if (val.PasoValidacion)
+                                                    {
+                                                        <span class="badge bg-success">Aprobado</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-danger heartbeat">Rechazado</span>
+                                                    }
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="progress" style="height: 5px; width: 60px; margin: 0 auto; background-color: #333;"><div class="progress-bar @(val.Score >= 80 ? "bg-success" : (val.Score >= 50 ? "bg-warning" : "bg-danger"))" style="width: @val.Score%"></div></div>
+                                                    <small class="text-white mt-1 d-block">@val.Score%</small>
+                                                </td>
+                                                <td class="text-white-50 text-truncate" style="max-width: 120px;">@val.Usuario.Split('@')[0]</td>
+                                                <td class="text-center">
+                                                    <div class="d-flex justify-content-center gap-1">
+                                                        <button class="btn btn-sm btn-outline-info border-0" onclick="verDetallesError(@val.Id, '@val.NombreArchivo')" title="Ver Errores">
+                                                            <i class="bi bi-eye fs-6"></i>
+                                                        </button>
+                                                        @if (User.IsInRole("Admin"))
+                                                        {
+                                                            <button class="btn btn-sm btn-outline-danger border-0" onclick="eliminarRevisionHistorica(@val.Id, '@val.NombreArchivo')" title="Eliminar del historial">
+                                                                <i class="bi bi-trash fs-6"></i>
+                                                            </button>
+                                                        }
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-4 text-white-50 small bg-dark bg-opacity-25 border border-secondary border-opacity-25 rounded "><i class="bi bi-file-earmark-code mb-2 fs-3 d-block"></i>Aún no se han realizado validaciones de QA en este Workspace.</div>
+                        }
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-4">
+                    <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                        <h6 class="fw-bold text-warning mb-3" style="font-size: 0.95rem;"><i class="bi bi-sliders me-2"></i>Tolerancias QA Actuales</h6>
+                        <div class="d-flex justify-content-between align-items-center text-white-50 font-monospace small mb-2 border-bottom border-secondary border-opacity-25 pb-2">
+                            <span><i class="bi bi-exclamation-circle text-danger me-1"></i>Críticos:</span>
+                            <span class="badge bg-danger rounded-pill">0 Permitidos</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center text-white-50 font-monospace small mb-2 border-bottom border-secondary border-opacity-25 pb-2">
+                            <span><i class="bi bi-exclamation-triangle text-warning me-1"></i>Warnings:</span>
+                            <span class="text-white fw-bold">@Model.MaxWarningsPermitidos</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center text-white-50 font-monospace small">
+                            <span><i class="bi bi-info-circle text-info me-1"></i>Infos:</span>
+                            <span class="text-white fw-bold">@Model.MaxInfosPermitidos</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="linaje-pane" role="tabpanel" aria-labelledby="linaje-tab" tabindex="0">
+            <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <h5 class="fw-bold text-success mb-0" style="font-size: 1.1rem;"><i class="bi bi-database-gear me-2"></i>Mapeo Corporativo de Linaje</h5>
+                    <div class="position-relative" style="width: 280px;">
+                        <span class="position-absolute top-50 start-0 translate-middle-y ps-2 text-white-50 small"><i class="bi bi-filter"></i></span>
+                        <input type="text" id="searchTablaInput" class="form-control form-control-sm bg-dark text-white border-secondary ps-4" placeholder="Filtrar tablas en este catálogo..." onkeyup="filterTablesCatalog()">
+                    </div>
+                </div>
+
+                <form id="formAddTabla" class="d-flex gap-2 mb-4 align-items-end flex-wrap bg-dark bg-opacity-25 p-3 rounded border border-secondary border-opacity-10">
+                    <div class="flex-grow-1" style="min-width: 250px;">
+                        <label class="text-white-50 small mb-1">Nombre de la Tabla <span class="text-danger">*</span></label>
+                        <input type="text" id="inputNombreTabla" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace" placeholder="Ej: raw.clientes_crm" required>
+                    </div>
+                    <div style="width: 140px;">
+                        <label class="text-white-50 small mb-1">Tipo de Dependencia</label>
+                        <select id="inputTipoTabla" class="form-select form-select-sm bg-dark text-white border-secondary">
+                            <option value="Origen">Origen</option>
+                            <option value="Salida">Salida</option>
+                        </select>
+                    </div>
+                    <div class="flex-grow-1" style="min-width: 250px;">
+                        <label class="text-white-50 small mb-1">Descripción corta de negocio (Opcional)</label>
+                        <input type="text" id="inputDescTabla" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Ej: Ingesta diaria transaccional">
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-sm btn-success fw-bold px-3 shadow-sm" style="height: 31px;" title="Agregar Tabla Manualmente"><i class="bi bi-plus-lg"></i></button>
+                        <button type="button" class="btn btn-sm btn-info fw-bold px-3 ms-1 shadow-sm" style="height: 31px;" data-bs-toggle="modal" data-bs-target="#modalScanLinaje" @(isValidadoWorkspace ? "" : "disabled") title="@toolTipRequisito">
+                            <i class="bi bi-magic text-warning me-1"></i> Escanear Código
+                        </button>
+                    </div>
+                </form>
+
+                <div class="table-responsive-scroll">
+                    <table class="table table-dark table-sm table-hover mb-0 align-middle font-monospace" style="font-size: 0.8rem;" id="tableCatalogoTablas">
+                        <thead>
+                            <tr>
+                                <th class="text-white-50 py-2" style="width: 100px; padding-left: 12px;">Tipo</th>
+                                <th class="text-white-50 py-2">Nombre Corporativo de la Tabla</th>
+                                <th class="text-white-50 py-2">Descripción Funcional</th>
+                                <th class="text-white-50 py-2 text-center" style="width: 60px;">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyTablas">
+                            @if (Model.TablasCatalogo != null && Model.TablasCatalogo.Any())
+                            {
+                                foreach (var t in Model.TablasCatalogo.OrderBy(x => x.TipoTabla).ThenBy(x => x.TablaMaestra?.NombreTabla))
+                                {
+                                    <tr id="tr-tabla-@t.Id" style="background-color: #07091e;" class="row-tabla-catalogo">
+                                        <td style="padding-left: 12px;">
+                                            @if (t.TipoTabla == "Origen")
+                                            {
+                                                <span class="badge bg-primary">Origen</span>
+                                            }
+                                            else
+                                            {
+
+                                                <span class="badge bg-info text-dark">Salida</span>
+                                            }
+                                        </td>
+                                        <td class="text-white fw-bold target-search-nombre">@(t.TablaMaestra?.NombreTabla)</td>
+                                        <td class="text-white-50">@(t.TablaMaestra?.Descripcion)</td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-danger border-0 py-0" onclick="deleteTabla(@t.Id)" title="Quitar del catálogo"><i class="bi bi-x-lg"></i></button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr id="tr-tabla-vacia"><td colspan="4" class="text-center text-white-50 py-4"><i class="bi bi-diagram-2 d-block fs-4 mb-1 text-secondary"></i>No hay tablas mapeadas en este proyecto. Puedes escanear el linaje de tu Workspace o agregarlas arriba.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalValidacion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0" style="background-color: #111424; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <h5 class="modal-title text-white fw-bold"><i class="bi bi-shield-check text-primary me-2"></i>Validación de Calidad</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formValidateNotebook">
+                    <input type="hidden" name="proyectoId" value="@Model.Id" />
+
+                    <div class="mb-3">
+                        <div class="alert alert-info border-0 bg-dark text-info small mb-3">
+                            <i class="bi bi-info-circle-fill me-2"></i>El motor de calidad analizará automáticamente los siguientes scripts detectados en el Workspace:
+                        </div>
+                        <div class="bg-dark bg-opacity-50 border border-secondary border-opacity-25 rounded p-2 mb-3" style="max-height: 180px; overflow-y: auto;">
+                            @if (ViewBag.ArchivosAnalizables != null && ((List<string>)ViewBag.ArchivosAnalizables).Count > 0)
+                            {
+                                <ul class="mb-0 font-monospace text-white-50 small list-unstyled ps-2 text-break">
+                                    @foreach (var file in (List<string>)ViewBag.ArchivosAnalizables)
+                                    {
+                                        <li class="py-1 border-bottom border-secondary border-opacity-25 last-border-0">
+                                            <i class="bi bi-file-earmark-code text-secondary me-2"></i>@file
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <div class="text-center text-warning small font-monospace py-3">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>No se detectaron archivos de código válido (.ipynb, .py, .sql, .scala).
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div id="validationAlert" class="alert d-none small mt-3"></div>
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-warning fw-bold text-dark" id="btnRunValidation">
+                            <i class="bi bi-play-circle me-2"></i>Ejecutar Validación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalHallazgos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0" style="background-color: #111424; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <h5 class="modal-title text-white fw-bold" id="tituloHallazgos"><i class="bi bi-eye text-info me-2"></i>Detalle de Hallazgos</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-dark table-hover mb-0 align-middle font-monospace small">
+                        <thead style="background-color: #07091e; position: sticky; top: 0;">
+                            <tr>
+                                <th class="text-white-50">Tipo</th>
+                                <th class="text-white-50 text-center">Severidad</th>
+                                <th class="text-white-50 text-center">Línea</th>
+                                <th class="text-white-50">Detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaHallazgosBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalScanLinaje" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0" style="background-color: #111424; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <h5 class="modal-title text-white fw-bold"><i class="bi bi-magic text-warning me-2"></i>Escáner de Linaje</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="scanUploadZone">
+                    <p class="text-white-50 small mb-3">El motor leerá el código buscando comandos Spark y SQL para detectar las tablas del catálogo.</p>
+                    <form id="formScanLinaje">
+                        <div class="alert alert-warning border-0 bg-dark text-warning small mb-3">
+                            <i class="bi bi-hdd-network me-2"></i>Analizando el código almacenado en el Workspace Central.
+                        </div>
+                        <div class="d-grid"><button type="submit" class="btn btn-info fw-bold" id="btnRunScan"><i class="bi bi-search me-2"></i>Iniciar Escaneo</button></div>
+                    </form>
+                </div>
+
+                <div id="scanResultsZone" class="d-none">
+                    <h6 class="text-success fw-bold mb-2"><i class="bi bi-check-circle me-2"></i>¡Escaneo Completado!</h6>
+                    <p class="text-white-50 small mb-3">Selecciona las tablas que deseas agregar al catálogo de este proyecto.</p>
+                    <div class="bg-dark border border-secondary rounded p-3 mb-3" style="max-height: 300px; overflow-y: auto;" id="listaTablasDetectadas"></div>
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-outline-secondary" onclick="resetScanModal()">Escanear otro</button>
+                        <button type="button" class="btn btn-success fw-bold" id="btnSaveScannedTables" onclick="saveSelectedTables()"><i class="bi bi-cloud-arrow-up me-2"></i>Importar Selección</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalGenerarJobs" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0" style="background-color: #111424; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <h5 class="modal-title text-white fw-bold"><i class="bi bi-box-seam text-primary me-2"></i>Generación de Artefactos (Jobs)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="jobStep1">
+                    <form id="formAnalyzeJob" enctype="multipart/form-data">
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-5 border-end border-secondary border-opacity-25 pe-4">
+                                <h6 class="text-info fw-bold mb-3 small"><i class="bi bi-sliders me-2"></i>Configuración del Entorno</h6>
+                                <label class="form-label text-white-50 small fw-bold">Nombre del Bundle</label>
+                                <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace mb-3" name="bundleName" value="@bundleName" readonly>
+                                <label class="form-label text-white-50 small fw-bold">Nivel de Acceso</label>
+                                <select class="form-select form-select-sm bg-dark text-white border-secondary mb-3" name="permLevel" required>
+                                    <option value="CAN_MANAGE">Can Manage</option>
+                                    <option value="CAN_EDIT">Can Edit</option>
+                                    <option value="CAN_VIEW">Can View</option>
+                                </select>
+                                <label class="form-label text-white-50 small fw-bold">Usuario / Grupo Corporativo</label>
+                                <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary mb-4" name="permUser" value="@User.Identity?.Name" required>
+                                <div class="form-check form-switch custom-switch-warning bg-dark p-2 rounded border border-secondary border-opacity-25 d-flex align-items-center">
+                                    <input class="form-check-input ms-0 me-3" type="checkbox" id="jobAutocert" name="autocert" value="true">
+                                    <label class="form-check-label text-white small fw-bold" for="jobAutocert"><i class="bi bi-shield-check text-warning me-1"></i> Autocertificación en Scala</label>
+                                </div>
+                            </div>
+                            <div class="col-md-7 ps-3">
+                                <h6 class="text-info fw-bold mb-3 small"><i class="bi bi-cloud-arrow-up me-2"></i>Carga de Insumos</h6>
+                                <div id="jobDropZone" class="job-dropzone mb-3 p-4">
+                                    <i class="bi bi-file-earmark-arrow-up display-4 text-secondary mb-2 d-block" id="jobDropIcon"></i>
+                                    <h6 class="text-white fw-bold mb-1">Sube tu archivo .yml base</h6>
+                                    <p class="text-white-50 small mb-0">Los notebooks se leerán directamente del Workspace Central.</p>
+                                    <input type="file" id="jobHiddenYaml" name="yamlFile" class="d-none" accept=".yml,.yaml">
+                                </div>
+                                <div class="d-flex gap-3">
+                                    <div class="file-slot flex-grow-1" id="slotYaml">
+                                        <div class="d-flex align-items-center gap-2 text-white-50 small p-2">
+                                            <i class="bi bi-filetype-yml fs-4"></i> <span id="txtSlotYaml" class="font-monospace text-truncate" style="max-width: 250px;">Falta archivo YAML</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end border-top border-secondary border-opacity-25 pt-3">
+                            <button type="submit" class="btn btn-warning fw-bold px-4 text-dark" id="btnAnalyzeJob" disabled><i class="bi bi-traffic-light me-2"></i>Validar Linaje y Continuar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="jobStep2" class="d-none">
+                    <h6 class="text-white fw-bold mb-3 border-bottom border-secondary pb-2"><i class="bi bi-diagram-3 text-warning me-2"></i>Validación de Linaje Cruzada</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="p-3 rounded border border-success bg-success bg-opacity-10 h-100 d-flex flex-column">
+                                <div class="text-success fw-bold mb-2"><i class="bi bi-check-circle-fill me-1"></i>Match Perfecto</div>
+                                <div id="listJobMatch" class="flex-grow-1" style="max-height: 250px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 rounded border border-warning bg-warning bg-opacity-10 h-100 d-flex flex-column">
+                                <div class="text-warning fw-bold mb-2"><i class="bi bi-exclamation-triangle-fill me-1"></i>Faltan en Catálogo</div>
+                                <div id="listJobMissing" class="flex-grow-1" style="max-height: 250px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 rounded border border-danger bg-danger bg-opacity-10 h-100 d-flex flex-column">
+                                <div class="text-danger fw-bold mb-2"><i class="bi bi-ghost me-1"></i>Fantasmas (Sobran)</div>
+                                <div id="listJobGhost" class="flex-grow-1" style="max-height: 250px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 border-top border-secondary border-opacity-25 pt-3">
+                        <button type="button" class="btn btn-outline-secondary px-4" onclick="resetJobModal()">Volver</button>
+                        <button type="button" class="btn btn-primary fw-bold px-4" id="btnGenerateFinalJob"><i class="bi bi-rocket-takeoff me-2"></i>Generar Artefactos y Subir</button>
+                    </div>
+                </div>
+
+                <div id="jobStepLoading" class="d-none text-center py-5">
+                    <div class="spinner-border text-info mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+                    <h5 class="text-white fw-bold mb-1">Ensamblando Pipeline...</h5>
+                    <p class="text-white-50 small font-monospace">Inyectando linaje, aplicando permisos y sincronizando con Google Drive.</p>
+                </div>
+
+                <div id="jobStepSuccess" class="d-none text-center py-4">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                    <h4 class="text-white fw-bold mt-3 mb-2">¡Despliegue Exitoso!</h4>
+                    <p class="text-white-50 small mb-4">El artefacto ha sido generado correctamente y respaldado en la nube corporativa.</p>
+                    <div class="bg-dark border border-secondary border-opacity-25 rounded p-3 mb-4 mx-auto text-start font-monospace small" style="max-width: 500px;">
+                        <div class="text-info mb-1"><i class="bi bi-file-zip me-2"></i><span id="successFileName" class="text-white"></span></div>
+                        <div class="text-success text-truncate"><i class="bi bi-cloud-check me-2"></i>Guardado en: 4_Entregables/</div>
+                    </div>
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="#" id="btnDriveLink" target="_blank" class="btn btn-outline-info fw-bold px-4"><i class="bi bi-google me-2"></i>Ver en Drive</a>
+                        <button type="button" class="btn btn-success fw-bold px-4" onclick="window.location.reload()"><i class="bi bi-check2-all me-2"></i>Finalizar y Actualizar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form id="antiForgeryForm">@Html.AntiForgeryToken()</form>
+
+@section Scripts {
+    <script>
+        const TOTAL_FASES = @totalFases;
+
+        document.addEventListener("DOMContentLoaded", function () {
+            // Inicializar Tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Persistencia de Pestañas
+            let hash = window.location.hash;
+            if (hash) {
+                let tabTarget = hash.replace('#', '');
+                let tabBtn = document.getElementById(tabTarget + '-tab');
+                if (tabBtn) {
+                    let bsTab = new bootstrap.Tab(tabBtn);
+                    bsTab.show();
+                }
+            }
+            let tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
+            tabEls.forEach(function(el) {
+                el.addEventListener('shown.bs.tab', function (event) {
+                    let id = event.target.getAttribute('id').replace('-tab', '');
+                    window.history.replaceState(null, null, '#' + id);
+                });
+            });
+        });
+
+        // ==========================================
+        // SISTEMA DE MURO Y RECORDATORIOS
+        // ==========================================
+        function toggleMuroCalendar(tipo) {
+            const divCalendar = document.getElementById('divCalendarMuro');
+            const dateInput = document.getElementById('dateComentarioVence');
+            if (tipo === 'Recordatorio') {
+                divCalendar.style.display = 'block';
+                dateInput.setAttribute('required', 'required');
+            } else {
+                divCalendar.style.display = 'none';
+                dateInput.removeAttribute('required');
+                dateInput.value = '';
+            }
+        }
+
+        document.getElementById('formAddComentarioMuro').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = this.querySelector('button[type="submit"]');
+            const token = $('#antiForgeryForm input[name="__RequestVerificationToken"]').val();
+
+            const requestData = {
+                ProyectoId: @Model.Id,
+                Texto: document.getElementById('txtComentarioMuro').value,
+                Tipo: document.getElementById('selectTipoComentario').value,
+                FechaVencimiento: document.getElementById('dateComentarioVence').value || null
+            };
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enviando...';
+
+            fetch('/Proyectos/AddComentario', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token
+                },
+                body: JSON.stringify(requestData)
+            }).then(r => r.json()).then(data => {
+                if(data.success) {
+                    toastr.success(data.message);
+                    setTimeout(() => window.location.reload(), 800);
+                } else {
+                    toastr.error(data.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-send-fill me-2"></i>Publicar en la Bitácora';
+                }
+            }).catch(() => {
+                toastr.error('Error de conexión.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-send-fill me-2"></i>Publicar en la Bitácora';
+            });
+        });
+
+        function resolverAlertaMuro(id) {
+            const token = $('#antiForgeryForm input[name="__RequestVerificationToken"]').val();
+            fetch(`/Proyectos/ResolverAlerta/${id}`, {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': token }
+            }).then(r => r.json()).then(d => {
+                if(d.success) window.location.reload();
+            });
+        }
+
+        function eliminarComentarioMuro(id) {
+            if(!confirm('¿Eliminar este registro de la bitácora?')) return;
+            const token = $('#antiForgeryForm input[name="__RequestVerificationToken"]').val();
+            fetch(`/Proyectos/DeleteComentario/${id}`, {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': token }
+            }).then(r => r.json()).then(d => {
+                if(d.success) window.location.reload();
+            });
+        }
+
+        // ==========================================
+        // FILTRADO DE TABLAS EN TIEMPO REAL
+        // ==========================================
+        function filterTablesCatalog() {
+            const filter = document.getElementById('searchTablaInput').value.toLowerCase().trim();
+            const rows = document.querySelectorAll('.row-tabla-catalogo');
+            let visibles = 0;
+            rows.forEach(row => {
+                const tableNameCell = row.querySelector('.target-search-nombre');
+                if (tableNameCell) {
+                    if (tableNameCell.innerText.toLowerCase().includes(filter)) {
+                        row.style.display = '';
+                        visibles++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+            const tbody = document.getElementById('tbodyTablas');
+            let trBusquedaVacia = document.getElementById('tr-busqueda-vacia');
+            if (visibles === 0 && rows.length > 0) {
+                if (!trBusquedaVacia) {
+                    const tr = document.createElement('tr');
+                    tr.id = 'tr-busqueda-vacia';
+                    tr.innerHTML = '<td colspan="4" class="text-center text-white-50 py-4"><i class="bi bi-search me-2 text-warning"></i>No se encontraron tablas.</td>';
+                    tbody.appendChild(tr);
+                }
+            } else if (trBusquedaVacia) {
+                trBusquedaVacia.remove();
+            }
+        }
+
+        // ==========================================
+        // WORKSPACE CENTRAL Y CALIDAD
+        // ==========================================
+        function uploadWorkspaceCode(input) {
+            if (!input.files || input.files.length === 0) return;
+            var formData = new FormData();
+            formData.append('proyectoId', @Model.Id);
+            formData.append('file', input.files[0]);
+            const token = $('#antiForgeryForm input[name="__RequestVerificationToken"]').val();
+            if (token) formData.append('__RequestVerificationToken', token);
+
+            toastr.info('Subiendo y procesando código...', '', { timeOut: 0, extendedTimeOut: 0 });
+            fetch('/Proyectos/UploadToWorkspace', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                toastr.clear();
+                if (data.success) {
+                    toastr.success(data.message);
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    toastr.error(data.message);
+                    input.value = "";
+                }
+            });
+        }
+
+        document.getElementById('formValidateNotebook').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnRunValidation');
+            const alertBox = document.getElementById('validationAlert');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analizando...';
+            alertBox.classList.add('d-none');
+
+            var formData = new FormData(this);
+            const token = $('#antiForgeryForm input[name="__RequestVerificationToken"]').val();
+            if (token) formData.append('__RequestVerificationToken', token);
+
+            fetch('@Url.Action("ValidateProjectNotebook", "Proyectos")', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.success) {
+                    if (data.paso) {
+                        alertBox.className = 'alert mt-3 small alert-success fw-bold';
+                        alertBox.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i>¡Validación APROBADA (Score: ${data.score}%)!`;
+                    } else {
+                        alertBox.className = 'alert mt-3 small alert-danger fw-bold heartbeat';
+                        alertBox.innerHTML = `<i class="bi bi-x-circle-fill me-2"></i>Código RECHAZADO (Score: ${data.score}%).`;
+                    }
+                    alertBox.classList.remove('d-none');
+                    setTimeout(() => { window.location.hash = 'calidad'; window.location.reload(); }, 2500);
+                } else {
+                    alertBox.className = 'alert mt-3 small alert-danger';
+                    alertBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i>' + data.message;
+                    alertBox.classList.remove('d-none');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-play-circle me-2"></i>Ejecutar Validación';
+                }
+            });
+        });
+
+        function verDetallesError(validacionId, nombreArchivo) {
+            document.getElementById('tituloHallazgos').innerHTML = `<i class="bi bi-bug text-danger me-2"></i>Hallazgos: ${nombreArchivo}`;
+            document.getElementById('tablaHallazgosBody').innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="spinner-border text-info"></div></td></tr>';
+            var modal = new bootstrap.Modal(document.getElementById('modalHallazgos'));
+            modal.show();
+            fetch(`/Proyectos/GetHallazgosValidacion/${validacionId}`)
+            .then(r => r.json())
+            .then(data => {
+                let html = '';
+                if(data && data.length > 0) {
+                    data.forEach(h => {
+                        let colorBadge = h.tipoHallazgo === 'Critico' ? 'bg-danger' : (h.tipoHallazgo === 'Warning' ? 'bg-warning text-dark' : 'bg-info text-dark');
+                        html += `<tr style="background-color: #0b0d16;">
+                            <td><span class="badge ${colorBadge}">${h.tipoHallazgo}</span></td>
+                            <td class="text-center text-white fw-bold">${h.severidad}</td>
+                            <td class="text-center text-info font-monospace">${h.lineaCodigo}</td>
+                            <td class="text-white-50 text-wrap" style="max-width: 400px;">
+                                ${h.mensajeError}<br/><small class="text-secondary font-monospace d-block mt-1 bg-dark p-1 rounded border border-secondary border-opacity-25">${h.reglaViolada}</small>
+                            </td></tr>`;
+                    });
+                } else {
+                    html = '<tr><td colspan="4" class="text-center text-white-50 py-3">No hay detalles.</td></tr>';
+                }
+                document.getElementById('tablaHallazgosBody').innerHTML = html;
+            });
+        }
+
+        function eliminarRevisionHistorica(validacionId, archivo) {
+            if(confirm(`¿Estás seguro de eliminar el registro histórico de ${archivo}?`)) {
+                const token = $('#antiForgeryForm input[name="__RequestVerificationToken"]').val();
+                fetch(`/Proyectos/DeleteValidacion/${validacionId}`, { method: 'POST', headers: { 'RequestVerificationToken': token } })
+                .then(r => r.json()).then(d => { if(d.success) window.location.reload(); });
+            }
+        }
+
+        function changeFaseStatus(faseId, selectElement) {
+                    const nuevoEstado = selectElement.value;
+                    const token = $('#antiForgeryForm input[name="__RequestVerificationToken"]').val();
+
+                    // LA CORRECCIÓN ESTÁ AQUÍ: Usamos faseId y nuevoEstado en el body
+                    fetch('/Proyectos/UpdateFaseStatus', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `faseId=${faseId}&nuevoEstado=${encodeURIComponent(nuevoEstado)}&__RequestVerificationToken=${encodeURIComponent(token)}`
+                    }).then(r => r.json()).then(data => {
+                        if(data.success) {
+                            toastr.success('Fase actualizada por administrador');
+                            // Recargamos para refrescar el bloqueo en cascada y mostrar tu firma de auditoría
+                            setTimeout(() => window.location.reload(), 500);
+                        } else {
+                            toastr.error('Error: ' + (data.message || 'No se pudo actualizar la fase.'));
+                        }
+                    });
+                }
+
+        // ==========================================
+        // CATÁLOGO Y ESCÁNER DE LINAJE
+        // ==========================================
+        document.getElementById('formAddTabla').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const token = $('#antiForgeryForm input[name="__RequestVerificationToken"]').val();
+            const req = { ProyectoId: @Model.Id, NombreTabla: document.getElementById('inputNombreTabla').value, TipoTabla: document.getElementById('inputTipoTabla').value, Descripcion: document.getElementById('inputDescTabla').value };
+            fetch('/Proyectos/AddTablaCatalogo', { method: 'POST', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token }, body: JSON.stringify(req) })
+            .then(r=>r.json()).then(d => { if(d.success) { window.location.hash = 'linaje'; window.location.reload(); } });
+        });
+
+        function deleteTabla(id) {
+            if(!confirm("¿Quitar esta tabla del catálogo?")) return;
+            const token = $('#antiForgeryForm input[name="__RequestVerificationToken"]').val();
+            fetch(`/Proyectos/DeleteTablaCatalogo/${id}`, { method: 'POST', headers: { 'RequestVerificationToken': token } })
+            .then(r=>r.json()).then(d => { if(d.success) window.location.reload(); });
+        }
+
+        let lastScannedTables = [];
+        document.getElementById('formScanLinaje').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnRunScan');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analizando...';
+            var formData = new FormData(this);
+            formData.append('proyectoId', @Model.Id);
+            const token = $('#antiForgeryForm input[name="__RequestVerificationToken"]').val();
+            if (token) formData.append('__RequestVerificationToken', token);
+
+            fetch('@Url.Action("ScanLineageFromCode", "Proyectos")', { method: 'POST', body: formData })
+            .then(r => r.json()).then(data => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-search me-2"></i>Iniciar Escaneo';
+                if(data.success) {
+                    document.getElementById('scanUploadZone').classList.add('d-none');
+                    document.getElementById('scanResultsZone').classList.remove('d-none');
+                    lastScannedTables = data.tablas;
+                    const container = document.getElementById('listaTablasDetectadas');
+                    container.innerHTML = '';
+                    if(data.tablas.length === 0) {
+                        container.innerHTML = '<div class="text-center text-white-50 small my-3">No se detectaron comandos.</div>';
+                        document.getElementById('btnSaveScannedTables').disabled = true;
+                        return;
+                    }
+                    document.getElementById('btnSaveScannedTables').disabled = false;
+                    data.tablas.forEach((t, i) => {
+                        let isOrigen = t.tipoTabla === 'Origen';
+                        let isTemp = t.nombreTabla.toLowerCase().includes('tmp') || t.nombreTabla.toLowerCase().includes('temp');
+                        let badge = isOrigen ? '<span class="badge bg-primary">Origen</span>' : '<span class="badge bg-info text-dark">Salida</span>';
+                        if(isTemp) badge += ' <span class="badge bg-secondary ms-1">Temp</span>';
+                        container.innerHTML += `<div class="form-check custom-switch-warning d-flex align-items-center mb-2 pb-2 border-bottom border-secondary border-opacity-25">
+                            <input class="form-check-input ms-0 me-3 checkbox-scan" type="checkbox" id="chkScan_${i}" value="${i}" ${!isTemp ? 'checked' : ''}>
+                            <label class="form-check-label text-white small flex-grow-1" for="chkScan_${i}"><strong class="font-monospace">${t.nombreTabla}</strong></label>
+                            <div>${badge}</div></div>`;
+                    });
+                } else toastr.error(data.message);
+            });
+        });
+
+        function saveSelectedTables() {
+            const checkboxes = document.querySelectorAll('.checkbox-scan:checked');
+            if(checkboxes.length === 0) { toastr.warning("Selecciona al menos una tabla."); return; }
+            const btn = document.getElementById('btnSaveScannedTables');
+            btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+            const seleccionadas = Array.from(checkboxes).map(chk => lastScannedTables[chk.value]);
+            const token = $('#antiForgeryForm input[name="__RequestVerificationToken"]').val();
+            fetch('@Url.Action("SaveScannedLineage", "Proyectos")', {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token }, body: JSON.stringify({ ProyectoId: @Model.Id, Tablas: seleccionadas })
+            }).then(r => r.json()).then(data => {
+                if(data.success) { toastr.success(data.message); setTimeout(() => { window.location.hash = 'linaje'; window.location.reload(); }, 1000); }
+                else { toastr.error(data.message); btn.disabled = false; btn.innerHTML = '<i class="bi bi-cloud-arrow-up me-2"></i>Importar Selección'; }
+            });
+        }
+        function resetScanModal() { document.getElementById('scanResultsZone').classList.add('d-none'); document.getElementById('scanUploadZone').classList.remove('d-none'); lastScannedTables = []; }
+
+        // ==========================================
+        // GENERADOR DE JOBS Y DROPAREA
+        // ==========================================
+        const jDropZone = document.getElementById('jobDropZone'), jInputYaml = document.getElementById('jobHiddenYaml'), jTxtYaml = document.getElementById('txtSlotYaml'), jBtnAnalyze = document.getElementById('btnAnalyzeJob');
+        jDropZone.addEventListener('click', () => jInputYaml.click());
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => jDropZone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); }));
+        ['dragenter', 'dragover'].forEach(evt => jDropZone.addEventListener(evt, () => jDropZone.classList.add('dragover')));
+        ['dragleave', 'drop'].forEach(evt => jDropZone.addEventListener(evt, () => jDropZone.classList.remove('dragover')));
+        jDropZone.addEventListener('drop', e => {
+            let dt = new DataTransfer();
+            for(let f of e.dataTransfer.files) if(f.name.endsWith('.yml') || f.name.endsWith('.yaml')) dt.items.add(f);
+            if(dt.files.length > 0) { jInputYaml.files = dt.files; checkJobInputs(); }
+        });
+        jInputYaml.addEventListener('change', checkJobInputs);
+
+        function checkJobInputs() {
+            if(jInputYaml.files.length > 0) {
+                jTxtYaml.innerText = jInputYaml.files[0].name; jTxtYaml.classList.add('text-info', 'fw-bold'); jTxtYaml.classList.remove('text-white-50');
+                jBtnAnalyze.disabled = false; jBtnAnalyze.classList.replace('btn-warning','btn-success');
+            } else {
+                jBtnAnalyze.disabled = true; jBtnAnalyze.classList.replace('btn-success','btn-warning');
+            }
+        }
+        function resetJobModal() { $('#jobStep2, #jobStepLoading, #jobStepSuccess').addClass('d-none'); $('#jobStep1').hide().removeClass('d-none').fadeIn(300); }
+
+        document.getElementById('formAnalyzeJob').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnAnalyzeJob'); btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Cruzando datos...';
+            var formData = new FormData(this); formData.append('proyectoId', @Model.Id);
+            const token = $('#antiForgeryForm input[name="__RequestVerificationToken"]').val(); if (token) formData.append('__RequestVerificationToken', token);
+            fetch('@Url.Action("AnalyzeJobMatch", "Proyectos")', { method: 'POST', body: formData }).then(r => r.json()).then(data => {
+                btn.disabled = false; btn.innerHTML = '<i class="bi bi-traffic-light me-2"></i>Validar Linaje y Continuar';
+                if(data.success) {
+                    document.getElementById('listJobMatch').innerHTML = createTreeHtml(data.matchDBs, 'success');
+                    document.getElementById('listJobMissing').innerHTML = createTreeHtml(data.missingDBs, 'warning');
+                    document.getElementById('listJobGhost').innerHTML = createTreeHtml(data.ghostDBs, 'danger');
+                    $('#jobStep1').addClass('d-none'); $('#jobStep2').hide().removeClass('d-none').fadeIn(300);
+                } else toastr.error(data.message);
+            });
+        });
+
+        function createTreeHtml(dbDict, iconColor) {
+            if(!dbDict || Object.keys(dbDict).length === 0) return '<div class="text-white-50 small mt-2 ps-2">No hay dependencias.</div>';
+            let html = '';
+            for(const [dbName, tables] of Object.entries(dbDict)) {
+                let uniqueId = Math.random().toString(36).substr(2, 9);
+                html += `<div class="mb-1"><div class="tree-group d-flex align-items-center py-1 px-2 rounded collapsed" data-bs-toggle="collapse" data-bs-target="#db-${uniqueId}">
+                        <i class="bi bi-caret-down-fill text-${iconColor} me-2 tree-group-icon" style="font-size: 0.8rem;"></i>
+                        <span class="text-white font-monospace fw-bold small">${dbName}</span>
+                        <span class="badge bg-secondary ms-auto" style="font-size: 0.65rem;">${tables.length}</span></div>
+                    <ul class="tree-children collapse" id="db-${uniqueId}">`;
+                tables.forEach(t => { html += `<li class="text-white-50 font-monospace py-1" style="font-size: 0.75rem;"><i class="bi bi-table me-2 opacity-50"></i>${t}</li>`; });
+                html += `</ul></div>`;
+            } return html;
+        }
+
+        document.getElementById('btnGenerateFinalJob').addEventListener('click', function() {
+            $('#jobStep2').addClass('d-none'); $('#jobStepLoading').hide().removeClass('d-none').fadeIn(300);
+            var formData = new FormData(document.getElementById('formAnalyzeJob')); formData.append('proyectoId', @Model.Id);
+            const token = $('#antiForgeryForm input[name="__RequestVerificationToken"]').val(); if (token) formData.append('__RequestVerificationToken', token);
+            fetch('@Url.Action("GenerateAndUploadJob", "Proyectos")', { method: 'POST', body: formData }).then(r => r.json()).then(data => {
+                if(data.success) {
+                    $('#jobStepLoading').addClass('d-none'); $('#jobStepSuccess').hide().removeClass('d-none').fadeIn(300);
+                    document.getElementById('successFileName').innerText = data.fileName; document.getElementById('btnDriveLink').href = data.driveUrl;
+                    window.location.href = `/Proyectos/DownloadArtifact?token=${data.downloadToken}&fileName=${data.fileName}`;
+                } else {
+                    $('#jobStepLoading').addClass('d-none'); $('#jobStep2').hide().removeClass('d-none').fadeIn(300); toastr.error(data.message);
+                }
+            });
+        });
+    </script>
+}

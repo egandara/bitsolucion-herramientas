@@ -82,6 +82,7 @@ builder.Services.AddScoped<NotebookValidatorService>(sp =>
     new NotebookValidatorService(
         sp.GetRequiredService<ApplicationDbContext>())
 );
+builder.Services.AddScoped<WorkspaceService>();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<TempTableService>();
 builder.Services.AddScoped<ParameterValidationService>();
@@ -92,6 +93,8 @@ builder.Services.AddScoped<WordExportService>();
 builder.Services.AddScoped<JobTransformationService>();
 builder.Services.AddScoped<ICuadraturaService, CuadraturaService>();
 builder.Services.AddScoped<FunctionsService>(); // <-- NUEVO SERVICIO AÑADIDO AQUI
+
+builder.Services.AddScoped<GoogleDriveService>(); // O services.AddScoped si es Startup.cs
 
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>

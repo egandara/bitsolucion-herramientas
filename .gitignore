@@ -24,3 +24,5 @@ node_modules/
 *.mdf
 *.ldf
 *.bak
+/credentials.json
+/token.json
