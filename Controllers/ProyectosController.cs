@@ -129,7 +129,32 @@ namespace NotebookValidator.Web.Controllers
                 string cId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
                 _context.ProyectosUsuarios.Add(new ProyectoUsuario { ProyectoId = nuevoProyecto.Id, UsuarioId = cId, RolEnProyecto = "Admin", FechaAsignacion = DateTime.Now });
 
-                if (usuariosAsignadosIds != null) foreach (var uId in usuariosAsignadosIds) if (uId != cId) _context.ProyectosUsuarios.Add(new ProyectoUsuario { ProyectoId = nuevoProyecto.Id, UsuarioId = uId, RolEnProyecto = "Developer", FechaAsignacion = DateTime.Now });
+                // =========================================================
+                // MAGIA: ASIGNAR PERMISOS EN DRIVE AUTOMÁTICAMENTE
+                // =========================================================
+                var adminUser = await _userManager.FindByIdAsync(cId);
+                if (adminUser != null && !string.IsNullOrEmpty(adminUser.Email))
+                {
+                    await _driveService.ShareFolderWithUserAsync(nuevoProyecto.DriveFolderId, adminUser.Email, "writer");
+                }
+
+                if (usuariosAsignadosIds != null)
+                {
+                    foreach (var uId in usuariosAsignadosIds)
+                    {
+                        if (uId != cId)
+                        {
+                            _context.ProyectosUsuarios.Add(new ProyectoUsuario { ProyectoId = nuevoProyecto.Id, UsuarioId = uId, RolEnProyecto = "Developer", FechaAsignacion = DateTime.Now });
+
+                            var devUser = await _userManager.FindByIdAsync(uId);
+                            if (devUser != null && !string.IsNullOrEmpty(devUser.Email))
+                            {
+                                await _driveService.ShareFolderWithUserAsync(nuevoProyecto.DriveFolderId, devUser.Email, "writer");
+                            }
+                        }
+                    }
+                }
+                // =========================================================
 
                 await _context.SaveChangesAsync(); await transaction.CommitAsync();
                 return RedirectToAction(nameof(Index));
@@ -235,8 +260,30 @@ namespace NotebookValidator.Web.Controllers
             proyecto.Notas = notas?.Trim() ?? string.Empty; proyecto.MaxWarningsPermitidos = maxWarningsPermitidos; proyecto.MaxInfosPermitidos = maxInfosPermitidos;
 
             _context.ProyectosUsuarios.RemoveRange(proyecto.UsuariosAsignados.Where(u => u.RolEnProyecto == "Developer"));
-            if (usuariosAsignadosIds != null) foreach (var uId in usuariosAsignadosIds) if (!proyecto.UsuariosAsignados.Any(u => u.UsuarioId == uId && u.RolEnProyecto == "Admin"))
-                _context.ProyectosUsuarios.Add(new ProyectoUsuario { ProyectoId = proyecto.Id, UsuarioId = uId, RolEnProyecto = "Developer", FechaAsignacion = DateTime.Now });
+
+            if (usuariosAsignadosIds != null)
+            {
+                foreach (var uId in usuariosAsignadosIds)
+                {
+                    if (!proyecto.UsuariosAsignados.Any(u => u.UsuarioId == uId && u.RolEnProyecto == "Admin"))
+                    {
+                        // Detectamos si es un usuario que no estaba antes en el proyecto
+                        bool esNuevo = !proyecto.UsuariosAsignados.Any(u => u.UsuarioId == uId);
+
+                        _context.ProyectosUsuarios.Add(new ProyectoUsuario { ProyectoId = proyecto.Id, UsuarioId = uId, RolEnProyecto = "Developer", FechaAsignacion = DateTime.Now });
+
+                        // MAGIA: ASIGNAR PERMISO EN DRIVE A LOS NUEVOS MIEMBROS
+                        if (esNuevo && !string.IsNullOrEmpty(proyecto.DriveFolderId))
+                        {
+                            var devUser = await _userManager.FindByIdAsync(uId);
+                            if (devUser != null && !string.IsNullOrEmpty(devUser.Email))
+                            {
+                                await _driveService.ShareFolderWithUserAsync(proyecto.DriveFolderId, devUser.Email, "writer");
+                            }
+                        }
+                    }
+                }
+            }
 
             await _context.SaveChangesAsync(); return RedirectToAction(nameof(Details), new { id = proyecto.Id });
         }
@@ -639,7 +686,6 @@ namespace NotebookValidator.Web.Controllers
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                // FIX PARA EL ERROR CS0103 Y CS1003 AQUI ABAJO:
                 return Json(new { success = false, message = "Error en el motor de transformación: " + ex.Message });
             }
         }
@@ -672,7 +718,6 @@ namespace NotebookValidator.Web.Controllers
                     ? proyecto.RepositorioGitHub.Split('/').Last().Replace(".git", "")
                     : "bundle-proyecto";
 
-                // SOLUCION AL WARNING CS8604
                 string rutaLocal = await _workspaceService.SaveWorkspaceLocalAsync(proyectoId, file, repoName, proyecto.DriveFolderId ?? string.Empty);
 
                 string archivosIndexados = "";
@@ -814,7 +859,6 @@ namespace NotebookValidator.Web.Controllers
 
             foreach (var t in tablas)
             {
-                // SOLUCIÓN PARA WARNINGS CS8602
                 string nombreTablaSafe = t.TablaMaestra?.NombreTabla ?? "Tabla Desconocida";
                 string nombreProyectoSafe = t.Proyecto?.Nombre ?? "Proyecto Desconocido";
 
@@ -835,7 +879,6 @@ namespace NotebookValidator.Web.Controllers
 
             foreach (var p in proyectosConCodigo)
             {
-                // SOLUCIÓN PARA WARNINGS CS8602
                 var arrArchivos = p.ArchivosIndexados?.Split(';') ?? Array.Empty<string>();
 
                 var matchedFiles = arrArchivos
@@ -863,7 +906,6 @@ namespace NotebookValidator.Web.Controllers
 
             foreach (var c in comentarios)
             {
-                // SOLUCION PARA WARNINGS CS8602 y CS8601
                 string txtSafe = string.IsNullOrEmpty(c.Texto) ? "" : c.Texto;
                 string usrSafe = string.IsNullOrEmpty(c.Usuario) ? "Desconocido" : c.Usuario;
                 string proyNameSafe = c.Proyecto?.Nombre ?? "Desconocido";
@@ -882,20 +924,14 @@ namespace NotebookValidator.Web.Controllers
         }
     }
 
-    // =========================================================
-    // CLASES DTO PARA RECIBIR DATOS DEL FRONTEND (AJAX)
-    // =========================================================
     public class SaveScannedLineageRequest
     {
         public int ProyectoId { get; set; }
-
-        // SOLUCION WARNING CS8618: Inicializando la lista por defecto
         public List<TablaScaneada> Tablas { get; set; } = new();
     }
 
     public class TablaScaneada
     {
-        // SOLUCION WARNING CS8618: Valores por defecto
         public string NombreTabla { get; set; } = string.Empty;
         public string TipoTabla { get; set; } = string.Empty;
     }
@@ -903,7 +939,6 @@ namespace NotebookValidator.Web.Controllers
     public class NuevoComentarioDto
     {
         public int ProyectoId { get; set; }
-        // SOLUCION WARNING CS8618: Valores por defecto
         public string Texto { get; set; } = string.Empty;
         public string Tipo { get; set; } = string.Empty;
         public DateTime? FechaVencimiento { get; set; }

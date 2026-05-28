@@ -131,6 +131,7 @@ namespace NotebookValidator.Web.Services
 
             return rootFolder;
         }
+
         // ====================================================================
         // NUEVO: SUBIR ARTEFACTO (ZIP) A UNA CARPETA ESPECÍFICA DE DRIVE
         // ====================================================================
@@ -182,6 +183,38 @@ namespace NotebookValidator.Web.Services
         {
             var service = await GetDriveServiceAsync();
             return await FindOrCreateFolderAsync(service, folderName, parentId);
+        }
+
+        // ====================================================================
+        // NUEVO: COMPARTIR CARPETA CON UN USUARIO ESPECÍFICO
+        // ====================================================================
+        public async Task ShareFolderWithUserAsync(string fileId, string userEmail, string role = "writer")
+        {
+            try
+            {
+                var service = await GetDriveServiceAsync();
+
+                // Definimos el permiso para el usuario
+                var newPermission = new Google.Apis.Drive.v3.Data.Permission
+                {
+                    Type = "user",
+                    Role = role, // Opciones comunes: "writer" (edición), "reader" (lectura), "commenter"
+                    EmailAddress = userEmail
+                };
+
+                var request = service.Permissions.Create(newPermission, fileId);
+
+                // Evitamos que le llegue un correo automático cada vez que lo asignan a un proyecto
+                request.SendNotificationEmail = false;
+
+                await request.ExecuteAsync();
+            }
+            catch (Exception ex)
+            {
+                // Si el usuario ya tiene permisos heredados o el email no es válido para Google,
+                // la API arrojará una excepción. Lo capturamos para que no colapse la creación del proyecto.
+                Console.WriteLine($"Error al compartir carpeta de Drive con el correo '{userEmail}': {ex.Message}");
+            }
         }
     }
 }
