@@ -1,0 +1,107 @@
+@model NotebookValidator.Web.Models.GestorProyectos.Proyecto
+
+<div class="modal fade" id="modalValidacion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0" style="background-color: #111424; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <h5 class="modal-title text-white fw-bold"><i class="bi bi-shield-check text-primary me-2"></i>Validación de Calidad</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formValidateNotebook">
+                    <input type="hidden" name="proyectoId" value="@Model.Id" />
+
+                    <div class="mb-3">
+                        <div class="alert alert-info border-0 bg-dark text-info small mb-3">
+                            <i class="bi bi-info-circle-fill me-2"></i>El motor de calidad analizará automáticamente los siguientes scripts detectados en el Workspace:
+                        </div>
+                        <div class="bg-dark bg-opacity-50 border border-secondary border-opacity-25 rounded p-2 mb-3" style="max-height: 180px; overflow-y: auto;">
+                            @if (ViewBag.ArchivosAnalizables != null && ((List<string>)ViewBag.ArchivosAnalizables).Count > 0)
+                            {
+                                <ul class="mb-0 font-monospace text-white-50 small list-unstyled ps-2 text-break">
+                                    @foreach (var file in (List<string>)ViewBag.ArchivosAnalizables)
+                                    {
+                                        <li class="py-1 border-bottom border-secondary border-opacity-25 last-border-0">
+                                            <i class="bi bi-file-earmark-code text-secondary me-2"></i>@file
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <div class="text-center text-warning small font-monospace py-3">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>No se detectaron archivos de código válido (.ipynb, .py, .sql, .scala).
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div id="validationAlert" class="alert d-none small mt-3"></div>
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-warning fw-bold text-dark" id="btnRunValidation">
+                            <i class="bi bi-play-circle me-2"></i>Ejecutar Validación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalHallazgos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0" style="background-color: #111424; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <h5 class="modal-title text-white fw-bold" id="tituloHallazgos"><i class="bi bi-eye text-info me-2"></i>Detalle de Hallazgos</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-dark table-hover mb-0 align-middle font-monospace small">
+                        <thead style="background-color: #07091e; position: sticky; top: 0;">
+                            <tr>
+                                <th class="text-white-50">Tipo</th>
+                                <th class="text-white-50 text-center">Severidad</th>
+                                <th class="text-white-50 text-center">Línea</th>
+                                <th class="text-white-50">Detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaHallazgosBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalScanLinaje" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0" style="background-color: #111424; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <h5 class="modal-title text-white fw-bold"><i class="bi bi-magic text-warning me-2"></i>Escáner de Linaje</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="scanUploadZone">
+                    <p class="text-white-50 small mb-3">El motor leerá el código buscando comandos Spark y SQL para detectar las tablas del catálogo.</p>
+                    <form id="formScanLinaje">
+                        <div class="alert alert-warning border-0 bg-dark text-warning small mb-3">
+                            <i class="bi bi-hdd-network me-2"></i>Analizando el código almacenado en el Workspace Central.
+                        </div>
+                        <div class="d-grid"><button type="submit" class="btn btn-info fw-bold" id="btnRunScan"><i class="bi bi-search me-2"></i>Iniciar Escaneo</button></div>
+                    </form>
+                </div>
+
+                <div id="scanResultsZone" class="d-none">
+                    <h6 class="text-success fw-bold mb-2"><i class="bi bi-check-circle me-2"></i>¡Escaneo Completado!</h6>
+                    <p class="text-white-50 small mb-3">Selecciona las tablas que deseas agregar al catálogo de este proyecto.</p>
+                    <div class="bg-dark border border-secondary rounded p-3 mb-3" style="max-height: 300px; overflow-y: auto;" id="listaTablasDetectadas"></div>
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-outline-secondary" onclick="resetScanModal()">Escanear otro</button>
+                        <button type="button" class="btn btn-success fw-bold" id="btnSaveScannedTables" onclick="saveSelectedTables()"><i class="bi bi-cloud-arrow-up me-2"></i>Importar Selección</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

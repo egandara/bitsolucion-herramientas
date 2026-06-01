@@ -17,219 +17,332 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 
     <style>
-        /* ==========================================================================
-           ESTANDARIZACIÓN GLOBAL DE SIDEBAR AL ALTO IMPACTO (COMPACTO AL 75%)
-           ========================================================================== */
-        :root {
-            --sidebar-width: 260px !important;
-            --topbar-height: 60px !important;
-        }
+            /* ==========================================================================
+                       ESTANDARIZACIÓN GLOBAL DE SIDEBAR AL ALTO IMPACTO (COMPACTO AL 75%)
+                       ========================================================================== */
+            :root {
+                --sidebar-width: 260px !important;
+                --topbar-height: 60px !important;
+            }
 
-        html, body {
-            height: 100% !important;
-            margin: 0 !important;
-            background-color: #0f111a !important;
-            overflow-x: hidden !important;
-        }
+            html, body {
+                height: 100% !important;
+                margin: 0 !important;
+                background-color: #0f111a !important;
+                overflow-x: hidden !important;
+            }
 
-        /* BARRA LATERAL CONTENIDA */
-        .sidebar {
-            width: var(--sidebar-width) !important;
-            background-color: #0b0d16 !important;
-            border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
-            display: flex !important;
-            flex-direction: column !important;
-            overflow-y: hidden !important;
-            overflow-x: hidden !important;
-            height: 100vh !important;
-        }
+            /* BARRA LATERAL CONTENIDA */
+            .sidebar {
+                width: var(--sidebar-width) !important;
+                background-color: #0b0d16 !important;
+                border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+                display: flex !important;
+                flex-direction: column !important;
+                overflow-y: hidden !important;
+                overflow-x: hidden !important;
+                height: 100vh !important;
+            }
 
-        .sidebar-brand {
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: center !important;
-            align-items: center !important;
-            padding: 0.8rem 1rem 0.4rem !important;
-            height: 80px !important;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
-            background-color: #0b0d16 !important;
-            flex-shrink: 0 !important;
-            z-index: 10 !important;
-        }
+            .sidebar-brand {
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: center !important;
+                align-items: center !important;
+                padding: 0.8rem 1rem 0.4rem !important;
+                height: 80px !important;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
+                background-color: #0b0d16 !important;
+                flex-shrink: 0 !important;
+                z-index: 10 !important;
+            }
 
-        .sidebar-nav {
-            overflow-y: auto !important;
-            overflow-x: hidden !important;
-            flex-grow: 1 !important;
-            padding: 0 0.5rem !important;
-        }
+            .sidebar-nav {
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                flex-grow: 1 !important;
+                padding: 0 0.5rem !important;
+            }
 
-        .sidebar-nav .nav {
-            gap: 2px !important;
-        }
+                .sidebar-nav .nav {
+                    gap: 2px !important;
+                }
 
-        .sidebar-nav .nav-link {
-            color: rgba(255, 255, 255, 0.6) !important;
-            border-left: 4px solid transparent !important;
-            padding: 0.16rem 0.8rem !important;
-            border-radius: 4px !important;
-            font-weight: 500 !important;
-            transition: all 0.2s ease !important;
-            display: flex !important;
-            align-items: center !important;
-            background-color: transparent !important;
-            text-decoration: none;
-            margin-bottom: 0 !important;
-            white-space: nowrap !important;
-            font-size: 0.78rem !important;
-            line-height: 1.2 !important;
-        }
+                .sidebar-nav .nav-link {
+                    color: rgba(255, 255, 255, 0.6) !important;
+                    border-left: 4px solid transparent !important;
+                    padding: 0.16rem 0.8rem !important;
+                    border-radius: 4px !important;
+                    font-weight: 500 !important;
+                    transition: all 0.2s ease !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    background-color: transparent !important;
+                    text-decoration: none;
+                    margin-bottom: 0 !important;
+                    white-space: nowrap !important;
+                    font-size: 0.78rem !important;
+                    line-height: 1.2 !important;
+                }
 
-        .sidebar-nav .nav-link i,
-        .sidebar-nav .nav-link i.bi {
-            font-size: 1.05rem !important;
-            margin-right: 0.65rem !important;
-            width: 18px !important;
-            text-align: center !important;
-            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        }
+                    .sidebar-nav .nav-link i,
+                    .sidebar-nav .nav-link i.bi {
+                        font-size: 1.05rem !important;
+                        margin-right: 0.65rem !important;
+                        width: 18px !important;
+                        text-align: center !important;
+                        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                    }
 
-        .sidebar-nav .nav-link:hover {
-            color: #fff !important;
-            background-color: rgba(255, 255, 255, 0.04) !important;
-        }
+                    .sidebar-nav .nav-link:hover {
+                        color: #fff !important;
+                        background-color: rgba(255, 255, 255, 0.04) !important;
+                    }
 
-        .sidebar-nav .nav-link:hover i,
-        .sidebar-nav .nav-link:hover i.bi {
-            transform: translateX(2px) !important;
-        }
+                        .sidebar-nav .nav-link:hover i,
+                        .sidebar-nav .nav-link:hover i.bi {
+                            transform: translateX(2px) !important;
+                        }
 
-        .sidebar-nav .nav-link.active {
-            color: #fff !important;
-            background-color: rgba(255, 193, 7, 0.08) !important;
-            border-left: 4px solid #ffc107 !important;
-            font-weight: 600 !important;
-        }
+                    .sidebar-nav .nav-link.active {
+                        color: #fff !important;
+                        background-color: rgba(255, 193, 7, 0.08) !important;
+                        border-left: 4px solid #ffc107 !important;
+                        font-weight: 600 !important;
+                    }
 
-        .sidebar-nav .nav-link.active i,
-        .sidebar-nav .nav-link.active i.bi {
-            color: #ffc107 !important;
-        }
+                        .sidebar-nav .nav-link.active i,
+                        .sidebar-nav .nav-link.active i.bi {
+                            color: #ffc107 !important;
+                        }
 
-        .nav-header-custom {
-            font-size: 0.62rem !important;
-            letter-spacing: 1.2px !important;
-            font-weight: 700 !important;
-            color: rgba(255, 255, 255, 0.28) !important;
-            padding: 0.8rem 0.8rem 0.2rem !important;
-            text-transform: uppercase !important;
-            white-space: nowrap;
-            margin-top: 0px !important;
-            margin-bottom: 0px !important;
-        }
+            .nav-header-custom {
+                font-size: 0.62rem !important;
+                letter-spacing: 1.2px !important;
+                font-weight: 700 !important;
+                color: rgba(255, 255, 255, 0.28) !important;
+                padding: 0.8rem 0.8rem 0.2rem !important;
+                text-transform: uppercase !important;
+                white-space: nowrap;
+                margin-top: 0px !important;
+                margin-bottom: 0px !important;
+            }
 
-        .nav-header-custom:first-child {
-            padding-top: 0.5rem !important;
-        }
+                .nav-header-custom:first-child {
+                    padding-top: 0.5rem !important;
+                }
 
-        .sidebar-nav hr {
-            margin: 0.25rem 0.75rem !important;
-            border-color: rgba(255, 255, 255, 0.05) !important;
-            opacity: 0.15 !important;
-        }
+            .sidebar-nav hr {
+                margin: 0.25rem 0.75rem !important;
+                border-color: rgba(255, 255, 255, 0.05) !important;
+                opacity: 0.15 !important;
+            }
 
-        .sidebar-nav .nav-link[aria-expanded="true"] .transition-icon {
-            transform: rotate(180deg) !important;
-            color: #ffc107 !important;
-        }
+            .sidebar-nav .nav-link[aria-expanded="true"] .transition-icon {
+                transform: rotate(180deg) !important;
+                color: #ffc107 !important;
+            }
 
-        .transition-icon {
-            transition: transform 0.2s ease !important;
-        }
+            .transition-icon {
+                transition: transform 0.2s ease !important;
+            }
 
-        .sidebar-nav .collapse .nav-link {
-            border-left: none !important;
-            padding: 0.14rem 0.8rem 0.14rem 1.8rem !important;
-            color: rgba(255, 255, 255, 0.45) !important;
-            font-size: 0.74rem !important;
-        }
+            .sidebar-nav .collapse .nav-link {
+                border-left: none !important;
+                padding: 0.14rem 0.8rem 0.14rem 1.8rem !important;
+                color: rgba(255, 255, 255, 0.45) !important;
+                font-size: 0.74rem !important;
+            }
 
-        .logo-full {
-            display: block !important;
-            height: 32px;
-        }
+            .logo-full {
+                display: block !important;
+                height: 32px;
+            }
 
-        .main-content {
-            background-color: #0f111a !important;
-            min-width: 0;
-        }
+            .main-content {
+                background-color: #0f111a !important;
+                min-width: 0;
+            }
 
-        .top-bar {
-            background-color: #0f111a !important;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
-            height: 60px !important;
-        }
+            .top-bar {
+                background-color: #0f111a !important;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
+                height: 60px !important;
+            }
 
-        .sidebar-nav::-webkit-scrollbar { width: 4px !important; }
-        .sidebar-nav::-webkit-scrollbar-track { background: transparent !important; }
-        .sidebar-nav::-webkit-scrollbar-thumb { background: transparent !important; border-radius: 10px !important; transition: background 0.3s ease !important; }
-        .sidebar:hover .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08) !important; }
-        .sidebar:hover .sidebar-nav::-webkit-scrollbar-thumb:hover { background: rgba(255, 193, 7, 0.25) !important; }
+            .sidebar-nav::-webkit-scrollbar {
+                width: 4px !important;
+            }
 
-        /* ==========================================================================
-           OMNI-SEARCH GLOBAL (ATLASSIAN / JIRA STYLE)
-           ========================================================================== */
-        .global-search-container { position: relative; width: 100%; max-width: 450px; z-index: 1050; }
-        .global-search-input {
-            background-color: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
-            border-radius: 6px;
-            padding: 8px 16px 8px 36px;
-            width: 100%;
-            transition: all 0.2s ease;
-            font-size: 0.85rem;
-            font-family: monospace;
-        }
-        .global-search-input:focus {
-            background-color: rgba(0, 0, 0, 0.3);
-            border-color: #0dcaf0;
-            box-shadow: 0 0 0 3px rgba(13, 202, 240, 0.2);
-            outline: none;
-        }
-        .global-search-icon {
-            position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-            color: rgba(255, 255, 255, 0.4); pointer-events: none;
-        }
-        .global-search-results {
-            position: absolute; top: 100%; left: 0; width: 550px; max-width: 90vw; margin-top: 8px;
-            background-color: #111424; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6); z-index: 1051; display: none;
-            max-height: 450px; overflow-y: auto; overflow-x: hidden;
-        }
-        .search-category-header {
-            font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
-            color: rgba(255,255,255,0.3); padding: 8px 12px; background-color: #07091e;
-            border-bottom: 1px solid rgba(255,255,255,0.05); border-top: 1px solid rgba(255,255,255,0.05); margin: 0;
-        }
-        .search-category-header:first-child { border-top: none; border-top-left-radius: 8px; border-top-right-radius: 8px; }
-        .search-result-item {
-            display: flex; align-items: center; padding: 10px 12px; text-decoration: none !important;
-            color: #fff; transition: background-color 0.2s; border-bottom: 1px solid rgba(255,255,255,0.03);
-        }
-        .search-result-item:last-child { border-bottom: none; }
-        .search-result-item:hover, .search-result-item.active { background-color: rgba(13, 202, 240, 0.1); color: #fff; }
-        .search-result-icon {
-            width: 32px; height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-            background-color: rgba(255,255,255,0.05); border-radius: 6px; margin-right: 12px; font-size: 1rem;
-        }
-        .search-result-text { display: flex; flex-direction: column; overflow: hidden; width: 100%; }
-        .search-result-title { font-weight: 600; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .search-result-desc { font-size: 0.7rem; color: rgba(255,255,255,0.5); font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .search-loading { padding: 25px; text-align: center; color: rgba(255,255,255,0.5); font-size: 0.85rem; font-family: monospace; }
-        .global-search-results::-webkit-scrollbar { width: 6px; }
-        .global-search-results::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
-        .global-search-results::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+            .sidebar-nav::-webkit-scrollbar-track {
+                background: transparent !important;
+            }
+
+            .sidebar-nav::-webkit-scrollbar-thumb {
+                background: transparent !important;
+                border-radius: 10px !important;
+                transition: background 0.3s ease !important;
+            }
+
+            .sidebar:hover .sidebar-nav::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.08) !important;
+            }
+
+                .sidebar:hover .sidebar-nav::-webkit-scrollbar-thumb:hover {
+                    background: rgba(255, 193, 7, 0.25) !important;
+                }
+
+            /* ==========================================================================
+                       OMNI-SEARCH GLOBAL (ATLASSIAN / JIRA STYLE)
+                       ========================================================================== */
+            .global-search-container {
+                position: relative;
+                width: 100%;
+                max-width: 450px;
+                z-index: 1050;
+            }
+
+            .global-search-input {
+                background-color: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                color: #fff;
+                border-radius: 6px;
+                padding: 8px 16px 8px 36px;
+                width: 100%;
+                transition: all 0.2s ease;
+                font-size: 0.85rem;
+                font-family: monospace;
+            }
+
+                .global-search-input:focus {
+                    background-color: rgba(0, 0, 0, 0.3);
+                    border-color: #0dcaf0;
+                    box-shadow: 0 0 0 3px rgba(13, 202, 240, 0.2);
+                    outline: none;
+                }
+
+            .global-search-icon {
+                position: absolute;
+                left: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                color: rgba(255, 255, 255, 0.4);
+                pointer-events: none;
+            }
+
+            .global-search-results {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 550px;
+                max-width: 90vw;
+                margin-top: 8px;
+                background-color: #111424;
+                border: 1px solid rgba(255,255,255,0.1);
+                border-radius: 8px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+                z-index: 1051;
+                display: none;
+                max-height: 450px;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+
+            .search-category-header {
+                font-size: 0.65rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                color: rgba(255,255,255,0.3);
+                padding: 8px 12px;
+                background-color: #07091e;
+                border-bottom: 1px solid rgba(255,255,255,0.05);
+                border-top: 1px solid rgba(255,255,255,0.05);
+                margin: 0;
+            }
+
+                .search-category-header:first-child {
+                    border-top: none;
+                    border-top-left-radius: 8px;
+                    border-top-right-radius: 8px;
+                }
+
+            .search-result-item {
+                display: flex;
+                align-items: center;
+                padding: 10px 12px;
+                text-decoration: none !important;
+                color: #fff;
+                transition: background-color 0.2s;
+                border-bottom: 1px solid rgba(255,255,255,0.03);
+            }
+
+                .search-result-item:last-child {
+                    border-bottom: none;
+                }
+
+                .search-result-item:hover, .search-result-item.active {
+                    background-color: rgba(13, 202, 240, 0.1);
+                    color: #fff;
+                }
+
+            .search-result-icon {
+                width: 32px;
+                height: 32px;
+                flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background-color: rgba(255,255,255,0.05);
+                border-radius: 6px;
+                margin-right: 12px;
+                font-size: 1rem;
+            }
+
+            .search-result-text {
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                width: 100%;
+            }
+
+            .search-result-title {
+                font-weight: 600;
+                font-size: 0.85rem;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .search-result-desc {
+                font-size: 0.7rem;
+                color: rgba(255,255,255,0.5);
+                font-family: monospace;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .search-loading {
+                padding: 25px;
+                text-align: center;
+                color: rgba(255,255,255,0.5);
+                font-size: 0.85rem;
+                font-family: monospace;
+            }
+
+            .global-search-results::-webkit-scrollbar {
+                width: 6px;
+            }
+
+            .global-search-results::-webkit-scrollbar-track {
+                background: rgba(0,0,0,0.1);
+            }
+
+            .global-search-results::-webkit-scrollbar-thumb {
+                background: rgba(255,255,255,0.1);
+                border-radius: 10px;
+            }
     </style>
 
     @RenderSection("Styles", required: false)
@@ -272,7 +385,7 @@
             <nav class="sidebar-nav mt-2">
                 <ul class="nav flex-column">
                     <li class="nav-header-custom">General</li>
-                   
+
                     <li class="nav-item">
                         <a class="nav-link @(isHomePage ? "active" : "")" asp-controller="Home" asp-action="Index">
                             <i class="bi bi-house-door"></i> <span>Inicio</span>
@@ -437,6 +550,43 @@
                     <div id="globalSearchResults" class="global-search-results"></div>
                 </div>
 
+                @* ── Badge de Notificaciones ── *@
+                <div class="position-relative me-2" id="notif-container">
+                    <button id="btnNotificaciones"
+                            class="btn btn-link p-0 position-relative"
+                            style="color: rgba(255,255,255,0.6); font-size: 1.1rem;"
+                            title="Notificaciones">
+                        <i class="bi bi-bell-fill"></i>
+                        <span id="notif-badge"
+                              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                              style="font-size: 0.55rem; padding: 3px 5px; min-width: 16px;">
+                            0
+                        </span>
+                    </button>
+
+                    @* Panel desplegable *@
+                    <div id="notif-panel"
+                         class="d-none position-absolute end-0 mt-2 shadow-lg"
+                         style="width: 340px; background-color: #111424; border: 1px solid rgba(255,255,255,0.1);
+                        border-radius: 10px; z-index: 1050; top: 100%;">
+                        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom border-secondary border-opacity-25">
+                            <span class="fw-bold text-white" style="font-size: 0.85rem;">
+                                <i class="bi bi-bell-fill me-2 text-warning"></i>Notificaciones
+                            </span>
+                            <button class="btn btn-link btn-sm text-white-50 text-decoration-none p-0"
+                                    style="font-size: 0.72rem;" onclick="marcarTodasLeidas()">
+                                Marcar todo leído
+                            </button>
+                        </div>
+                        <div id="notif-lista" style="max-height: 360px; overflow-y: auto;">
+                            <div class="text-center text-white-50 py-4 opacity-50" id="notif-vacio" style="font-size: 0.8rem;">
+                                <i class="bi bi-bell-slash d-block fs-4 mb-1 text-secondary"></i>
+                                Sin notificaciones nuevas
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div>
                     <partial name="_LoginPartial" />
                 </div>
@@ -554,5 +704,143 @@
     </script>
 
     @await RenderSectionAsync("Scripts", required: false)
+
+    @* ── Sistema de Notificaciones ── *@
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <script src="~/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
+        <script>
+            (function() {
+            const NOTIF_TIPOS_ICONOS = {
+            ValidacionRechazada : { icon: 'bi-x-circle-fill',      color: '#dc3545' },
+            CodigoSubido        : { icon: 'bi-cloud-upload-fill',  color: '#0dcaf0' },
+            Mencion             : { icon: 'bi-at',                 color: '#ffc107' },
+            RecordatorioVencido : { icon: 'bi-clock-history',      color: '#fd7e14' },
+            DocumentoSubido     : { icon: 'bi-paperclip',          color: '#198754' },
+            FaseCambiada        : { icon: 'bi-check-circle-fill',  color: '#0ddb78' }
+            };
+
+            function buildNotifHtml(n) {
+            const cfg = NOTIF_TIPOS_ICONOS[n.tipo] || { icon: 'bi-info-circle', color: '#6c757d' };
+            return `<a href="${n.url || '#'}" class="d-flex align-items-start gap-3 px-3 py-2 text-decoration-none notif-item"
+            style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.15s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.04)'"
+            onmouseout="this.style.background=''"
+            data-id="${n.id}">
+            <i class="bi ${cfg.icon} flex-shrink-0 mt-1" style="color:${cfg.color}; font-size:1rem;"></i>
+            <div class="flex-grow-1 overflow-hidden">
+            <div class="text-white fw-bold text-truncate" style="font-size:0.78rem;">${n.titulo}</div>
+            ${n.descripcion ? `<div class="text-white-50 text-truncate" style="font-size:0.7rem;">${n.descripcion}</div>` : ''}
+            <div class="text-secondary" style="font-size:0.65rem;">${n.fecha}</div>
+            </div>
+            </a>`;
+            }
+
+            function actualizarBadge(count) {
+            const badge = document.getElementById('notif-badge');
+            if (!badge) return;
+            if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.classList.remove('d-none');
+            } else {
+            badge.classList.add('d-none');
+            }
+            }
+
+            function cargarNotificaciones() {
+            fetch('/Notificaciones/ObtenerNoLeidas')
+            .then(r => r.json())
+            .then(data => {
+            const lista  = document.getElementById('notif-lista');
+            const vacio  = document.getElementById('notif-vacio');
+            if (!lista) return;
+
+            actualizarBadge(data.length);
+
+            if (data.length === 0) {
+            lista.innerHTML = '';
+            lista.appendChild(vacio || document.createElement('div'));
+            if (vacio) vacio.classList.remove('d-none');
+            return;
+            }
+
+            if (vacio) vacio.remove();
+            lista.innerHTML = data.map(buildNotifHtml).join('');
+            })
+            .catch(() => {});
+            }
+
+            // Cargar al iniciar
+            cargarNotificaciones();
+            // Refrescar cada 60 segundos como fallback
+            setInterval(cargarNotificaciones, 60000);
+
+            // Toggle del panel
+            document.getElementById('btnNotificaciones')?.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const panel = document.getElementById('notif-panel');
+            if (!panel) return;
+            const abierto = !panel.classList.contains('d-none');
+            panel.classList.toggle('d-none');
+            if (!abierto) cargarNotificaciones(); // Refrescar al abrir
+            });
+
+            // Cerrar al hacer clic fuera
+            document.addEventListener('click', function(e) {
+            const container = document.getElementById('notif-container');
+            if (container && !container.contains(e.target))
+            document.getElementById('notif-panel')?.classList.add('d-none');
+            });
+
+            // ── SignalR: recibir notificaciones en tiempo real ─────
+            const connection = new signalR.HubConnectionBuilder()
+            .withUrl('/notificacionesHub')
+            .withAutomaticReconnect()
+            .build();
+
+            connection.on('NuevaNotificacion', function(n) {
+            const lista = document.getElementById('notif-lista');
+            const vacio = document.getElementById('notif-vacio');
+            if (lista) {
+            if (vacio) vacio.remove();
+            lista.insertAdjacentHTML('afterbegin', buildNotifHtml(n));
+            }
+            // Actualizar badge
+            const badge = document.getElementById('notif-badge');
+            if (badge) {
+            const actual = parseInt(badge.textContent) || 0;
+            actualizarBadge(actual + 1);
+            }
+            // Toastr discreto
+            if (typeof toastr !== 'undefined') {
+            const cfg = NOTIF_TIPOS_ICONOS[n.tipo] || {};
+            toastr.info(n.titulo, '', { timeOut: 4000, positionClass: 'toast-bottom-right' });
+            }
+            });
+
+            connection.start().catch(() => {});
+            })();
+
+            window.marcarTodasLeidas = function() {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]');
+            if (!token) return;
+            fetch('/Notificaciones/MarcarTodasLeidas', {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': token.value }
+            })
+            .then(r => r.json())
+            .then(() => {
+            document.getElementById('notif-lista').innerHTML = '';
+            document.getElementById('notif-badge')?.classList.add('d-none');
+            const vacio = document.getElementById('notif-vacio');
+            if (vacio) {
+            vacio.classList.remove('d-none');
+            document.getElementById('notif-lista').appendChild(vacio);
+            }
+            });
+            };
+        </script>
+    }
+
 </body>
 </html>

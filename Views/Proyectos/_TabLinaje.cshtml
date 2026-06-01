@@ -1,0 +1,676 @@
+@model NotebookValidator.Web.Models.GestorProyectos.Proyecto
+@{
+    bool isValidadoWorkspace = Model.EstadoValidacionWorkspace == "Validado";
+    string toolTipRequisito = isValidadoWorkspace ? "" : "Esta herramienta requiere una validación de código aprobada y vigente.";
+}
+
+<div class="tab-pane fade" id="linaje-pane" role="tabpanel" aria-labelledby="linaje-tab" tabindex="0">
+    <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h5 class="fw-bold text-success mb-0" style="font-size: 1.1rem;"><i class="bi bi-database-gear me-2"></i>Mapeo Corporativo de Linaje</h5>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                @if (User.IsInRole("Admin"))
+                {
+                    <button type="button" class="btn btn-sm btn-danger fw-bold px-3" id="btnLimpiarLinaje"
+                            style="font-size: 0.75rem; border-radius: 6px;"
+                            title="Eliminar todo el linaje de este proyecto">
+                        <i class="bi bi-trash3-fill me-1"></i>Limpiar Todo el Linaje
+                    </button>
+                }
+                <button type="button" class="btn btn-sm btn-warning fw-bold px-3 shadow-sm text-dark"
+                        style="font-size: 0.75rem; border-radius: 6px;"
+                        data-bs-toggle="modal" data-bs-target="#modalScanLinaje"
+                    @(isValidadoWorkspace ? "" : "disabled") title="@toolTipRequisito">
+                    <i class="bi bi-magic me-1"></i>Escanear Código
+                </button>
+                <div class="position-relative" style="width: 240px;">
+                    <span class="position-absolute top-50 start-0 translate-middle-y ps-2 text-white-50 small"><i class="bi bi-filter"></i></span>
+                    <input type="text" id="searchTablaInput" class="form-control form-control-sm bg-dark text-white border-secondary ps-4" placeholder="Filtrar tablas en este catálogo..." onkeyup="filterTablesCatalog()">
+                </div>
+            </div>
+        </div>
+
+        <form id="formAddTabla" class="d-flex gap-2 mb-4 align-items-end flex-wrap bg-dark bg-opacity-25 p-3 rounded border border-secondary border-opacity-10">
+            <div class="flex-grow-1" style="min-width: 250px;">
+                <label class="text-white-50 small mb-1">Nombre de la Tabla <span class="text-danger">*</span></label>
+                <input type="text" id="inputNombreTabla" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace" placeholder="Ej: raw.clientes_crm" required>
+            </div>
+            <div style="width: 140px;">
+                <label class="text-white-50 small mb-1">Tipo de Dependencia</label>
+                <select id="inputTipoTabla" class="form-select form-select-sm bg-dark text-white border-secondary">
+                    <option value="Origen">Origen</option>
+                    <option value="Salida">Salida</option>
+                </select>
+            </div>
+            <div class="flex-grow-1" style="min-width: 250px;">
+                <label class="text-white-50 small mb-1">Descripción corta de negocio (Opcional)</label>
+                <input type="text" id="inputDescTabla" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Ej: Ingesta diaria transaccional">
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <button type="submit" class="btn btn-sm btn-info fw-bold px-3 shadow-sm" style="height: 31px; font-size: 0.78rem;" title="Agregar Tabla Manualmente">
+                    <i class="bi bi-plus-lg me-1"></i>Agregar
+                </button>
+            </div>
+        </form>
+
+        @{
+            var origenes = Model.TablasCatalogo?
+                .Where(t => t.TipoTabla == "Origen" && t.TablaMaestra != null)
+                .OrderBy(t => t.TablaMaestra!.NombreTabla)
+                .ToList() ?? new List<NotebookValidator.Web.Models.GestorProyectos.TablaProyecto>();
+
+            var salidas = Model.TablasCatalogo?
+                .Where(t => t.TipoTabla == "Salida" && t.TablaMaestra != null)
+                .OrderBy(t => t.TablaMaestra!.NombreTabla)
+                .ToList() ?? new List<NotebookValidator.Web.Models.GestorProyectos.TablaProyecto>();
+
+            Func<string, string> GetDB = nombre => nombre.Contains('.') ? nombre.Split('.')[0] : "default";
+            Func<string, string> GetCorto = nombre => nombre.Contains('.') ? string.Join('.', nombre.Split('.').Skip(1)) : nombre;
+        }
+
+        <ul class="nav nav-tabs border-bottom border-secondary border-opacity-25 mb-3" id="catalogoTabs" role="tablist" style="font-size: 0.82rem;">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active px-3 py-2" id="cat-origen-tab" data-bs-toggle="tab" data-bs-target="#cat-origen-pane" type="button">
+                    <i class="bi bi-arrow-down-circle text-primary me-1"></i>Origen
+                    <span class="badge bg-primary ms-1" style="font-size:0.65rem;" id="cat-origen-count">@origenes.Count</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link px-3 py-2" id="cat-salida-tab" data-bs-toggle="tab" data-bs-target="#cat-salida-pane" type="button">
+                    <i class="bi bi-arrow-up-circle text-info me-1"></i>Salida
+                    <span class="badge bg-info text-dark ms-1" style="font-size:0.65rem;" id="cat-salida-count">@salidas.Count</span>
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="catalogoTabContent">
+
+            <div class="tab-pane fade show active" id="cat-origen-pane" role="tabpanel">
+                <div id="catalogo-origen-grupos">
+                    @if (origenes.Any())
+                    {
+                        foreach (var grupo in origenes.GroupBy(t => GetDB(t.TablaMaestra!.NombreTabla)).OrderBy(g => g.Key))
+                        {
+                            var badgeClass = "bg-primary";
+                            <div class="mb-2 border border-secondary border-opacity-15 rounded overflow-hidden catalogo-db-grupo" data-tipo="Origen" data-db="@grupo.Key" style="background-color:#07091e;">
+                                <div class="d-flex align-items-center justify-content-between px-3 py-2" style="background-color:#0b0d16; cursor:pointer;" onclick="toggleGrupoCatalogo(this)">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-database text-secondary" style="font-size:0.8rem;"></i>
+                                        <span class="text-white font-monospace fw-bold" style="font-size:0.82rem;">@grupo.Key</span>
+                                        <span class="badge @badgeClass" style="font-size:0.62rem;">@grupo.Count() tabla@(grupo.Count() != 1 ? "s" : "")</span>
+                                    </div>
+                                    <i class="bi bi-chevron-down text-white-50 chevron-icon" style="font-size:0.75rem; transition:transform 0.2s;"></i>
+                                </div>
+                                <div class="grupo-body d-none px-2 py-1">
+                                    @foreach (var t in grupo.OrderBy(x => x.TablaMaestra!.NombreTabla))
+                                    {
+                                        <div class="d-flex align-items-center gap-2 py-2 px-1 border-bottom border-secondary border-opacity-10 catalogo-tabla-row" id="cat-tr-@t.Id">
+                                            <span class="text-white font-monospace flex-grow-1 target-search-nombre" style="font-size:0.78rem;">@GetCorto(t.TablaMaestra!.NombreTabla)</span>
+                                            @if (!string.IsNullOrEmpty(t.TablaMaestra?.Descripcion))
+                                            {
+                                                <span class="text-white-50 me-2" style="font-size:0.72rem;">@t.TablaMaestra.Descripcion</span>
+                                            }
+                                            <button type="button" class="btn btn-sm btn-outline-danger border-0 py-0 flex-shrink-0" onclick="deleteTabla(@t.Id)" title="Quitar"><i class="bi bi-x-lg"></i></button>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center text-white-50 py-4 opacity-50" id="cat-origen-vacio">
+                            <i class="bi bi-arrow-down-circle d-block fs-3 mb-1 text-secondary"></i>No hay tablas de origen mapeadas.
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="cat-salida-pane" role="tabpanel">
+                <div id="catalogo-salida-grupos">
+                    @if (salidas.Any())
+                    {
+                        foreach (var grupo in salidas.GroupBy(t => GetDB(t.TablaMaestra!.NombreTabla)).OrderBy(g => g.Key))
+                        {
+                            var badgeClass = "bg-info text-dark";
+                            <div class="mb-2 border border-secondary border-opacity-15 rounded overflow-hidden catalogo-db-grupo" data-tipo="Salida" data-db="@grupo.Key" style="background-color:#07091e;">
+                                <div class="d-flex align-items-center justify-content-between px-3 py-2" style="background-color:#0b0d16; cursor:pointer;" onclick="toggleGrupoCatalogo(this)">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-database text-secondary" style="font-size:0.8rem;"></i>
+                                        <span class="text-white font-monospace fw-bold" style="font-size:0.82rem;">@grupo.Key</span>
+                                        <span class="badge @badgeClass" style="font-size:0.62rem;">@grupo.Count() tabla@(grupo.Count() != 1 ? "s" : "")</span>
+                                    </div>
+                                    <i class="bi bi-chevron-down text-white-50 chevron-icon" style="font-size:0.75rem; transition:transform 0.2s;"></i>
+                                </div>
+                                <div class="grupo-body d-none px-2 py-1">
+                                    @foreach (var t in grupo.OrderBy(x => x.TablaMaestra!.NombreTabla))
+                                    {
+                                        <div class="d-flex align-items-center gap-2 py-2 px-1 border-bottom border-secondary border-opacity-10 catalogo-tabla-row" id="cat-tr-@t.Id">
+                                            <span class="text-white font-monospace flex-grow-1 target-search-nombre" style="font-size:0.78rem;">@GetCorto(t.TablaMaestra!.NombreTabla)</span>
+                                            @if (!string.IsNullOrEmpty(t.TablaMaestra?.Descripcion))
+                                            {
+                                                <span class="text-white-50 me-2" style="font-size:0.72rem;">@t.TablaMaestra.Descripcion</span>
+                                            }
+                                            <button type="button" class="btn btn-sm btn-outline-danger border-0 py-0 flex-shrink-0" onclick="deleteTabla(@t.Id)" title="Quitar"><i class="bi bi-x-lg"></i></button>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center text-white-50 py-4 opacity-50" id="cat-salida-vacio">
+                            <i class="bi bi-arrow-up-circle d-block fs-3 mb-1 text-secondary"></i>No hay tablas de salida mapeadas.
+                        </div>
+                    }
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+</div>
+</div>
+</div>
+
+@* Modal Escáner de Linaje con agrupación por BD *@
+<div class="modal fade" id="modalScanLinaje" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0" style="background-color: #111424; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <h5 class="modal-title text-white fw-bold"><i class="bi bi-magic text-warning me-2"></i>Escáner de Linaje</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+
+                @* Paso 1: Botón de escaneo *@
+                <div id="scanUploadZone">
+                    <p class="text-white-50 small mb-3">El motor leerá el código buscando comandos Spark y SQL para detectar las tablas del catálogo.</p>
+                    <form id="formScanLinaje">
+                        <div class="alert alert-warning border-0 bg-dark text-warning small mb-3">
+                            <i class="bi bi-hdd-network me-2"></i>Analizando el código almacenado en el Workspace Central.
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-info fw-bold" id="btnRunScan">
+                                <i class="bi bi-search me-2"></i>Iniciar Escaneo
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                @* Paso 2: Resultados agrupados por base de datos *@
+                <div id="scanResultsZone" class="d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="text-success fw-bold mb-0"><i class="bi bi-check-circle me-2"></i>¡Escaneo Completado!</h6>
+                        <span class="badge bg-dark text-white-50 border border-secondary font-monospace" style="font-size: 0.7rem;" id="scan-total-badge">0 tablas</span>
+                    </div>
+                    <p class="text-white-50 small mb-3">Las tablas están agrupadas por base de datos. Selecciona las que deseas agregar al catálogo.</p>
+
+                    @* Tabs Origen / Salida *@
+                    <ul class="nav nav-tabs border-bottom border-secondary border-opacity-25 mb-3" id="scanTabs" role="tablist" style="font-size: 0.8rem;">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active px-3 py-2" id="scan-origen-tab" data-bs-toggle="tab" data-bs-target="#scan-origen-pane" type="button">
+                                <i class="bi bi-arrow-down-circle text-primary me-1"></i>Origen
+                                <span class="badge bg-primary ms-1" style="font-size:0.6rem;" id="scan-origen-count">0</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link px-3 py-2" id="scan-salida-tab" data-bs-toggle="tab" data-bs-target="#scan-salida-pane" type="button">
+                                <i class="bi bi-arrow-up-circle text-info me-1"></i>Salida
+                                <span class="badge bg-info text-dark ms-1" style="font-size:0.6rem;" id="scan-salida-count">0</span>
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="scanTabContent">
+                        <div class="tab-pane fade show active" id="scan-origen-pane" role="tabpanel">
+                            <div id="listaOrigenAgrupada" style="max-height: 280px; overflow-y: auto;"></div>
+                        </div>
+                        <div class="tab-pane fade" id="scan-salida-pane" role="tabpanel">
+                            <div id="listaSalidaAgrupada" style="max-height: 280px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top border-secondary border-opacity-25">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetScanModal()">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Escanear de nuevo
+                        </button>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-white-50 font-monospace" style="font-size:0.7rem;" id="scan-selected-label">0 seleccionadas</span>
+                            <button type="button" class="btn btn-success fw-bold btn-sm" id="btnSaveScannedTables" onclick="saveSelectedTables()" disabled>
+                                <i class="bi bi-cloud-arrow-up me-2"></i>Importar Selección
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@* Modal de confirmación de limpieza masiva (solo Admin) *@
+@if (User.IsInRole("Admin"))
+{
+    <div class="modal fade" id="modalLimpiarLinaje" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="background-color: #111424; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+                <div class="modal-header border-bottom border-secondary border-opacity-25">
+                    <h5 class="modal-title text-danger fw-bold">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Limpiar Todo el Linaje
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert border-0 mb-3" style="background-color: rgba(220,53,69,0.1); border-left: 4px solid #dc3545 !important; border-radius: 0 6px 6px 0;">
+                        <p class="text-white-50 small mb-1">Esta acción eliminará <strong class="text-white">todas las tablas</strong> del catálogo de linaje de este proyecto.</p>
+                        <p class="text-white-50 small mb-0">No se puede deshacer.</p>
+                    </div>
+                    <label class="text-white-50 small mb-2 d-block">
+                        Escribe el nombre del proyecto para confirmar:
+                        <strong class="text-white ms-1">@Model.Nombre</strong>
+                    </label>
+                    <input type="text" id="inputConfirmLimpiar"
+                           class="form-control form-control-sm bg-dark text-white border-secondary font-monospace"
+                           placeholder="@Model.Nombre"
+                           data-proyecto="@Model.Nombre"
+                           autocomplete="off">
+                </div>
+                <div class="modal-footer border-top border-secondary border-opacity-25 gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger fw-bold btn-sm px-4" id="btnConfirmarLimpiar" disabled>
+                        <i class="bi bi-trash3-fill me-1"></i>Sí, limpiar todo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<script>
+    // ============================================================
+    // ESCÁNER DE LINAJE — resultados agrupados por base de datos
+    // ============================================================
+    let lastScannedTables = [];
+
+    function _agruparPorBD(tablas) {
+        const grupos = {};
+        tablas.forEach(t => {
+            const partes = t.nombreTabla.split('.');
+            const db = partes.length > 1 ? partes[0] : 'default';
+            const tabla = partes.length > 1 ? partes.slice(1).join('.') : t.nombreTabla;
+            if (!grupos[db]) grupos[db] = [];
+            grupos[db].push({ ...t, nombreCorto: tabla });
+        });
+        return grupos;
+    }
+
+    function _renderGruposScan(grupos, tipo, containerId) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+
+        if (Object.keys(grupos).length === 0) {
+            container.innerHTML = `<div class="text-center text-white-50 small my-3 font-monospace">
+                <i class="bi bi-inbox d-block fs-4 mb-1 text-secondary"></i>No se detectaron tablas de ${tipo.toLowerCase()}.</div>`;
+            return;
+        }
+
+        const badgeClass = tipo === 'Origen' ? 'bg-primary' : 'bg-info text-dark';
+
+        Object.entries(grupos).forEach(([db, tablas]) => {
+            const dbId = `scan-db-${tipo}-${db.replace(/[^a-z0-9]/gi, '_')}`;
+            const isTemp = tablas.every(t => t.nombreTabla.toLowerCase().includes('tmp') || t.nombreTabla.toLowerCase().includes('temp'));
+
+            let tablasHtml = tablas.map((t, i) => {
+                const idx = lastScannedTables.findIndex(x => x.nombreTabla === t.nombreTabla && x.tipoTabla === t.tipoTabla);
+                const isT = t.nombreTabla.toLowerCase().includes('tmp') || t.nombreTabla.toLowerCase().includes('temp');
+                const checked = !isT ? 'checked' : '';
+                return `<div class="d-flex align-items-center gap-2 py-1 ps-2 border-bottom border-secondary border-opacity-10">
+                    <input class="form-check-input checkbox-scan flex-shrink-0" type="checkbox" id="chkScan_${idx}" value="${idx}" ${checked} onchange="actualizarContadorScan()">
+                    <label class="form-check-label text-white-50 small font-monospace flex-grow-1" for="chkScan_${idx}" style="font-size:0.75rem;">${t.nombreCorto}</label>
+                    ${isT ? '<span class="badge bg-secondary" style="font-size:0.55rem;">temp</span>' : ''}
+                </div>`;
+            }).join('');
+
+            container.insertAdjacentHTML('beforeend', `
+                <div class="mb-2 border border-secondary border-opacity-15 rounded overflow-hidden" style="background-color:#07091e;">
+                    <div class="d-flex align-items-center justify-content-between px-3 py-2 cursor-pointer"
+                         style="background-color:#0b0d16; cursor:pointer;"
+                         onclick="this.nextElementSibling.classList.toggle('d-none')">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-database text-secondary" style="font-size:0.8rem;"></i>
+                            <span class="text-white font-monospace fw-bold" style="font-size:0.8rem;">${db}</span>
+                            <span class="badge ${badgeClass}" style="font-size:0.6rem;">${tablas.length} tabla${tablas.length > 1 ? 's' : ''}</span>
+                        </div>
+                        <i class="bi bi-chevron-down text-white-50" style="font-size:0.75rem;"></i>
+                    </div>
+                    <div class="px-2 py-1">${tablasHtml}</div>
+                </div>`);
+        });
+    }
+
+    function actualizarContadorScan() {
+        const total = document.querySelectorAll('.checkbox-scan:checked').length;
+        const label = document.getElementById('scan-selected-label');
+        const btn   = document.getElementById('btnSaveScannedTables');
+        if (label) label.textContent = `${total} seleccionada${total !== 1 ? 's' : ''}`;
+        if (btn)   btn.disabled = total === 0;
+    }
+
+    document.getElementById('formScanLinaje').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnRunScan');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analizando...';
+
+        const formData = new FormData();
+        formData.append('proyectoId', @Model.Id);
+        const token = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]').value;
+        if (token) formData.append('__RequestVerificationToken', token);
+
+        fetch('@Url.Action("ScanLineageFromCode", "Proyectos")', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-search me-2"></i>Iniciar Escaneo';
+
+            if (!data.success) { toastr.error(data.message); return; }
+
+            lastScannedTables = data.tablas;
+            document.getElementById('scanUploadZone').classList.add('d-none');
+            document.getElementById('scanResultsZone').classList.remove('d-none');
+
+            const origenes = data.tablas.filter(t => t.tipoTabla === 'Origen');
+            const salidas  = data.tablas.filter(t => t.tipoTabla === 'Salida');
+
+            document.getElementById('scan-total-badge').textContent   = `${data.tablas.length} tablas`;
+            document.getElementById('scan-origen-count').textContent  = origenes.length;
+            document.getElementById('scan-salida-count').textContent  = salidas.length;
+
+            _renderGruposScan(_agruparPorBD(origenes), 'Origen', 'listaOrigenAgrupada');
+            _renderGruposScan(_agruparPorBD(salidas),  'Salida', 'listaSalidaAgrupada');
+
+            actualizarContadorScan();
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-search me-2"></i>Iniciar Escaneo';
+            toastr.error('Error de conexión.');
+        });
+    });
+
+    function saveSelectedTables() {
+        const checkboxes = document.querySelectorAll('.checkbox-scan:checked');
+        if (checkboxes.length === 0) { toastr.warning('Selecciona al menos una tabla.'); return; }
+
+        const btn = document.getElementById('btnSaveScannedTables');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+
+        const seleccionadas = Array.from(checkboxes).map(chk => lastScannedTables[parseInt(chk.value)]);
+        const token = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]').value;
+
+        fetch('@Url.Action("SaveScannedLineage", "Proyectos")', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+            body: JSON.stringify({ ProyectoId: @Model.Id, Tablas: seleccionadas })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                toastr.success(data.message);
+                setTimeout(() => { window.location.hash = 'linaje'; window.location.reload(); }, 1000);
+            } else {
+                toastr.error(data.message);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-cloud-arrow-up me-2"></i>Importar Selección';
+            }
+        });
+    }
+
+    function resetScanModal() {
+        document.getElementById('scanResultsZone').classList.add('d-none');
+        document.getElementById('scanUploadZone').classList.remove('d-none');
+        lastScannedTables = [];
+    }
+
+    // ============================================================
+    // TOGGLE GRUPOS DEL CATÁLOGO
+    // ============================================================
+    function toggleGrupoCatalogo(header) {
+        const body = header.nextElementSibling;
+        const chevron = header.querySelector('.chevron-icon');
+        body.classList.toggle('d-none');
+        chevron.style.transform = body.classList.contains('d-none') ? '' : 'rotate(180deg)';
+    }
+
+    // ============================================================
+    // FILTRO EN TIEMPO REAL — busca en todos los grupos visibles
+    // ============================================================
+    function filterTablesCatalog() {
+        const filter = document.getElementById('searchTablaInput').value.toLowerCase().trim();
+        document.querySelectorAll('.catalogo-db-grupo').forEach(grupo => {
+            let visibles = 0;
+            grupo.querySelectorAll('.catalogo-tabla-row').forEach(row => {
+                const nombre = row.querySelector('.target-search-nombre')?.innerText.toLowerCase() ?? '';
+                const match = !filter || nombre.includes(filter);
+                row.style.display = match ? '' : 'none';
+                if (match) visibles++;
+            });
+            grupo.style.display = visibles === 0 && filter ? 'none' : '';
+            if (filter && visibles > 0) {
+                grupo.querySelector('.grupo-body').classList.remove('d-none');
+                grupo.querySelector('.chevron-icon').style.transform = 'rotate(180deg)';
+            }
+        });
+    }
+
+    // ============================================================
+    // AGREGAR TABLA MANUALMENTE — inserta en el grupo correcto
+    // ============================================================
+    function _getDBFromNombre(nombre) {
+        return nombre.includes('.') ? nombre.split('.')[0] : 'default';
+    }
+    function _getCortoFromNombre(nombre) {
+        return nombre.includes('.') ? nombre.split('.').slice(1).join('.') : nombre;
+    }
+
+    document.getElementById('formAddTabla').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = this.querySelector('button[type="submit"]');
+        const token = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]').value;
+
+        const nombreTabla = document.getElementById('inputNombreTabla').value.trim();
+        const tipoTabla   = document.getElementById('inputTipoTabla').value;
+        const descripcion = document.getElementById('inputDescTabla').value.trim();
+
+        if (!nombreTabla) { toastr.warning('El nombre de la tabla es obligatorio.'); return; }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+        fetch('/Proyectos/AddTablaCatalogo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+            body: JSON.stringify({ ProyectoId: @Model.Id, NombreTabla: nombreTabla, TipoTabla: tipoTabla, Descripcion: descripcion || null })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                toastr.success('Tabla agregada al catálogo.');
+                const dbNombre  = _getDBFromNombre(nombreTabla);
+                const corto     = _getCortoFromNombre(nombreTabla);
+                const contenedor = tipoTabla === 'Origen'
+                    ? document.getElementById('catalogo-origen-grupos')
+                    : document.getElementById('catalogo-salida-grupos');
+                const vacioBanner = contenedor.querySelector('#cat-origen-vacio, #cat-salida-vacio');
+                if (vacioBanner) vacioBanner.remove();
+
+                const badgeClass = tipoTabla === 'Origen' ? 'bg-primary' : 'bg-info text-dark';
+                const descHtml = descripcion ? `<span class="text-white-50 me-2" style="font-size:0.72rem;">${descripcion}</span>` : '';
+                const nuevaFila = `<div class="d-flex align-items-center gap-2 py-2 px-1 border-bottom border-secondary border-opacity-10 catalogo-tabla-row" id="cat-tr-${data.id}">
+                    <span class="text-white font-monospace flex-grow-1 target-search-nombre" style="font-size:0.78rem;">${corto}</span>
+                    ${descHtml}
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 py-0 flex-shrink-0" onclick="deleteTabla(${data.id})" title="Quitar"><i class="bi bi-x-lg"></i></button>
+                </div>`;
+
+                // Buscar si ya existe un grupo para esa BD
+                let grupoExistente = null;
+                contenedor.querySelectorAll('.catalogo-db-grupo').forEach(g => {
+                    if (g.dataset.db === dbNombre && g.dataset.tipo === tipoTabla) grupoExistente = g;
+                });
+
+                if (grupoExistente) {
+                    grupoExistente.querySelector('.grupo-body').insertAdjacentHTML('beforeend', nuevaFila);
+                    // Actualizar contador del grupo
+                    const count = grupoExistente.querySelectorAll('.catalogo-tabla-row').length;
+                    const badge = grupoExistente.querySelector('.badge');
+                    if (badge) badge.textContent = `${count} tabla${count !== 1 ? 's' : ''}`;
+                    // Expandir el grupo
+                    grupoExistente.querySelector('.grupo-body').classList.remove('d-none');
+                    grupoExistente.querySelector('.chevron-icon').style.transform = 'rotate(180deg)';
+                } else {
+                    // Crear nuevo grupo
+                    const nuevoGrupo = `<div class="mb-2 border border-secondary border-opacity-15 rounded overflow-hidden catalogo-db-grupo" data-tipo="${tipoTabla}" data-db="${dbNombre}" style="background-color:#07091e;">
+                        <div class="d-flex align-items-center justify-content-between px-3 py-2" style="background-color:#0b0d16; cursor:pointer;" onclick="toggleGrupoCatalogo(this)">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-database text-secondary" style="font-size:0.8rem;"></i>
+                                <span class="text-white font-monospace fw-bold" style="font-size:0.82rem;">${dbNombre}</span>
+                                <span class="badge ${badgeClass}" style="font-size:0.62rem;">1 tabla</span>
+                            </div>
+                            <i class="bi bi-chevron-down text-white-50 chevron-icon" style="font-size:0.75rem; transition:transform 0.2s; transform:rotate(180deg);"></i>
+                        </div>
+                        <div class="grupo-body px-2 py-1">${nuevaFila}</div>
+                    </div>`;
+                    contenedor.insertAdjacentHTML('afterbegin', nuevoGrupo);
+                }
+
+                // Actualizar contadores de tabs
+                const countOrigen = document.querySelectorAll('#catalogo-origen-grupos .catalogo-tabla-row').length;
+                const countSalida = document.querySelectorAll('#catalogo-salida-grupos .catalogo-tabla-row').length;
+                document.getElementById('cat-origen-count').textContent = countOrigen;
+                document.getElementById('cat-salida-count').textContent = countSalida;
+                const tabLinaje = document.getElementById('linaje-tab');
+                if (tabLinaje) tabLinaje.innerHTML = tabLinaje.innerHTML.replace(/\(\d+\)/, `(${countOrigen + countSalida})`);
+
+                // Limpiar formulario
+                document.getElementById('inputNombreTabla').value = '';
+                document.getElementById('inputDescTabla').value  = '';
+                document.getElementById('inputTipoTabla').value  = 'Origen';
+
+                // Cambiar a la tab correcta
+                if (tipoTabla === 'Salida') document.getElementById('cat-salida-tab').click();
+            } else {
+                toastr.error(data.message || 'No se pudo agregar la tabla.');
+            }
+        })
+        .catch(() => toastr.error('Error de conexión.'))
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-plus-lg"></i>';
+        });
+    });
+
+    // ============================================================
+    // ELIMINAR TABLA DEL CATÁLOGO
+    // ============================================================
+    function deleteTabla(id) {
+        if (!confirm('¿Quitar esta tabla del catálogo?')) return;
+        const token = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]').value;
+
+        fetch(`/Proyectos/DeleteTablaCatalogo/${id}`, {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': token }
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                const row = document.getElementById(`cat-tr-${id}`);
+                if (row) {
+                    row.style.transition = 'opacity 0.3s';
+                    row.style.opacity = '0';
+                    setTimeout(() => {
+                        const grupo = row.closest('.catalogo-db-grupo');
+                        row.remove();
+
+                        // Si el grupo quedó vacío, eliminarlo
+                        if (grupo && !grupo.querySelector('.catalogo-tabla-row')) {
+                            grupo.style.transition = 'opacity 0.2s';
+                            grupo.style.opacity = '0';
+                            setTimeout(() => grupo.remove(), 200);
+                        } else if (grupo) {
+                            // Actualizar contador del grupo
+                            const count = grupo.querySelectorAll('.catalogo-tabla-row').length;
+                            const badge = grupo.querySelector('.badge');
+                            if (badge) badge.textContent = `${count} tabla${count !== 1 ? 's' : ''}`;
+                        }
+
+                        // Actualizar contadores globales
+                        const countOrigen = document.querySelectorAll('#catalogo-origen-grupos .catalogo-tabla-row').length;
+                        const countSalida = document.querySelectorAll('#catalogo-salida-grupos .catalogo-tabla-row').length;
+                        document.getElementById('cat-origen-count').textContent = countOrigen;
+                        document.getElementById('cat-salida-count').textContent = countSalida;
+                        const tabLinaje = document.getElementById('linaje-tab');
+                        if (tabLinaje) tabLinaje.innerHTML = tabLinaje.innerHTML.replace(/\(\d+\)/, `(${countOrigen + countSalida})`);
+
+                        toastr.success('Tabla eliminada del catálogo.');
+                    }, 300);
+                }
+            }
+        })
+        .catch(() => toastr.error('Error de conexión.'));
+    }
+
+
+    // ============================================================
+    // LIMPIEZA MASIVA DE LINAJE (solo Admin)
+    // ============================================================
+    (function() {
+        const btnLimpiar = document.getElementById('btnLimpiarLinaje');
+        if (!btnLimpiar) return; // No es admin, no hacer nada
+
+        btnLimpiar.addEventListener('click', function() {
+            const modal = new bootstrap.Modal(document.getElementById('modalLimpiarLinaje'));
+            document.getElementById('inputConfirmLimpiar').value = '';
+            document.getElementById('btnConfirmarLimpiar').disabled = true;
+            modal.show();
+        });
+
+        document.getElementById('inputConfirmLimpiar')?.addEventListener('input', function() {
+            const esperado = this.dataset.proyecto;
+            document.getElementById('btnConfirmarLimpiar').disabled =
+                this.value.trim().toLowerCase() !== esperado.toLowerCase();
+        });
+
+        document.getElementById('btnConfirmarLimpiar')?.addEventListener('click', function() {
+            const btn = this;
+            const token = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]').value;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Limpiando...';
+
+            fetch('/Proyectos/LimpiarLinaje/@Model.Id', {
+                method: 'POST',
+                headers: { 'RequestVerificationToken': token }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    toastr.success(`Se eliminaron ${data.total} tablas del catálogo.`);
+                    setTimeout(() => { window.location.hash = 'linaje'; window.location.reload(); }, 1000);
+                } else {
+                    toastr.error(data.message || 'Error al limpiar el linaje.');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-trash3-fill me-1"></i>Sí, limpiar todo';
+                }
+            })
+            .catch(() => {
+                toastr.error('Error de conexión.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-trash3-fill me-1"></i>Sí, limpiar todo';
+            });
+        });
+    })();
+</script>

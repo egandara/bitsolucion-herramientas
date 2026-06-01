@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using NotebookValidator.Web.Models; // <-- IMPORTANTE PARA ENCONTRAR 'Cliente'
@@ -23,5 +24,8 @@ namespace NotebookValidator.Web.Models.GestorProyectos
 
         // Visionando el futuro: Aquí guardaremos el esquema de columnas más adelante
         public string? MetadataColumnasJson { get; set; }
+
+        // Propiedad de navegación inversa — proyectos que usan esta tabla
+        public ICollection<TablaProyecto> TablasProyecto { get; set; } = new List<TablaProyecto>();
     }
 }

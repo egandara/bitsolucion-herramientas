@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -42,17 +43,55 @@ namespace NotebookValidator.Web.Controllers
         [HttpGet]
         public async Task<IActionResult> Index()
         {
-            string userEmail = User.Identity?.Name;
+            string userEmail = User.Identity?.Name ?? "";
+            string currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+            bool isAdmin = User.IsInRole("Admin");
+
+            // ── Layout persistente del usuario ──────────────────────────────
             if (!string.IsNullOrEmpty(userEmail))
             {
                 var preference = await _context.UserDashboardPreferences
                     .FirstOrDefaultAsync(p => p.UserEmail == userEmail);
-
                 ViewBag.UserLayout = preference?.LayoutJson;
             }
 
+            // ── Proyectos activos para el hero panel ────────────────────────
+            // Admins ven todos; Developers solo los suyos
+            var queryBase = _context.Proyectos
+                .Include(p => p.Cliente)
+                .Include(p => p.Fases.OrderBy(f => f.Orden))
+                .Include(p => p.UsuariosAsignados)
+                .Where(p => p.Estado == "Activo")
+                .AsNoTracking()
+                .AsSplitQuery();
+
+            var proyectos = isAdmin
+                ? await queryBase
+                    .OrderBy(p => p.FechaFinEstimada)
+                    .Take(4)
+                    .ToListAsync()
+                : await queryBase
+                    .Where(p => p.UsuariosAsignados.Any(ua => ua.UsuarioId == currentUserId))
+                    .OrderBy(p => p.FechaFinEstimada)
+                    .Take(4)
+                    .ToListAsync();
+
+            // Métricas de resumen
+            int totalActivos = proyectos.Count;
+            int totalATiempo = proyectos.Count(p => p.EstadoRiesgo == "A Tiempo" || p.EstadoRiesgo == "Completado");
+            int totalEnRiesgo = proyectos.Count(p => p.EstadoRiesgo == "En Riesgo");
+            int totalAtrasado = proyectos.Count(p => p.EstadoRiesgo == "Atrasado");
+
+            ViewBag.ProyectosActivos = proyectos;
+            ViewBag.TotalActivos = totalActivos;
+            ViewBag.TotalATiempo = totalATiempo;
+            ViewBag.TotalEnRiesgo = totalEnRiesgo;
+            ViewBag.TotalAtrasado = totalAtrasado;
+
             return View();
         }
+
+        // ── El resto del controller no cambia ────────────────────────────────
 
         [HttpPost]
         public async Task<IActionResult> SaveDashboardLayout([FromBody] DashboardLayoutDto model)
@@ -152,11 +191,7 @@ namespace NotebookValidator.Web.Controllers
             if (run == null) return NotFound();
 
             bool isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
-
-            if (!isAdmin && run.UserId != user.Id)
-            {
-                return NotFound();
-            }
+            if (!isAdmin && run.UserId != user.Id) return NotFound();
 
             var findings = JsonSerializer.Deserialize<List<Finding>>(run.ResultsJson);
             ViewBag.AnalysisRun = run;
@@ -184,9 +219,7 @@ namespace NotebookValidator.Web.Controllers
             var (allFindings, processedCount, fileVariables) = await _validatorService.ProcessFilesAsync(fileStreams);
 
             if (user.AnalysisQuota < processedCount)
-            {
                 return Json(new { summary = new Dictionary<string, object>(), findings = new List<Finding>(), hasResults = true, quotaError = "Créditos insuficientes." });
-            }
 
             user.AnalysisQuota -= processedCount;
             await _userManager.UpdateAsync(user);
@@ -218,7 +251,7 @@ namespace NotebookValidator.Web.Controllers
             HttpContext.Session.SetString("ValidationResults", run.ResultsJson);
             HttpContext.Session.SetInt32("LastRunId", run.Id);
 
-            return Json(new { summary = summaryData, findings = allFindings, hasResults = allFindings.Any(), fileVariables = fileVariables });
+            return Json(new { summary = summaryData, findings = allFindings, hasResults = allFindings.Any(), fileVariables });
         }
 
         [HttpPost]
@@ -262,12 +295,13 @@ namespace NotebookValidator.Web.Controllers
                                       .Select(l => l + "\n").ToList();
 
                 notebook.Cells.Add(new Cell { CellType = "code", Source = lines });
-
                 await functionsService.SaveMasterWithBackupAsync(notebook, user?.UserName ?? "Usuario");
 
                 if (user != null)
                 {
-                    await _auditService.LogActionAsync(user.Id, "VALIDADOR: MIGRAR FUNCIÓN A MAESTRO", JsonSerializer.Serialize(new { Accion = "Función agregada al maestro desde el Validador" }), HttpContext.Connection.RemoteIpAddress?.ToString());
+                    await _auditService.LogActionAsync(user.Id, "VALIDADOR: MIGRAR FUNCIÓN A MAESTRO",
+                        JsonSerializer.Serialize(new { Accion = "Función agregada al maestro desde el Validador" }),
+                        HttpContext.Connection.RemoteIpAddress?.ToString());
                 }
 
                 return Json(new { success = true, message = "¡Función agregada exitosamente al maestro!" });
@@ -281,6 +315,6 @@ namespace NotebookValidator.Web.Controllers
 
     public class DashboardLayoutDto
     {
-        public string LayoutJson { get; set; }
+        public string LayoutJson { get; set; } = string.Empty;
     }
 }

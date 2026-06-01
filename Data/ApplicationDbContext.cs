@@ -33,6 +33,7 @@ namespace NotebookValidator.Web.Data
         public DbSet<ArtefactoJob> ArtefactosJob { get; set; }
         // LA NUEVA TABLA QUE ACABAMOS DE CREAR:
         public DbSet<ComentarioProyecto> ComentariosProyecto { get; set; }
+        public DbSet<NotebookValidator.Web.Models.NotificacionProyecto> Notificaciones { get; set; }
 
         // =========================================================
         // CONFIGURACIÓN AVANZADA DE MODELOS (Fluent API)

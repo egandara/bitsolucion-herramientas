@@ -1,0 +1,474 @@
+@model IEnumerable<NotebookValidator.Web.Models.GestorProyectos.TablaMaestra>
+@using NotebookValidator.Web.Models.GestorProyectos
+@{
+    ViewData["Title"] = "Catálogo Corporativo de Linaje";
+    var clientes = ViewBag.Clientes as List<Cliente> ?? new List<Cliente>();
+    int? clienteId = ViewBag.ClienteId;
+    string q = ViewBag.Q ?? "";
+    int totalTablas = ViewBag.TotalTablas ?? 0;
+    int totalProyectos = ViewBag.TotalProyectos ?? 0;
+
+    // Agrupar por cliente para el render
+    var grupos = Model
+        .GroupBy(t => t.Cliente)
+        .OrderBy(g => g.Key?.Nombre ?? "Sin cliente")
+        .ToList();
+
+    // Función local para extraer BD del nombre
+    string GetDB(string nombre) => nombre.Contains('.') ? nombre.Split('.')[0] : "default";
+    string GetCorto(string nombre) => nombre.Contains('.') ? string.Join('.', nombre.Split('.').Skip(1)) : nombre;
+}
+
+<style>
+    .cat-db-header {
+        background-color: #0b0d16;
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 8px 8px 0 0;
+        padding: 10px 16px;
+        cursor: pointer;
+        transition: border-color 0.2s;
+        user-select: none;
+    }
+
+        .cat-db-header:hover {
+            border-color: rgba(255,255,255,0.15);
+        }
+
+    .cat-db-body {
+        border: 1px solid rgba(255,255,255,0.06);
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        background-color: #07091e;
+    }
+
+    .cat-tabla-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+        transition: background 0.15s;
+        font-family: monospace;
+    }
+
+        .cat-tabla-row:last-child {
+            border-bottom: none;
+        }
+
+        .cat-tabla-row:hover {
+            background: rgba(255,255,255,0.03);
+        }
+
+    .badge-proyecto {
+        font-size: 0.6rem;
+        padding: 2px 7px;
+        background: rgba(13,202,240,0.1);
+        border: 1px solid rgba(13,202,240,0.25);
+        color: rgba(13,202,240,0.8);
+        border-radius: 4px;
+        white-space: nowrap;
+        text-decoration: none;
+        transition: all 0.15s;
+    }
+
+        .badge-proyecto:hover {
+            background: rgba(13,202,240,0.2);
+            color: #0dcaf0;
+        }
+
+    .stat-pill {
+        background: #0b0d16;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 8px;
+        padding: 12px 20px;
+        text-align: center;
+    }
+
+    .cat-search-highlight {
+        background: rgba(255,193,7,0.2);
+        border-radius: 2px;
+        padding: 0 2px;
+    }
+
+    .btn-edit-desc {
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+
+    .cat-tabla-row:hover .btn-edit-desc {
+        opacity: 1;
+    }
+</style>
+
+<div class="container-fluid dashboard-xl-container mt-3">
+
+    @* Header *@
+    <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a asp-controller="Clientes" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <h1 class="h4 fw-bold mb-0 text-white" style="font-family:'Poppins',sans-serif;">
+                    <i class="bi bi-database-gear text-success me-2"></i>Catálogo Corporativo de Linaje
+                </h1>
+            </div>
+            <p class="mb-0 small text-white-50 ms-5">Repositorio centralizado de todas las tablas de datos por empresa.</p>
+        </div>
+        <button class="btn btn-success fw-bold btn-sm px-3" data-bs-toggle="modal" data-bs-target="#modalAgregarTabla">
+            <i class="bi bi-plus-lg me-1"></i>Agregar Tabla
+        </button>
+    </div>
+
+    @* Stats *@
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-pill">
+                <div class="fw-bold text-success font-monospace" style="font-size: 1.4rem;">@totalTablas</div>
+                <div class="text-white-50" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;">Tablas registradas</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-pill">
+                <div class="fw-bold text-info font-monospace" style="font-size: 1.4rem;">@totalProyectos</div>
+                <div class="text-white-50" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;">Proyectos usando el catálogo</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-pill">
+                <div class="fw-bold text-warning font-monospace" style="font-size: 1.4rem;">@grupos.Count</div>
+                <div class="text-white-50" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;">Clientes con tablas</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-pill">
+                <div class="fw-bold text-white font-monospace" style="font-size: 1.4rem;">
+                    @Model.GroupBy(t => GetDB(t.NombreTabla)).Count()
+                </div>
+                <div class="text-white-50" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px;">Bases de datos distintas</div>
+            </div>
+        </div>
+    </div>
+
+    @* Filtros *@
+    <div class="card p-3 border-0 mb-4" style="background-color: #0b0d16; border-radius: 10px;">
+        <form method="get" asp-action="Catalogo" class="d-flex gap-3 align-items-end flex-wrap">
+            <div class="flex-grow-1" style="min-width: 220px;">
+                <label class="text-white-50 small mb-1">Buscar tabla</label>
+                <div class="position-relative">
+                    <i class="bi bi-search position-absolute top-50 translate-middle-y ps-2 text-white-50" style="left: 2px;"></i>
+                    <input type="text" name="q" value="@q" class="form-control form-control-sm bg-dark text-white border-secondary ps-4 font-monospace"
+                           placeholder="Nombre o descripción...">
+                </div>
+            </div>
+            <div style="min-width: 180px;">
+                <label class="text-white-50 small mb-1">Filtrar por cliente</label>
+                <select name="clienteId" class="form-select form-select-sm bg-dark text-white border-secondary">
+                    <option value="">Todos los clientes</option>
+                    @foreach (var c in clientes)
+                    {
+                        <option value="@c.Id" selected="@(clienteId == c.Id)">@c.Nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-info fw-bold px-3">
+                    <i class="bi bi-funnel me-1"></i>Filtrar
+                </button>
+                @if (!string.IsNullOrEmpty(q) || clienteId.HasValue)
+                {
+                    <a asp-action="Catalogo" class="btn btn-sm btn-outline-secondary px-3">
+                        <i class="bi bi-x-lg me-1"></i>Limpiar
+                    </a>
+                }
+            </div>
+        </form>
+    </div>
+
+    @* Catálogo agrupado por cliente → BD *@
+    @if (!grupos.Any())
+    {
+        <div class="text-center py-5 text-white-50">
+            <i class="bi bi-database-slash d-block fs-1 mb-2 text-secondary"></i>
+            <p>No se encontraron tablas@(!string.IsNullOrEmpty(q) ? $" para \"{q}\"" : "").</p>
+        </div>
+    }
+    else
+    {
+        foreach (var grupo in grupos)
+        {
+            var cliente = grupo.Key;
+            var tablasCliente = grupo.OrderBy(t => t.NombreTabla).ToList();
+            var porBD = tablasCliente.GroupBy(t => GetDB(t.NombreTabla)).OrderBy(g => g.Key).ToList();
+            string clienteNombre = cliente?.Nombre ?? "Sin cliente";
+            string clienteIdStr = cliente?.Id.ToString() ?? "0";
+
+            <div class="mb-4">
+                @* Header del cliente *@
+                <div class="d-flex align-items-center gap-3 mb-2 px-1">
+                    <h6 class="text-warning fw-bold mb-0 font-monospace" style="font-size: 0.9rem;">
+                        <i class="bi bi-building me-2"></i>@clienteNombre
+                    </h6>
+                    <span class="badge bg-dark text-white-50 border border-secondary font-monospace" style="font-size: 0.65rem;">
+                        @tablasCliente.Count tabla@(tablasCliente.Count != 1 ? "s" : "")
+                    </span>
+                    <span class="badge bg-dark text-white-50 border border-secondary font-monospace" style="font-size: 0.65rem;">
+                        @porBD.Count BD@(porBD.Count != 1 ? "s" : "")
+                    </span>
+                </div>
+
+                @* Grupos por BD *@
+                <div class="d-flex flex-column gap-2">
+                    @foreach (var bd in porBD)
+                    {
+                        string bdId = $"bd-{clienteIdStr}-{bd.Key.Replace(".", "_").Replace(" ", "_")}";
+                        <div>
+                            <div class="cat-db-header d-flex align-items-center justify-content-between"
+                                 onclick="toggleBD('@bdId')">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-database text-secondary" style="font-size: 0.8rem;"></i>
+                                    <span class="text-white font-monospace fw-bold" style="font-size: 0.82rem;">@bd.Key</span>
+                                    <span class="badge bg-primary" style="font-size: 0.62rem;">
+                                        @bd.Count() tabla@(bd.Count() != 1 ? "s" : "")
+                                    </span>
+                                </div>
+                                <i class="bi bi-chevron-down text-white-50 chevron-@bdId" style="font-size: 0.75rem; transition: transform 0.2s;"></i>
+                            </div>
+                            <div class="cat-db-body" id="@bdId" style="display:none;">
+                                @foreach (var tabla in bd.OrderBy(t => t.NombreTabla))
+                                {
+                                    <div class="cat-tabla-row" id="cat-row-@tabla.Id">
+                                        @* Nombre corto *@
+                                        <span class="text-white fw-bold flex-shrink-0" style="font-size: 0.8rem; min-width: 160px;">
+                                            @GetCorto(tabla.NombreTabla)
+                                        </span>
+
+                                        @* Descripción editable *@
+                                        <span class="text-white-50 flex-grow-1" style="font-size: 0.75rem;"
+                                              id="desc-@tabla.Id">
+                                            @(string.IsNullOrEmpty(tabla.Descripcion) ? "Sin descripción" : tabla.Descripcion)
+                                        </span>
+
+                                        @* Proyectos que la usan *@
+                                        <div class="d-flex gap-1 flex-wrap">
+                                            @if (tabla.TablasProyecto != null && tabla.TablasProyecto.Any())
+                                            {
+                                                @foreach (var tp in tabla.TablasProyecto
+                                                    .Where(x => x.Proyecto != null)
+                                                    .GroupBy(x => x.ProyectoId)
+                                                    .Take(3))
+                                                {
+                                                    var proy = tp.First().Proyecto!;
+                                                    <a asp-controller="Proyectos" asp-action="Details" asp-route-id="@proy.Id"
+                                                       class="badge-proyecto">
+                                                        @proy.Nombre
+                                                    </a>
+                                                }
+                                                @if (tabla.TablasProyecto.GroupBy(x => x.ProyectoId).Count() > 3)
+                                                {
+                                                    <span class="badge-proyecto">+@(tabla.TablasProyecto.GroupBy(x => x.ProyectoId).Count() - 3) más</span>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span class="text-white-50 opacity-50" style="font-size: 0.65rem;">Sin proyectos</span>
+                                            }
+                                        </div>
+
+                                        @* Acciones *@
+                                        <div class="d-flex gap-1 flex-shrink-0">
+                                            <button class="btn btn-sm btn-outline-info border-0 py-0 btn-edit-desc"
+                                                    onclick="editarDescripcion(@tabla.Id, '@Html.Raw(tabla.Descripcion?.Replace("'", "\\'") ?? "")')"
+                                                    title="Editar descripción">
+                                                <i class="bi bi-pencil" style="font-size: 0.75rem;"></i>
+                                            </button>
+                                            @if (User.IsInRole("Admin"))
+                                            {
+                                                <button class="btn btn-sm btn-outline-danger border-0 py-0 btn-edit-desc"
+                                                        onclick="eliminarTabla(@tabla.Id, '@Html.Raw(tabla.NombreTabla.Replace("'", "\\'"))')"
+                                                        title="Eliminar tabla">
+                                                    <i class="bi bi-trash" style="font-size: 0.75rem;"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@* Modal: Agregar tabla *@
+<div class="modal fade" id="modalAgregarTabla" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0" style="background-color: #111424; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <h5 class="modal-title text-white fw-bold">
+                    <i class="bi bi-plus-circle text-success me-2"></i>Agregar Tabla al Catálogo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3">
+                    <label class="text-white-50 small mb-1">Cliente <span class="text-danger">*</span></label>
+                    <select id="addClienteId" class="form-select form-select-sm bg-dark text-white border-secondary">
+                        <option value="">Selecciona un cliente...</option>
+                        @foreach (var c in clientes)
+                        {
+                            <option value="@c.Id" selected="@(clienteId == c.Id)">@c.Nombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="text-white-50 small mb-1">Nombre de la Tabla <span class="text-danger">*</span></label>
+                    <input type="text" id="addNombreTabla"
+                           class="form-control form-control-sm bg-dark text-white border-secondary font-monospace"
+                           placeholder="Ej: db_riesgo.tabla_creditos">
+                </div>
+                <div class="mb-3">
+                    <label class="text-white-50 small mb-1">Descripción funcional (Opcional)</label>
+                    <input type="text" id="addDescTabla"
+                           class="form-control form-control-sm bg-dark text-white border-secondary"
+                           placeholder="Ej: Historial de créditos activos">
+                </div>
+            </div>
+            <div class="modal-footer border-top border-secondary border-opacity-25">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success fw-bold btn-sm px-4" onclick="agregarTabla()">
+                    <i class="bi bi-plus-lg me-1"></i>Agregar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Modal: Editar descripción *@
+<div class="modal fade" id="modalEditarDesc" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0" style="background-color: #111424; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <h5 class="modal-title text-white fw-bold">
+                    <i class="bi bi-pencil text-info me-2"></i>Editar Descripción
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="editTablaId">
+                <label class="text-white-50 small mb-1">Descripción funcional</label>
+                <input type="text" id="editDescripcion"
+                       class="form-control form-control-sm bg-dark text-white border-secondary"
+                       placeholder="Describe el propósito de esta tabla...">
+            </div>
+            <div class="modal-footer border-top border-secondary border-opacity-25">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-info fw-bold btn-sm px-4" onclick="guardarDescripcion()">
+                    <i class="bi bi-check-lg me-1"></i>Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form id="antiForgeryFormCatalogo">@Html.AntiForgeryToken()</form>
+
+@section Scripts {
+    <script>
+        // ── Toggle grupos por BD ────────────────────────────────────
+        function toggleBD(id) {
+            const body    = document.getElementById(id);
+            const chevron = document.querySelector('.chevron-' + id);
+            const abierto = body.style.display !== 'none';
+            body.style.display = abierto ? 'none' : 'block';
+            if (chevron) chevron.style.transform = abierto ? '' : 'rotate(180deg)';
+        }
+
+        // ── Agregar tabla al catálogo ──────────────────────────────
+        function agregarTabla() {
+            const clienteId  = document.getElementById('addClienteId').value;
+            const nombre     = document.getElementById('addNombreTabla').value.trim();
+            const descripcion = document.getElementById('addDescTabla').value.trim();
+            const token      = document.querySelector('#antiForgeryFormCatalogo input[name="__RequestVerificationToken"]').value;
+
+            if (!clienteId) { toastr.warning('Selecciona un cliente.'); return; }
+            if (!nombre)    { toastr.warning('El nombre de la tabla es obligatorio.'); return; }
+
+            fetch('/Clientes/AgregarTabla', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': token },
+                body: `clienteId=${encodeURIComponent(clienteId)}&nombreTabla=${encodeURIComponent(nombre)}&descripcion=${encodeURIComponent(descripcion)}`
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    toastr.success('Tabla agregada correctamente.');
+                    bootstrap.Modal.getInstance(document.getElementById('modalAgregarTabla')).hide();
+                    setTimeout(() => window.location.reload(), 800);
+                } else {
+                    toastr.error(data.message);
+                }
+            })
+            .catch(() => toastr.error('Error de conexión.'));
+        }
+
+        // ── Editar descripción ─────────────────────────────────────
+        function editarDescripcion(id, descActual) {
+            document.getElementById('editTablaId').value     = id;
+            document.getElementById('editDescripcion').value = descActual;
+            new bootstrap.Modal(document.getElementById('modalEditarDesc')).show();
+        }
+
+        function guardarDescripcion() {
+            const id     = document.getElementById('editTablaId').value;
+            const desc   = document.getElementById('editDescripcion').value.trim();
+            const token  = document.querySelector('#antiForgeryFormCatalogo input[name="__RequestVerificationToken"]').value;
+
+            fetch('/Clientes/EditarTabla', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': token },
+                body: `id=${id}&descripcion=${encodeURIComponent(desc)}`
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('desc-' + id).textContent = desc || 'Sin descripción';
+                    bootstrap.Modal.getInstance(document.getElementById('modalEditarDesc')).hide();
+                    toastr.success('Descripción actualizada.');
+                } else {
+                    toastr.error(data.message);
+                }
+            })
+            .catch(() => toastr.error('Error de conexión.'));
+        }
+
+        // ── Eliminar tabla (solo Admin) ────────────────────────────
+        function eliminarTabla(id, nombre) {
+            if (!confirm(`¿Eliminar "${nombre}" del catálogo?\nSolo es posible si no está en uso en ningún proyecto.`)) return;
+            const token = document.querySelector('#antiForgeryFormCatalogo input[name="__RequestVerificationToken"]').value;
+
+            fetch('/Clientes/EliminarTabla', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': token },
+                body: `id=${id}`
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const row = document.getElementById('cat-row-' + id);
+                    if (row) {
+                        row.style.transition = 'opacity 0.3s';
+                        row.style.opacity    = '0';
+                        setTimeout(() => row.remove(), 300);
+                    }
+                    toastr.success('Tabla eliminada del catálogo.');
+                } else {
+                    toastr.error(data.message);
+                }
+            })
+            .catch(() => toastr.error('Error de conexión.'));
+        }
+    </script>
+}

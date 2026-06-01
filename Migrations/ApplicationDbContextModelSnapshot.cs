@@ -434,17 +434,33 @@ namespace NotebookValidator.Web.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ArchivoNombre")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("ArchivoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("FechaVencimiento")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Menciones")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<int>("ProyectoId")
                         .HasColumnType("int");
 
                     b.Property<bool>("Resuelto")
                         .HasColumnType("bit");
+
+                    b.Property<string>("Subcategoria")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Texto")
                         .IsRequired()
@@ -958,7 +974,7 @@ namespace NotebookValidator.Web.Migrations
                         .IsRequired();
 
                     b.HasOne("NotebookValidator.Web.Models.GestorProyectos.TablaMaestra", "TablaMaestra")
-                        .WithMany()
+                        .WithMany("TablasProyecto")
                         .HasForeignKey("TablaMaestraId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -986,6 +1002,11 @@ namespace NotebookValidator.Web.Migrations
                     b.Navigation("UsuariosAsignados");
 
                     b.Navigation("Validaciones");
+                });
+
+            modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.TablaMaestra", b =>
+                {
+                    b.Navigation("TablasProyecto");
                 });
 #pragma warning restore 612, 618
         }
