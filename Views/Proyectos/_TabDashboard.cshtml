@@ -1,0 +1,651 @@
+@model NotebookValidator.Web.Models.GestorProyectos.Proyecto
+@using NotebookValidator.Web.Models.GestorProyectos
+@{
+    bool isValidadoWorkspace = Model.EstadoValidacionWorkspace == "Validado";
+    string toolTipRequisito = isValidadoWorkspace ? "" : "Esta herramienta requiere una validación de código aprobada y vigente.";
+}
+
+<div class="tab-pane fade show active" id="dashboard-pane" role="tabpanel" aria-labelledby="dashboard-tab" tabindex="0">
+    <div class="row g-4">
+        <div class="col-12 col-lg-8">
+            <div class="card p-4 border-0 h-100" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                <h5 class="fw-bold text-warning mb-3" style="font-size: 1.1rem;"><i class="bi bi-check2-square me-2"></i>Seguimiento de Fases Secuenciales</h5>
+                <div class="d-flex flex-column gap-3">
+                    @if (Model.Fases != null)
+                    {
+                        var fasesLista = Model.Fases.OrderBy(f => f.Orden).ToList();
+                        for (int i = 0; i < fasesLista.Count; i++)
+                        {
+                            var fase = fasesLista[i];
+                            string badgeClass = "bg-secondary text-white-50";
+                            if (fase.EstadoFase == "En Progreso") badgeClass = "bg-warning text-dark";
+                            if (fase.EstadoFase == "Completado") badgeClass = "bg-success text-white";
+
+                            bool faseBloqueada = i > 0 && fasesLista[i - 1].EstadoFase != "Completado";
+
+                            <div class="fase-row p-3 d-flex flex-column gap-2" id="fase_row_@fase.Id" style="@(faseBloqueada ? "opacity: 0.55; background-color: rgba(0,0,0,0.15);" : "")">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <span class="text-secondary font-monospace fw-bold" style="font-size: 0.85rem;">#@fase.Orden</span>
+                                        <h6 class="text-white fw-bold mb-0" style="font-size: 0.9rem;">
+                                            @if (faseBloqueada)
+                                            {
+                                                <i class="bi bi-lock-fill text-secondary me-1" title="Fase Bloqueada Sequence"></i>
+                                            }
+                                            @fase.NombreFase.Replace("_", " ")
+                                        </h6>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-3 ms-auto">
+                                        @if (fase.NombreFase.Contains("Paso_A_Produccion"))
+                                        {
+                                            <button class="btn-generate-job me-3" data-bs-toggle="modal" data-bs-target="#modalGenerarJobs" @(isValidadoWorkspace && !faseBloqueada ? "" : "disabled") title="@toolTipRequisito">
+                                                <i class="bi bi-box-seam me-2"></i> Generar Jobs
+                                            </button>
+                                        }
+                                        <span class="badge @badgeClass id-badge-@fase.Id js-status-badge fase-badge" style="font-size: 0.7rem;">@fase.EstadoFase</span>
+                                        <select class="form-select form-select-sm status-select" onchange="changeFaseStatus(@fase.Id, this)" @(faseBloqueada ? "disabled" : "")>
+                                            <option value="Pendiente" selected="@(fase.EstadoFase == "Pendiente")">Pendiente</option>
+                                            <option value="En Progreso" selected="@(fase.EstadoFase == "En Progreso")">En Progreso</option>
+                                            <option value="Completado" selected="@(fase.EstadoFase == "Completado")">Completado</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                @if (fase.FechaActualizacion.HasValue && !string.IsNullOrEmpty(fase.UsuarioActualizacion))
+                                {
+                                    <div class="font-monospace text-white-50 opacity-75 border-top border-secondary border-opacity-10 pt-1" style="font-size: 0.65rem;">
+                                        <i class="bi bi-person-check-fill me-1 text-info"></i> Act: <strong>@fase.FechaActualizacion.Value.ToString("dd/MM/yyyy HH:mm")</strong> por <strong>@@@fase.UsuarioActualizacion</strong>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-4 d-flex flex-column gap-4">
+            <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold text-info mb-0" style="font-size: 0.95rem;"><i class="bi bi-calendar-check me-2"></i>Línea de Tiempo</h6>
+                    @{
+                        string badgeRiesgo = "bg-secondary";
+                        if (Model.EstadoRiesgo == "A Tiempo" || Model.EstadoRiesgo == "Completado") { badgeRiesgo = "bg-success"; }
+                        if (Model.EstadoRiesgo == "En Riesgo") { badgeRiesgo = "bg-warning text-dark"; }
+                        if (Model.EstadoRiesgo == "Atrasado") { badgeRiesgo = "bg-danger heartbeat"; }
+                    }
+                    <span class="badge @badgeRiesgo" style="font-size: 0.65rem; text-transform: uppercase;">@Model.EstadoRiesgo</span>
+                </div>
+                <div class="d-flex flex-column gap-3 font-monospace" style="font-size: 0.75rem;">
+                    <div class="p-2 rounded border border-success border-opacity-25" style="background-color: rgba(25, 135, 84, 0.04);">
+                        <span class="text-success opacity-75 d-block mb-1 fw-bold" style="font-size: 0.65rem; letter-spacing: 0.3px;">Fecha de Inicio:</span>
+                        <span class="text-white fw-bold"><i class="bi bi-play-circle me-1 text-success"></i>@(Model.FechaInicio?.ToString("dd/MM/yyyy") ?? "-")</span>
+                    </div>
+                    <div class="p-2 rounded border border-secondary border-opacity-25" style="background-color: #07091e;">
+                        <span class="text-white-50 d-block mb-1">Cierre Estimado:</span>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-white fw-bold"><i class="bi bi-stop-circle me-1"></i>@(Model.FechaFinEstimada?.ToString("dd/MM/yyyy") ?? "-")</span>
+                            <span class="text-info opacity-75" style="font-size: 0.65rem;">(@Model.MensajeTiempo)</span>
+                        </div>
+                    </div>
+                    <div class="p-2 bg-dark bg-opacity-50 border border-info border-opacity-25 rounded mt-1">
+                        <span class="text-info fw-bold d-block mb-1"><i class="bi bi-rocket-takeoff me-2"></i>Paso a Producción:</span>
+                        <span class="text-white fw-bold" style="font-size: 0.85rem;">@(Model.FechaPasoProduccion?.ToString("dd/MM/yyyy") ?? "No Programado")</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-4 border-0 flex-grow-1" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                <h6 class="fw-bold text-success mb-3" style="font-size: 0.95rem;"><i class="bi bi-people me-2"></i>Equipo del Proyecto</h6>
+                <div class="d-flex flex-wrap gap-2" style="max-height: 200px; overflow-y: auto;">
+                    @foreach (var user in Model.UsuariosAsignados)
+                    {
+                        var initials = (!string.IsNullOrEmpty(user.Usuario.Email) ? user.Usuario.Email : "??U").Substring(0, 2).ToUpper();
+                        <div class="d-flex align-items-center gap-2 p-2 rounded border border-secondary border-opacity-25" style="background-color: #07091e; min-width: 135px; max-width: 170px;" data-bs-toggle="tooltip" title="@user.Usuario.Email">
+                            <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold small shadow-sm" style="width: 28px; height: 28px; font-size: 0.75rem; background: linear-gradient(135deg, #172a45, #0dcaf0);">@initials</div>
+                            <div class="text-truncate">
+                                <div class="text-white font-monospace text-truncate" style="font-size: 0.7rem;">@(user.Usuario.Email?.Split('@')[0] ?? "usuario")</div>
+                                <span class="badge @(user.RolEnProyecto == "Admin" ? "bg-danger" : "bg-primary")" style="font-size: 0.55rem; padding: 1px 4px;">@user.RolEnProyecto</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Muro de bitácora — actualización sin recarga *@
+    <div class="card p-4 border-0 mt-4" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h5 class="fw-bold text-info mb-0" style="font-size: 1.1rem;"><i class="bi bi-chat-left-text me-2"></i>Muro de Bitácora y Recordatorios Colectivos</h5>
+            <span class="badge bg-dark text-white-50 border border-secondary font-monospace" style="font-size: 0.7rem;" id="muro-contador">@((Model.Comentarios?.Count ?? 0)) registros</span>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-12 col-md-5 border-end border-secondary border-opacity-10 pe-md-4">
+
+                @* ── Tabs: Comentario / Documento ── *@
+                <ul class="nav nav-tabs border-bottom border-secondary border-opacity-25 mb-3" id="muroTabs" style="font-size: 0.78rem;">
+                    <li class="nav-item">
+                        <button class="nav-link active px-3 py-2" id="tab-comentario" data-bs-toggle="tab" data-bs-target="#pane-comentario" type="button">
+                            <i class="bi bi-chat-left-text me-1"></i>Comentario
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link px-3 py-2" id="tab-documento" data-bs-toggle="tab" data-bs-target="#pane-documento" type="button">
+                            <i class="bi bi-paperclip me-1"></i>Documento
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+
+                    @* ── Panel: Comentario/Nota/Recordatorio ── *@
+                    <div class="tab-pane fade show active" id="pane-comentario">
+                        <form id="formAddComentarioMuro" class="d-flex flex-column gap-2">
+                            <div>
+                                <label class="text-white-50 small mb-1">
+                                    Escribe tu comentario <span class="text-danger">*</span>
+                                    <span class="text-white-50 opacity-50" style="font-size: 0.65rem;">— usa @@nombre para mencionar</span>
+                                </label>
+                                <textarea id="txtComentarioMuro" rows="3"
+                                          class="form-control form-control-sm bg-dark text-white border-secondary font-monospace"
+                                          placeholder="Ej: Validado el flujo... @@daniel.pasten revisa esto" required></textarea>
+                                @* Dropdown de menciones *@
+                                <div id="muroMencionesDrop" class="d-none position-absolute"
+                                     style="background:#1a1d2e; border:1px solid rgba(255,255,255,0.12); border-radius:6px; z-index:100; min-width:180px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
+                                    @foreach (var u in Model.UsuariosAsignados)
+                                    {
+                                        string username = u.Usuario.Email.Split('@')[0];
+                                        <div class="menciones-option px-3 py-2 font-monospace"
+                                             style="font-size:0.75rem; cursor:pointer; color:rgba(255,255,255,0.7);"
+                                             onmousedown="insertarMencion('@username')">
+                                            <i class="bi bi-person-fill me-2 text-info"></i>@@@username
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="text-white-50 small mb-1">Categoría</label>
+                                    <select id="selectTipoComentario" class="form-select form-select-sm bg-dark text-white border-secondary" onchange="toggleMuroCalendar(this.value)">
+                                        <option value="Nota">📝 Nota Simple</option>
+                                        <option value="Advertencia">⚠️ Advertencia</option>
+                                        <option value="Recordatorio">⏰ Recordatorio</option>
+                                    </select>
+                                </div>
+                                <div class="col-6" id="divCalendarMuro" style="display: none;">
+                                    <label class="text-white-50 small mb-1">Vencimiento</label>
+                                    <input type="date" id="dateComentarioVence" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace">
+                                </div>
+                            </div>
+                            <div class="d-grid mt-2">
+                                <button type="submit" class="btn btn-sm btn-info fw-bold" id="btnPublicarComentario">
+                                    <i class="bi bi-send-fill me-2"></i>Publicar en la Bitácora
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    @* ── Panel: Documento ── *@
+                    <div class="tab-pane fade" id="pane-documento">
+                        <form id="formSubirDocumento" class="d-flex flex-column gap-2">
+                            <div>
+                                <label class="text-white-50 small mb-1">Tipo de Documento <span class="text-danger">*</span></label>
+                                <select id="selectSubcategoria" class="form-select form-select-sm bg-dark text-white border-secondary">
+                                    <optgroup label="📐 Diseño">
+                                        <option value="Análisis Técnico">Análisis Técnico</option>
+                                        <option value="Carta Gantt">Carta Gantt</option>
+                                    </optgroup>
+                                    <optgroup label="🧪 Pruebas">
+                                        <option value="Aprobación QA">Aprobación QA / Correo</option>
+                                        <option value="Matriz de Pruebas">Matriz de Pruebas</option>
+                                    </optgroup>
+                                    <optgroup label="📦 Entregables">
+                                        <option value="NUAD">NUAD</option>
+                                        <option value="RAT">RAT</option>
+                                        <option value="Manual de Operación">Manual de Operación</option>
+                                        <option value="Otro">Otro</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-white-50 small mb-1">Descripción (Opcional)</label>
+                                <input type="text" id="txtDescDocumento"
+                                       class="form-control form-control-sm bg-dark text-white border-secondary"
+                                       placeholder="Ej: Análisis técnico versión 2 aprobada">
+                            </div>
+                            <div>
+                                <label class="text-white-50 small mb-1">Archivo <span class="text-danger">*</span></label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary fw-bold"
+                                            onclick="document.getElementById('inputDocumento').click()">
+                                        <i class="bi bi-folder2-open me-1"></i>Seleccionar
+                                    </button>
+                                    <span id="txtNombreArchivo" class="text-white-50 font-monospace" style="font-size:0.72rem;">Sin archivo</span>
+                                </div>
+                                <input type="file" id="inputDocumento" class="d-none"
+                                       accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip,.msg,.eml">
+                            </div>
+                            <div class="d-grid mt-1">
+                                <button type="submit" class="btn btn-sm btn-warning fw-bold text-dark" id="btnSubirDocumento">
+                                    <i class="bi bi-cloud-arrow-up me-2"></i>Subir a Drive y Registrar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="col-12 col-md-7 ps-md-3">
+                <div class="muro-scroll font-monospace small d-flex flex-column gap-2" id="contenedorMuroComentarios">
+                    @if (Model.Comentarios != null && Model.Comentarios.Any())
+                    {
+                        foreach (var c in Model.Comentarios.OrderByDescending(x => x.FechaCreacion))
+                        {
+                            string claseTipo = c.Tipo == "Advertencia" ? "comentario-advertencia"
+                                : c.Tipo == "Recordatorio" ? "comentario-recordatorio"
+                                : c.Tipo == "Documento" ? "comentario-documento"
+                                : "comentario-nota";
+                            if (c.Resuelto) claseTipo = "comentario-resuelto";
+
+                            string iconoTipo = c.Tipo == "Advertencia" ? "bi-exclamation-triangle text-warning"
+                                : c.Tipo == "Recordatorio" ? "bi-clock-history text-warning"
+                                : c.Tipo == "Documento" ? "bi-paperclip text-success"
+                                : "bi-chat-left text-info";
+
+                            if (c.Tipo == "Documento" && !string.IsNullOrEmpty(c.Subcategoria) &&
+                                DocumentoSubcategorias.Mapa.TryGetValue(c.Subcategoria, out var docInfo))
+                                iconoTipo = docInfo.Icono + " text-success";
+
+                            <div class="comentario-item p-3 @claseTipo" id="item-comentario-@c.Id">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi @iconoTipo" style="font-size:0.8rem;"></i>
+                                        <div>
+                                            <span class="text-info fw-bold">@@@c.Usuario</span>
+                                            <span class="text-white-50 opacity-50 ms-1" style="font-size: 0.7rem;">@c.FechaCreacion.ToString("dd/MM HH:mm")</span>
+                                            @if (!string.IsNullOrEmpty(c.Subcategoria))
+                                            {
+                                                <span class="badge ms-1" style="font-size:0.58rem; background:rgba(25,135,84,0.15); color:#0ddb78; border:1px solid rgba(25,135,84,0.3);">@c.Subcategoria</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-1">
+                                        @if (c.Tipo == "Recordatorio" && !c.Resuelto)
+                                        {
+                                            <button class="btn btn-sm btn-outline-success py-0 px-1 border-0" style="font-size: 0.65rem;" onclick="resolverAlertaMuro(@c.Id)" title="Resolver"><i class="bi bi-check-circle"></i></button>
+                                        }
+                                        <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" style="font-size: 0.65rem;" onclick="eliminarComentarioMuro(@c.Id)" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </div>
+
+                                @* Texto con menciones resaltadas *@
+                                @{
+                                    var textoSeguro = System.Net.WebUtility.HtmlEncode(c.Texto ?? "");
+                                    var textoMenciones = System.Text.RegularExpressions.Regex.Replace(
+                                        textoSeguro,
+                                        @"@([\w\.]+)",
+                                        m => $"<span class='text-warning fw-bold'>@@{m.Groups[1].Value}</span>");
+                                }
+                                <p class="text-white mb-0 text-wrap font-monospace" style="font-size: 0.75rem;">
+                                    @Html.Raw(textoMenciones)
+                                </p>
+
+                                @* Archivo adjunto *@
+                                @if (!string.IsNullOrEmpty(c.ArchivoNombre))
+                                {
+                                    <div class="mt-2 d-flex align-items-center gap-2 p-2 rounded"
+                                         style="background:rgba(25,135,84,0.07); border:1px solid rgba(25,135,84,0.2);">
+                                        <i class="bi bi-file-earmark text-success" style="font-size:0.85rem;"></i>
+                                        <span class="text-white font-monospace flex-grow-1" style="font-size:0.7rem;">@c.ArchivoNombre</span>
+                                        @if (!string.IsNullOrEmpty(c.ArchivoUrl))
+                                        {
+                                            <a href="@c.ArchivoUrl" target="_blank"
+                                               class="btn btn-sm btn-outline-success border-0 py-0 px-1" title="Abrir en Drive">
+                                                <i class="bi bi-box-arrow-up-right" style="font-size:0.75rem;"></i>
+                                            </a>
+                                        }
+                                    </div>
+                                }
+
+                                @* Recordatorio: fecha de vencimiento *@
+                                @if (c.Tipo == "Recordatorio" && c.FechaVencimiento.HasValue)
+                                {
+                                    <div class="mt-1 d-flex gap-2 align-items-center" style="font-size: 0.65rem;">
+                                        <span class="@(c.Resuelto ? "text-success" : (c.FechaVencimiento.Value.Date < DateTime.Now.Date ? "text-danger heartbeat" : "text-warning"))">
+                                            <i class="bi bi-calendar-event me-1"></i>Alerta: Vence @c.FechaVencimiento.Value.ToString("dd/MM/yyyy")
+                                            @(c.Resuelto ? "[RESUELTO]" : "")
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center text-white-50 py-4 opacity-50" id="muro-vacio-msg">
+                            <i class="bi bi-chat-square-dots d-block fs-3 mb-1 text-secondary"></i>No hay comentarios ni alertas registradas en la bitácora de este proyecto.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    // MURO SIN RECARGA — construye el HTML del comentario en el DOM
+    // ============================================================
+    // AT = arroba, definido via charCode para evitar que Razor lo interprete
+    const AT = String.fromCharCode(64);
+    function _buildComentarioHtml(c) {
+        const esVencido  = c.fechaVencimiento && new Date(c.fechaVencimiento) < new Date();
+        const esDocumento = c.tipo === 'Documento';
+
+        let claseTipo = c.tipo === 'Advertencia'  ? 'comentario-advertencia'
+                      : c.tipo === 'Recordatorio' ? 'comentario-recordatorio'
+                      : c.tipo === 'Documento'    ? 'comentario-documento'
+                      : 'comentario-nota';
+
+        const iconoMap = {
+            'Advertencia':  'bi-exclamation-triangle text-warning',
+            'Recordatorio': 'bi-clock-history text-warning',
+            'Documento':    (c.icono || 'bi-paperclip') + ' text-success',
+            'Nota':         'bi-chat-left text-info'
+        };
+        const icono = iconoMap[c.tipo] || 'bi-chat-left text-info';
+
+        // Badge subcategoría
+        const badgeSubcat = c.subcategoria
+            ? `<span class="badge ms-1" style="font-size:0.58rem;background:rgba(25,135,84,0.15);color:#0ddb78;border:1px solid rgba(25,135,84,0.3);">${c.subcategoria}</span>`
+            : '';
+
+        // Texto con menciones resaltadas
+        const textoHtml = (c.texto || '').replace(new RegExp(AT + '([\\w\\.]+)', 'g'),
+            '<span class="text-warning fw-bold">' + AT + '$1</span>');
+
+        // Archivo adjunto
+        const archivoHtml = c.archivoNombre ? `
+            <div class="mt-2 d-flex align-items-center gap-2 p-2 rounded"
+                 style="background:rgba(25,135,84,0.07);border:1px solid rgba(25,135,84,0.2);">
+                <i class="bi bi-file-earmark text-success" style="font-size:0.85rem;"></i>
+                <span class="text-white font-monospace flex-grow-1" style="font-size:0.7rem;">${c.archivoNombre}</span>
+                ${c.archivoUrl ? `<a href="${c.archivoUrl}" target="_blank" class="btn btn-sm btn-outline-success border-0 py-0 px-1" title="Abrir en Drive"><i class="bi bi-box-arrow-up-right" style="font-size:0.75rem;"></i></a>` : ''}
+            </div>` : '';
+
+        // Recordatorio
+        let recordatorioHtml = '';
+        if (c.tipo === 'Recordatorio' && c.fechaVencimiento) {
+            const fv  = new Date(c.fechaVencimiento);
+            const fvStr = `${String(fv.getDate()).padStart(2,'0')}/${String(fv.getMonth()+1).padStart(2,'0')}/${fv.getFullYear()}`;
+            const colorVenc = esVencido ? 'text-danger heartbeat' : 'text-warning';
+            recordatorioHtml = `<div class="mt-1 d-flex gap-2 align-items-center" style="font-size:0.65rem;">
+                <span class="${colorVenc}"><i class="bi bi-calendar-event me-1"></i>Alerta: Vence ${fvStr}</span></div>`;
+        }
+
+        const btnResolver = c.tipo === 'Recordatorio'
+            ? `<button class="btn btn-sm btn-outline-success py-0 px-1 border-0" style="font-size:0.65rem;" onclick="resolverAlertaMuro(${c.id})" title="Resolver"><i class="bi bi-check-circle"></i></button>`
+            : '';
+
+        return `<div class="comentario-item p-3 ${claseTipo}" id="item-comentario-${c.id}">
+            <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi ${icono}" style="font-size:0.8rem;"></i>
+                    <div>
+                        <span class="text-info fw-bold">@@${c.usuario}</span>
+                        <span class="text-white-50 opacity-50 ms-1" style="font-size:0.7rem;">${c.fechaCreacionStr}</span>
+                        ${badgeSubcat}
+                    </div>
+                </div>
+                <div class="d-flex gap-1">
+                    ${btnResolver}
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" style="font-size:0.65rem;" onclick="eliminarComentarioMuro(${c.id})" title="Eliminar"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>
+            <p class="text-white mb-0 text-wrap font-monospace" style="font-size:0.75rem;">${textoHtml}</p>
+            ${archivoHtml}
+            ${recordatorioHtml}
+        </div>`;
+    }
+
+    document.getElementById('formAddComentarioMuro').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnPublicarComentario');
+        const token = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]').value;
+
+        const requestData = {
+            ProyectoId: @(Model.Id),
+            Texto: document.getElementById('txtComentarioMuro').value,
+            Tipo: document.getElementById('selectTipoComentario').value,
+            FechaVencimiento: document.getElementById('dateComentarioVence').value || null
+        };
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Publicando...';
+
+        fetch('/Proyectos/AddComentario', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+            body: JSON.stringify(requestData)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                toastr.success(data.message);
+
+                // Quitar mensaje de vacío si existe
+                const vacioMsg = document.getElementById('muro-vacio-msg');
+                if (vacioMsg) vacioMsg.remove();
+
+                // Insertar el nuevo comentario al principio sin recargar
+                const contenedor = document.getElementById('contenedorMuroComentarios');
+                const html = _buildComentarioHtml(data.comentario);
+                contenedor.insertAdjacentHTML('afterbegin', html);
+
+                // Actualizar contador
+                const contador = document.getElementById('muro-contador');
+                if (contador) {
+                    const actual = parseInt(contador.textContent) || 0;
+                    contador.textContent = (actual + 1) + ' registros';
+                }
+
+                // Limpiar formulario
+                document.getElementById('txtComentarioMuro').value = '';
+                document.getElementById('selectTipoComentario').value = 'Nota';
+                document.getElementById('dateComentarioVence').value = '';
+                document.getElementById('divCalendarMuro').style.display = 'none';
+            } else {
+                toastr.error(data.message);
+            }
+        })
+        .catch(() => toastr.error('Error de conexión.'))
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-send-fill me-2"></i>Publicar en la Bitácora';
+        });
+    });
+
+    function resolverAlertaMuro(id) {
+        const token = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]').value;
+        fetch(`/Proyectos/ResolverAlerta/${id}`, {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': token }
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                // Marcar visualmente sin recargar
+                const item = document.getElementById(`item-comentario-${id}`);
+                if (item) {
+                    item.className = item.className.replace(/comentario-\w+/, 'comentario-resuelto');
+                    const btnResolver = item.querySelector('.btn-outline-success');
+                    if (btnResolver) btnResolver.remove();
+                    const spanVenc = item.querySelector('.text-warning, .text-danger.heartbeat');
+                    if (spanVenc) spanVenc.className = 'text-success';
+                    const fechaSpan = item.querySelector('[class*="bi-calendar-event"]')?.parentElement;
+                    if (fechaSpan) fechaSpan.innerHTML += ' [RESUELTO]';
+                    toastr.success('Recordatorio marcado como resuelto.');
+                }
+            }
+        });
+    }
+
+    // ── Menciones @@usuario ───────────────────────────────────
+    function toggleMuroCalendar(tipo) {
+        const divCalendar = document.getElementById('divCalendarMuro');
+        const dateInput   = document.getElementById('dateComentarioVence');
+        if (tipo === 'Recordatorio') {
+            divCalendar.style.display = 'block';
+            dateInput.setAttribute('required', 'required');
+        } else {
+            divCalendar.style.display = 'none';
+            dateInput.removeAttribute('required');
+            dateInput.value = '';
+        }
+    }
+
+    document.getElementById('txtComentarioMuro')?.addEventListener('input', function() {
+        const val      = this.value;
+        const pos      = this.selectionStart;
+        const antes    = val.substring(0, pos);
+        const match    = antes.match(new RegExp(AT + '([\\w\\.]*)$'));
+        const dropdown = document.getElementById('muroMencionesDrop');
+        if (match) {
+            const opciones = dropdown.querySelectorAll('.menciones-option');
+            const filtro   = match[1].toLowerCase();
+            let visibles   = 0;
+            opciones.forEach(op => {
+                const nombre = op.textContent.trim().replace(AT,'').toLowerCase();
+                const show   = nombre.includes(filtro);
+                op.style.display = show ? 'block' : 'none';
+                if (show) visibles++;
+            });
+            if (visibles > 0) {
+                dropdown.classList.remove('d-none');
+                const rect = this.getBoundingClientRect();
+                dropdown.style.top  = (this.offsetTop + this.offsetHeight + 2) + 'px';
+                dropdown.style.left = this.offsetLeft + 'px';
+            } else {
+                dropdown.classList.add('d-none');
+            }
+        } else {
+            dropdown.classList.add('d-none');
+        }
+    });
+
+    function insertarMencion(username) {
+        const ta    = document.getElementById('txtComentarioMuro');
+        const pos   = ta.selectionStart;
+        const antes = ta.value.substring(0, pos);
+        const idx   = antes.lastIndexOf(AT);
+        ta.value    = ta.value.substring(0, idx) + AT + username + ' ' + ta.value.substring(pos);
+        ta.focus();
+        document.getElementById('muroMencionesDrop').classList.add('d-none');
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#txtComentarioMuro') && !e.target.closest('#muroMencionesDrop'))
+            document.getElementById('muroMencionesDrop')?.classList.add('d-none');
+    });
+
+    // ── Mostrar nombre del archivo seleccionado ───────────────
+    document.getElementById('inputDocumento')?.addEventListener('change', function() {
+        const label = document.getElementById('txtNombreArchivo');
+        if (this.files?.length > 0) {
+            label.textContent = this.files[0].name;
+            label.classList.add('text-info');
+        } else {
+            label.textContent = 'Sin archivo';
+            label.classList.remove('text-info');
+        }
+    });
+
+    // ── Subir documento ───────────────────────────────────────
+    document.getElementById('formSubirDocumento')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const archivo     = document.getElementById('inputDocumento').files?.[0];
+        const subcategoria = document.getElementById('selectSubcategoria').value;
+        const descripcion  = document.getElementById('txtDescDocumento').value;
+
+        if (!archivo) { toastr.warning('Selecciona un archivo.'); return; }
+
+        const btn   = document.getElementById('btnSubirDocumento');
+        const token = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]').value;
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Subiendo...';
+        toastr.info('Subiendo a Drive...', '', { timeOut: 0, extendedTimeOut: 0 });
+
+        const formData = new FormData();
+        formData.append('proyectoId',    @(Model.Id));
+        formData.append('subcategoria',  subcategoria);
+        formData.append('descripcion',   descripcion);
+        formData.append('archivo',       archivo);
+        formData.append('__RequestVerificationToken', token);
+
+        fetch('/Proyectos/SubirDocumento', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            toastr.clear();
+            if (data.success) {
+                toastr.success(data.message);
+                // Insertar en el muro sin recargar
+                const vacioMsg  = document.getElementById('muro-vacio-msg');
+                if (vacioMsg) vacioMsg.remove();
+                const contenedor = document.getElementById('contenedorMuroComentarios');
+                contenedor.insertAdjacentHTML('afterbegin', _buildComentarioHtml(data.comentario));
+                const contador = document.getElementById('muro-contador');
+                if (contador) contador.textContent = (parseInt(contador.textContent) + 1) + ' registros';
+                // Limpiar formulario
+                document.getElementById('inputDocumento').value = '';
+                document.getElementById('txtNombreArchivo').textContent = 'Sin archivo';
+                document.getElementById('txtNombreArchivo').classList.remove('text-info');
+                document.getElementById('txtDescDocumento').value = '';
+            } else {
+                toastr.error(data.message);
+            }
+        })
+        .catch(() => { toastr.clear(); toastr.error('Error de conexión.'); })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-cloud-arrow-up me-2"></i>Subir a Drive y Registrar';
+        });
+    });
+
+    function eliminarComentarioMuro(id) {
+        if (!confirm('¿Eliminar este registro de la bitácora?')) return;
+        const token = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]').value;
+        fetch(`/Proyectos/DeleteComentario/${id}`, {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': token }
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                const item = document.getElementById(`item-comentario-${id}`);
+                if (item) {
+                    item.style.transition = 'opacity 0.3s';
+                    item.style.opacity = '0';
+                    setTimeout(() => {
+                        item.remove();
+                        // Mostrar mensaje vacío si no quedan items
+                        const contenedor = document.getElementById('contenedorMuroComentarios');
+                        if (!contenedor.querySelector('.comentario-item')) {
+                            contenedor.innerHTML = `<div class="text-center text-white-50 py-4 opacity-50" id="muro-vacio-msg">
+                                <i class="bi bi-chat-square-dots d-block fs-3 mb-1 text-secondary"></i>No hay comentarios ni alertas registradas.</div>`;
+                        }
+                        // Actualizar contador
+                        const contador = document.getElementById('muro-contador');
+                        if (contador) {
+                            const actual = parseInt(contador.textContent) || 1;
+                            contador.textContent = Math.max(0, actual - 1) + ' registros';
+                        }
+                    }, 300);
+                    toastr.success('Registro eliminado.');
+                }
+            }
+        });
+    }
+</script>

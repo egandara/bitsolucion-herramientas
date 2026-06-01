@@ -114,18 +114,43 @@
                                 </td>
                                 <td>
                                     @{
-                                        var badgeClass = log.Action.Contains("Delete") || log.Action.Contains("Reset") ? "bg-danger" :
-                                        log.Action.Contains("Update") || log.Action.Contains("Quota") ? "bg-warning text-dark" : "bg-primary";
+                                        string badgeClass;
+                                        string badgeIcon;
+
+                                        if (log.Action.StartsWith("GESTOR:"))
+                                        {
+                                            if (log.Action.Contains("ELIMINAD") || log.Action.Contains("LIMPIADO") || log.Action.Contains("RECHAZAD"))
+                                            { badgeClass = "bg-danger"; badgeIcon = "bi-x-circle-fill me-1"; }
+                                            else if (log.Action.Contains("APROBAD") || log.Action.Contains("CREADO") || log.Action.Contains("IMPORTADO") || log.Action.Contains("GENERADO"))
+                                            { badgeClass = "bg-success"; badgeIcon = "bi-check-circle-fill me-1"; }
+                                            else
+                                            { badgeClass = "bg-info text-dark"; badgeIcon = "bi-kanban-fill me-1"; }
+                                        }
+                                        else if (log.Action.Contains("Delete") || log.Action.Contains("Reset") || log.Action.Contains("RECHAZAD"))
+                                        { badgeClass = "bg-danger"; badgeIcon = "bi-trash-fill me-1"; }
+                                        else if (log.Action.Contains("Update") || log.Action.Contains("Quota") || log.Action.Contains("EDITADO"))
+                                        { badgeClass = "bg-warning text-dark"; badgeIcon = "bi-pencil-fill me-1"; }
+                                        else if (log.Action.Contains("LOGIN"))
+                                        { badgeClass = "bg-secondary"; badgeIcon = "bi-box-arrow-in-right me-1"; }
+                                        else
+                                        { badgeClass = "bg-primary"; badgeIcon = "bi-info-circle-fill me-1"; }
                                     }
-                                    <span class="badge @badgeClass fw-bold">@log.Action.ToUpper()</span>
+                                    <span class="badge @badgeClass fw-bold" style="font-size: 0.72rem;">
+                                        <i class="bi @badgeIcon"></i>@log.Action.ToUpper()
+                                    </span>
                                 </td>
                                 <td class="text-muted small">
                                     <div class="text-truncate" style="max-width: 280px;">@log.Details</div>
                                 </td>
                                 <td class="font-monospace small">@log.IpAddress</td>
                                 <td class="text-center">
-                                    <button class="btn btn-sm btn-link text-warning p-0"
-                                            onclick="showLogDetails('@log.Action', `@log.Details`)">
+                                    <button class="btn btn-sm btn-link text-warning p-0 btn-audit-detail"
+                                            data-action="@log.Action"
+                                            data-details="@Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(log.Details ?? ""))"
+                                            data-usuario="@(log.User != null ? log.User.Email : "Sistema")"
+                                            data-fecha="@log.Timestamp.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")"
+                                            data-ip="@(log.IpAddress ?? "-")"
+                                            data-entityid="@(log.EntityId ?? "-")">
                                         <i class="bi bi-zoom-in fs-5"></i>
                                     </button>
                                 </td>
@@ -148,15 +173,30 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <label class="modal-label-custom">Tipo de Evento:</label>
-                        <h4 id="modalAction" class="text-white border-start border-warning border-4 ps-3"></h4>
+                @* Encabezado del evento *@
+                <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom border-secondary">
+                    <div id="modalBadge"></div>
+                    <div>
+                        <h5 id="modalAction" class="text-white mb-1 border-start border-warning border-3 ps-3" style="font-size: 1rem;"></h5>
+                        <div class="d-flex gap-3 font-monospace" style="font-size: 0.72rem; color: rgba(255,255,255,0.4);">
+                            <span><i class="bi bi-clock me-1"></i><span id="modalFecha"></span></span>
+                            <span><i class="bi bi-person me-1"></i><span id="modalUsuario"></span></span>
+                            <span><i class="bi bi-hdd-network me-1"></i><span id="modalIp"></span></span>
+                            <span id="modalEntityWrap" class="d-none"><i class="bi bi-bookmark me-1"></i>Proyecto ID: <span id="modalEntityId"></span></span>
+                        </div>
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col-12">
-                        <label class="modal-label-custom">Descripción Completa / Datos Técnicos:</label>
+
+                @* Detalles legibles *@
+                <div id="modalDetalleHumano" class="mb-3"></div>
+
+                @* JSON técnico colapsable *@
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary mb-2" style="font-size: 0.72rem;"
+                            type="button" data-bs-toggle="collapse" data-bs-target="#collapseJson">
+                        <i class="bi bi-code-slash me-1"></i>Ver datos técnicos
+                    </button>
+                    <div class="collapse" id="collapseJson">
                         <div id="modalDetails" class="data-container"></div>
                     </div>
                 </div>
@@ -180,16 +220,130 @@
             });
         });
 
-        function showLogDetails(action, details) {
-            document.getElementById('modalAction').innerText = action;
-            const container = document.getElementById('modalDetails');
+        // Mapa de campos técnicos a etiquetas legibles en español
+        const CAMPO_LABELS = {
+            ProyectoId:        'ID del Proyecto',
+            Proyecto:          'Nombre del Proyecto',
+            Cliente:           'Cliente',
+            Drive:             'URL en Drive',
+            Estado:            'Estado',
+            Nombre:            'Nombre',
+            Score:             'Score QA',
+            Criticos:          'Hallazgos Críticos',
+            Warnings:          'Warnings',
+            Archivo:           'Archivo',
+            TamanioKB:         'Tamaño (KB)',
+            Bundle:            'Bundle',
+            FaseId:            'ID de Fase',
+            NuevoEstado:       'Nuevo Estado',
+            Fase:              'Nombre de Fase',
+            TablasImportadas:  'Tablas Importadas',
+            TablasEliminadas:  'Tablas Eliminadas',
+            ValidacionId:      'ID de Validación',
+            Usuario:           'Usuario',
+            Anterior:          'Cuota Anterior',
+            Nuevo:             'Cuota Nueva',
+            Modulo:            'Módulo',
+            Accion:            'Acción',
+            Roles:             'Roles Asignados'
+        };
 
+        const MODULO_COLORS = {
+            'GESTOR:': { bg: '#0dcaf0', text: '#0b0d16' },
+            'VALIDACIÓN:': { bg: '#ffc107', text: '#000' },
+            'PERFILAMIENTO:': { bg: '#6f42c1', text: '#fff' },
+            'LOGIN': { bg: '#6c757d', text: '#fff' },
+            'DEFAULT': { bg: '#0d6efd', text: '#fff' }
+        };
+
+        function getBadgeStyle(action) {
+            for (const [prefix, colors] of Object.entries(MODULO_COLORS)) {
+                if (action.includes(prefix)) return colors;
+            }
+            return MODULO_COLORS['DEFAULT'];
+        }
+
+        function renderDetalleHumano(details) {
             try {
                 const obj = JSON.parse(details);
-                container.innerText = JSON.stringify(obj, null, 4);
-            } catch (e) {
-                container.innerText = details;
+                if (typeof obj !== 'object' || Array.isArray(obj)) return `<p class="text-white-50">${details}</p>`;
+
+                let html = '<div class="row g-2">';
+                for (const [key, val] of Object.entries(obj)) {
+                    const label = CAMPO_LABELS[key] || key;
+                    const valStr = Array.isArray(val) ? val.join(', ') : (val ?? '-');
+                    html += `<div class="col-12 col-md-6">
+                        <div class="p-2 rounded" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07);">
+                            <div style="font-size:0.65rem; color:rgba(255,255,255,0.35); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">${label}</div>
+                            <div style="font-size:0.82rem; color:rgba(255,255,255,0.85); font-family:monospace; word-break:break-all;">${valStr}</div>
+                        </div>
+                    </div>`;
+                }
+                html += '</div>';
+                return html;
+            } catch(e) {
+                return `<p class="text-white-50 font-monospace small">${details}</p>`;
             }
+        }
+
+        // Delegación de evento en lugar de onclick inline — evita problemas con comillas
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.btn-audit-detail').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // details está en Base64 para evitar problemas con comillas y caracteres especiales
+                    let details = '';
+                    try {
+                        details = decodeURIComponent(escape(atob(this.dataset.details)));
+                    } catch(e) {
+                        details = this.dataset.details;
+                    }
+                    showLogDetails({
+                        action:   this.dataset.action,
+                        details:  details,
+                        usuario:  this.dataset.usuario,
+                        fecha:    this.dataset.fecha,
+                        ip:       this.dataset.ip,
+                        entityId: this.dataset.entityid
+                    });
+                });
+            });
+        });
+
+        function showLogDetails(data) {
+            const { action, details, usuario, fecha, ip, entityId } = data;
+
+            // Encabezado
+            document.getElementById('modalAction').innerText = action;
+            document.getElementById('modalFecha').innerText   = fecha;
+            document.getElementById('modalUsuario').innerText = usuario;
+            document.getElementById('modalIp').innerText      = ip;
+
+            if (entityId && entityId !== '-') {
+                document.getElementById('modalEntityId').innerText = entityId;
+                document.getElementById('modalEntityWrap').classList.remove('d-none');
+            } else {
+                document.getElementById('modalEntityWrap').classList.add('d-none');
+            }
+
+            // Badge de color por módulo
+            const colors = getBadgeStyle(action);
+            document.getElementById('modalBadge').innerHTML =
+                `<span class="badge rounded-pill fw-bold" style="background-color:${colors.bg};color:${colors.text};font-size:0.7rem;padding:5px 10px;">${action.split(':')[0]}</span>`;
+
+            // Detalle legible
+            document.getElementById('modalDetalleHumano').innerHTML = renderDetalleHumano(details);
+
+            // JSON técnico colapsado
+            try {
+                document.getElementById('modalDetails').innerText = JSON.stringify(JSON.parse(details), null, 4);
+            } catch(e) {
+                document.getElementById('modalDetails').innerText = details;
+            }
+
+            // Resetear el collapse
+            const collapseEl = document.getElementById('collapseJson');
+            const bsCollapse = bootstrap.Collapse.getInstance(collapseEl);
+            if (bsCollapse) bsCollapse.hide();
 
             new bootstrap.Modal(document.getElementById('auditDetailModal')).show();
         }

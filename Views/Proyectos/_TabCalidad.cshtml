@@ -1,0 +1,90 @@
+@model NotebookValidator.Web.Models.GestorProyectos.Proyecto
+
+<div class="tab-pane fade" id="calidad-pane" role="tabpanel" aria-labelledby="calidad-tab" tabindex="0">
+    <div class="row g-4">
+        <div class="col-12 col-lg-8">
+            <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-primary mb-0" style="font-size: 1.1rem;"><i class="bi bi-shield-check me-2"></i>Historial de Calidad de Código</h5>
+                </div>
+
+                @if (Model.Validaciones != null && Model.Validaciones.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover mb-0 align-middle font-monospace" style="font-size: 0.8rem;">
+                            <thead style="background-color: #111424;">
+                                <tr>
+                                    <th class="border-secondary text-white-50">Fecha</th>
+                                    <th class="border-secondary text-white-50">Archivo</th>
+                                    <th class="border-secondary text-white-50 text-center">Estado</th>
+                                    <th class="border-secondary text-white-50 text-center">Score</th>
+                                    <th class="border-secondary text-white-50">Analista</th>
+                                    <th class="border-secondary text-white-50 text-center">Detalle</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var val in Model.Validaciones)
+                                {
+                                    <tr style="background-color: #07091e;">
+                                        <td class="text-white-50">@val.FechaValidacion.ToString("dd/MM HH:mm")</td>
+                                        <td class="text-info text-truncate" style="max-width: 220px;" title="@val.NombreArchivo">@val.NombreArchivo</td>
+                                        <td class="text-center">
+                                            @if (val.PasoValidacion)
+                                            {
+                                                <span class="badge bg-success">Aprobado</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger heartbeat">Rechazado</span>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="progress" style="height: 5px; width: 60px; margin: 0 auto; background-color: #333;"><div class="progress-bar @(val.Score >= 80 ? "bg-success" : (val.Score >= 50 ? "bg-warning" : "bg-danger"))" style="width: @val.Score%"></div></div>
+                                            <small class="text-white mt-1 d-block">@val.Score%</small>
+                                        </td>
+                                        <td class="text-white-50 text-truncate" style="max-width: 120px;">@val.Usuario.Split('@')[0]</td>
+                                        <td class="text-center">
+                                            <div class="d-flex justify-content-center gap-1">
+                                                <button class="btn btn-sm btn-outline-info border-0" onclick="verDetallesError(@val.Id, '@val.NombreArchivo')" title="Ver Errores">
+                                                    <i class="bi bi-eye fs-6"></i>
+                                                </button>
+                                                @if (User.IsInRole("Admin"))
+                                                {
+                                                    <button class="btn btn-sm btn-outline-danger border-0" onclick="eliminarRevisionHistorica(@val.Id, '@val.NombreArchivo')" title="Eliminar del historial">
+                                                        <i class="bi bi-trash fs-6"></i>
+                                                    </button>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-4 text-white-50 small bg-dark bg-opacity-25 border border-secondary border-opacity-25 rounded "><i class="bi bi-file-earmark-code mb-2 fs-3 d-block"></i>Aún no se han realizado validaciones de QA en este Workspace.</div>
+                }
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-4">
+            <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                <h6 class="fw-bold text-warning mb-3" style="font-size: 0.95rem;"><i class="bi bi-sliders me-2"></i>Tolerancias QA Actuales</h6>
+                <div class="d-flex justify-content-between align-items-center text-white-50 font-monospace small mb-2 border-bottom border-secondary border-opacity-25 pb-2">
+                    <span><i class="bi bi-exclamation-circle text-danger me-1"></i>Críticos:</span>
+                    <span class="badge bg-danger rounded-pill">0 Permitidos</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center text-white-50 font-monospace small mb-2 border-bottom border-secondary border-opacity-25 pb-2">
+                    <span><i class="bi bi-exclamation-triangle text-warning me-1"></i>Warnings:</span>
+                    <span class="text-white fw-bold">@Model.MaxWarningsPermitidos</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center text-white-50 font-monospace small">
+                    <span><i class="bi bi-info-circle text-info me-1"></i>Infos:</span>
+                    <span class="text-white fw-bold">@Model.MaxInfosPermitidos</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

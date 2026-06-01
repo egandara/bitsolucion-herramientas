@@ -1,0 +1,111 @@
+@model NotebookValidator.Web.Models.GestorProyectos.Proyecto
+@{
+    string bundleName = "bundle-proyecto";
+    if (!string.IsNullOrEmpty(Model.RepositorioGitHub))
+    {
+        bundleName = Model.RepositorioGitHub.Split('/').Last().Replace(".git", "");
+    }
+}
+
+<div class="modal fade" id="modalGenerarJobs" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0" style="background-color: #111424; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <h5 class="modal-title text-white fw-bold"><i class="bi bi-box-seam text-primary me-2"></i>Generación de Artefactos (Jobs)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="jobStep1">
+                    <form id="formAnalyzeJob" enctype="multipart/form-data">
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-5 border-end border-secondary border-opacity-25 pe-4">
+                                <h6 class="text-info fw-bold mb-3 small"><i class="bi bi-sliders me-2"></i>Configuración del Entorno</h6>
+                                <label class="form-label text-white-50 small fw-bold">Nombre del Bundle</label>
+                                <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace mb-3" name="bundleName" value="@bundleName" readonly>
+                                <label class="form-label text-white-50 small fw-bold">Nivel de Acceso</label>
+                                <select class="form-select form-select-sm bg-dark text-white border-secondary mb-3" name="permLevel" required>
+                                    <option value="CAN_MANAGE">Can Manage</option>
+                                    <option value="CAN_EDIT">Can Edit</option>
+                                    <option value="CAN_VIEW">Can View</option>
+                                </select>
+                                <label class="form-label text-white-50 small fw-bold">Usuario / Grupo Corporativo</label>
+                                <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary mb-4" name="permUser" value="@User.Identity?.Name" required>
+                                <div class="form-check form-switch custom-switch-warning bg-dark p-2 rounded border border-secondary border-opacity-25 d-flex align-items-center">
+                                    <input class="form-check-input ms-0 me-3" type="checkbox" id="jobAutocert" name="autocert" value="true">
+                                    <label class="form-check-label text-white small fw-bold" for="jobAutocert"><i class="bi bi-shield-check text-warning me-1"></i> Autocertificación en Scala</label>
+                                </div>
+                            </div>
+                            <div class="col-md-7 ps-3">
+                                <h6 class="text-info fw-bold mb-3 small"><i class="bi bi-cloud-arrow-up me-2"></i>Carga de Insumos</h6>
+                                <div id="jobDropZone" class="job-dropzone mb-3 p-4">
+                                    <i class="bi bi-file-earmark-arrow-up display-4 text-secondary mb-2 d-block" id="jobDropIcon"></i>
+                                    <h6 class="text-white fw-bold mb-1">Sube tu archivo .yml base</h6>
+                                    <p class="text-white-50 small mb-0">Los notebooks se leerán directamente del Workspace Central.</p>
+                                    <input type="file" id="jobHiddenYaml" name="yamlFile" class="d-none" accept=".yml,.yaml">
+                                </div>
+                                <div class="d-flex gap-3">
+                                    <div class="file-slot flex-grow-1" id="slotYaml">
+                                        <div class="d-flex align-items-center gap-2 text-white-50 small p-2">
+                                            <i class="bi bi-filetype-yml fs-4"></i> <span id="txtSlotYaml" class="font-monospace text-truncate" style="max-width: 250px;">Falta archivo YAML</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end border-top border-secondary border-opacity-25 pt-3">
+                            <button type="submit" class="btn btn-warning fw-bold px-4 text-dark" id="btnAnalyzeJob" disabled><i class="bi bi-traffic-light me-2"></i>Validar Linaje y Continuar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="jobStep2" class="d-none">
+                    <h6 class="text-white fw-bold mb-3 border-bottom border-secondary pb-2"><i class="bi bi-diagram-3 text-warning me-2"></i>Validación de Linaje Cruzada</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="p-3 rounded border border-success bg-success bg-opacity-10 h-100 d-flex flex-column">
+                                <div class="text-success fw-bold mb-2"><i class="bi bi-check-circle-fill me-1"></i>Match Perfecto</div>
+                                <div id="listJobMatch" class="flex-grow-1" style="max-height: 250px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 rounded border border-warning bg-warning bg-opacity-10 h-100 d-flex flex-column">
+                                <div class="text-warning fw-bold mb-2"><i class="bi bi-exclamation-triangle-fill me-1"></i>Faltan en Catálogo</div>
+                                <div id="listJobMissing" class="flex-grow-1" style="max-height: 250px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 rounded border border-danger bg-danger bg-opacity-10 h-100 d-flex flex-column">
+                                <div class="text-danger fw-bold mb-2"><i class="bi bi-ghost me-1"></i>Fantasmas (Sobran)</div>
+                                <div id="listJobGhost" class="flex-grow-1" style="max-height: 250px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 border-top border-secondary border-opacity-25 pt-3">
+                        <button type="button" class="btn btn-outline-secondary px-4" onclick="resetJobModal()">Volver</button>
+                        <button type="button" class="btn btn-primary fw-bold px-4" id="btnGenerateFinalJob"><i class="bi bi-rocket-takeoff me-2"></i>Generar Artefactos y Subir</button>
+                    </div>
+                </div>
+
+                <div id="jobStepLoading" class="d-none text-center py-5">
+                    <div class="spinner-border text-info mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+                    <h5 class="text-white fw-bold mb-1">Ensamblando Pipeline...</h5>
+                    <p class="text-white-50 small font-monospace">Inyectando linaje, aplicando permisos y sincronizando con Google Drive.</p>
+                </div>
+
+                <div id="jobStepSuccess" class="d-none text-center py-4">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                    <h4 class="text-white fw-bold mt-3 mb-2">¡Despliegue Exitoso!</h4>
+                    <p class="text-white-50 small mb-4">El artefacto ha sido generado correctamente y respaldado en la nube corporativa.</p>
+                    <div class="bg-dark border border-secondary border-opacity-25 rounded p-3 mb-4 mx-auto text-start font-monospace small" style="max-width: 500px;">
+                        <div class="text-info mb-1"><i class="bi bi-file-zip me-2"></i><span id="successFileName" class="text-white"></span></div>
+                        <div class="text-success text-truncate"><i class="bi bi-cloud-check me-2"></i>Guardado en: 4_Entregables/</div>
+                    </div>
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="#" id="btnDriveLink" target="_blank" class="btn btn-outline-info fw-bold px-4"><i class="bi bi-google me-2"></i>Ver en Drive</a>
+                        <button type="button" class="btn btn-success fw-bold px-4" onclick="window.location.reload()"><i class="bi bi-check2-all me-2"></i>Finalizar y Actualizar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

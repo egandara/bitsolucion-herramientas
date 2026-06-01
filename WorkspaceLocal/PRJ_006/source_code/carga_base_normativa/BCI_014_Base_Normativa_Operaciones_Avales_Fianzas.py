@@ -1,0 +1,698 @@
+# Databricks notebook source
+# MAGIC %md
+# MAGIC # BCI_014_Base_Normativa_Operaciones_Avales_Fianzas
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Información del Notebook
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Encabezado
+# MAGIC **************************************************************************
+# MAGIC * Nombre: BCI_014_Base_Normativa_Operaciones_Avales_Fianzas.ipynb
+# MAGIC * Ruta: 
+# MAGIC * Autor:  BitSolucion Spa
+# MAGIC * Ing. SW BCI: <alguien.de.ti@bci.cl> - Marcelo Lizama <marcelo.lizama@bci.cl> - Ivan Jara <ivan.jara@bci.cl>
+# MAGIC * Fecha: 22/12/2025
+# MAGIC * Descripción: Notebook encargado de insertar información de Operaciones Hipotecarias para la Vivienda, Tipo de Activo 21
+# MAGIC * Documentación: 
+# MAGIC ***************************************************************************
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Mantenciones
+# MAGIC **************************************************************************
+# MAGIC #### Mantención Nro: 
+# MAGIC * Autor: <Nombre Autor> (<Empresa del Autor (Bci/Otra)>) - Ing. SW BCI: <Nombre Ing. SW BCI>
+# MAGIC * Fecha: <dd/mm/yyyy> 
+# MAGIC * Descripción: <Descripción de la mantención>      
+# MAGIC ************************************************
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Tablas Entrada y Salida
+# MAGIC **************************************************************************
+# MAGIC #### Tabla Entrada ADLS: 
+# MAGIC * tmp_d00_deuda_act_ctg
+# MAGIC * tmp_modelo_hip
+# MAGIC * tmp_modelo_hip_estandar
+# MAGIC * slv_Parametricas_db.tbu
+# MAGIC ***************************************************************************
+# MAGIC #### Tabla Salida Temporal: 
+# MAGIC * base_archivos_normativos (Activo 41 Tabla 89 Manual CMF)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Captura de Variables
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Crear Widgets para Captura de Variables
+
+# COMMAND ----------
+
+dbutils.widgets.removeAll()
+dbutils.widgets.text("fechaProcesoW","","01 Fecha Proceso :")
+dbutils.widgets.text("db_platinumW","","02 platinum DB:")
+dbutils.widgets.text("db_plat_tempW","","03 platinum temp db:")
+dbutils.widgets.text("db_location_plat_tempW","","04 Location platinum temp db:")
+dbutils.widgets.text("db_RiesgoCredW","","05 slv_RiesgoCred_RiesgoCredPer DB:")
+dbutils.widgets.text("db_slv_ParametricasW","","06 Parametricas DB:")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Asignar Objeto a Lectura de Widgets y Variables
+
+# COMMAND ----------
+
+fechaProcesoX = dbutils.widgets.get("fechaProcesoW")
+spark.conf.set("bci.fechaProcesoX", fechaProcesoX)
+
+db_platinumX = dbutils.widgets.get("db_platinumW")
+spark.conf.set("bci.db_platinumX", db_platinumX)
+
+db_plat_tempX = dbutils.widgets.get("db_plat_tempW")
+spark.conf.set("bci.db_plat_tempX", db_plat_tempX)
+
+db_location_plat_tempX = dbutils.widgets.get("db_location_plat_tempW")
+spark.conf.set("bci.db_location_plat_tempX", db_location_plat_tempX)
+
+db_RiesgoCredX = dbutils.widgets.get("db_RiesgoCredW")
+spark.conf.set("bci.db_RiesgoCredX", db_RiesgoCredX)
+
+db_slv_ParametricasX = dbutils.widgets.get("db_slv_ParametricasW")
+spark.conf.set("bci.db_slv_ParametricasX", db_slv_ParametricasX)
+
+print("fechaProcesoX: " + fechaProcesoX)
+print("db_platinumX: " + db_platinumX)
+print("db_plat_tempX: " + db_plat_tempX)
+print("db_location_plat_tempX: " + db_location_plat_tempX)
+print("db_RiesgoCredX: " + db_RiesgoCredX)
+print("db_slv_ParametricasX: " + db_slv_ParametricasX)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Carga de funciones
+
+# COMMAND ----------
+
+# MAGIC %run "../../Funciones"
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Validación de ingreso de parámetros
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Validacion Parametro Vacio
+
+# COMMAND ----------
+
+valida_param_vacio(fechaProcesoX,'fechaProcesoX')
+valida_param_vacio(db_platinumX,'db_platinumX')
+valida_param_vacio(db_plat_tempX,'db_plat_tempX')
+valida_param_vacio(db_RiesgoCredX,'db_RiesgoCredX')
+valida_param_vacio(db_location_plat_tempX,'db_location_plat_tempX')
+valida_param_vacio(db_slv_ParametricasX,'db_slv_ParametricasX')
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Validacion Base de Datos
+
+# COMMAND ----------
+
+valida_bd(db_platinumX, 'db_platinumX')
+valida_bd(db_slv_ParametricasX, 'db_slv_ParametricasX')
+valida_bd(db_plat_tempX, 'db_plat_tempX')
+valida_bd(db_RiesgoCredX, 'db_RiesgoCredX')
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Validacion Fecha Valida
+
+# COMMAND ----------
+
+valida_fecha_valida(fechaProcesoX, 'fechaProcesoX')
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Validacion Fecha Futura
+
+# COMMAND ----------
+
+valida_fecha_futura(fechaProcesoX, 'fechaProcesoX')
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Validacion Ruta 
+
+# COMMAND ----------
+
+valida_ruta(db_location_plat_tempX, 'db_location_plat_tempX')
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Asigan Variables de fecha
+
+# COMMAND ----------
+
+ano = str(fechaProcesoX)[:4]
+mes = str(fechaProcesoX)[4:][:2]
+dia = str(fechaProcesoX)[6:][:2]
+fechanormativo = str(ano+'-'+mes+'-'+dia)
+fechacinta = str(dia+'-'+mes+'-'+ano)
+anomes = str(ano+mes)
+anomesdia = str(ano+mes+dia)
+
+print("fecha_Formato1: " + ano)
+print("fecha_Formato2: " + mes)
+print("fecha_Formato3: " + dia)
+print("fecha_Formato4: " + fechanormativo)
+print("fecha_Formato5: " + fechacinta)
+print("fecha_Formato6: " + anomes)
+print("fecha_Formato7: " + anomesdia)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Inicio Logica
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Creacion tablas temporales
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Tabla tmp_ope_avales_y_fia
+
+# COMMAND ----------
+
+paso_tb_del_tmp_ope_avales_y_fia  = """DROP TABLE IF EXISTS """ + db_plat_tempX + """.tmp_ope_avales_y_fia"""
+
+# COMMAND ----------
+
+sql_safe(paso_tb_del_tmp_ope_avales_y_fia)
+
+# COMMAND ----------
+
+dbutils.fs.rm(db_location_plat_tempX+"tmp_ope_avales_y_fia", True)
+
+# COMMAND ----------
+
+paso_tb_crea_tmp_ope_avales_y_fia  = """CREATE TABLE """ + db_plat_tempX + """.tmp_ope_avales_y_fia
+(
+  periodo_id INT COMMENT 'Periodo de ejecucion SSAAMM',
+  rut_cliente INT COMMENT 'RUT del Cliente Titular',
+  dv_cliente STRING COMMENT 'Digito verificador del cliente titular',
+	cod_ope_original STRING COMMENT 'Operación Original (TRZ)',
+  cod_num_operacion STRING COMMENT 'Número Operación',
+  cod_tip_cart STRING COMMENT 'Tipo cartera (OPE_VIGENTE) ',
+	cod_tipo_ope STRING COMMENT 'Tipo-subtipo del D00',
+	des_producto_ope STRING COMMENT  'Descripción Tipo de Cartera',
+  des_banca_ope STRING COMMENT 'Descripción operacion banca',
+	cod_cartera_ope STRING COMMENT 'Subtipo cartera',
+	mnt_deuda_ope	   DECIMAL(32,0) COMMENT 'Saldo total ifrs',
+  num_dias_mora_ope INT COMMENT 'Dias de mora',
+  ind_cdet STRING COMMENT 'Indicador cartera deterioro',
+  fec_ingreso_deteriodo_ope DATE COMMENT 'Fecha ingreso de deterioro de la operación',
+  cod_cctb STRING COMMENT 'Cuenta contable',
+  cod_cta_ifrs STRING COMMENT 'Cuenta IFRS',
+  fl_ope_reneg STRING COMMENT 'Flag de cartera renegociada',
+  cod_tipo_activo INT COMMENT 'Tipo Activo Cartera',
+	nombre_activo STRING COMMENT 'Nombre Activo Cartera',
+	pct_pi DECIMAL(12,6) COMMENT 'probabilidad de incumplimiento del cliente',
+  pct_pdi DECIMAL(12,6) COMMENT 'perdida dado el incumplimiento de la operación',
+  pct_pe DECIMAL(12,6) COMMENT 'pérdida esperada',
+	mnt_provision DECIMAL(32,0) COMMENT 'Prov Oficial',
+	cod_tipo_cli STRING COMMENT 'Tipo Cliente GR/IND',
+	mnt_exposicion DECIMAL(32,0) COMMENT 'Prov Oficial',
+	factor_expo DECIMAL(12,6) COMMENT 'PI',
+	des_tipo_gtia STRING COMMENT 'Tipo garantia',		
+	mnt_garantia DECIMAL(32,0) COMMENT 'MONTO_GARANTIA' ,
+	pct_ltv DECIMAL(12,6) COMMENT 'relación entre la deuda actual y el valor del bien al origen',
+	pct_pi_metodo_interno DECIMAL(12,6) COMMENT 'PI metodo interno',
+  pct_pdi_metodo_interno DECIMAL(12,6) COMMENT 'PDI metodo interno',
+  pct_pe_metodo_interno DECIMAL(12,6) COMMENT 'PE metodo interno',
+	mnt_prov_metodo_interno  DECIMAL(32,0) COMMENT 'Provisión de la Colocación',
+	mnt_avalado DECIMAL(32,0) COMMENT 'MONTO_AVALADO'
+)
+USING DELTA
+PARTITIONED BY (periodo_id)
+LOCATION '"""+ db_location_plat_tempX +"""tmp_ope_avales_y_fia' """
+
+# COMMAND ----------
+
+sql_safe(paso_tb_crea_tmp_ope_avales_y_fia)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Tabla tmp_ope_avales_y_fia_2
+
+# COMMAND ----------
+
+paso_tb_del_tmp_ope_avales_y_fia_2  = """DROP TABLE IF EXISTS """ + db_plat_tempX + """.tmp_ope_avales_y_fia_2"""
+
+# COMMAND ----------
+
+sql_safe(paso_tb_del_tmp_ope_avales_y_fia_2)
+
+# COMMAND ----------
+
+dbutils.fs.rm(db_location_plat_tempX+"tmp_ope_avales_y_fia_2", True)
+
+# COMMAND ----------
+
+paso_tb_crea_tmp_ope_avales_y_fia_2  = """CREATE TABLE """ + db_plat_tempX + """.tmp_ope_avales_y_fia_2
+(
+  periodo_id INT COMMENT 'Periodo de ejecucion SSAAMM',
+  rut_cliente INT COMMENT 'RUT del Cliente Titular',
+  dv_cliente STRING COMMENT 'Digito verificador del cliente titular',
+	cod_ope_original STRING COMMENT 'Operación Original (TRZ)',
+  cod_num_operacion STRING COMMENT 'Número Operación',
+  cod_tip_cart STRING COMMENT 'Tipo cartera (OPE_VIGENTE) ',
+	cod_tipo_ope STRING COMMENT 'Tipo-subtipo del D00',
+	des_producto_ope STRING COMMENT  'Descripción Tipo de Cartera',
+  des_banca_ope STRING COMMENT 'Descripción operacion banca',
+	cod_cartera_ope STRING COMMENT 'Subtipo cartera',
+	mnt_deuda_ope	   DECIMAL(32,0) COMMENT 'Saldo total ifrs',
+  num_dias_mora_ope INT COMMENT 'Dias de mora',
+  ind_cdet STRING COMMENT 'Indicador cartera deterioro',
+  fec_ingreso_deteriodo_ope DATE COMMENT 'Fecha ingreso de deterioro de la operación',
+  cod_cctb STRING COMMENT 'Cuenta contable',
+  cod_cta_ifrs STRING COMMENT 'Cuenta IFRS',
+  fl_ope_reneg STRING COMMENT 'Flag de cartera renegociada',
+  cod_tipo_activo INT COMMENT 'Tipo Activo Cartera',
+	nombre_activo STRING COMMENT 'Nombre Activo Cartera',
+	pct_pi DECIMAL(12,6) COMMENT 'probabilidad de incumplimiento del cliente',
+  pct_pdi DECIMAL(12,6) COMMENT 'perdida dado el incumplimiento de la operación',
+  pct_pe DECIMAL(12,6) COMMENT 'pérdida esperada',
+	mnt_provision DECIMAL(32,0) COMMENT 'Prov Oficial',
+	cod_tipo_cli STRING COMMENT 'Tipo Cliente GR/IND',
+	mnt_exposicion DECIMAL(32,0) COMMENT 'Prov Oficial',
+	factor_expo DECIMAL(12,6) COMMENT 'PI',
+	des_tipo_gtia STRING COMMENT 'Tipo garantia',		
+	mnt_garantia DECIMAL(32,0) COMMENT 'MONTO_GARANTIA' ,
+	pct_ltv DECIMAL(12,6) COMMENT 'relación entre la deuda actual y el valor del bien al origen',
+	pct_pi_metodo_interno DECIMAL(12,6) COMMENT 'PI metodo interno',
+  pct_pdi_metodo_interno DECIMAL(12,6) COMMENT 'PDI metodo interno',
+  pct_pe_metodo_interno DECIMAL(12,6) COMMENT 'PE metodo interno',
+	mnt_prov_metodo_interno  DECIMAL(32,0) COMMENT 'Provisión de la Colocación',
+	mnt_avalado DECIMAL(32,0) COMMENT 'MONTO_AVALADO'
+)
+USING DELTA
+PARTITIONED BY (periodo_id)
+LOCATION '"""+ db_location_plat_tempX +"""tmp_ope_avales_y_fia_2' """
+
+# COMMAND ----------
+
+sql_safe(paso_tb_crea_tmp_ope_avales_y_fia_2)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Desarrollo Logica
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ###Paso 1: Obtencion Variable maxima fecha de proceso tabla TBU
+
+# COMMAND ----------
+
+diaHabil = spark.sql("""select max(fecha_informada) as periodo_id  FROM  """+ db_slv_ParametricasX +""".TBU  
+where substring(fecha_informada, 1, 6) = """+ anomes +"""  """)
+
+ultimoDiaHabil_tbu = diaHabil.toPandas()
+dia_tbu = ultimoDiaHabil_tbu.iloc[0]["periodo_id"]
+ 
+print(dia_tbu)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ###Paso 2: Obtencion Operaciones Contingentes de Avales y Fianzas
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC se crea una vista del universo de operaciones contingentes utilizando tablas tmp_d00_deuda_act_ctg (Salida de Notebook 1)y tabla TBU para identificar cuenta Ifrs (8311 para Avales y fianzas en moneda chilena y moneda extranjera) para Avales y Fianzas, adicionalmente, estas operaciones comienzan con 1610 para sus cuentas contables 
+# MAGIC
+# MAGIC **Créditos Contingentes (Cuentas IFRS 8311)**
+# MAGIC - **831100100**:	Avales y fianzas en moneda chilena
+# MAGIC - **831100200**:	Avales y fianzas en moneda extranjera
+# MAGIC
+# MAGIC **Tabla de salida**: tmp_ope_avales_y_fia(vista temporal)
+# MAGIC
+# MAGIC **variables de salida:**
+# MAGIC - **periodo_id**: Periodo de ejecucion SSAAMM
+# MAGIC - **rut_cliente**: RUT del Cliente Titular
+# MAGIC - **dv_cliente**: Digito verificador del cliente titular
+# MAGIC - **cod_ope_original**: Operación Original (TRZ)
+# MAGIC - **cod_num_operacion**: Número Operación
+# MAGIC - **cod_tip_cart**: Tipo cartera 
+# MAGIC - **cod_tipo_ope**: Tipo-subtipo del D00
+# MAGIC - **des_producto_ope**: Descripción Tipo de Cartera
+# MAGIC - **des_banca_ope**: Descripción operacion banca
+# MAGIC - **cod_cartera_ope**: Subtipo cartera
+# MAGIC - **mto_deuda_ope**: Saldo total ifrs
+# MAGIC - **num_dias_mora_ope**: Dias de mora
+# MAGIC - **ind_cdet**: Indicador cartera deterioro
+# MAGIC - **fec_ingreso_deteriodo_ope**: Fecha ingreso de deterioro de la operación
+# MAGIC - **cod_cctb**: Cuenta contable
+# MAGIC - **cod_cta_ifrs**: Cuenta IFRS
+# MAGIC - **fl_ope_reneg**: Flag de cartera renegociada
+# MAGIC - **cod_tipo_activo**: Tipo Activo Cartera
+# MAGIC - **nombre_activo**: Nombre Activo Cartera
+# MAGIC - **pct_pi**: probabilidad de incumplimiento del cliente
+# MAGIC - **pct_pdi**: perdida dado el incumplimiento de la operación
+# MAGIC - **pct_pe**: pérdida esperada
+# MAGIC - **mto_provision**: Prov Oficial
+# MAGIC - **cod_tipo_cli**: Tipo Cliente (Calificacion cliente)
+# MAGIC - **mto_exposicion**: Prov Oficial
+# MAGIC - **factor_expo**: Porcentaje Factor Exposicion
+# MAGIC - **des_tipo_gtia**: Tipo garantia		
+# MAGIC - **mnt_garantia**: Monto Garantia
+# MAGIC - **pct_ltv**:relación entre la deuda actual y el valor del bien al origen
+# MAGIC - **pct_pi_metodo_interno**: PI metodo interno
+# MAGIC - **pct_pdi_metodo_interno**: PDI metodo interno
+# MAGIC - **pct_pe_metodo_interno**: PE metodo interno
+# MAGIC - **mto_prov_metodo_interno**: Provisión de la Colocación
+# MAGIC - **mnt_avalado**: Monto Avalado
+
+# COMMAND ----------
+
+query_ins_avl_fia = """ insert into """+db_plat_tempX+""".tmp_ope_avales_y_fia  
+select d00.periodo_id
+	,d00.rut_cliente
+  ,d00.dv_cliente
+	,d00.cod_ope_original
+  ,d00.cod_num_operacion
+  ,d00.cod_tip_cart 
+	,d00.cod_tipo_ope
+	,d00.des_producto_ope
+  ,d00.des_banca_ope
+	,d00.cod_cartera_ope
+	,d00.mto_deuda_ope
+  ,d00.num_dias_mora_ope
+  ,d00.ind_cdet
+  ,d00.fec_ingreso_deteriodo_ope
+  ,d00.cod_cctb
+	,trim(ccc.cta_cmf_mc) as cod_cta_ifrs
+  ,d00.fl_ope_reneg 
+	,41 as cod_tipo_activo
+	,'AVALES Y FIANZAS' as nombre_activo 
+	,0 as pct_pi
+	,0 as pct_pdi
+	,0 as pct_pe
+	,0 as mto_provision
+	,'GR' as cod_tipo_cli
+	,0 as mto_exposicion
+	,1.0 as factor_expo
+	,'No_Tiene' as TIPO_GARANTIA				
+	,0.0 as MONTO_GARANTIA
+	,0 as PTVG 
+	,0 as pct_pi_metodo_interno	
+	,0 as pct_pdi_metodo_interno	
+	,0 as pct_pe_metodo_interno	
+	,0 as mto_PROV_METODO_INTERNO 
+	,0 as mto_avalado
+from """+db_plat_tempX+""".tmp_d00_deuda_act_ctg d00
+	inner join """+db_slv_ParametricasX+""".TBU ccc
+		on trim(d00.cod_cctb) = trim(ccc.cta_ctable) 
+  	and d00.periodo_id = substring(ccc.fecha_informada, 1, 6)
+where d00.periodo_id =  """+anomes+"""
+ 	and trim(d00.cod_cartera_ope) = 'CTG'
+ 	and substring(trim(ccc.cta_cmf_mc), 1, 4) = '8311'
+  and trim(d00.fl_ope_reneg) <> 'C'
+  and ccc.fecha_informada = """+str(dia_tbu)+"""
+ """
+
+# COMMAND ----------
+
+sql_safe(query_ins_avl_fia)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ###Paso 3 Actualizacion Valores desde Modelo Grupal
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC se actualizan operaciones contingentes utilizando tablas tmp_ope_avales_y_fia (Salida paso anterior) y tabla tmp_modelo_com_gr (Salida Notebook 03) para valores de modelo interno y estandar
+# MAGIC
+# MAGIC **Tabla de salida**: tmp_ope_avales_y_fia_2(vista temporal)
+# MAGIC
+# MAGIC **variables de salida:**
+# MAGIC - **periodo_id**: Periodo de ejecucion SSAAMM
+# MAGIC - **rut_cliente**: RUT del Cliente Titular
+# MAGIC - **dv_cliente**: Digito verificador del cliente titular
+# MAGIC - **cod_ope_original**: Operación Original (TRZ)
+# MAGIC - **cod_num_operacion**: Número Operación
+# MAGIC - **cod_tip_cart**: Tipo cartera 
+# MAGIC - **cod_tipo_ope**: Tipo-subtipo del D00
+# MAGIC - **des_producto_ope**: Descripción Tipo de Cartera
+# MAGIC - **des_banca_ope**: Descripción operacion banca
+# MAGIC - **cod_cartera_ope**: Subtipo cartera
+# MAGIC - **mto_deuda_ope**: Saldo total ifrs
+# MAGIC - **num_dias_mora_ope**: Dias de mora
+# MAGIC - **ind_cdet**: Indicador cartera deterioro
+# MAGIC - **fec_ingreso_deteriodo_ope**: Fecha ingreso de deterioro de la operación
+# MAGIC - **cod_cctb**: Cuenta contable
+# MAGIC - **cod_cta_ifrs**: Cuenta IFRS
+# MAGIC - **fl_ope_reneg**: Flag de cartera renegociada
+# MAGIC - **cod_tipo_activo**: Tipo Activo Cartera
+# MAGIC - **nombre_activo**: Nombre Activo Cartera
+# MAGIC - **pct_pi**: probabilidad de incumplimiento del cliente
+# MAGIC - **pct_pdi**: perdida dado el incumplimiento de la operación
+# MAGIC - **pct_pe**: pérdida esperada
+# MAGIC - **mto_provision**: Prov Oficial
+# MAGIC - **cod_tipo_cli**: Tipo Cliente (Calificacion cliente)
+# MAGIC - **mto_exposicion**: Prov Oficial
+# MAGIC - **factor_expo**: Porcentaje Factor Exposicion
+# MAGIC - **des_tipo_gtia**: Tipo garantia		
+# MAGIC - **mnt_garantia**: Monto Garantia
+# MAGIC - **pct_ltv**:relación entre la deuda actual y el valor del bien al origen
+# MAGIC - **pct_pi_metodo_interno**: PI metodo interno
+# MAGIC - **pct_pdi_metodo_interno**: PDI metodo interno
+# MAGIC - **pct_pe_metodo_interno**: PE metodo interno
+# MAGIC - **mto_prov_metodo_interno**: Provisión de la Colocación
+# MAGIC - **mnt_avalado**: Monto Avalado
+
+# COMMAND ----------
+
+query_ins_avl_fia_2 = """ insert into """+db_plat_tempX+""".tmp_ope_avales_y_fia_2
+select a.periodo_id
+  ,a.rut_cliente
+  ,a.dv_cliente
+  ,a.cod_ope_original
+  ,a.cod_num_operacion
+  ,a.cod_tip_cart
+  ,a.cod_tipo_ope
+  ,a.des_producto_ope
+  ,a.des_banca_ope
+  ,a.cod_cartera_ope
+  ,a.mnt_deuda_ope
+  ,a.num_dias_mora_ope
+  ,a.ind_cdet
+  ,a.fec_ingreso_deteriodo_ope
+  ,a.cod_cctb
+  ,a.cod_cta_ifrs
+  ,a.fl_ope_reneg
+  ,a.cod_tipo_activo
+  ,a.nombre_activo
+  ,b.pct_pi
+  ,b.pct_pdi
+  ,b.pct_pe
+  ,b.mnt_prov_oficial  as mnt_provision
+  ,CASE WHEN b.periodo_id IS NULL THEN 'SIN' ELSE 'GR' END	as cod_tipo_cli
+  ,a.mnt_exposicion
+  ,a.factor_expo
+  ,b.des_tipo_gtia as des_tipo_gtia
+  ,b.mnt_garantia as mnt_garantia
+  ,b.pct_ltv  as pct_ltv
+  ,b.pct_pi_metodo_interno
+  ,b.pct_pdi_metodo_interno
+  ,b.pct_pe_metodo_interno
+  ,b.mnt_prov_int as mnt_prov_metodo_interno
+  ,b.mnt_avalado as mnt_avalado
+from """+db_plat_tempX+""".tmp_ope_avales_y_fia  a 
+  left join """+db_plat_tempX+""".tmp_modelo_com_gr b 
+  on a.periodo_id=b.periodo_id
+  and trim(a.cod_num_operacion) =trim(b.cod_num_operacion)
+  and trim(a.cod_cartera_ope) = trim(b.cod_stp_cart)
+where a.periodo_id = """+anomes+"""  
+"""
+
+# COMMAND ----------
+
+sql_safe(query_ins_avl_fia_2)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ###Paso 4: Eliminación Avales y Fianzas para fecha de Proceso
+
+# COMMAND ----------
+
+query_delete_avales = """DELETE FROM """ + db_platinumX + """.base_archivos_normativos WHERE periodo_id = """+anomes+""" and cod_tabla_89 in (41) """
+
+# COMMAND ----------
+
+sql_safe(query_delete_avales)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ###Paso 5: Insert Operaciones Avales y Fianzas
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC se actualizan operaciones contingentes utilizando tablas tmp_ope_avales_y_fia_2 (Salida paso 3) y tabla tmp_modelo_indiv (Salida Notebook 02) para valores de modelo interno y estandar
+# MAGIC
+# MAGIC **Tabla de salida**: base_normativa_v3_ft
+# MAGIC
+# MAGIC **variables de salida:**
+# MAGIC - **periodo_id**: Periodo de ejecucion SSAAMM
+# MAGIC - **rut_cliente**: RUT del Cliente Titular
+# MAGIC - **dv_cliente**: Digito verificador del cliente titular
+# MAGIC - **cod_ope_original**: Operación Original (TRZ)
+# MAGIC - **cod_num_operacion**: Número Operación
+# MAGIC - **cod_tip_cart**: Tipo cartera 
+# MAGIC - **cod_tipo_ope**: Tipo-subtipo del D00
+# MAGIC - **des_producto_ope**: Descripción Tipo de Cartera
+# MAGIC - **des_banca_ope**: Descripción operacion banca
+# MAGIC - **cod_cartera_ope**: Subtipo cartera
+# MAGIC - **mto_deuda_ope**: Saldo total ifrs
+# MAGIC - **num_dias_mora_ope**: Dias de mora
+# MAGIC - **ind_cdet**: Indicador cartera deterioro
+# MAGIC - **fec_ingreso_deteriodo_ope**: Fecha ingreso de deterioro de la operación
+# MAGIC - **cod_cctb**: Cuenta contable
+# MAGIC - **cod_cta_ifrs**: Cuenta IFRS
+# MAGIC - **fl_ope_reneg**: Flag de cartera renegociada
+# MAGIC - **cod_tipo_activo**: Tipo Activo Cartera
+# MAGIC - **nombre_activo**: Nombre Activo Cartera
+# MAGIC - **pct_pi**: probabilidad de incumplimiento del cliente
+# MAGIC - **pct_pdi**: perdida dado el incumplimiento de la operación
+# MAGIC - **pct_pe**: pérdida esperada
+# MAGIC - **mto_provision**: Prov Oficial
+# MAGIC - **cod_tipo_cli**: Tipo Cliente (Calificacion cliente)
+# MAGIC - **mto_exposicion**: Prov Oficial
+# MAGIC - **factor_expo**: Porcentaje Factor Exposicion
+# MAGIC - **des_tipo_gtia**: Tipo garantia		
+# MAGIC - **mnt_garantia**: Monto Garantia
+# MAGIC - **pct_ltv**:relación entre la deuda actual y el valor del bien al origen
+# MAGIC - **pct_pi_metodo_interno**: PI metodo interno
+# MAGIC - **pct_pdi_metodo_interno**: PDI metodo interno
+# MAGIC - **pct_pe_metodo_interno**: PE metodo interno
+# MAGIC - **mto_prov_metodo_interno**: Provisión de la Colocación
+# MAGIC - **mnt_avalado**: Monto Avalado
+# MAGIC - **fec_proceso**: Fecha Cierre
+
+# COMMAND ----------
+
+ult_dia_mes = ultimo_dia_habil(db_slv_ParametricasX,anomes)
+
+ult_dia = ult_dia_mes.toPandas()
+fec_proceso  = ult_dia.iloc[0]["periodo_id"]
+
+ano_proceso = str(fec_proceso)[:4]
+mes_proceso = str(fec_proceso)[4:][:2]
+dia_proceso = str(fec_proceso)[6:][:2]
+date_proceso = str(ano_proceso+'-'+mes_proceso+'-'+dia_proceso)
+
+print(date_proceso)
+
+# COMMAND ----------
+
+query_ins_bn_aval = """ insert into """ + db_platinumX + """.base_archivos_normativos 
+select a.periodo_id
+  ,a.rut_cliente
+  ,a.dv_cliente
+  ,a.cod_ope_original
+  ,a.cod_num_operacion
+  ,a.cod_tip_cart
+  ,a.cod_tipo_ope
+  ,a.des_producto_ope
+  ,a.des_banca_ope
+  ,a.cod_cartera_ope
+  ,a.mnt_deuda_ope
+  ,a.num_dias_mora_ope
+  ,a.ind_cdet
+  ,a.fec_ingreso_deteriodo_ope
+  ,a.cod_cctb
+  ,a.fl_ope_reneg
+  ,-998                              as cod_tabla_34
+  ,a.cod_tipo_activo
+  ,a.nombre_activo
+  ,coalesce(a.pct_pi, b.pct_pi) as pct_pi
+  ,coalesce(a.pct_pdi, b.pct_pdi) as pct_pdi
+  ,coalesce(a.pct_pe, b.pct_pe) as pct_pe
+  ,coalesce(a.mnt_provision, b.mnt_provision)  as mnt_provision
+  ,CASE WHEN trim(a.cod_tipo_cli) = 'SIN' THEN b.cod_calificacion ELSE 'GR' END	as cod_tipo_cli
+  ,CASE WHEN trim(a.ind_cdet) = 'N' OR (trim(a.ind_cdet) = 'D' AND coalesce(a.pct_pi, b.pct_pi) <> 1) THEN (a.mnt_deuda_ope * 1.0) ELSE 0 END as mnt_exposicion
+  ,a.factor_expo
+  ,coalesce(a.des_tipo_gtia, b.cod_tipo_garantia) as des_tipo_gtia
+  ,coalesce(a.mnt_garantia, b.mnt_garantia) as mnt_garantia
+  ,coalesce(a.pct_ltv, 0)  as pct_ltv
+  ,coalesce(a.pct_pi_metodo_interno, 0)   as pct_pi_metodo_interno
+  ,coalesce(a.pct_pdi_metodo_interno, 0)  as pct_pdi_metodo_interno
+  ,coalesce(a.pct_pe_metodo_interno, 0) as pct_pe_metodo_interno
+  ,coalesce(a.mnt_prov_metodo_interno, 0) as mnt_prov_metodo_interno
+  ,coalesce(a.mnt_avalado, 0) as mnt_avalado
+ ,'"""+str(date_proceso)+"""'
+from """+db_plat_tempX+""".tmp_ope_avales_y_fia_2  a 
+  left join """+db_plat_tempX+""".tmp_modelo_indiv b 
+  on a.periodo_id=b.periodo_id
+  and b.mnt_provision <> 0
+  and trim(a.cod_num_operacion) =trim(b.cod_num_operacion)
+  and trim(a.cod_cartera_ope) = (CASE WHEN trim(b.cod_tipo_deu)='NCONT' THEN 'ACT' ELSE 'CTG' END) 
+where a.periodo_id = """+anomes+"""  
+"""  
+
+# COMMAND ----------
+
+sql_safe(query_ins_bn_aval)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Conteo de registros insertados en tabla de salida
+
+# COMMAND ----------
+
+registros = spark.sql(""" select count(1) as cant_registros from """ + db_platinumX + """.base_archivos_normativos  where periodo_id = """+anomes+""" and cod_tabla_89 in (41) """)
+
+reg_insertados = registros.toPandas()
+cantidad = reg_insertados.iloc[0]["cant_registros"]
+
+print("Se Insertaron " + str(cantidad) +" Registros en la tabla temporal base_archivos_normativos ")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # Mensaje Final
+
+# COMMAND ----------
+
+dbutils.notebook.exit("{\"coderror\":\"0\", \"msgerror\":\"Notebook termina ejecucion satisfactoriamente\"}")

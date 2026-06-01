@@ -1,6 +1,13 @@
+@using NotebookValidator.Web.Models.GestorProyectos
 @{
     ViewData["Title"] = "Panel Principal";
     string userLayoutJson = ViewBag.UserLayout ?? "null";
+
+    var proyectos     = ViewBag.ProyectosActivos as List<Proyecto> ?? new List<Proyecto>();
+    int totalActivos  = ViewBag.TotalActivos  ?? 0;
+    int totalATiempo  = ViewBag.TotalATiempo  ?? 0;
+    int totalEnRiesgo = ViewBag.TotalEnRiesgo ?? 0;
+    int totalAtrasado = ViewBag.TotalAtrasado ?? 0;
 }
 
 <style>
@@ -9,15 +16,12 @@
         text-align: center;
     }
 
-    /* CONFIGURACIÓN CRÍTICA: Fuerza la escala compacta del zoom 80% de forma nativa en pantallas 1080p */
     .dashboard-master-container {
         max-width: 1160px !important;
         margin: 0 auto;
     }
 
-    h1.display-4 {
-        font-size: 2.3rem !important;
-    }
+    h1.display-4 { font-size: 2.3rem !important; }
 
     p.lead-dashboard {
         font-size: 0.95rem !important;
@@ -30,39 +34,17 @@
         position: relative;
         border-radius: 10px !important;
     }
-
-        .card-module:active {
-            cursor: grabbing;
-        }
-
+        .card-module:active { cursor: grabbing; }
         .card-module:hover {
             transform: translateY(-3px);
             border-color: #ffc107 !important;
             background-color: rgba(255, 193, 7, 0.03) !important;
         }
+        .card-module .card-body    { padding: 1.25rem 1rem !important; }
+        .card-module i.text-warning { font-size: 1.9rem !important; margin-bottom: 0.6rem !important; }
+        .card-module .card-title   { font-size: 1rem !important; margin-bottom: 0.4rem !important; }
+        .card-module .card-text    { font-size: 0.78rem !important; line-height: 1.4 !important; color: rgba(255, 255, 255, 0.5) !important; }
 
-        /* Proporciones reducidas internas para emular look de alta densidad */
-        .card-module .card-body {
-            padding: 1.25rem 1rem !important;
-        }
-
-        .card-module i.text-warning {
-            font-size: 1.9rem !important;
-            margin-bottom: 0.6rem !important;
-        }
-
-        .card-module .card-title {
-            font-size: 1rem !important;
-            margin-bottom: 0.4rem !important;
-        }
-
-        .card-module .card-text {
-            font-size: 0.78rem !important;
-            line-height: 1.4 !important;
-            color: rgba(255, 255, 255, 0.5) !important;
-        }
-
-    /* Controles superiores flotantes de tamaño */
     .card-actions {
         position: absolute;
         top: 8px;
@@ -71,10 +53,7 @@
         transition: opacity 0.2s ease;
         z-index: 5;
     }
-
-    .card-module:hover .card-actions {
-        opacity: 1;
-    }
+    .card-module:hover .card-actions { opacity: 1; }
 
     .btn-action-size {
         background: rgba(255,255,255,0.05);
@@ -85,96 +64,79 @@
         font-size: 0.68rem;
         cursor: pointer;
     }
+        .btn-action-size:hover { background: #ffc107; color: #000; border-color: #ffc107; }
 
-        .btn-action-size:hover {
-            background: #ffc107;
-            color: #000;
-            border-color: #ffc107;
-        }
-
-    /* Silueta Limpia Tipo Wireframe (Oculta contenido interior al arrastrar) */
     .sortable-ghost {
         border: 2px dashed #ffc107 !important;
         background-color: rgba(255, 193, 7, 0.02) !important;
         border-radius: 10px;
     }
+        .sortable-ghost * { opacity: 0 !important; }
 
-        .sortable-ghost * {
-            opacity: 0 !important;
-        }
+    #modules-pool .grid-item       { width: 100% !important; max-width: 100% !important; cursor: pointer; }
+    #modules-pool .card-actions    { opacity: 1 !important; }
+    #modules-pool .btn-action-size:first-child { display: none !important; }
+    #modules-pool .btn-toggle-view { background: rgba(255, 193, 7, 0.1) !important; color: #ffc107 !important; border-color: #ffc107 !important; }
+    #modules-pool .bi-eye-slash-fill::before { content: "\f4fe"; }
+    #modules-pool .card-text       { display: none !important; }
+    #modules-pool .card-body       { padding: 1rem !important; display: flex !important; align-items: center !important; gap: 12px !important; text-align: left !important; }
+    #modules-pool a                { pointer-events: none; }
+    #modules-pool i.fs-1           { font-size: 1.4rem !important; margin-bottom: 0 !important; display: inline-block !important; }
+    #modules-pool .card-title      { margin-bottom: 0 !important; font-size: 0.95rem !important; display: inline-block !important; }
+    #modules-pool .card-module     { background-color: rgba(255,255,255,0.01) !important; }
+        #modules-pool .card-module:hover { border-color: #ffc107 !important; background-color: rgba(255, 193, 7, 0.05) !important; }
 
-    /* CONFIGURACIÓN ULTRA-LIMPIA PARA EL BAÚL DE MÓDULOS OCULTOS */
-    #modules-pool .grid-item {
-        width: 100% !important;
-        max-width: 100% !important;
-        cursor: pointer;
+    @* ── Hero Panel del Gestor de Proyectos ─────────────────── *@
+    .hero-gp {
+        background-color: #0b0d16;
+        border-left: 4px solid #ffc107;
+        border-top: 1px solid rgba(255,193,7,0.12);
+        border-right: 1px solid rgba(255,193,7,0.06);
+        border-bottom: 1px solid rgba(255,193,7,0.06);
+        border-radius: 0 10px 10px 0;
+        padding: 16px 20px;
+        margin-bottom: 1.5rem;
     }
 
-    #modules-pool .card-actions {
-        opacity: 1 !important;
+    .proj-quick-card {
+        background-color: #07091e;
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 8px;
+        padding: 12px 14px;
+        transition: border-color 0.2s;
+        text-decoration: none;
+        display: block;
+    }
+        .proj-quick-card:hover { border-color: rgba(255,255,255,0.18); text-decoration: none; }
+
+    .proj-prog-bg { height: 4px; background-color: rgba(255,255,255,0.07); border-radius: 2px; }
+    .proj-prog-fg { height: 100%; border-radius: 2px; }
+
+    .hero-stat-pill {
+        background-color: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 6px;
+        padding: 8px 10px;
+        text-align: center;
     }
 
-    #modules-pool .btn-action-size:first-child {
-        display: none !important;
+    .tools-section-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: rgba(255,255,255,0.25);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.75rem;
     }
-
-    #modules-pool .btn-toggle-view {
-        background: rgba(255, 193, 7, 0.1) !important;
-        color: #ffc107 !important;
-        border-color: #ffc107 !important;
-    }
-
-    #modules-pool .bi-eye-slash-fill::before {
-        content: "\f4fe";
-    }
-
-    #modules-pool .card-text {
-        display: none !important;
-    }
-
-    #modules-pool .card-body {
-        padding: 1rem !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 12px !important;
-        text-align: left !important;
-    }
-
-    #modules-pool a {
-        pointer-events: none;
-    }
-
-    #modules-pool i.fs-1 {
-        font-size: 1.4rem !important;
-        margin-bottom: 0 !important;
-        display: inline-block !important;
-    }
-
-    #modules-pool .card-title {
-        margin-bottom: 0 !important;
-        font-size: 0.95rem !important;
-        display: inline-block !important;
-    }
-
-    #modules-pool .card-module {
-        background-color: rgba(255,255,255,0.01) !important;
-    }
-
-        #modules-pool .card-module:hover {
-            border-color: #ffc107 !important;
-            background-color: rgba(255, 193, 7, 0.05) !important;
-        }
 </style>
 
 <div class="container dashboard-master-container text-center mt-4" id="dashboard-root" data-layout="@userLayoutJson">
     <h1 class="display-4 fw-bold text-white mb-2">
         @{
-            var rawName = User.Identity?.Name?.Split('@')[0] ?? "Usuario";
+            var rawName   = User.Identity?.Name?.Split('@')[0] ?? "Usuario";
             var firstName = rawName.Split('.')[0];
             if (!string.IsNullOrEmpty(firstName) && firstName != "Usuario")
-            {
                 firstName = char.ToUpper(firstName[0]) + firstName.Substring(1).ToLower();
-            }
         }
         ¡Hola @firstName!
         <span id="sync-indicator" class="ms-2 small text-warning d-inline-block" style="font-size: 0.95rem; font-weight: normal; opacity: 0; transition: opacity 0.3s ease;"></span>
@@ -186,6 +148,123 @@
         <button id="btn-reset-layout" class="btn btn-link btn-sm text-white-50 ms-2 p-0 text-decoration-none" style="font-size: 0.85rem; vertical-align: baseline;"><i class="bi bi-arrow-counterclockwise"></i> Restablecer Layout</button>
     </p>
 
+    @* ══════════════════════════════════════════════════════════
+       HERO PANEL — GESTOR DE PROYECTOS
+       Fijo encima del grid, no arrastrable
+       ══════════════════════════════════════════════════════════ *@
+    @if (proyectos.Any())
+    {
+        <div class="hero-gp text-start mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-kanban-fill text-warning"></i>
+                    <span class="fw-bold text-warning" style="font-size: 0.85rem; letter-spacing: 0.3px;">Gestor de Proyectos — Vista Rápida</span>
+                </div>
+                <a asp-controller="Proyectos" asp-action="Index" class="text-decoration-none" style="font-size: 0.75rem; color: rgba(13,202,240,0.8); border: 1px solid rgba(13,202,240,0.3); padding: 3px 12px; border-radius: 4px;">
+                    <i class="bi bi-arrow-right me-1"></i>Ver todos los proyectos
+                </a>
+            </div>
+
+            <div class="row g-2 mb-3">
+                @foreach (var p in proyectos)
+                {
+                    string barColor = p.EstadoRiesgo switch {
+                        "Atrasado"   => "#dc3545",
+                        "En Riesgo"  => "#ffc107",
+                        "Completado" => "#198754",
+                        _            => "#0dcaf0"
+                    };
+                    string badgeBg = p.EstadoRiesgo switch {
+                        "Atrasado"   => "rgba(220,53,69,0.15)",
+                        "En Riesgo"  => "rgba(255,193,7,0.12)",
+                        "Completado" => "rgba(25,135,84,0.15)",
+                        _            => "rgba(13,202,240,0.1)"
+                    };
+                    string badgeColor = p.EstadoRiesgo switch {
+                        "Atrasado"   => "#ff6b7a",
+                        "En Riesgo"  => "#ffc107",
+                        "Completado" => "#0ddb78",
+                        _            => "#0dcaf0"
+                    };
+                    string faseName = p.Fases?
+                        .OrderBy(f => f.Orden)
+                        .FirstOrDefault(f => f.EstadoFase == "En Progreso" || f.EstadoFase == "Pendiente")?
+                        .NombreFase.Replace("_", " ") ?? "—";
+
+                    <div class="col-lg-3">
+                        <a asp-controller="Proyectos" asp-action="Details" asp-route-id="@p.Id" class="proj-quick-card">
+                            <div class="d-flex justify-content-between align-items-start mb-1 gap-2">
+                                <span class="text-white fw-bold" style="font-size: 0.78rem; line-height: 1.3; flex: 1;">@p.Nombre</span>
+                                <span class="badge rounded-pill" style="font-size: 0.65rem; background-color: @badgeBg; color: @badgeColor; border: 1px solid @badgeColor; white-space: nowrap; flex-shrink: 0;">
+                                    @p.EstadoRiesgo
+                                </span>
+                            </div>
+                            @if (p.Cliente != null)
+                            {
+                                <div class="text-white-50 mb-1" style="font-size: 0.68rem; font-style: italic;">
+                                    <i class="bi bi-building" style="font-size: 0.65rem; margin-right: 3px;"></i>@p.Cliente.Nombre
+                                </div>
+                            }
+                            <div class="mb-2" style="font-size: 0.68rem; color: rgba(13,202,240,0.65);">
+                                <i class="bi bi-arrow-right-short"></i>@faseName
+                            </div>
+                            <div class="proj-prog-bg mb-1">
+                                <div class="proj-prog-fg" style="width: @p.PorcentajeProgreso%; background-color: @barColor;"></div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-white-50 font-monospace" style="font-size: 0.65rem;">@p.PorcentajeProgreso%</span>
+                                <span class="font-monospace" style="font-size: 0.65rem; color: @barColor;">@p.MensajeTiempo</span>
+                            </div>
+                        </a>
+                    </div>
+                }
+            </div>
+
+            @* Métricas de resumen *@
+            <div class="row g-2 pt-2 border-top border-secondary border-opacity-10">
+                <div class="col-3">
+                    <div class="hero-stat-pill">
+                        <div class="fw-bold font-monospace text-warning" style="font-size: 1.2rem;">@totalActivos</div>
+                        <div class="text-white-50" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">Activos</div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="hero-stat-pill">
+                        <div class="fw-bold font-monospace" style="font-size: 1.2rem; color: #0ddb78;">@totalATiempo</div>
+                        <div class="text-white-50" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">A tiempo</div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="hero-stat-pill">
+                        <div class="fw-bold font-monospace" style="font-size: 1.2rem; color: #ffc107;">@totalEnRiesgo</div>
+                        <div class="text-white-50" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">En riesgo</div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="hero-stat-pill">
+                        <div class="fw-bold font-monospace" style="font-size: 1.2rem; color: #ff6b7a;">@totalAtrasado</div>
+                        <div class="text-white-50" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">Atrasado</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        @* Estado vacío — no hay proyectos asignados *@
+        <a asp-controller="Proyectos" asp-action="Index" class="text-decoration-none d-block mb-4">
+            <div class="hero-gp text-center py-4" style="opacity: 0.7;">
+                <i class="bi bi-kanban d-block text-warning mb-2" style="font-size: 2rem;"></i>
+                <span class="text-white-50 small">No tienes proyectos activos asignados.</span>
+                <span class="d-block mt-1" style="font-size: 0.75rem; color: rgba(13,202,240,0.7);">Ir al Gestor de Proyectos →</span>
+            </div>
+        </a>
+    }
+
+    @* ══════════════════════════════════════════════════════════
+       GRID DE HERRAMIENTAS (sin cambios respecto al original)
+       ══════════════════════════════════════════════════════════ *@
+    <div class="tools-section-label text-start">Herramientas</div>
     <div class="row g-3 justify-content-center" id="dashboard-grid">
 
         @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
@@ -417,8 +496,7 @@
     </div>
     <div class="offcanvas-body py-4">
         <p class="small text-white-50 mb-4">Los módulos que remuevas aparecerán aquí. Haz clic sobre cualquiera para restaurarlo en tu pantalla principal de inmediato.</p>
-        <div id="modules-pool" class="d-flex flex-column gap-3">
-        </div>
+        <div id="modules-pool" class="d-flex flex-column gap-3"></div>
     </div>
 </div>
 
@@ -431,7 +509,8 @@
         const rootContainer = document.getElementById('dashboard-root');
 
         const databaseLayout = JSON.parse(rootContainer.getAttribute('data-layout') || 'null');
-        document.addEventListener('DOMContentLoaded', function() {
+
+        document.addEventListener('DOMContentLoaded', function () {
             if (databaseLayout && databaseLayout.length > 0) {
                 databaseLayout.forEach(item => {
                     const element = gridContainer.querySelector(`[data-id="${item.id}"]`);
@@ -453,7 +532,7 @@
                     if (!isFound) {
                         poolContainer.appendChild(element);
                         const hideBtn = element.querySelector('.btn-toggle-view');
-                        if(hideBtn) {
+                        if (hideBtn) {
                             hideBtn.querySelector('i').className = 'bi bi-eye-slash-fill';
                             hideBtn.setAttribute('title', 'Activar Módulo');
                         }
@@ -467,22 +546,17 @@
                 handle: '.card-module',
                 filter: '.card-actions, button',
                 preventOnFilter: false,
-                onEnd: function() {
-                    saveCurrentLayout();
-                }
+                onEnd: function () { saveCurrentLayout(); }
             });
 
-            document.getElementById('btn-reset-layout').addEventListener('click', function(e) {
+            document.getElementById('btn-reset-layout').addEventListener('click', function (e) {
                 e.preventDefault();
                 if (confirm('¿Estás seguro de que deseas restablecer el diseño original y mostrar todos tus módulos autorizados?')) {
                     fetch('/Home/ResetDashboardLayout', { method: 'POST' })
                         .then(res => res.json())
                         .then(data => {
-                            if (data.success) {
-                                window.location.reload();
-                            } else {
-                                alert('No se pudo restablecer el diseño: ' + data.message);
-                            }
+                            if (data.success) window.location.reload();
+                            else alert('No se pudo restablecer el diseño: ' + data.message);
                         })
                         .catch(err => console.error("Error al restablecer layout:", err));
                 }
@@ -492,7 +566,6 @@
         function toggleSize(button, event) {
             event.preventDefault();
             event.stopPropagation();
-
             const item = button.closest('.grid-item');
             const icon = button.querySelector('i');
             const isSmall = item.getAttribute('data-size') === 'small';
@@ -507,23 +580,19 @@
                 item.setAttribute('data-size', 'small');
                 icon.className = 'bi bi-arrows-angle-expand';
             }
-
             saveCurrentLayout();
         }
 
         function toggleVisibilityClick(button, event) {
             event.preventDefault();
             event.stopPropagation();
-            const item = button.closest('.grid-item');
-            poolContainer.appendChild(item);
+            poolContainer.appendChild(button.closest('.grid-item'));
             saveCurrentLayout();
         }
 
         function handlePoolCardClick(card, event) {
             const item = card.closest('.grid-item');
-            const isInPool = item.parentElement.id === 'modules-pool';
-
-            if (isInPool) {
+            if (item.parentElement.id === 'modules-pool') {
                 event.preventDefault();
                 event.stopPropagation();
                 gridContainer.appendChild(item);
@@ -537,12 +606,8 @@
             syncIndicator.style.opacity = '1';
 
             const currentLayout = [];
-            const activeItems = gridContainer.querySelectorAll('.grid-item');
-            activeItems.forEach(item => {
-                currentLayout.push({
-                    id: item.getAttribute('data-id'),
-                    size: item.getAttribute('data-size')
-                });
+            gridContainer.querySelectorAll('.grid-item').forEach(item => {
+                currentLayout.push({ id: item.getAttribute('data-id'), size: item.getAttribute('data-size') });
             });
 
             fetch('/Home/SaveDashboardLayout', {
@@ -550,23 +615,18 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ layoutJson: JSON.stringify(currentLayout) })
             })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        currentLayout.forEach(item => {
-                            const el = gridContainer.querySelector(`[data-id="${item.id}"] .btn-toggle-view`);
-                            if (el) el.setAttribute('title', 'Ocultar del panel');
-                        });
-                        syncIndicator.innerHTML = '<i class="bi bi-cloud-check-fill text-success"></i> Cambios guardados';
-                        setTimeout(() => { syncIndicator.style.opacity = '0'; }, 2000);
-                    } else {
-                        syncIndicator.innerHTML = '<i class="bi bi-cloud-slash-fill text-danger"></i> Error al guardar';
-                    }
-                })
-                .catch(err => {
-                    console.error("Error al asignar layout:", err);
-                    syncIndicator.innerHTML = '<i class="bi bi-cloud-slash-fill text-danger"></i> Error de conexión';
-                });
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    syncIndicator.innerHTML = '<i class="bi bi-cloud-check-fill text-success"></i> Cambios guardados';
+                    setTimeout(() => { syncIndicator.style.opacity = '0'; }, 2000);
+                } else {
+                    syncIndicator.innerHTML = '<i class="bi bi-cloud-slash-fill text-danger"></i> Error al guardar';
+                }
+            })
+            .catch(() => {
+                syncIndicator.innerHTML = '<i class="bi bi-cloud-slash-fill text-danger"></i> Error de conexión';
+            });
         }
     </script>
 }

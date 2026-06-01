@@ -96,6 +96,12 @@ builder.Services.AddScoped<FunctionsService>(); // <-- NUEVO SERVICIO AÑADIDO A
 
 builder.Services.AddScoped<GoogleDriveService>(); // O services.AddScoped si es Startup.cs
 
+builder.Services.AddScoped<NotebookValidator.Web.Services.GestorProyectos.LineageService>();
+builder.Services.AddScoped<NotebookValidator.Web.Services.GestorProyectos.JobGenerationService>();
+builder.Services.AddScoped<NotebookValidator.Web.Services.GestorProyectos.ProyectosSearchService>();
+builder.Services.AddScoped<NotebookValidator.Web.Services.NotificacionesService>();
+
+
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -122,6 +128,7 @@ app.UseMiddleware<ForcePasswordChangeMiddleware>();
 app.UseSession();
 
 app.MapHub<NotebookValidator.Web.Hubs.ProfilingHub>("/profilingHub");
+app.MapHub<NotebookValidator.Web.Hubs.NotificacionesHub>("/notificacionesHub");
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");

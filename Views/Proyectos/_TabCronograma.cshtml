@@ -1,0 +1,772 @@
+@model NotebookValidator.Web.Models.GestorProyectos.Proyecto
+@using NotebookValidator.Web.Models.GestorProyectos
+@using NotebookValidator.Web.Models
+@{
+    bool isValidadoWorkspace = Model.EstadoValidacionWorkspace == "Validado";
+    bool isRechazadoWorkspace = Model.EstadoValidacionWorkspace == "Rechazado";
+
+    var hoy = DateTime.Now.Date;
+
+    // Cálculo de posiciones en la barra de tiempo
+    double pctHoy = 0, pctProd = 0;
+    if (Model.FechaInicio.HasValue && Model.FechaFinEstimada.HasValue)
+    {
+        int diasTotales = (Model.FechaFinEstimada.Value - Model.FechaInicio.Value).Days;
+        if (diasTotales > 0)
+        {
+            pctHoy = Math.Min(100, Math.Max(0,
+                ((hoy - Model.FechaInicio.Value.Date).Days / (double)diasTotales) * 100));
+            if (Model.FechaPasoProduccion.HasValue)
+                pctProd = Math.Min(100, Math.Max(0,
+                    ((Model.FechaPasoProduccion.Value - Model.FechaInicio.Value).Days / (double)diasTotales) * 100));
+        }
+    }
+
+    string riesgoColor = Model.EstadoRiesgo switch
+    {
+        "Atrasado" => "#dc3545",
+        "En Riesgo" => "#ffc107",
+        "Completado" => "#198754",
+        _ => "#0dcaf0"
+    };
+    string barraColor = Model.EstadoRiesgo switch
+    {
+        "Atrasado" => "#dc3545",
+        "En Riesgo" => "#ffc107",
+        _ => "#0dcaf0"
+    };
+    string riesgoBg = Model.EstadoRiesgo switch
+    {
+        "Atrasado" => "rgba(220,53,69,0.15)",
+        "En Riesgo" => "rgba(255,193,7,0.1)",
+        "Completado" => "rgba(25,135,84,0.1)",
+        _ => "rgba(13,202,240,0.07)"
+    };
+
+    string eventosJson = ViewBag.EventosCalendario ?? "[]";
+    string mesesJson = ViewBag.MesesConActividad ?? "[]";
+
+    // Hitos para la barra de tiempo
+    int diasTotalesBar = (Model.FechaInicio.HasValue && Model.FechaFinEstimada.HasValue)
+        ? (Model.FechaFinEstimada.Value - Model.FechaInicio.Value).Days : 0;
+
+    Func<DateTime, double> pctFn = (DateTime fecha) =>
+        (diasTotalesBar > 0 && Model.FechaInicio.HasValue)
+            ? Math.Min(100, Math.Max(0, ((fecha - Model.FechaInicio.Value).Days / (double)diasTotalesBar) * 100))
+            : 0;
+
+    var hitosLinea = Model.Fases != null
+        ? Model.Fases
+            .Where(f => f.FechaActualizacion.HasValue && f.EstadoFase != "Pendiente")
+            .OrderBy(f => f.FechaActualizacion)
+            .ToList()
+        : new System.Collections.Generic.List<FaseProyecto>();
+
+    var qaHitos = Model.Validaciones != null
+        ? Model.Validaciones
+            .Where(v => v.PasoValidacion)
+            .OrderBy(v => v.FechaValidacion)
+            .Take(2)
+            .ToList()
+        : new System.Collections.Generic.List<NotebookValidacion>();
+}
+
+<style>
+    .tl-track-wrapper {
+        padding: 0 8px;
+        margin-bottom: 56px; /* espacio para labels debajo */
+    }
+
+    .tl-track-bg {
+        height: 8px;
+        background-color: #1a1d2e;
+        border-radius: 4px;
+        border: 1px solid rgba(255,255,255,0.06);
+        position: relative;
+        overflow: visible;
+    }
+
+    .tl-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.6s ease;
+    }
+
+    /* Todos los pins: colocados debajo de la barra para no superponerse */
+    .tl-pin {
+        position: absolute;
+        top: 100%; /* Los empuja justo debajo del contenedor de la barra */
+        margin-top: 6px; /* Crea un pequeño espacio visual entre la barra y el punto */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        z-index: 2;
+    }
+    /* Centrado en el eje X (eliminamos el -50% del eje Y porque ya están debajo) */
+    .tl-pin {
+        transform: translateX(-50%);
+    }
+    /* Inicio: alineado al borde izquierdo */
+    .tl-pin-start {
+        transform: translateX(0%);
+        align-items: flex-start;
+    }
+    /* Cierre: alineado al borde derecho */
+    .tl-pin-end {
+        transform: translateX(-100%);
+        align-items: flex-end;
+    }
+
+    .tl-pin-dot {
+        width: 16px; /* Hacemos el punto más grande (antes 12px) */
+        height: 16px; /* Hacemos el punto más grande (antes 12px) */
+        border-radius: 50%;
+        border: 3px solid #0b0d16; /* Borde oscuro ligeramente más grueso para que resalte más */
+        flex-shrink: 0;
+        transition: transform 0.15s;
+    }
+
+    .tl-pin:hover .tl-pin-dot {
+        transform: scale(1.35);
+    }
+
+    /* Labels — siempre debajo del dot */
+    .tl-pin-label {
+        font-size: 0.62rem;
+        white-space: nowrap;
+        margin-top: 6px; /* empuja hacia abajo de la barra */
+        color: rgba(255,255,255,0.55);
+        font-family: monospace;
+        line-height: 1.2;
+    }
+
+    .tl-pin-date {
+        font-size: 0.58rem;
+        color: rgba(255,255,255,0.3);
+        white-space: nowrap;
+        font-family: monospace;
+        line-height: 1.2;
+    }
+
+    .tl-pin-end .tl-pin-label,
+    .tl-pin-end .tl-pin-date {
+        text-align: right;
+    }
+
+    .tl-pin-start .tl-pin-label,
+    .tl-pin-start .tl-pin-date {
+        text-align: left;
+    }
+
+    .fase-tl-row {
+        background-color: #0b0d16;
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 8px;
+        transition: border-color 0.2s;
+    }
+
+        .fase-tl-row:hover {
+            border-color: rgba(255,255,255,0.15);
+        }
+
+    .fase-pbar-bg {
+        height: 5px;
+        background-color: #1a1d2e;
+        border-radius: 3px;
+    }
+
+    .fase-pbar-fg {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.5s ease;
+    }
+
+    /* ── CALENDARIO COMPACTO ─────────────────────── */
+    .cal-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 2px;
+    }
+
+    .cal-cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 32px; /* altura fija compacta en lugar de aspect-ratio */
+        font-size: 0.68rem;
+        border-radius: 4px;
+        color: rgba(255,255,255,0.3);
+        position: relative;
+        font-family: monospace;
+        cursor: default;
+        transition: background 0.15s;
+    }
+
+        .cal-cell:hover {
+            background: rgba(255,255,255,0.04);
+        }
+
+        .cal-cell.cal-empty {
+            pointer-events: none;
+        }
+
+        .cal-cell.cal-today {
+            font-weight: 700;
+        }
+
+            .cal-cell.cal-today span:first-child {
+                background: #0dcaf0;
+                color: #0b0d16;
+                border-radius: 50%;
+                width: 22px;
+                height: 22px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.68rem;
+            }
+
+        .cal-cell.cal-has-event {
+            color: rgba(255,255,255,0.8);
+        }
+
+    .cal-dots {
+        display: flex;
+        gap: 2px;
+        margin-top: 1px;
+        flex-wrap: wrap;
+        justify-content: center;
+        max-width: 100%;
+    }
+
+    .cal-dot {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .cal-hdr {
+        font-size: 0.58rem;
+        font-weight: 700;
+        color: rgba(255,255,255,0.2);
+        text-align: center;
+        padding: 2px 0;
+        text-transform: uppercase;
+    }
+
+    .cal-tooltip {
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1a1d2e;
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-size: 0.68rem;
+        color: white;
+        white-space: nowrap;
+        z-index: 20;
+        display: none;
+        pointer-events: none;
+        text-align: left;
+        min-width: 160px;
+        max-width: 240px;
+        white-space: normal;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .cal-cell:hover .cal-tooltip {
+        display: block;
+    }
+
+    .cal-tooltip-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 5px;
+        padding: 2px 0;
+        line-height: 1.3;
+    }
+
+    .cal-nav-btn {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: rgba(255,255,255,0.6);
+        border-radius: 5px;
+        width: 26px;
+        height: 26px;
+        cursor: pointer;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+        padding: 0;
+    }
+
+        .cal-nav-btn:hover:not(:disabled) {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .cal-nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+    /* ── FEED ──────────────────────────────────── */
+    .feed-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 7px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+        font-family: monospace;
+        font-size: 0.72rem;
+    }
+
+        .feed-row:last-child {
+            border-bottom: none;
+        }
+
+    .feed-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        margin-top: 3px;
+    }
+
+    .feed-fecha {
+        color: rgba(255,255,255,0.3);
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .feed-label {
+        color: rgba(255,255,255,0.75);
+        line-height: 1.3;
+    }
+</style>
+
+<div class="tab-pane fade" id="cronograma-pane" role="tabpanel" aria-labelledby="cronograma-tab" tabindex="0">
+    <div class="row g-4">
+
+        @* ── Barra de tiempo principal ─────────────────────── *@
+        <div class="col-12">
+            <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); border-left: 4px solid @riesgoColor !important;">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <h5 class="fw-bold mb-0" style="font-size: 1.05rem; color: @riesgoColor;">
+                        <i class="bi bi-calendar3-range me-2"></i>Línea de Tiempo del Proyecto
+                    </h5>
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="badge px-3 py-2" style="background-color: @riesgoBg; color: @riesgoColor; font-size: 0.7rem; border: 1px solid @riesgoColor; border-radius: 6px;">
+                            @Model.EstadoRiesgo
+                        </span>
+                        <span class="text-white-50 font-monospace" style="font-size: 0.75rem;">
+                            <i class="bi bi-hourglass-split me-1 text-info"></i>@Model.MensajeTiempo
+                        </span>
+                        <span class="fw-bold text-info font-monospace" style="font-size: 0.8rem;">@Model.PorcentajeProgreso%</span>
+                    </div>
+                </div>
+
+                @if (Model.FechaInicio.HasValue && Model.FechaFinEstimada.HasValue)
+                {
+                    <div class="tl-track-wrapper">
+                        <div class="tl-track-bg">
+                            <div class="tl-fill" style="width: @Model.PorcentajeProgreso%; background-color: @barraColor;"></div>
+
+                            @* Pin Inicio *@
+                            <div class="tl-pin tl-pin-start" style="left: 0%;">
+                                <div class="tl-pin-dot" style="background-color: #198754;"></div>
+                                <span class="tl-pin-label" style="color: rgba(13,219,120,0.85);">Inicio</span>
+                                <span class="tl-pin-date">@Model.FechaInicio.Value.ToString("dd/MM/yy")</span>
+                            </div>
+
+                            @* Hitos: fases completadas *@
+                            @foreach (var fase in hitosLinea)
+                            {
+                                double pctFase = pctFn(fase.FechaActualizacion!.Value);
+                                if (pctFase < 3 || pctFase > 97) continue;
+                                string colorFase = fase.EstadoFase == "Completado" ? "#198754" : "#0dcaf0";
+                                string labelFase = $"F{fase.Orden}";
+                                <div class="tl-pin" style="left: @pctFase.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%;">
+                                    <div class="tl-pin-dot" style="background-color: @colorFase; width:9px; height:9px;"></div>
+                                    <span class="tl-pin-label" style="color: @colorFase;">@labelFase</span>
+                                    <span class="tl-pin-date">@fase.FechaActualizacion.Value.ToString("dd/MM")</span>
+                                </div>
+                            }
+
+                            @* Hitos: validaciones QA aprobadas *@
+                            @foreach (var qa in qaHitos)
+                            {
+                                double pctQA = pctFn(qa.FechaValidacion);
+                                if (pctQA < 3 || pctQA > 97) continue;
+                                <div class="tl-pin" style="left: @pctQA.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%;">
+                                    <div class="tl-pin-dot" style="background-color: #6f42c1; width:9px; height:9px;"></div>
+                                    <span class="tl-pin-label" style="color: #a78bfa;">QA ✓</span>
+                                    <span class="tl-pin-date">@qa.FechaValidacion.ToString("dd/MM")</span>
+                                </div>
+                            }
+
+                            @* Pin Hoy *@
+                            @if (pctHoy > 3 && pctHoy < 97)
+                            {
+                                <div class="tl-pin" style="left: @pctHoy.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%;">
+                                    <div class="tl-pin-dot" style="background-color: #0dcaf0;"></div>
+                                    <span class="tl-pin-label" style="color: #0dcaf0;">Hoy</span>
+                                    <span class="tl-pin-date">@hoy.ToString("dd/MM/yy")</span>
+                                </div>
+                            }
+
+                            @* Pin Paso a Producción *@
+                            @if (Model.FechaPasoProduccion.HasValue && pctProd > 3 && pctProd < 97)
+                            {
+                                <div class="tl-pin" style="left: @pctProd.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%;">
+                                    <div class="tl-pin-dot" style="background-color: #ffc107;"></div>
+                                    <span class="tl-pin-label" style="color: rgba(255,193,7,0.85);">Producción</span>
+                                    <span class="tl-pin-date">@Model.FechaPasoProduccion.Value.ToString("dd/MM/yy")</span>
+                                </div>
+                            }
+
+                            @* Pin Cierre *@
+                            <div class="tl-pin tl-pin-end" style="left: 100%;">
+                                <div class="tl-pin-dot" style="background-color: @riesgoColor;"></div>
+                                <span class="tl-pin-label" style="color: @riesgoColor;">Cierre</span>
+                                <span class="tl-pin-date">@Model.FechaFinEstimada.Value.ToString("dd/MM/yy")</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-white-50 small py-3 font-monospace">
+                        <i class="bi bi-calendar-x d-block fs-3 mb-1 text-secondary"></i>
+                        No hay fechas definidas. Edita el proyecto para configurar el cronograma.
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* ── Fases + Calendario ─────────────────────────────── *@
+        <div class="col-12 col-lg-7">
+            <div class="card p-4 border-0 h-100" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                <h6 class="fw-bold text-warning mb-3" style="font-size: 0.95rem;">
+                    <i class="bi bi-check2-all me-2"></i>Progreso por Fase
+                </h6>
+                <div class="d-flex flex-column gap-2">
+                    @if (Model.Fases != null)
+                    {
+                        foreach (var fase in Model.Fases.OrderBy(f => f.Orden))
+                        {
+                            int pctFase = fase.EstadoFase == "Completado" ? 100 : (fase.EstadoFase == "En Progreso" ? 50 : 0);
+                            string faseColor = fase.EstadoFase == "Completado" ? "#198754"
+                                             : fase.EstadoFase == "En Progreso" ? "#0dcaf0"
+                                             : "rgba(255,255,255,0.1)";
+                            string faseTextColor = fase.EstadoFase == "Completado" ? "#0ddb78"
+                                                 : fase.EstadoFase == "En Progreso" ? "#0dcaf0"
+                                                 : "rgba(255,255,255,0.3)";
+
+                            <div class="fase-tl-row p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="text-secondary font-monospace" style="font-size: 0.7rem;">#@fase.Orden</span>
+                                        <span class="text-white" style="font-size: 0.82rem; font-weight: 500;">
+                                            @fase.NombreFase.Replace("_", " ")
+                                        </span>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        @if (fase.FechaActualizacion.HasValue)
+                                        {
+                                            <span class="text-white-50 font-monospace" style="font-size: 0.6rem;">
+                                                @fase.FechaActualizacion.Value.ToString("dd/MM HH:mm")
+                                            </span>
+                                        }
+                                        <span class="badge" style="font-size: 0.65rem; background-color: rgba(255,255,255,0.05); color: @faseTextColor; border: 1px solid @faseColor;">
+                                            @fase.EstadoFase
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="fase-pbar-bg">
+                                    <div class="fase-pbar-fg" style="width: @pctFase%; background-color: @faseColor;"></div>
+                                </div>
+                                @if (!string.IsNullOrEmpty(fase.UsuarioActualizacion))
+                                {
+                                    <div class="mt-1 font-monospace" style="font-size: 0.6rem; color: rgba(255,255,255,0.25);">
+                                        <i class="bi bi-person-check me-1 text-info"></i>@@@fase.UsuarioActualizacion
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* ── Calendario navegable ───────────────────────────── *@
+        <div class="col-12 col-lg-5 d-flex flex-column gap-4">
+            <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+
+                @* Header con navegación *@
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold text-info mb-0" style="font-size: 0.9rem;">
+                        <i class="bi bi-calendar3 me-2"></i><span id="cal-mes-label">—</span>
+                    </h6>
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="cal-nav-btn" id="cal-prev" title="Mes anterior">‹</button>
+                        <button class="cal-nav-btn" id="cal-hoy-btn" title="Ir a hoy" style="font-size: 10px; width: auto; padding: 0 8px;">Hoy</button>
+                        <button class="cal-nav-btn" id="cal-next" title="Mes siguiente">›</button>
+                    </div>
+                </div>
+
+                @* Grid del calendario *@
+                <div class="cal-grid mb-2" id="cal-headers">
+                    @foreach (var dia in new[] { "Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do" })
+                    {
+                        <div class="cal-hdr">@dia</div>
+                    }
+                </div>
+                <div class="cal-grid" id="cal-body"></div>
+
+                @* Leyenda *@
+                <div class="d-flex gap-2 flex-wrap mt-3 pt-3 border-top border-secondary border-opacity-10">
+                    <span class="badge d-flex align-items-center gap-1 px-2 py-1" style="background:rgba(13,202,240,0.12); border:1px solid rgba(13,202,240,0.3); font-size:0.72rem; font-weight:600; color:#0dcaf0; border-radius:6px;">
+                        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#0dcaf0;flex-shrink:0;"></span>Hoy
+                    </span>
+                    <span class="badge d-flex align-items-center gap-1 px-2 py-1" style="background:rgba(25,135,84,0.12); border:1px solid rgba(25,135,84,0.3); font-size:0.72rem; font-weight:600; color:#0ddb78; border-radius:6px;">
+                        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#198754;flex-shrink:0;"></span>Inicio/Cierre
+                    </span>
+                    <span class="badge d-flex align-items-center gap-1 px-2 py-1" style="background:rgba(13,202,240,0.08); border:1px solid rgba(13,202,240,0.2); font-size:0.72rem; font-weight:600; color:rgba(13,202,240,0.7); border-radius:6px;">
+                        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:rgba(13,202,240,0.6);flex-shrink:0;"></span>Fase
+                    </span>
+                    <span class="badge d-flex align-items-center gap-1 px-2 py-1" style="background:rgba(111,66,193,0.12); border:1px solid rgba(111,66,193,0.3); font-size:0.72rem; font-weight:600; color:#a78bfa; border-radius:6px;">
+                        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#6f42c1;flex-shrink:0;"></span>QA
+                    </span>
+                    <span class="badge d-flex align-items-center gap-1 px-2 py-1" style="background:rgba(253,126,20,0.12); border:1px solid rgba(253,126,20,0.3); font-size:0.72rem; font-weight:600; color:#fd7e14; border-radius:6px;">
+                        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fd7e14;flex-shrink:0;"></span>Alerta
+                    </span>
+                </div>
+            </div>
+
+            @* Feed de actividad reciente — header fijo + paginación *@
+            <div class="card border-0 flex-grow-1 d-flex flex-column" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                @* Header fijo — nunca se oculta *@
+                <div class="d-flex justify-content-between align-items-center px-4 pt-4 pb-2 flex-shrink-0">
+                    <h6 class="fw-bold mb-0" style="font-size: 0.85rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px;">
+                        <i class="bi bi-activity me-2"></i>Actividad Reciente
+                    </h6>
+                    <span class="text-white-50 font-monospace" id="feed-pag-label" style="font-size: 0.7rem;"></span>
+                </div>
+
+                @* Contenido paginado *@
+                <div class="px-4 pb-2 flex-grow-1" id="feed-actividad" style="min-height: 140px;"></div>
+
+                @* Controles de paginación *@
+                <div class="d-flex justify-content-between align-items-center px-4 pb-3 pt-1 flex-shrink-0 border-top border-secondary border-opacity-10">
+                    <button class="cal-nav-btn" id="feed-prev" disabled>‹</button>
+                    <div class="d-flex gap-1" id="feed-dots"></div>
+                    <button class="cal-nav-btn" id="feed-next">›</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    (function() {
+        const eventosRaw  = @Html.Raw(eventosJson);
+        const mesesRaw    = @Html.Raw(mesesJson);
+        const hoyStr      = '@(hoy.ToString("yyyy-MM-dd"))';
+
+        // Agrupar eventos por fecha
+        const eventosPorFecha = {};
+        eventosRaw.forEach(e => {
+            if (!eventosPorFecha[e.fecha]) eventosPorFecha[e.fecha] = [];
+            eventosPorFecha[e.fecha].push(e);
+        });
+
+        // Calcular mes inicial — ir al mes de hoy, o al primer mes con actividad
+        const hoyDate = new Date(hoyStr + 'T00:00:00');
+        let mesActual = { year: hoyDate.getFullYear(), month: hoyDate.getMonth() };
+
+        // Todos los meses que tienen actividad o son el mes actual
+        const mesesSet = new Set(mesesRaw);
+        const hoyMesKey = `${hoyDate.getFullYear()}-${String(hoyDate.getMonth()+1).padStart(2,'0')}`;
+        mesesSet.add(hoyMesKey);
+
+        const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+        function keyMes(y, m) { return `${y}-${String(m+1).padStart(2,'0')}`; }
+
+        function renderCalendario(year, month) {
+            const label    = document.getElementById('cal-mes-label');
+            const body     = document.getElementById('cal-body');
+            const btnPrev  = document.getElementById('cal-prev');
+            const btnNext  = document.getElementById('cal-next');
+
+            label.textContent = `${MESES_ES[month]} ${year}`;
+
+            // Calcular días del mes
+            const primerDia  = new Date(year, month, 1);
+            const diasEnMes  = new Date(year, month + 1, 0).getDate();
+            // Lunes = 0 en nuestro grid
+            const offsetInicio = (primerDia.getDay() + 6) % 7;
+
+            body.innerHTML = '';
+
+            // Celdas vacías al inicio
+            for (let i = 0; i < offsetInicio; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'cal-cell cal-empty';
+                body.appendChild(empty);
+            }
+
+            for (let d = 1; d <= diasEnMes; d++) {
+                const fechaStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const eventos  = eventosPorFecha[fechaStr] || [];
+                const esHoy    = fechaStr === hoyStr;
+
+                const cell = document.createElement('div');
+                cell.className = 'cal-cell' + (esHoy ? ' cal-today' : '') + (eventos.length > 0 ? ' cal-has-event' : '');
+
+                // Número del día
+                const numEl = document.createElement('span');
+                numEl.textContent = d;
+                cell.appendChild(numEl);
+
+                    // Puntos de eventos (ahora sí, SIEMPRE visible)
+                    if (eventos.length > 0) {
+
+                        // Eliminamos la validación if (!esHoy)
+                        const dots = document.createElement('div');
+                        dots.className = 'cal-dots';
+                        eventos.slice(0, 4).forEach(ev => {
+                            const dot = document.createElement('div');
+                            dot.className = 'cal-dot';
+                            dot.style.backgroundColor = ev.color;
+                            dots.appendChild(dot);
+                        });
+                        cell.appendChild(dots);
+
+                    // Tooltip — siempre, para hoy y para días con eventos
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'cal-tooltip';
+                    // En día de hoy el tooltip se posiciona a la izquierda para no salir del borde
+                    if (esHoy) {
+                        tooltip.style.left = 'auto';
+                        tooltip.style.right = '0';
+                        tooltip.style.transform = 'none';
+                    }
+                    eventos.forEach(ev => {
+                        const row = document.createElement('div');
+                        row.className = 'cal-tooltip-row';
+                        row.innerHTML = `<div class="cal-dot" style="background-color:${ev.color};flex-shrink:0;margin-top:3px;"></div><span>${ev.etiqueta}</span>`;
+                        tooltip.appendChild(row);
+                    });
+                    cell.appendChild(tooltip);
+                }
+
+                body.appendChild(cell);
+            }
+
+            // Habilitar/deshabilitar navegación
+            const prevYear  = month === 0 ? year - 1 : year;
+            const prevMonth = month === 0 ? 11 : month - 1;
+            const nextYear  = month === 11 ? year + 1 : year;
+            const nextMonth = month === 11 ? 0 : month + 1;
+
+            // Mostrar prev si hay meses anteriores con actividad o si es antes del mes actual
+            const hayMesesPrev = Array.from(mesesSet).some(m => m < keyMes(year, month));
+            btnPrev.disabled = !hayMesesPrev;
+
+            const hayMesesNext = Array.from(mesesSet).some(m => m > keyMes(year, month));
+            btnNext.disabled = !hayMesesNext;
+        }
+
+        // Inicializar
+        renderCalendario(mesActual.year, mesActual.month);
+
+        document.getElementById('cal-prev').addEventListener('click', function() {
+            if (mesActual.month === 0) { mesActual.year--; mesActual.month = 11; }
+            else { mesActual.month--; }
+            renderCalendario(mesActual.year, mesActual.month);
+        });
+
+        document.getElementById('cal-next').addEventListener('click', function() {
+            if (mesActual.month === 11) { mesActual.year++; mesActual.month = 0; }
+            else { mesActual.month++; }
+            renderCalendario(mesActual.year, mesActual.month);
+        });
+
+        document.getElementById('cal-hoy-btn').addEventListener('click', function() {
+            mesActual = { year: hoyDate.getFullYear(), month: hoyDate.getMonth() };
+            renderCalendario(mesActual.year, mesActual.month);
+        });
+        // ── Feed paginado ───────────────────────────────
+        const FEED_PER_PAGE = 5;
+        const feedEventos = (@Html.Raw(eventosJson))
+            .sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+        let feedPagina = 0;
+        const feedTotal = feedEventos.length;
+        const feedTotalPags = Math.max(1, Math.ceil(feedTotal / FEED_PER_PAGE));
+
+        function renderFeed(pag) {
+            const container  = document.getElementById('feed-actividad');
+            const label      = document.getElementById('feed-pag-label');
+            const btnPrev    = document.getElementById('feed-prev');
+            const btnNext    = document.getElementById('feed-next');
+            const dotsEl     = document.getElementById('feed-dots');
+
+            container.innerHTML = '';
+
+            if (feedTotal === 0) {
+                container.innerHTML = `<div class="text-center text-white-50 py-3 opacity-50 font-monospace" style="font-size:0.8rem;">
+                    <i class="bi bi-clock-history d-block fs-4 mb-1 text-secondary"></i>Sin actividad registrada aún.</div>`;
+                label.textContent = '';
+                btnPrev.disabled = btnNext.disabled = true;
+                return;
+            }
+
+            const desde = pag * FEED_PER_PAGE;
+            const hasta = Math.min(desde + FEED_PER_PAGE, feedTotal);
+            const slice = feedEventos.slice(desde, hasta);
+
+            slice.forEach(ev => {
+                const row = document.createElement('div');
+                row.className = 'feed-row';
+                row.innerHTML = `<div class="feed-dot" style="background-color:${ev.color};"></div>
+                    <span class="feed-fecha">${ev.fecha}</span>
+                    <span class="feed-label">${ev.etiqueta}</span>`;
+                container.appendChild(row);
+            });
+
+            label.textContent = `${desde + 1}–${hasta} de ${feedTotal}`;
+            btnPrev.disabled = pag === 0;
+            btnNext.disabled = pag >= feedTotalPags - 1;
+
+            // Dots de páginas
+            dotsEl.innerHTML = '';
+            for (let i = 0; i < feedTotalPags; i++) {
+                const dot = document.createElement('div');
+                dot.style.cssText = `width:6px;height:6px;border-radius:50%;cursor:pointer;transition:background 0.2s;
+                    background-color:${i === pag ? '#0dcaf0' : 'rgba(255,255,255,0.15)'};`;
+                dot.addEventListener('click', () => { feedPagina = i; renderFeed(feedPagina); });
+                dotsEl.appendChild(dot);
+            }
+        }
+
+        renderFeed(feedPagina);
+
+        document.getElementById('feed-prev').addEventListener('click', () => {
+            if (feedPagina > 0) { feedPagina--; renderFeed(feedPagina); }
+        });
+        document.getElementById('feed-next').addEventListener('click', () => {
+            if (feedPagina < feedTotalPags - 1) { feedPagina++; renderFeed(feedPagina); }
+        });
+
+    })();
+</script>
