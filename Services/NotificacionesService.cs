@@ -172,5 +172,19 @@ namespace NotebookValidator.Web.Services
             noLeidas.ForEach(n => n.Leida = true);
             await _context.SaveChangesAsync();
         }
+
+        // Método para marcar una sola notificación como leída
+        public async Task<string?> LeerYObtenerUrlAsync(int notificacionId, string usuarioId)
+        {
+            var notif = await _context.Notificaciones
+                .FirstOrDefaultAsync(n => n.Id == notificacionId && n.UsuarioId == usuarioId);
+
+            if (notif == null) return null;
+
+            notif.Leida = true;
+            await _context.SaveChangesAsync();
+
+            return notif.Url;
+        }
     }
 }

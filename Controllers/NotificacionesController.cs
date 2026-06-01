@@ -26,7 +26,8 @@ namespace NotebookValidator.Web.Controllers
                 tipo = n.Tipo,
                 titulo = n.Titulo,
                 descripcion = n.Descripcion,
-                url = n.Url ?? "#",
+                // CAMBIO AQUÍ: Generamos la ruta hacia nuestra "ruta puente"
+                url = Url.Action("RedirigirYMarcarLeida", "Notificaciones", new { id = n.Id }) ?? "#",
                 fecha = n.FechaCreacion.ToLocalTime().ToString("dd/MM HH:mm")
             }));
         }
@@ -38,6 +39,23 @@ namespace NotebookValidator.Web.Controllers
             string uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
             await _notifService.MarcarTodasLeidasAsync(uid);
             return Json(new { success = true });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> RedirigirYMarcarLeida(int id)
+        {
+            string uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+
+            // Marcar como leída y obtener la URL de destino
+            string? urlDestino = await _notifService.LeerYObtenerUrlAsync(id, uid);
+
+            // Si no se encuentra o no tiene URL, redirigir al inicio como fallback
+            if (string.IsNullOrEmpty(urlDestino))
+            {
+                return RedirectToAction("Index", "Home");
+            }
+
+            return Redirect(urlDestino);
         }
     }
 }
