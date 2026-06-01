@@ -37,7 +37,8 @@ namespace NotebookValidator.Web.Controllers
             LineageService lineageService,
             JobGenerationService jobGenerationService,
             ProyectosSearchService searchService,
-            AuditService auditService)
+            AuditService auditService,
+            NotificacionesService notifService)
         {
             _context = context;
             _driveService = driveService;
@@ -48,6 +49,7 @@ namespace NotebookValidator.Web.Controllers
             _jobGenerationService = jobGenerationService;
             _searchService = searchService;
             _auditService = auditService;
+            _notifService = notifService;
         }
 
         // ==========================================

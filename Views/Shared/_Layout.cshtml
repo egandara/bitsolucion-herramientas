@@ -550,46 +550,48 @@
                     <div id="globalSearchResults" class="global-search-results"></div>
                 </div>
 
-                @* ── Badge de Notificaciones ── *@
-                <div class="position-relative me-2" id="notif-container">
-                    <button id="btnNotificaciones"
-                            class="btn btn-link p-0 position-relative"
-                            style="color: rgba(255,255,255,0.6); font-size: 1.1rem;"
-                            title="Notificaciones">
-                        <i class="bi bi-bell-fill"></i>
-                        <span id="notif-badge"
-                              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
-                              style="font-size: 0.55rem; padding: 3px 5px; min-width: 16px;">
-                            0
-                        </span>
-                    </button>
-
-                    @* Panel desplegable *@
-                    <div id="notif-panel"
-                         class="d-none position-absolute end-0 mt-2 shadow-lg"
-                         style="width: 340px; background-color: #111424; border: 1px solid rgba(255,255,255,0.1);
-                        border-radius: 10px; z-index: 1050; top: 100%;">
-                        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom border-secondary border-opacity-25">
-                            <span class="fw-bold text-white" style="font-size: 0.85rem;">
-                                <i class="bi bi-bell-fill me-2 text-warning"></i>Notificaciones
+                <div class="d-flex align-items-center gap-3">
+                    @* ── Badge de Notificaciones ── *@
+                    <div class="position-relative" id="notif-container">
+                        <button id="btnNotificaciones"
+                                class="btn btn-link p-0 position-relative"
+                                style="color: rgba(255,255,255,0.6); font-size: 1.1rem;"
+                                title="Notificaciones">
+                            <i class="bi bi-bell-fill"></i>
+                            <span id="notif-badge"
+                                  class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                                  style="font-size: 0.55rem; padding: 3px 5px; min-width: 16px;">
+                                0
                             </span>
-                            <button class="btn btn-link btn-sm text-white-50 text-decoration-none p-0"
-                                    style="font-size: 0.72rem;" onclick="marcarTodasLeidas()">
-                                Marcar todo leído
-                            </button>
-                        </div>
-                        <div id="notif-lista" style="max-height: 360px; overflow-y: auto;">
-                            <div class="text-center text-white-50 py-4 opacity-50" id="notif-vacio" style="font-size: 0.8rem;">
-                                <i class="bi bi-bell-slash d-block fs-4 mb-1 text-secondary"></i>
-                                Sin notificaciones nuevas
+                        </button>
+
+                        @* Panel desplegable *@
+                        <div id="notif-panel"
+                             class="d-none position-absolute end-0 mt-2 shadow-lg"
+                             style="width: 340px; background-color: #111424; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; z-index: 1050; top: 100%;">
+                            <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom border-secondary border-opacity-25">
+                                <span class="fw-bold text-white" style="font-size: 0.85rem;">
+                                    <i class="bi bi-bell-fill me-2 text-warning"></i>Notificaciones
+                                </span>
+                                <button class="btn btn-link btn-sm text-white-50 text-decoration-none p-0"
+                                        style="font-size: 0.72rem;" onclick="marcarTodasLeidas()">
+                                    Marcar todo leído
+                                </button>
+                            </div>
+                            <div id="notif-lista" style="max-height: 360px; overflow-y: auto;">
+                                <div class="text-center text-white-50 py-4 opacity-50" id="notif-vacio" style="font-size: 0.8rem;">
+                                    <i class="bi bi-bell-slash d-block fs-4 mb-1 text-secondary"></i>
+                                    Sin notificaciones nuevas
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    <div>
+                        <partial name="_LoginPartial" />
+                    </div>
                 </div>
 
-                <div>
-                    <partial name="_LoginPartial" />
-                </div>
             </header>
 
             <div class="content-body container-fluid py-4">
