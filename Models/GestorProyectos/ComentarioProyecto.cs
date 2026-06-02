@@ -43,6 +43,9 @@ namespace NotebookValidator.Web.Models.GestorProyectos
         // ── Menciones (@usuario) ──────────────────────────────────
         [MaxLength(500)]
         public string? Menciones { get; set; }      // JSON array de usernames mencionados
+        public int? SubFaseProyectoId { get; set; }
+        [ForeignKey(nameof(SubFaseProyectoId))]
+        public SubFaseProyecto? SubFase { get; set; }
     }
 
     // Mapa estático: subcategoría → (carpeta padre en Drive, subcarpeta, icono Bootstrap)

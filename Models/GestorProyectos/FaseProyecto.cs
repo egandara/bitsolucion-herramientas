@@ -32,5 +32,22 @@ namespace NotebookValidator.Web.Models.GestorProyectos
 
         [MaxLength(100)]
         public string? UsuarioActualizacion { get; set; }
+
+        // Navegación hacia las subfases
+        public ICollection<SubFaseProyecto> SubFases { get; set; } = new List<SubFaseProyecto>();
+
+        // Propiedad calculada opcional para el progreso de la Fase basada en sus Subfases
+        [NotMapped]
+        public int PorcentajeCompletado
+        {
+            get
+            {
+                if (SubFases == null || !SubFases.Any()) return EstadoFase == "Completado" ? 100 : 0;
+                int total = SubFases.Count;
+                int completadas = SubFases.Count(s => s.Estado == "Completado");
+                return (int)Math.Round(((double)completadas / total) * 100);
+            }
+        }
     }
+
 }

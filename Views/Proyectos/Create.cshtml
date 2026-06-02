@@ -99,7 +99,17 @@
                 </div>
             </div>
 
-            <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>4. Asignación de Equipo</h5>
+            <h5 class="fw-bold text-light mb-3 border-bottom border-secondary pb-2 mt-4" style="font-size: 1rem;"><i class="bi bi-diagram-2-fill me-2"></i>4. Subfases Específicas (Opcional)</h5>
+            <p class="text-white-50 small mb-2">Agrega subfases (Ej: Validadores C11, C12, etc.) y asigna responsables específicos por tarea.</p>
+
+            <div id="subfases-container" class="mb-2">
+            </div>
+
+            <button type="button" class="btn btn-sm btn-outline-info mb-4" id="btnAddSubfase">
+                <i class="bi bi-plus-circle me-1"></i> Añadir Subfase
+            </button>
+
+            <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>5. Asignación de Equipo (Global)</h5>
             <div class="bg-dark border border-secondary p-3 mb-4" style="border-radius: 6px; max-height: 200px; overflow-y: auto;">
                 @if (usuariosBanco != null)
                 {
@@ -135,5 +145,74 @@
             icon.classList.add('d-none');
             btn.innerHTML = spinner.outerHTML + ' Hablando con Google Drive... Por favor, no cierres la ventana.';
         });
+
+        // ── Lógica de Subfases Dinámicas ──
+        let subfaseIndex = 0;
+
+        // Pre-renderizamos las opciones de usuarios desde el backend para usarlas en JS
+        const usuariosOptions = `
+            @if (usuariosBanco != null)
+            {
+                    foreach (var user in usuariosBanco)
+                    {
+                            <option value="@user.Id">@user.Email</option>
+                    }
+            }
+        `;
+
+        document.getElementById('btnAddSubfase').addEventListener('click', function() {
+            const container = document.getElementById('subfases-container');
+            const row = document.createElement('div');
+            row.className = 'row g-2 mb-2 align-items-center subfase-row p-2 bg-dark bg-opacity-50 border border-secondary border-opacity-50';
+            row.style.borderRadius = "6px";
+
+            row.innerHTML = `
+                <div class="col-md-3">
+                    <label class="form-label text-white-50 small mb-1">Fase Principal</label>
+                    <select name="Subfases[${subfaseIndex}].FasePadre" class="form-select form-select-sm bg-dark text-white border-secondary" required>
+                        <option value="1_Diseño_Arquitectura">1. Diseño Arquitectura</option>
+                        <option value="2_Desarrollo_Notebooks">2. Desarrollo Notebooks</option>
+                        <option value="3_Pruebas_Certificacion">3. Pruebas Certificacion</option>
+                        <option value="4_Paso_A_Produccion">4. Paso A Producción</option>
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label text-white-50 small mb-1">Nombre Subfase</label>
+                    <input type="text" name="Subfases[${subfaseIndex}].Nombre" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Ej: Validador C11" required />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-white-50 small mb-1">Responsable</label>
+                    <select name="Subfases[${subfaseIndex}].ResponsableId" class="form-select form-select-sm bg-dark text-white border-secondary">
+                        <option value="">-- Sin asignar --</option>
+                        ${usuariosOptions}
+                    </select>
+                </div>
+                <div class="col-md-1 text-center mt-4">
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase" title="Eliminar Subfase"><i class="bi bi-trash"></i></button>
+                </div>
+            `;
+
+            container.appendChild(row);
+            subfaseIndex++;
+        });
+
+        // Eliminar fila y reindexar nombres para que el binding de ASP.NET MVC funcione correctamente
+        document.getElementById('subfases-container').addEventListener('click', function(e) {
+            const btnRemove = e.target.closest('.btn-remove-subfase');
+            if (btnRemove) {
+                btnRemove.closest('.subfase-row').remove();
+                reindexSubfases();
+            }
+        });
+
+        function reindexSubfases() {
+            const rows = document.querySelectorAll('.subfase-row');
+            rows.forEach((row, index) => {
+                row.querySelector('select[name$=".FasePadre"]').name = `Subfases[${index}].FasePadre`;
+                row.querySelector('input[name$=".Nombre"]').name = `Subfases[${index}].Nombre`;
+                row.querySelector('select[name$=".ResponsableId"]').name = `Subfases[${index}].ResponsableId`;
+            });
+            subfaseIndex = rows.length;
+        }
     </script>
 }

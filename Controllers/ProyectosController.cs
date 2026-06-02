@@ -63,52 +63,41 @@ namespace NotebookValidator.Web.Controllers
             bool isAdmin = User.IsInRole("Admin");
             string shortUserName = (User.Identity?.Name ?? "").Split('@')[0];
 
-            // 1. Consulta base (agregamos el Include a Comentarios para las alertas/menciones)
             var query = _context.Proyectos
                 .Include(p => p.Cliente)
                 .Include(p => p.Fases)
-                .Include(p => p.Comentarios) // <-- ¡Nuevo Include!
+                    .ThenInclude(f => f.SubFases)
+                .Include(p => p.Comentarios)
                 .Include(p => p.UsuariosAsignados).ThenInclude(ua => ua.Usuario)
                 .OrderByDescending(p => p.FechaCreacion)
                 .AsNoTracking()
                 .AsSplitQuery();
 
-            // 2. Filtramos primero por permisos (Admin ve todo, Developer solo los suyos)
             if (!isAdmin)
             {
                 query = query.Where(p => p.UsuariosAsignados.Any(ua => ua.UsuarioId == currentUserId));
             }
 
-            // Traemos los proyectos de la base de datos
             var proyectos = await query.ToListAsync();
 
-            // 3. Aplicamos el filtro del Dashboard (lo hacemos en memoria para soportar propiedades calculadas como EstadoRiesgo)
             if (!string.IsNullOrEmpty(filtro))
             {
                 proyectos = filtro.ToLower() switch
                 {
                     "activos" => proyectos.Where(p => p.Estado == "Activo").ToList(),
-
                     "atiempo" => proyectos.Where(p => p.EstadoRiesgo == "A Tiempo" || p.EstadoRiesgo == "Completado").ToList(),
-
                     "enriesgo" => proyectos.Where(p => p.EstadoRiesgo == "En Riesgo").ToList(),
-
                     "atrasados" => proyectos.Where(p => p.EstadoRiesgo == "Atrasado").ToList(),
-
                     "qa_rechazados" => proyectos.Where(p => p.EstadoValidacionWorkspace == "Rechazado").ToList(),
-
                     "qa_pendientes" => proyectos.Where(p => p.EstadoValidacionWorkspace == "Pendiente_Validacion").ToList(),
-
                     "alertas" => proyectos.Where(p => p.Comentarios != null && p.Comentarios.Any(c =>
                                     !c.Resuelto &&
                                     (c.Tipo == "Advertencia" || c.Tipo == "Recordatorio") &&
                                     c.FechaVencimiento < DateTime.Now)).ToList(),
-
                     "menciones" => proyectos.Where(p => p.Comentarios != null && p.Comentarios.Any(c =>
                                     !c.Resuelto &&
                                     c.Menciones != null && c.Menciones.Contains(shortUserName))).ToList(),
-
-                    _ => proyectos // Si el filtro no coincide, devuelve todo
+                    _ => proyectos
                 };
             }
 
@@ -127,7 +116,8 @@ namespace NotebookValidator.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(string nombre, string descripcion, int? clienteId, string? repositorioGitHub, string? contraparteCliente,
             DateTime? fechaInicio, DateTime? fechaFinEstimada, DateTime? fechaPasoProduccion, string notas,
-            List<string> fasesSeleccionadas, List<string> usuariosAsignadosIds)
+            List<string> fasesSeleccionadas, List<string> usuariosAsignadosIds,
+            List<SubfaseInputDto> subfases)
         {
             if (string.IsNullOrWhiteSpace(nombre)) return View();
 
@@ -165,16 +155,48 @@ namespace NotebookValidator.Web.Controllers
                 nuevoProyecto.DriveFolderUrl = driveResult.RootFolderUrl;
                 _context.Entry(nuevoProyecto).State = EntityState.Modified;
 
-                // Crear las 4 fases fijas
+                var fasesCreadas = new Dictionary<string, FaseProyecto>();
                 int orden = 1;
                 foreach (var f in new[] { "1_Diseño_Arquitectura", "2_Desarrollo_Notebooks", "3_Pruebas_Certificacion", "4_Paso_A_Produccion" })
-                    _context.FasesProyecto.Add(new FaseProyecto { ProyectoId = nuevoProyecto.Id, NombreFase = f, EstadoFase = "Pendiente", Orden = orden++ });
+                {
+                    var nuevaFase = new FaseProyecto { ProyectoId = nuevoProyecto.Id, NombreFase = f, EstadoFase = "Pendiente", Orden = orden++ };
+                    _context.FasesProyecto.Add(nuevaFase);
+                    fasesCreadas[f] = nuevaFase;
+                }
 
                 if (fasesSeleccionadas != null)
+                {
                     foreach (var f in fasesSeleccionadas)
-                        _context.FasesProyecto.Add(new FaseProyecto { ProyectoId = nuevoProyecto.Id, NombreFase = f, EstadoFase = "Pendiente", Orden = orden++ });
+                    {
+                        var nuevaFase = new FaseProyecto { ProyectoId = nuevoProyecto.Id, NombreFase = f, EstadoFase = "Pendiente", Orden = orden++ };
+                        _context.FasesProyecto.Add(nuevaFase);
+                        fasesCreadas[f] = nuevaFase;
+                    }
+                }
 
-                // Asignar creador como Admin y compartir Drive
+                await _context.SaveChangesAsync();
+
+                if (subfases != null && subfases.Any())
+                {
+                    foreach (var sub in subfases)
+                    {
+                        if (!string.IsNullOrWhiteSpace(sub.Nombre) && fasesCreadas.TryGetValue(sub.FasePadre, out var fasePadre))
+                        {
+                            var nuevaSubfase = new SubFaseProyecto
+                            {
+                                FaseProyectoId = fasePadre.Id,
+                                Nombre = sub.Nombre,
+                                Estado = "Pendiente",
+                                ResponsableId = string.IsNullOrWhiteSpace(sub.ResponsableId) ? null : sub.ResponsableId,
+                                FechaInicio = sub.FechaInicio,
+                                FechaFinEstimada = sub.FechaFinEstimada
+                            };
+                            _context.SubFasesProyecto.Add(nuevaSubfase);
+                        }
+                    }
+                    await _context.SaveChangesAsync();
+                }
+
                 string creadorId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
                 _context.ProyectosUsuarios.Add(new ProyectoUsuario { ProyectoId = nuevoProyecto.Id, UsuarioId = creadorId, RolEnProyecto = "Admin", FechaAsignacion = DateTime.Now });
 
@@ -214,6 +236,8 @@ namespace NotebookValidator.Web.Controllers
             var proyecto = await _context.Proyectos
                 .Include(p => p.Cliente)
                 .Include(p => p.Fases.OrderBy(f => f.Orden))
+                    .ThenInclude(f => f.SubFases)
+                    .ThenInclude(s => s.Responsable)
                 .Include(p => p.UsuariosAsignados).ThenInclude(ua => ua.Usuario)
                 .Include(p => p.Validaciones.OrderByDescending(v => v.FechaValidacion))
                 .Include(p => p.TablasCatalogo).ThenInclude(tc => tc.TablaMaestra)
@@ -253,105 +277,42 @@ namespace NotebookValidator.Web.Controllers
             ViewBag.ConteoExtensiones = conteoExtensiones;
             ViewBag.ArchivosAnalizables = archivosAnalizables;
 
-            // ── Eventos del calendario para _TabCronograma ──────────────
             var eventosCalendario = new List<object>();
 
-            // Inicio del proyecto
             if (proyecto.FechaInicio.HasValue)
-                eventosCalendario.Add(new
-                {
-                    fecha = proyecto.FechaInicio.Value.ToString("yyyy-MM-dd"),
-                    tipo = "inicio",
-                    etiqueta = "Inicio del proyecto",
-                    color = "#198754"
-                });
+                eventosCalendario.Add(new { fecha = proyecto.FechaInicio.Value.ToString("yyyy-MM-dd"), tipo = "inicio", etiqueta = "Inicio del proyecto", color = "#198754" });
 
-            // Paso a producción estimado
             if (proyecto.FechaPasoProduccion.HasValue)
-                eventosCalendario.Add(new
-                {
-                    fecha = proyecto.FechaPasoProduccion.Value.ToString("yyyy-MM-dd"),
-                    tipo = "produccion",
-                    etiqueta = "Paso a Producción",
-                    color = "#dc3545"
-                });
+                eventosCalendario.Add(new { fecha = proyecto.FechaPasoProduccion.Value.ToString("yyyy-MM-dd"), tipo = "produccion", etiqueta = "Paso a Producción", color = "#dc3545" });
 
-            // Cierre estimado
             if (proyecto.FechaFinEstimada.HasValue)
-                eventosCalendario.Add(new
-                {
-                    fecha = proyecto.FechaFinEstimada.Value.ToString("yyyy-MM-dd"),
-                    tipo = "cierre",
-                    etiqueta = "Cierre estimado",
-                    color = "#dc3545"
-                });
+                eventosCalendario.Add(new { fecha = proyecto.FechaFinEstimada.Value.ToString("yyyy-MM-dd"), tipo = "cierre", etiqueta = "Cierre estimado", color = "#dc3545" });
 
-            // Cambios de fase
             foreach (var fase in proyecto.Fases.Where(f => f.FechaActualizacion.HasValue))
             {
-                eventosCalendario.Add(new
-                {
-                    fecha = fase.FechaActualizacion!.Value.ToString("yyyy-MM-dd"),
-                    tipo = "fase",
-                    etiqueta = $"Fase {fase.Orden}: {fase.NombreFase.Replace("_", " ")} → {fase.EstadoFase}",
-                    color = "#0dcaf0"
-                });
+                eventosCalendario.Add(new { fecha = fase.FechaActualizacion!.Value.ToString("yyyy-MM-dd"), tipo = "fase", etiqueta = $"Fase {fase.Orden}: {fase.NombreFase.Replace("_", " ")} → {fase.EstadoFase}", color = "#0dcaf0" });
             }
 
-            // Validaciones QA
             foreach (var val in proyecto.Validaciones)
             {
-                eventosCalendario.Add(new
-                {
-                    fecha = val.FechaValidacion.ToString("yyyy-MM-dd"),
-                    tipo = "validacion",
-                    etiqueta = $"QA {(val.PasoValidacion ? "Aprobado" : "Rechazado")} — Score: {val.Score}%",
-                    color = val.PasoValidacion ? "#6f42c1" : "#dc3545"
-                });
+                eventosCalendario.Add(new { fecha = val.FechaValidacion.ToString("yyyy-MM-dd"), tipo = "validacion", etiqueta = $"QA {(val.PasoValidacion ? "Aprobado" : "Rechazado")} — Score: {val.Score}%", color = val.PasoValidacion ? "#6f42c1" : "#dc3545" });
             }
 
-            // Alertas resueltas
-            foreach (var c in proyecto.Comentarios.Where(c =>
-                c.Tipo == "Recordatorio" && c.Resuelto && c.FechaVencimiento.HasValue))
+            foreach (var c in proyecto.Comentarios.Where(c => c.Tipo == "Recordatorio" && c.Resuelto && c.FechaVencimiento.HasValue))
             {
-                eventosCalendario.Add(new
-                {
-                    fecha = c.FechaVencimiento!.Value.ToString("yyyy-MM-dd"),
-                    tipo = "alerta",
-                    etiqueta = $"✓ Alerta resuelta: {(c.Texto.Length > 40 ? c.Texto.Substring(0, 40) + "..." : c.Texto)}",
-                    color = "#198754"   // verde — resuelta
-                });
+                eventosCalendario.Add(new { fecha = c.FechaVencimiento!.Value.ToString("yyyy-MM-dd"), tipo = "alerta", etiqueta = $"✓ Alerta resuelta: {(c.Texto.Length > 40 ? c.Texto.Substring(0, 40) + "..." : c.Texto)}", color = "#198754" });
             }
 
-            // Recordatorios activos (pendientes, fecha futura)
-            foreach (var c in proyecto.Comentarios.Where(c =>
-                c.Tipo == "Recordatorio" && !c.Resuelto && c.FechaVencimiento.HasValue
-                && c.FechaVencimiento.Value.Date >= DateTime.Now.Date))
+            foreach (var c in proyecto.Comentarios.Where(c => c.Tipo == "Recordatorio" && !c.Resuelto && c.FechaVencimiento.HasValue && c.FechaVencimiento.Value.Date >= DateTime.Now.Date))
             {
-                eventosCalendario.Add(new
-                {
-                    fecha = c.FechaVencimiento!.Value.ToString("yyyy-MM-dd"),
-                    tipo = "recordatorio",
-                    etiqueta = $"⏰ Recordatorio: {(c.Texto.Length > 40 ? c.Texto.Substring(0, 40) + "..." : c.Texto)}",
-                    color = "#fd7e14"   // naranja — pendiente
-                });
+                eventosCalendario.Add(new { fecha = c.FechaVencimiento!.Value.ToString("yyyy-MM-dd"), tipo = "recordatorio", etiqueta = $"⏰ Recordatorio: {(c.Texto.Length > 40 ? c.Texto.Substring(0, 40) + "..." : c.Texto)}", color = "#fd7e14" });
             }
 
-            // Recordatorios vencidos (sin resolver, fecha pasada)
-            foreach (var c in proyecto.Comentarios.Where(c =>
-                c.Tipo == "Recordatorio" && !c.Resuelto && c.FechaVencimiento.HasValue
-                && c.FechaVencimiento.Value.Date < DateTime.Now.Date))
+            foreach (var c in proyecto.Comentarios.Where(c => c.Tipo == "Recordatorio" && !c.Resuelto && c.FechaVencimiento.HasValue && c.FechaVencimiento.Value.Date < DateTime.Now.Date))
             {
-                eventosCalendario.Add(new
-                {
-                    fecha = c.FechaVencimiento!.Value.ToString("yyyy-MM-dd"),
-                    tipo = "vencido",
-                    etiqueta = $"⚠ Vencido sin resolver: {(c.Texto.Length > 40 ? c.Texto.Substring(0, 40) + "..." : c.Texto)}",
-                    color = "#dc3545"   // rojo — vencido
-                });
+                eventosCalendario.Add(new { fecha = c.FechaVencimiento!.Value.ToString("yyyy-MM-dd"), tipo = "vencido", etiqueta = $"⚠ Vencido sin resolver: {(c.Texto.Length > 40 ? c.Texto.Substring(0, 40) + "..." : c.Texto)}", color = "#dc3545" });
             }
 
-            // Feed de actividad reciente (todos los eventos ordenados desc)
             var feedActividad = eventosCalendario
                 .Select(e => (dynamic)e)
                 .OrderByDescending(e => e.fecha)
@@ -361,11 +322,8 @@ namespace NotebookValidator.Web.Controllers
             ViewBag.EventosCalendario = System.Text.Json.JsonSerializer.Serialize(eventosCalendario);
             ViewBag.FeedActividad = feedActividad;
 
-            // Jobs generados para este proyecto (para badges en fases)
-            ViewBag.JobsCount = await _context.ArtefactosJob
-                .CountAsync(j => j.ProyectoId == id);
+            ViewBag.JobsCount = await _context.ArtefactosJob.CountAsync(j => j.ProyectoId == id);
 
-            // Meses con actividad (para navegación del calendario)
             var mesesConActividad = eventosCalendario
                 .Select(e => ((dynamic)e).fecha.ToString().Substring(0, 7))
                 .Distinct()
@@ -382,6 +340,8 @@ namespace NotebookValidator.Web.Controllers
         {
             var proyecto = await _context.Proyectos
                 .Include(p => p.UsuariosAsignados)
+                .Include(p => p.Fases.OrderBy(f => f.Orden))
+                    .ThenInclude(f => f.SubFases) // <-- Traemos Fases y Subfases para mostrarlas en la vista Edit
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(p => p.Id == id);
 
@@ -396,11 +356,18 @@ namespace NotebookValidator.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, string descripcion, int? clienteId, string estado, string? repositorioGitHub,
             string? contraparteCliente, DateTime? fechaInicio, DateTime? fechaFinEstimada, DateTime? fechaPasoProduccion,
-            string notas, int maxWarningsPermitidos, int maxInfosPermitidos, List<string> usuariosAsignadosIds)
+            string notas, int maxWarningsPermitidos, int maxInfosPermitidos, List<string> usuariosAsignadosIds,
+            List<SubfaseInputDto> subfases) // <-- Recibe la nueva lista desde Edit.cshtml
         {
-            var proyecto = await _context.Proyectos.Include(p => p.UsuariosAsignados).FirstOrDefaultAsync(p => p.Id == id);
+            var proyecto = await _context.Proyectos
+                .Include(p => p.UsuariosAsignados)
+                .Include(p => p.Fases)
+                    .ThenInclude(f => f.SubFases)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
             if (proyecto == null) return NotFound();
 
+            // 1. Actualizar Datos Generales
             proyecto.Descripcion = descripcion?.Trim() ?? string.Empty;
             proyecto.ClienteId = clienteId;
             proyecto.Estado = estado;
@@ -413,6 +380,66 @@ namespace NotebookValidator.Web.Controllers
             proyecto.MaxWarningsPermitidos = maxWarningsPermitidos;
             proyecto.MaxInfosPermitidos = maxInfosPermitidos;
 
+            // 2. Gestionar Subfases
+            if (proyecto.Fases != null)
+            {
+                var subfasesEntrantesIds = subfases?.Where(s => s.Id > 0).Select(s => s.Id).ToList() ?? new List<int>();
+
+                // A) Eliminar subfases que el usuario borró en la vista
+                foreach (var fase in proyecto.Fases)
+                {
+                    if (fase.SubFases != null)
+                    {
+                        var subfasesAEliminar = fase.SubFases.Where(s => !subfasesEntrantesIds.Contains(s.Id)).ToList();
+                        foreach (var sub in subfasesAEliminar)
+                        {
+                            _context.SubFasesProyecto.Remove(sub);
+                        }
+                    }
+                }
+
+                // B) Agregar o Actualizar
+                if (subfases != null)
+                {
+                    foreach (var subDto in subfases)
+                    {
+                        if (string.IsNullOrWhiteSpace(subDto.Nombre)) continue;
+
+                        var fasePadre = proyecto.Fases.FirstOrDefault(f => f.NombreFase == subDto.FasePadre);
+                        if (fasePadre != null)
+                        {
+                            if (subDto.Id > 0)
+                            {
+                                // Actualizar existente
+                                var subfaseExistente = fasePadre.SubFases?.FirstOrDefault(s => s.Id == subDto.Id);
+                                if (subfaseExistente != null)
+                                {
+                                    subfaseExistente.Nombre = subDto.Nombre;
+                                    subfaseExistente.ResponsableId = string.IsNullOrWhiteSpace(subDto.ResponsableId) ? null : subDto.ResponsableId;
+                                    subfaseExistente.FechaInicio = subDto.FechaInicio;
+                                    subfaseExistente.FechaFinEstimada = subDto.FechaFinEstimada;
+                                }
+                            }
+                            else
+                            {
+                                // Agregar nueva
+                                var nuevaSubfase = new SubFaseProyecto
+                                {
+                                    FaseProyectoId = fasePadre.Id,
+                                    Nombre = subDto.Nombre,
+                                    Estado = "Pendiente",
+                                    ResponsableId = string.IsNullOrWhiteSpace(subDto.ResponsableId) ? null : subDto.ResponsableId,
+                                    FechaInicio = subDto.FechaInicio,
+                                    FechaFinEstimada = subDto.FechaFinEstimada
+                                };
+                                _context.SubFasesProyecto.Add(nuevaSubfase);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3. Reasignar Equipo
             _context.ProyectosUsuarios.RemoveRange(proyecto.UsuariosAsignados.Where(u => u.RolEnProyecto == "Developer"));
 
             if (usuariosAsignadosIds != null)
@@ -447,7 +474,7 @@ namespace NotebookValidator.Web.Controllers
         }
 
         // ==========================================
-        // FASES
+        // FASES Y SUBFASES
         // ==========================================
 
         [HttpPost]
@@ -471,13 +498,25 @@ namespace NotebookValidator.Web.Controllers
                     proyectoFase, fase.NombreFase, nuevoEstado, actualizadorUid);
             }
 
-
             await _auditService.LogActionAsync(
                 User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "",
                 "GESTOR: FASE ACTUALIZADA",
                 JsonSerializer.Serialize(new { FaseId = faseId, NuevoEstado = nuevoEstado, Fase = fase.NombreFase, ProyectoId = fase.ProyectoId }),
                 HttpContext.Connection.RemoteIpAddress?.ToString(),
                 fase.ProyectoId.ToString());
+
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateSubFaseStatus(int subFaseId, string nuevoEstado)
+        {
+            var subfase = await _context.SubFasesProyecto.FindAsync(subFaseId);
+            if (subfase == null) return Json(new { success = false, message = "Subfase no encontrada" });
+
+            subfase.Estado = nuevoEstado;
+            await _context.SaveChangesAsync();
 
             return Json(new { success = true });
         }
@@ -588,7 +627,6 @@ namespace NotebookValidator.Web.Controllers
 
             var user = await _userManager.GetUserAsync(User);
 
-            // Procesar el ZIP directamente desde los bytes, sin depender de rutas del disco
             using var zipStream = new MemoryStream(fileBytes);
             using var archive = new System.IO.Compression.ZipArchive(zipStream, System.IO.Compression.ZipArchiveMode.Read);
 
@@ -611,7 +649,6 @@ namespace NotebookValidator.Web.Controllers
 
             var (hallazgos, _, _) = await _validatorService.ProcessFilesAsync(fileStreams);
 
-            // Limpiar los streams tras procesar
             foreach (var (stream, _) in fileStreams)
                 stream.Dispose();
 
@@ -673,7 +710,6 @@ namespace NotebookValidator.Web.Controllers
 
             try
             {
-                // Deserializar con opciones que aceptan tanto PascalCase como camelCase
                 var options = new System.Text.Json.JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
@@ -681,7 +717,6 @@ namespace NotebookValidator.Web.Controllers
                 var hallazgos = System.Text.Json.JsonSerializer.Deserialize<List<Finding>>(
                     validacion.DetalleErrores, options);
 
-                // Re-serializar en camelCase para que el JS lo reciba correctamente
                 var camelOptions = new System.Text.Json.JsonSerializerOptions
                 {
                     PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
@@ -701,7 +736,6 @@ namespace NotebookValidator.Web.Controllers
             }
             catch
             {
-                // Si el JSON no parsea, devolver array vacío en lugar de colgarse
                 return Json(new List<object>());
             }
         }
@@ -928,7 +962,6 @@ namespace NotebookValidator.Web.Controllers
             if (proyecto == null)
                 return Json(new { success = false, message = "Proyecto no encontrado." });
 
-            // Resolver carpeta destino en Drive
             string driveUrl = "";
             try
             {
@@ -936,15 +969,12 @@ namespace NotebookValidator.Web.Controllers
                     NotebookValidator.Web.Models.GestorProyectos.DocumentoSubcategorias.Mapa.TryGetValue(
                         subcategoria, out var destino))
                 {
-                    // Buscar o crear carpeta padre (ej: 1_Diseño) dentro del proyecto
                     string carpetaPadreId = await _driveService.GetOrCreateFolderAsync(
                         destino.CarpetaPadre, proyecto.DriveFolderId);
 
-                    // Buscar o crear subcarpeta (ej: Analisis_Tecnico)
                     string subcarpetaId = await _driveService.GetOrCreateFolderAsync(
                         destino.SubCarpeta, carpetaPadreId);
 
-                    // Subir el archivo
                     byte[] fileBytes;
                     using (var ms = new MemoryStream())
                     {
@@ -959,12 +989,10 @@ namespace NotebookValidator.Web.Controllers
             }
             catch (Exception ex)
             {
-                // Drive falló pero igual registramos en bitácora
                 driveUrl = "";
                 Console.WriteLine($"Error subiendo documento a Drive: {ex.Message}");
             }
 
-            // Registrar en la bitácora
             string usuario = (User.Identity?.Name ?? "Anónimo").Split('@')[0];
             string textoMuro = !string.IsNullOrWhiteSpace(descripcion)
                 ? descripcion.Trim()
@@ -985,7 +1013,6 @@ namespace NotebookValidator.Web.Controllers
 
             _context.ComentariosProyecto.Add(comentario);
 
-            // Auditoría
             await _auditService.LogActionAsync(
                 User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier) ?? "",
                 "GESTOR: DOCUMENTO SUBIDO",
@@ -1066,7 +1093,6 @@ namespace NotebookValidator.Web.Controllers
         // BÚSQUEDA GLOBAL — delega a ProyectosSearchService
         // ==========================================
 
-        // ② GlobalSearch — queries secuenciales (EF Core no soporta paralelo en mismo DbContext)
         [HttpGet]
         public async Task<IActionResult> GlobalSearch(string q)
         {
@@ -1163,13 +1189,24 @@ namespace NotebookValidator.Web.Controllers
 
     }
 
-    // DTO local para AddTablaCatalogo (antes era AddTablaProyecto con params sueltos)
     public class AddTablaRequest
     {
         public int ProyectoId { get; set; }
         public string NombreTabla { get; set; } = string.Empty;
         public string TipoTabla { get; set; } = string.Empty;
         public string? Descripcion { get; set; }
+    }
+
+    public class SubfaseInputDto
+    {
+        public int Id { get; set; } // Agregado para identificar si es edición o nueva
+        public string FasePadre { get; set; } = string.Empty;
+        public string Nombre { get; set; } = string.Empty;
+        public string? ResponsableId { get; set; }
+
+        // Nuevos campos de fechas
+        public DateTime? FechaInicio { get; set; }
+        public DateTime? FechaFinEstimada { get; set; }
     }
 
 }

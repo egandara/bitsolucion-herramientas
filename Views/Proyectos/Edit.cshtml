@@ -5,6 +5,9 @@
 
     // Lista de IDs de usuarios que ya están asignados para dejar sus checkboxes marcados
     var asignadosActuales = Model.UsuariosAsignados.Select(u => u.UsuarioId).ToList();
+
+    // Índice inicial para las subfases existentes
+    int subIndex = 0;
 }
 
 <div class="container-fluid dashboard-xl-container mt-3" style="max-width: 900px !important;">
@@ -12,12 +15,12 @@
         <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm me-3"><i class="bi bi-arrow-left"></i> Volver</a>
         <div>
             <h1 class="h4 fw-bold mb-0 text-white" style="font-family: 'Poppins', sans-serif;">Editar Proyecto: @Model.Nombre</h1>
-            <p class="mb-0 small text-white-50">Actualiza el cronograma, notas y equipo asignado.</p>
+            <p class="mb-0 small text-white-50">Actualiza el cronograma, notas, subfases y equipo asignado.</p>
         </div>
     </div>
 
     <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-        <form asp-action="Edit" method="post">
+        <form asp-action="Edit" method="post" id="formEditProject">
             @Html.AntiForgeryToken()
             <input type="hidden" name="id" value="@Model.Id" />
 
@@ -62,6 +65,25 @@
             </div>
 
             <h5 class="fw-bold text-info mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-calendar-event me-2"></i>2. Cronograma y Notas</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label text-white small fw-bold">Fecha de Inicio</label>
+                    <input type="date" id="proyectoFechaInicio" name="fechaInicio" class="form-control bg-dark text-white border-secondary" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-white small fw-bold">Fin Estimado (Cierre)</label>
+                    <input type="date" id="proyectoFechaFin" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" value="@Model.FechaFinEstimada?.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-white small fw-bold">Paso a Producción</label>
+                    <input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" value="@Model.FechaPasoProduccion?.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label text-white small fw-bold">Notas o Reprogramaciones</label>
+                    <textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="3" placeholder="Añade comentarios sobre retrasos, cambios de alcance, etc.">@Model.Notas</textarea>
+                </div>
+            </div>
+
             <h5 class="fw-bold text-danger mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;">
                 <i class="bi bi-sliders me-2"></i>3. Configuración de Umbrales de Calidad (Gobernanza)
             </h5>
@@ -82,26 +104,72 @@
                     <span class="text-white-50" style="font-size: 0.65rem;">Filtro flexible para prints duras o avisos de documentación interna.</span>
                 </div>
             </div>
-            <div class="row g-3 mb-4">
-                <div class="col-md-4">
-                    <label class="form-label text-white small fw-bold">Fecha de Inicio</label>
-                    <input type="date" name="fechaInicio" class="form-control bg-dark text-white border-secondary" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label text-white small fw-bold">Fin Estimado (Cierre)</label>
-                    <input type="date" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" value="@Model.FechaFinEstimada?.ToString("yyyy-MM-dd")" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label text-white small fw-bold">Paso a Producción</label>
-                    <input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" value="@Model.FechaPasoProduccion?.ToString("yyyy-MM-dd")" />
-                </div>
-                <div class="col-md-12">
-                    <label class="form-label text-white small fw-bold">Notas o Reprogramaciones</label>
-                    <textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="3" placeholder="Añade comentarios sobre retrasos, cambios de alcance, etc.">@Model.Notas</textarea>
-                </div>
+
+            <h5 class="fw-bold text-light mb-3 border-bottom border-secondary pb-2 mt-4" style="font-size: 1rem;"><i class="bi bi-diagram-2-fill me-2"></i>4. Subfases Específicas</h5>
+            <p class="text-white-50 small mb-2">Edita las subfases existentes o agrega nuevas. Sus fechas estimadas de inicio y fin estarán limitadas automáticamente a los plazos del proyecto.</p>
+
+            <div id="subfases-container" class="mb-2">
+                @if (Model.Fases != null)
+                {
+                    foreach (var fase in Model.Fases.OrderBy(f => f.Orden))
+                    {
+                        // IMPORTANTE: Asegúrate de que tu modelo Fases esté incluyendo .SubFases en la consulta del Edit [HttpGet] en el Controller
+                        if (fase.SubFases != null)
+                        {
+                            foreach (var sub in fase.SubFases)
+                            {
+                                <div class="row g-2 mb-2 align-items-center subfase-row p-2 bg-dark bg-opacity-50 border border-secondary border-opacity-50" style="border-radius: 6px;">
+                                    <input type="hidden" name="Subfases[@subIndex].Id" value="@sub.Id" />
+                                    <div class="col-md-2">
+                                        <label class="form-label text-white-50 small mb-1">Fase Principal</label>
+                                        <select name="Subfases[@subIndex].FasePadre" class="form-select form-select-sm bg-dark text-white border-secondary" required>
+                                            @foreach (var f in Model.Fases.OrderBy(x => x.Orden))
+                                            {
+                                                <!option value="@f.NombreFase" @(f.Id == fase.Id ? "selected" : "")>@f.Orden. @f.NombreFase.Replace("_", " ")</!option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label text-white-50 small mb-1">Nombre Subfase</label>
+                                        <input type="text" name="Subfases[@subIndex].Nombre" class="form-control form-control-sm bg-dark text-white border-secondary" value="@sub.Nombre" required />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label text-white-50 small mb-1">Responsable</label>
+                                        <select name="Subfases[@subIndex].ResponsableId" class="form-select form-select-sm bg-dark text-white border-secondary">
+                                            <option value="">-- Sin asignar --</option>
+                                            @if (usuariosBanco != null)
+                                            {
+                                                foreach (var user in usuariosBanco)
+                                                {
+                                                    <!option value="@user.Id" @(sub.ResponsableId == user.Id ? "selected" : "")>@user.Email</!option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label text-white-50 small mb-1">Inicio Estimado</label>
+                                        <input type="date" name="Subfases[@subIndex].FechaInicio" class="form-control form-control-sm bg-dark text-white border-secondary subfase-date" value="@sub.FechaInicio?.ToString("yyyy-MM-dd")" />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label text-white-50 small mb-1">Fin Estimado</label>
+                                        <input type="date" name="Subfases[@subIndex].FechaFinEstimada" class="form-control form-control-sm bg-dark text-white border-secondary subfase-date" value="@sub.FechaFinEstimada?.ToString("yyyy-MM-dd")" />
+                                    </div>
+                                    <div class="col-md-1 text-center mt-4">
+                                        <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase" title="Eliminar Subfase"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </div>
+                                subIndex++;
+                            }
+                        }
+                    }
+                }
             </div>
 
-            <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>3. Actualizar Equipo</h5>
+            <button type="button" class="btn btn-sm btn-outline-info mb-4" id="btnAddSubfase">
+                <i class="bi bi-plus-circle me-1"></i> Añadir Subfase
+            </button>
+
+            <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>5. Actualizar Equipo Global</h5>
             <div class="bg-dark border border-secondary p-3 mb-4" style="border-radius: 6px; max-height: 200px; overflow-y: auto;">
                 @if (usuariosBanco != null)
                 {
@@ -119,10 +187,131 @@
             </div>
 
             <div class="text-end border-top border-secondary border-opacity-25 pt-3 mt-2">
-                <button type="submit" class="btn btn-warning px-5 py-2 fw-bold">
-                    <i class="bi bi-save me-1"></i> Guardar Cambios
+                <button type="submit" class="btn btn-warning px-5 py-2 fw-bold" id="btnSubmit">
+                    <span id="spinnerSubmit" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
+                    <i class="bi bi-save me-1" id="iconSubmit"></i> Guardar Cambios
                 </button>
             </div>
         </form>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.getElementById('formEditProject').addEventListener('submit', function() {
+            var btn = document.getElementById('btnSubmit');
+            var spinner = document.getElementById('spinnerSubmit');
+            var icon = document.getElementById('iconSubmit');
+
+            btn.disabled = true;
+            spinner.classList.remove('d-none');
+            icon.classList.add('d-none');
+            btn.innerHTML = spinner.outerHTML + ' Guardando cambios...';
+        });
+
+        // ── Lógica de Subfases Dinámicas ──
+        let subfaseIndex = @subIndex;
+
+        const usuariosOptions = `
+            @if (usuariosBanco != null)
+            {
+                    foreach (var user in usuariosBanco)
+                    {
+                            <option value="@user.Id">@user.Email</option>
+                    }
+            }
+        `;
+
+        const fasesOptions = `
+            @if (Model.Fases != null)
+            {
+                    foreach (var f in Model.Fases.OrderBy(x => x.Orden))
+                    {
+                            <option value="@f.NombreFase">@f.Orden. @f.NombreFase.Replace("_", " ")</option>
+                    }
+            }
+        `;
+
+        document.getElementById('btnAddSubfase').addEventListener('click', function() {
+            const container = document.getElementById('subfases-container');
+            const row = document.createElement('div');
+            row.className = 'row g-2 mb-2 align-items-center subfase-row p-2 bg-dark bg-opacity-50 border border-secondary border-opacity-50';
+            row.style.borderRadius = "6px";
+
+            row.innerHTML = `
+                <input type="hidden" name="Subfases[${subfaseIndex}].Id" value="0" />
+                <div class="col-md-2">
+                    <label class="form-label text-white-50 small mb-1">Fase Principal</label>
+                    <select name="Subfases[${subfaseIndex}].FasePadre" class="form-select form-select-sm bg-dark text-white border-secondary" required>
+                        ${fasesOptions}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-white-50 small mb-1">Nombre Subfase</label>
+                    <input type="text" name="Subfases[${subfaseIndex}].Nombre" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Ej: Validador C11" required />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label text-white-50 small mb-1">Responsable</label>
+                    <select name="Subfases[${subfaseIndex}].ResponsableId" class="form-select form-select-sm bg-dark text-white border-secondary">
+                        <option value="">-- Sin asignar --</option>
+                        ${usuariosOptions}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label text-white-50 small mb-1">Inicio Estimado</label>
+                    <input type="date" name="Subfases[${subfaseIndex}].FechaInicio" class="form-control form-control-sm bg-dark text-white border-secondary subfase-date" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label text-white-50 small mb-1">Fin Estimado</label>
+                    <input type="date" name="Subfases[${subfaseIndex}].FechaFinEstimada" class="form-control form-control-sm bg-dark text-white border-secondary subfase-date" />
+                </div>
+                <div class="col-md-1 text-center mt-4">
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase" title="Eliminar Subfase"><i class="bi bi-trash"></i></button>
+                </div>
+            `;
+
+            container.appendChild(row);
+            subfaseIndex++;
+            syncDateConstraints(); // Aplicar límites de fecha a la nueva fila
+        });
+
+        document.getElementById('subfases-container').addEventListener('click', function(e) {
+            const btnRemove = e.target.closest('.btn-remove-subfase');
+            if (btnRemove) {
+                btnRemove.closest('.subfase-row').remove();
+                reindexSubfases();
+            }
+        });
+
+        function reindexSubfases() {
+            const rows = document.querySelectorAll('.subfase-row');
+            rows.forEach((row, index) => {
+                const hiddenId = row.querySelector('input[type="hidden"]');
+                if(hiddenId) hiddenId.name = `Subfases[${index}].Id`;
+                row.querySelector('select[name$=".FasePadre"]').name = `Subfases[${index}].FasePadre`;
+                row.querySelector('input[name$=".Nombre"]').name = `Subfases[${index}].Nombre`;
+                row.querySelector('select[name$=".ResponsableId"]').name = `Subfases[${index}].ResponsableId`;
+                row.querySelector('input[name$=".FechaInicio"]').name = `Subfases[${index}].FechaInicio`;
+                row.querySelector('input[name$=".FechaFinEstimada"]').name = `Subfases[${index}].FechaFinEstimada`;
+            });
+            subfaseIndex = rows.length;
+        }
+
+        // ── Limitación dinámica de fechas ──
+        function syncDateConstraints() {
+            const pInicio = document.getElementById('proyectoFechaInicio').value;
+            const pFin = document.getElementById('proyectoFechaFin').value;
+
+            document.querySelectorAll('.subfase-date').forEach(input => {
+                if (pInicio) input.min = pInicio;
+                if (pFin) input.max = pFin;
+            });
+        }
+
+        document.getElementById('proyectoFechaInicio').addEventListener('change', syncDateConstraints);
+        document.getElementById('proyectoFechaFin').addEventListener('change', syncDateConstraints);
+
+        // Ejecutar validación inicial al cargar la vista
+        syncDateConstraints();
+    </script>
+}

@@ -95,6 +95,40 @@
                                     </div>
                                 }
 
+                                @* ── NUEVO: Listado de Subfases ── *@
+                                @if (fase.SubFases != null && fase.SubFases.Any())
+                                {
+                                    <div class="mt-2 ms-2 ps-3 border-start border-info border-opacity-50 d-flex flex-column gap-2">
+                                        @foreach (var subfase in fase.SubFases)
+                                        {
+                                            string badgeSubClass = "bg-secondary text-white-50";
+                                            if (subfase.Estado == "En Progreso") badgeSubClass = "bg-warning text-dark";
+                                            if (subfase.Estado == "Completado") badgeSubClass = "bg-success text-white";
+
+                                            <div class="p-2 rounded d-flex justify-content-between align-items-center flex-wrap gap-2" style="background-color: rgba(255,255,255,0.03);">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="bi bi-arrow-return-right text-white-50 me-2" style="font-size: 0.8rem;"></i>
+                                                    <span class="text-white" style="font-size: 0.82rem;">@subfase.Nombre</span>
+                                                    @if (subfase.Responsable != null && !string.IsNullOrEmpty(subfase.Responsable.Email))
+                                                    {
+                                                        <span class="ms-3 badge bg-dark border border-secondary text-info font-monospace" style="font-size: 0.65rem;">
+                                                            <i class="bi bi-person-fill me-1"></i>@@@subfase.Responsable.Email.Split('@')[0]
+                                                        </span>
+                                                    }
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="badge @badgeSubClass" style="font-size: 0.65rem; min-width: 75px;">@subfase.Estado</span>
+                                                    <select class="form-select form-select-sm status-select" style="width: 120px; font-size: 0.7rem; background-color: #1a1d2e;" onchange="changeSubFaseStatus(@subfase.Id, this)" @(faseBloqueada ? "disabled" : "")>
+                                                        <option value="Pendiente" selected="@(subfase.Estado == "Pendiente")">Pendiente</option>
+                                                        <option value="En Progreso" selected="@(subfase.Estado == "En Progreso")">En Progreso</option>
+                                                        <option value="Completado" selected="@(subfase.Estado == "Completado")">Completado</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
                                 @{
                                     var docsEstaFase = getDocsParaFase(fase.NombreFase);
                                     bool esPasoProduccion = fase.NombreFase.Contains("Paso_A_Produccion",
@@ -421,6 +455,39 @@
 </div>
 
 <script>
+    // ============================================================
+    // CAMBIO DE ESTADO DE SUBFASES
+    // ============================================================
+    function changeSubFaseStatus(subFaseId, selectElement) {
+        const nuevoEstado = selectElement.value;
+        const token = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]').value;
+
+        selectElement.disabled = true;
+
+        const formData = new FormData();
+        formData.append('subFaseId', subFaseId);
+        formData.append('nuevoEstado', nuevoEstado);
+        formData.append('__RequestVerificationToken', token);
+
+        fetch('/Proyectos/UpdateSubFaseStatus', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                toastr.success('Estado de subfase actualizado.');
+                const badge = selectElement.previousElementSibling;
+                badge.textContent = nuevoEstado;
+                badge.className = 'badge ' + (nuevoEstado === 'Completado' ? 'bg-success text-white' : (nuevoEstado === 'En Progreso' ? 'bg-warning text-dark' : 'bg-secondary text-white-50'));
+            } else {
+                toastr.error(data.message || 'Error al actualizar subfase.');
+            }
+        })
+        .catch(() => toastr.error('Error de conexión.'))
+        .finally(() => selectElement.disabled = false);
+    }
+
     // ============================================================
     // MURO SIN RECARGA — construye el HTML del comentario en el DOM
     // ============================================================

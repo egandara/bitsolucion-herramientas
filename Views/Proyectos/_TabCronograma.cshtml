@@ -422,11 +422,11 @@
                             @* Hitos: fases completadas *@
                             @foreach (var fase in hitosLinea)
                             {
-                                double pctFase = pctFn(fase.FechaActualizacion!.Value);
-                                if (pctFase < 3 || pctFase > 97) continue;
+                                double pctFaseHito = pctFn(fase.FechaActualizacion!.Value);
+                                if (pctFaseHito < 3 || pctFaseHito > 97) continue;
                                 string colorFase = fase.EstadoFase == "Completado" ? "#198754" : "#0dcaf0";
                                 string labelFase = $"F{fase.Orden}";
-                                <div class="tl-pin" style="left: @pctFase.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%;">
+                                <div class="tl-pin" style="left: @pctFaseHito.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%;">
                                     <div class="tl-pin-dot" style="background-color: @colorFase; width:9px; height:9px;"></div>
                                     <span class="tl-pin-label" style="color: @colorFase;">@labelFase</span>
                                     <span class="tl-pin-date">@fase.FechaActualizacion.Value.ToString("dd/MM")</span>
@@ -495,13 +495,28 @@
                     {
                         foreach (var fase in Model.Fases.OrderBy(f => f.Orden))
                         {
-                            int pctFase = fase.EstadoFase == "Completado" ? 100 : (fase.EstadoFase == "En Progreso" ? 50 : 0);
-                            string faseColor = fase.EstadoFase == "Completado" ? "#198754"
-                                             : fase.EstadoFase == "En Progreso" ? "#0dcaf0"
+                            // ── NUEVO: Cálculo de porcentaje basado en Subfases ──
+                            int pctFase = 0;
+                            if (fase.SubFases != null && fase.SubFases.Any())
+                            {
+                                int totalSub = fase.SubFases.Count;
+                                int compSub = fase.SubFases.Count(s => s.Estado == "Completado");
+                                pctFase = (int)Math.Round(((double)compSub / totalSub) * 100);
+                            }
+                            else
+                            {
+                                pctFase = fase.EstadoFase == "Completado" ? 100 : (fase.EstadoFase == "En Progreso" ? 50 : 0);
+                            }
+
+                            string faseColor = pctFase == 100 ? "#198754"
+                                             : pctFase > 0 ? "#0dcaf0"
                                              : "rgba(255,255,255,0.1)";
-                            string faseTextColor = fase.EstadoFase == "Completado" ? "#0ddb78"
-                                                 : fase.EstadoFase == "En Progreso" ? "#0dcaf0"
-                                                 : "rgba(255,255,255,0.3)";
+
+                            string faseTextColor = pctFase == 100 ? "#0ddb78"
+                                                                             : pctFase > 0 ? "#0dcaf0"
+                                                                             : "rgba(255,255,255,0.3)";
+
+                            string badgeEstadoVisual = pctFase == 100 ? "Completado" : (pctFase > 0 ? "En Progreso" : "Pendiente");
 
                             <div class="fase-tl-row p-3">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -519,7 +534,7 @@
                                             </span>
                                         }
                                         <span class="badge" style="font-size: 0.65rem; background-color: rgba(255,255,255,0.05); color: @faseTextColor; border: 1px solid @faseColor;">
-                                            @fase.EstadoFase
+                                            @badgeEstadoVisual
                                         </span>
                                     </div>
                                 </div>
@@ -530,6 +545,25 @@
                                 {
                                     <div class="mt-1 font-monospace" style="font-size: 0.6rem; color: rgba(255,255,255,0.25);">
                                         <i class="bi bi-person-check me-1 text-info"></i>@@@fase.UsuarioActualizacion
+                                    </div>
+                                }
+
+                                @* ── NUEVO: Mini-desglose de Subfases en Cronograma ── *@
+                                @if (fase.SubFases != null && fase.SubFases.Any())
+                                {
+                                    <div class="mt-2 pt-2 border-top border-secondary border-opacity-10">
+                                        <span class="text-white-50 font-monospace d-block mb-1" style="font-size: 0.65rem;">
+                                            Subfases: @fase.SubFases.Count(s => s.Estado == "Completado") / @fase.SubFases.Count completadas
+                                        </span>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            @foreach (var sub in fase.SubFases)
+                                            {
+                                                string subColor = sub.Estado == "Completado" ? "text-success" : (sub.Estado == "En Progreso" ? "text-warning" : "text-secondary");
+                                                <span class="badge bg-dark border border-secondary font-monospace text-white-50" style="font-size: 0.6rem;">
+                                                    <i class="bi bi-circle-fill @subColor me-1" style="font-size: 0.45rem;"></i>@sub.Nombre
+                                                </span>
+                                            }
+                                        </div>
                                     </div>
                                 }
 
