@@ -174,6 +174,7 @@
                         <td class="text-end">
                             <div class="btn-group">
                                 <a asp-action="ManageRoles" asp-route-id="@user.Id" class="btn btn-sm btn-outline-info" title="Roles"><i class="bi bi-key"></i></a>
+                                <a asp-action="ResetPassword" asp-route-id="@user.Id" class="btn btn-sm btn-outline-danger mx-1" title="Reiniciar Contraseña"><i class="bi bi-arrow-counterclockwise"></i></a>
                                 <a asp-action="EditQuota" asp-route-id="@user.Id" class="btn btn-sm btn-outline-warning mx-1" title="Cuota"><i class="bi bi-coin"></i></a>
                                 <a asp-controller="Audit" asp-action="Index" asp-route-userEmail="@user.Email" class="btn btn-sm btn-outline-light" title="Ver Actividad"><i class="bi bi-eye"></i></a>
                             </div>
