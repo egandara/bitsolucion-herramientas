@@ -63,46 +63,13 @@ namespace NotebookValidator.Web.Controllers
                                                f.FileName.EndsWith(".yml", StringComparison.OrdinalIgnoreCase) ||
                                                f.FileName.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase)).ToList();
 
-            var rawSources = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var rawTargets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
+            // Guardar ZIP una sola vez; se leerá por carpeta para cada job
+            byte[]? zipBytes = null;
             if (masterAutocert && zipFiles.Any())
             {
-                foreach (var zip in zipFiles)
-                {
-                    using var archive = new ZipArchive(zip.OpenReadStream(), ZipArchiveMode.Read);
-                    foreach (var entry in archive.Entries)
-                    {
-                        if (entry.FullName.EndsWith(".py", StringComparison.OrdinalIgnoreCase) ||
-                            entry.FullName.EndsWith(".sql", StringComparison.OrdinalIgnoreCase) ||
-                            entry.FullName.EndsWith(".scala", StringComparison.OrdinalIgnoreCase))
-                        {
-                            using var stream = entry.Open();
-                            using var reader = new StreamReader(stream);
-                            var content = await reader.ReadToEndAsync();
-
-                            content = Regex.Replace(content, @"[""']{1,3}\s*\+\s*([a-zA-Z0-9_]+)\s*\+\s*[""']{1,3}", "${$1}");
-
-                            foreach (Match m in Regex.Matches(content, @"(?i)(?:FROM|JOIN)\s+([`a-zA-Z0-9_\.\{\}\$]+)"))
-                            {
-                                string match = m.Groups[1].Value.Replace("`", "").Trim();
-                                if (!match.Equals("SELECT", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(match))
-                                    rawSources.Add(match);
-                            }
-                            foreach (Match m in Regex.Matches(content, @"(?i)spark\.(?:read\.)?table\s*\(\s*f?[""']([^""']+)[""']\s*\)"))
-                                rawSources.Add(m.Groups[1].Value);
-
-                            foreach (Match m in Regex.Matches(content, @"(?i)(?:saveAsTable|insertInto)\s*\(\s*f?[""']([^""']+)[""']\s*\)"))
-                                rawTargets.Add(m.Groups[1].Value);
-
-                            foreach (Match m in Regex.Matches(content, @"(?i)(?:INSERT\s+(?:INTO|OVERWRITE)|MERGE\s+INTO|CREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS)?)\s+([`a-zA-Z0-9_\.\{\}\$]+)"))
-                            {
-                                string match = m.Groups[1].Value.Replace("`", "").Trim();
-                                if (!string.IsNullOrWhiteSpace(match)) rawTargets.Add(match);
-                            }
-                        }
-                    }
-                }
+                using var ms = new MemoryStream();
+                await zipFiles[0].OpenReadStream().CopyToAsync(ms);
+                zipBytes = ms.ToArray();
             }
 
             Func<string, bool> isTempOrJunk = s =>
@@ -113,9 +80,6 @@ namespace NotebookValidator.Web.Controllers
                        low.Equals("dual") || low.Length <= 3 || !Regex.IsMatch(low, "[a-z]") ||
                        !(s.Contains(".") || s.Contains("{") || s.Contains("$"));
             };
-
-            var cleanSources = rawSources.Where(x => !isTempOrJunk(x)).ToList();
-            var cleanTargets = rawTargets.Where(x => !isTempOrJunk(x)).ToList();
 
             var provisioningKeywords = new[] { "creacion", "create", "tablas", "aprovisionamiento", "despliegue", "tables" };
 
@@ -186,14 +150,25 @@ namespace NotebookValidator.Web.Controllers
                 var autoSources = new List<object>();
                 var autoTargets = new List<object>();
 
-                if (masterAutocert)
+                if (masterAutocert && zipBytes != null)
                 {
-                    foreach (var s in cleanSources)
+                    // Inferir carpeta del job desde notebook_path del YAML
+                    // Ej: .../Notebooks/C11/BCI_001_... -> folderKey = "C11"
+                    string folderKey = "";
+                    var nbPathMatches = Regex.Matches(content,
+                        @"/Notebooks/([^/\r\n]+)/");
+                    if (nbPathMatches.Count > 0)
+                        folderKey = nbPathMatches[0].Groups[1].Value.Trim();
+
+                    var (jobSrcs, jobTgts) = await ExtractTablesForFolderAsync(
+                        zipBytes, folderKey, isTempOrJunk);
+
+                    foreach (var s in jobSrcs)
                     {
                         var parsed = ParseTableString(s, parametersList);
                         autoSources.Add(new { param = parsed.param, table = parsed.table });
                     }
-                    foreach (var t in cleanTargets)
+                    foreach (var t in jobTgts)
                     {
                         var parsed = ParseTableString(t, parametersList);
                         autoTargets.Add(new { param = parsed.param, table = parsed.table });
@@ -244,6 +219,53 @@ namespace NotebookValidator.Web.Controllers
             return Json(new { success = true, token = token, jobs = stagedJobs });
         }
 
+        private static async Task<(List<string> srcs, List<string> tgts)> ExtractTablesForFolderAsync(
+            byte[] zipData, string folderKey, Func<string, bool> isJunk)
+        {
+            var rSrc = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var rTgt = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using var arc = new ZipArchive(new MemoryStream(zipData), ZipArchiveMode.Read);
+            foreach (var entry in arc.Entries)
+            {
+                bool inFolder = string.IsNullOrEmpty(folderKey) ||
+                    entry.FullName.Split('/').Any(seg =>
+                        seg.Equals(folderKey, StringComparison.OrdinalIgnoreCase));
+                if (!inFolder) continue;
+                if (!entry.FullName.EndsWith(".py", StringComparison.OrdinalIgnoreCase) &&
+                    !entry.FullName.EndsWith(".sql", StringComparison.OrdinalIgnoreCase) &&
+                    !entry.FullName.EndsWith(".scala", StringComparison.OrdinalIgnoreCase)) continue;
+
+                using var stream = entry.Open();
+                using var reader = new StreamReader(stream);
+                var nb = await reader.ReadToEndAsync();
+                nb = Regex.Replace(nb,
+                    @"[""'{}]{1,3}\s*\+\s*([a-zA-Z0-9_]+)\s*\+\s*[""'{}]{1,3}",
+                    "${$1}");
+
+                foreach (Match m in Regex.Matches(nb,
+                    @"(?i)(?:FROM|JOIN)\s+([`a-zA-Z0-9_.{}$]+)"))
+                {
+                    string v = m.Groups[1].Value.Replace("`", "").Trim();
+                    if (!v.Equals("SELECT", StringComparison.OrdinalIgnoreCase) &&
+                        !string.IsNullOrWhiteSpace(v)) rSrc.Add(v);
+                }
+                foreach (Match m in Regex.Matches(nb,
+                    @"(?i)spark\.(?:read\.)?table\s*\(\s*f?[""'](  [^""']+)[""'  ]\s*\)"))
+                    rSrc.Add(m.Groups[1].Value);
+                foreach (Match m in Regex.Matches(nb,
+                    @"(?i)(?:saveAsTable|insertInto)\s*\(\s*f?[""'](  [^""']+)[""'  ]\s*\)"))
+                    rTgt.Add(m.Groups[1].Value);
+                foreach (Match m in Regex.Matches(nb,
+                    @"(?i)(?:INSERT\s+(?:INTO|OVERWRITE)|MERGE\s+INTO|CREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS)?)\s+([`a-zA-Z0-9_.{}$]+)"))
+                {
+                    string v = m.Groups[1].Value.Replace("`", "").Trim();
+                    if (!string.IsNullOrWhiteSpace(v)) rTgt.Add(v);
+                }
+            }
+            return (rSrc.Where(x => !isJunk(x)).ToList(),
+                    rTgt.Where(x => !isJunk(x)).ToList());
+        }
+
         private (string param, string table) ParseTableString(string raw, List<string> knownParams)
         {
             string cleaned = raw.Replace("{", "").Replace("}", "").Replace("$", "").Replace("`", "");
@@ -281,7 +303,8 @@ namespace NotebookValidator.Web.Controllers
             List<string> prodAutocert,
             List<string> sourceTables,
             List<string> targetTables,
-            string bundleName)
+            string bundleName,
+            string? globalSchemaBitacora = null)
         {
             string token = TempData.Peek("JobAnalysisToken")?.ToString();
             if (string.IsNullOrEmpty(token)) return BadRequest("La sesión de configuración de Jobs ha expirado.");
@@ -317,6 +340,20 @@ namespace NotebookValidator.Web.Controllers
                             if (!System.IO.File.Exists(filePath)) continue;
 
                             string rawContent = await System.IO.File.ReadAllTextAsync(filePath);
+                            // Aplicar schemaBitacora global si fue proporcionado
+                            if (!string.IsNullOrWhiteSpace(globalSchemaBitacora) &&
+                                (fileKey.EndsWith(".yml") || fileKey.EndsWith(".yaml")))
+                            {
+                                int sbIdx = rawContent.IndexOf("schemaBitacora:");
+                                if (sbIdx >= 0)
+                                {
+                                    int lineEnd = rawContent.IndexOf("\n", sbIdx);
+                                    if (lineEnd < 0) lineEnd = rawContent.Length;
+                                    rawContent = rawContent.Substring(0, sbIdx)
+                                        + "schemaBitacora: " + globalSchemaBitacora
+                                        + rawContent.Substring(lineEnd);
+                                }
+                            }
                             bool isYaml = fileKey.EndsWith(".yml") || fileKey.EndsWith(".yaml");
 
                             if (isYaml)

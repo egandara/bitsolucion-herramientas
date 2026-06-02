@@ -355,6 +355,47 @@
                     </div>
                 </div>
 
+                @* ── Banner global: schemaBitacora + agregar tabla masiva ── *@
+                <div id="bannerGlobal" class="p-3 mb-3 rounded border border-secondary border-opacity-25" style="background-color:#0b0d16;">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-12 col-md-5">
+                            <label class="text-white-50 fw-bold mb-1 d-block" style="font-size:0.72rem;">
+                                <i class="bi bi-journal-bookmark me-1 text-warning"></i>
+                                <span class="text-warning">schemaBitacora</span>
+                                <span class="text-white-50 ms-1">— se aplica a todos los jobs</span>
+                            </label>
+                            <input type="text" id="globalSchemaBitacora" name="globalSchemaBitacora"
+                                   class="form-control form-control-sm font-monospace bg-dark text-white border-secondary"
+                                   placeholder="catalog_bcidigital_dsr_001.sch_ida"
+                                   style="font-size:0.78rem;" />
+                        </div>
+                        <div class="col-12 col-md-7">
+                            <label class="text-white-50 fw-bold mb-1 d-block" style="font-size:0.72rem;">
+                                <i class="bi bi-table me-1 text-info"></i>
+                                <span class="text-info">Agregar tabla masiva</span>
+                                <span class="text-white-50 ms-1">— agrega a todos los jobs visibles</span>
+                            </label>
+                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                <select id="globalMassType" class="form-select form-select-sm bg-dark text-white border-secondary font-monospace" style="width:110px; font-size:0.72rem;">
+                                    <option value="source">Origen</option>
+                                    <option value="target">Destino</option>
+                                </select>
+                                <select id="globalMassParam" class="form-select form-select-sm bg-dark text-white border-secondary font-monospace" style="width:160px; font-size:0.72rem;">
+                                    <option value="">-- Sin Variable --</option>
+                                </select>
+                                <span class="text-white-50 fw-bold">.</span>
+                                <input type="text" id="globalMassTable"
+                                       class="form-control form-control-sm bg-dark text-white border-secondary font-monospace"
+                                       placeholder="nombre_tabla" style="width:180px; font-size:0.72rem;" />
+                                <button type="button" class="btn btn-sm btn-info fw-bold px-3"
+                                        onclick="addMassiveTable()" title="Agregar esta tabla a todos los jobs">
+                                    <i class="bi bi-plus-lg me-1"></i>Agregar a todos
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="table-responsive border border-secondary border-opacity-25 rounded mb-4">
                     <table class="table align-middle m-0 font-monospace" id="staging-table" style="font-size: 0.75rem;">
                         <thead>
@@ -911,6 +952,12 @@
 
                 $(hiddenContainer).append(`<input type="hidden" name="bundleName" value="${bundleNameVal}" />`);
 
+                // Pasar schemaBitacora global al controller
+                const schemaBitacora = document.getElementById('globalSchemaBitacora').value.trim();
+                if (schemaBitacora) {
+                    $(hiddenContainer).append(`<input type="hidden" name="globalSchemaBitacora" value="${schemaBitacora}" />`);
+                }
+
                 $('#permissions-tbody tr').each(function() {
                     const level = $(this).find('select').val();
                     const userName = $(this).find('.perm-user-name').val().trim();
@@ -953,6 +1000,48 @@
 
                 return true;
             });
+        });
+
+        // ── Poblar el selector de parámetros masivos al renderizar staging ────
+        window.populateGlobalMassParam = function() {
+            const allParams = new Set();
+            Object.values(window.jobParametersMap).forEach(params => {
+                params.forEach(p => allParams.add(p));
+            });
+            const sel = document.getElementById('globalMassParam');
+            sel.innerHTML = '<option value="">-- Sin Variable --</option>';
+            allParams.forEach(p => {
+                sel.insertAdjacentHTML('beforeend', `<option value="${p}">${p}</option>`);
+            });
+        };
+
+        // ── Agregar tabla masiva a todos los jobs visibles ────────────────────
+        window.addMassiveTable = function() {
+            const type  = document.getElementById('globalMassType').value;
+            const param = document.getElementById('globalMassParam').value;
+            const table = document.getElementById('globalMassTable').value.trim();
+
+            if (!table) { toastr.warning('Escribe el nombre de la tabla antes de agregar.'); return; }
+
+            let count = 0;
+            document.querySelectorAll('.gov-row:not(.d-none)').forEach(row => {
+                const idx = row.id.replace('govRow_', '');
+                addTableMappingRow(parseInt(idx), type, param, table);
+                count++;
+            });
+
+            if (count === 0) toastr.warning('No hay jobs visibles con linaje activo.');
+            else toastr.success(`Tabla agregada a ${count} job(s) como ${type === 'source' ? 'origen' : 'destino'}.`);
+            document.getElementById('globalMassTable').value = '';
+        };
+
+        // ── Poblar globalMassParam después de renderizar staging ─────────────
+        const origSuccess = window._origAjaxSuccess;
+        // Hook: después de que se renderizan los jobs, poblar el selector
+        $(document).ajaxComplete(function(event, xhr, settings) {
+            if (settings.url && settings.url.includes('PrepareStaging')) {
+                setTimeout(window.populateGlobalMassParam, 100);
+            }
         });
 
         window.addTableMappingRow = function(index, type, prefillParam = '', prefillTable = '') {

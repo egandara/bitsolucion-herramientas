@@ -370,7 +370,7 @@ namespace NotebookValidator.Web.Services
                     }
                 }
 
-                cleanYaml = Regex.Replace(cleanYaml, @"notebook_path:\s*/Repos/[^/]+/[^/]+/", "notebook_path: /Repos/${var.databricks_folder}/${bundle.name}/");
+                cleanYaml = Regex.Replace(cleanYaml, @"notebook_path:\s*/Repos/[^/]+/[^/]+/", "notebook_path: /Repos/${var.path}/${bundle.name}/");
                 foreach (var param in currentParamsList)
                 {
                     string pattern = @"(name:\s*" + param.Key + @"[\s\r\n]*default:\s*[""']?)" + Regex.Escape(param.Value) + @"([""']?)";
@@ -441,7 +441,7 @@ namespace NotebookValidator.Web.Services
                     }
 
                     autocertTaskBlock.AppendLine("          notebook_task:");
-                    autocertTaskBlock.AppendLine($"            notebook_path: /Repos/${{var.databricks_folder}}/${{bundle.name}}/notebooks/Notebooks/validaciones/{scalaNotebookName}");
+                    autocertTaskBlock.AppendLine($"            notebook_path: /Repos/${{var.path}}/${{bundle.name}}/notebooks/Notebooks/validaciones/{scalaNotebookName}");
                     autocertTaskBlock.AppendLine("            base_parameters:");
                     autocertTaskBlock.AppendLine("              ejecutarAutocertificacion: \"${var.flagAutocertificacion}\"");
                     autocertTaskBlock.AppendLine($"              nombreJob: \"${{var.jobName_{jCleanName}}}\"");
