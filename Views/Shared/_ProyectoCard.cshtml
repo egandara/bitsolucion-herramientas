@@ -1,0 +1,93 @@
+@model NotebookValidator.Web.Models.GestorProyectos.Proyecto
+
+<div class="card project-card p-4 h-100 d-flex flex-column">
+
+    <div class="d-flex justify-content-between align-items-start mb-2" style="gap: 8px;">
+        <div style="min-width: 0; flex: 1;">
+            <h5 class="fw-bold mb-0 text-truncate" style="font-family: 'Poppins', sans-serif;" title="@Model.Nombre">
+                <a asp-controller="Proyectos" asp-action="Details" asp-route-id="@Model.Id" class="text-white text-decoration-none hover-warning" style="transition: color 0.2s;">
+                    @Model.Nombre
+                </a>
+            </h5>
+            <span class="badge bg-secondary mt-1" style="font-size: 0.6rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block;">
+                <i class="bi bi-building me-1"></i>@(Model.Cliente?.Nombre ?? "Proyecto Interno")
+            </span>
+        </div>
+
+        <div class="d-flex flex-column align-items-end gap-1" style="flex-shrink: 0;">
+            <span class="badge bg-dark border border-secondary text-light" style="font-size: 0.55rem;">@Model.Estado</span>
+
+            @{
+                string badgeRiesgoCard = "bg-secondary text-white-50";
+                if (Model.EstadoRiesgo == "A Tiempo" || Model.EstadoRiesgo == "Completado") { badgeRiesgoCard = "bg-success text-white"; }
+                if (Model.EstadoRiesgo == "En Riesgo") { badgeRiesgoCard = "bg-warning text-dark"; }
+                if (Model.EstadoRiesgo == "Atrasado") { badgeRiesgoCard = "bg-danger text-white heartbeat"; }
+            }
+            <span class="badge @badgeRiesgoCard" style="font-size: 0.6rem; text-transform: uppercase;">
+                @if (Model.EstadoRiesgo == "Atrasado")
+                {
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                }
+                @Model.EstadoRiesgo
+            </span>
+        </div>
+    </div>
+
+    <p class="text-white-50 small mb-3 flex-grow-1" style="font-size: 0.8rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+        @(string.IsNullOrEmpty(Model.Descripcion) ? "Sin descripción asignada." : Model.Descripcion)
+    </p>
+
+    <div class="mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 0.7rem;">
+            <span class="text-white-50 text-uppercase" style="letter-spacing: 0.5px;">Progreso Global</span>
+            <span class="text-info fw-bold font-monospace">@Model.PorcentajeProgreso%</span>
+        </div>
+        <div class="progress progress-xl mb-1">
+            <div class="progress-bar bg-info" role="progressbar" style="width: @Model.PorcentajeProgreso%; transition: width 0.4s ease;" aria-valuenow="@Model.PorcentajeProgreso" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+
+        @if (Model.FechaFinEstimada.HasValue)
+        {
+            <div class="text-end font-monospace" style="font-size: 0.65rem;">
+                <span class="text-white-50">Cierre: </span>
+                <span class="@(Model.EstadoRiesgo == "Atrasado" ? "text-danger fw-bold" : "text-white")">@Model.FechaFinEstimada.Value.ToString("dd MMM yyyy")</span>
+                <span class="@(Model.EstadoRiesgo == "Atrasado" ? "text-danger" : "text-white-50") ms-1">(@Model.MensajeTiempo)</span>
+            </div>
+        }
+        else
+        {
+            <div class="text-end text-white-50 font-monospace" style="font-size: 0.65rem;">Sin fecha de cierre</div>
+        }
+    </div>
+
+    <div class="mb-3">
+        <span class="d-block text-white-50 mb-1" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">Equipo Asignado</span>
+        <div class="d-flex">
+            @foreach (var user in Model.UsuariosAsignados.Take(5))
+            {
+                <div class="avatar-circle" title="@user.Usuario.Email">
+                    @user.Usuario.Email.Substring(0, 2).ToUpper()
+                </div>
+            }
+            @if (Model.UsuariosAsignados.Count > 5)
+            {
+                <div class="avatar-circle bg-secondary text-white border-secondary">+@(Model.UsuariosAsignados.Count - 5)</div>
+            }
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-auto pt-3 border-top border-secondary border-opacity-25">
+        <span class="text-white-50" style="font-size: 0.7rem;"><i class="bi bi-calendar3 me-1"></i>Creado: @Model.FechaCreacion.ToString("dd MMM yyyy")</span>
+
+        @if (!string.IsNullOrEmpty(Model.DriveFolderUrl))
+        {
+            <a href="@Model.DriveFolderUrl" target="_blank" class="btn btn-sm btn-outline-info" style="font-size: 0.75rem;">
+                <i class="bi bi-google me-1"></i>Abrir Drive
+            </a>
+        }
+        else
+        {
+            <button class="btn btn-sm btn-outline-secondary disabled" style="font-size: 0.75rem;">Sin Drive</button>
+        }
+    </div>
+</div>

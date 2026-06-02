@@ -57,22 +57,60 @@ namespace NotebookValidator.Web.Controllers
         // ==========================================
 
         [HttpGet]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? filtro)
         {
             string currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
             bool isAdmin = User.IsInRole("Admin");
+            string shortUserName = (User.Identity?.Name ?? "").Split('@')[0];
 
+            // 1. Consulta base (agregamos el Include a Comentarios para las alertas/menciones)
             var query = _context.Proyectos
                 .Include(p => p.Cliente)
                 .Include(p => p.Fases)
+                .Include(p => p.Comentarios) // <-- ¡Nuevo Include!
                 .Include(p => p.UsuariosAsignados).ThenInclude(ua => ua.Usuario)
                 .OrderByDescending(p => p.FechaCreacion)
                 .AsNoTracking()
                 .AsSplitQuery();
 
-            var proyectos = isAdmin
-                ? await query.ToListAsync()
-                : await query.Where(p => p.UsuariosAsignados.Any(ua => ua.UsuarioId == currentUserId)).ToListAsync();
+            // 2. Filtramos primero por permisos (Admin ve todo, Developer solo los suyos)
+            if (!isAdmin)
+            {
+                query = query.Where(p => p.UsuariosAsignados.Any(ua => ua.UsuarioId == currentUserId));
+            }
+
+            // Traemos los proyectos de la base de datos
+            var proyectos = await query.ToListAsync();
+
+            // 3. Aplicamos el filtro del Dashboard (lo hacemos en memoria para soportar propiedades calculadas como EstadoRiesgo)
+            if (!string.IsNullOrEmpty(filtro))
+            {
+                proyectos = filtro.ToLower() switch
+                {
+                    "activos" => proyectos.Where(p => p.Estado == "Activo").ToList(),
+
+                    "atiempo" => proyectos.Where(p => p.EstadoRiesgo == "A Tiempo" || p.EstadoRiesgo == "Completado").ToList(),
+
+                    "enriesgo" => proyectos.Where(p => p.EstadoRiesgo == "En Riesgo").ToList(),
+
+                    "atrasados" => proyectos.Where(p => p.EstadoRiesgo == "Atrasado").ToList(),
+
+                    "qa_rechazados" => proyectos.Where(p => p.EstadoValidacionWorkspace == "Rechazado").ToList(),
+
+                    "qa_pendientes" => proyectos.Where(p => p.EstadoValidacionWorkspace == "Pendiente_Validacion").ToList(),
+
+                    "alertas" => proyectos.Where(p => p.Comentarios != null && p.Comentarios.Any(c =>
+                                    !c.Resuelto &&
+                                    (c.Tipo == "Advertencia" || c.Tipo == "Recordatorio") &&
+                                    c.FechaVencimiento < DateTime.Now)).ToList(),
+
+                    "menciones" => proyectos.Where(p => p.Comentarios != null && p.Comentarios.Any(c =>
+                                    !c.Resuelto &&
+                                    c.Menciones != null && c.Menciones.Contains(shortUserName))).ToList(),
+
+                    _ => proyectos // Si el filtro no coincide, devuelve todo
+                };
+            }
 
             return View(proyectos);
         }
@@ -280,8 +318,36 @@ namespace NotebookValidator.Web.Controllers
                 {
                     fecha = c.FechaVencimiento!.Value.ToString("yyyy-MM-dd"),
                     tipo = "alerta",
-                    etiqueta = $"Alerta resuelta: {(c.Texto.Length > 40 ? c.Texto.Substring(0, 40) + "..." : c.Texto)}",
-                    color = "#fd7e14"
+                    etiqueta = $"✓ Alerta resuelta: {(c.Texto.Length > 40 ? c.Texto.Substring(0, 40) + "..." : c.Texto)}",
+                    color = "#198754"   // verde — resuelta
+                });
+            }
+
+            // Recordatorios activos (pendientes, fecha futura)
+            foreach (var c in proyecto.Comentarios.Where(c =>
+                c.Tipo == "Recordatorio" && !c.Resuelto && c.FechaVencimiento.HasValue
+                && c.FechaVencimiento.Value.Date >= DateTime.Now.Date))
+            {
+                eventosCalendario.Add(new
+                {
+                    fecha = c.FechaVencimiento!.Value.ToString("yyyy-MM-dd"),
+                    tipo = "recordatorio",
+                    etiqueta = $"⏰ Recordatorio: {(c.Texto.Length > 40 ? c.Texto.Substring(0, 40) + "..." : c.Texto)}",
+                    color = "#fd7e14"   // naranja — pendiente
+                });
+            }
+
+            // Recordatorios vencidos (sin resolver, fecha pasada)
+            foreach (var c in proyecto.Comentarios.Where(c =>
+                c.Tipo == "Recordatorio" && !c.Resuelto && c.FechaVencimiento.HasValue
+                && c.FechaVencimiento.Value.Date < DateTime.Now.Date))
+            {
+                eventosCalendario.Add(new
+                {
+                    fecha = c.FechaVencimiento!.Value.ToString("yyyy-MM-dd"),
+                    tipo = "vencido",
+                    etiqueta = $"⚠ Vencido sin resolver: {(c.Texto.Length > 40 ? c.Texto.Substring(0, 40) + "..." : c.Texto)}",
+                    color = "#dc3545"   // rojo — vencido
                 });
             }
 
@@ -294,6 +360,10 @@ namespace NotebookValidator.Web.Controllers
 
             ViewBag.EventosCalendario = System.Text.Json.JsonSerializer.Serialize(eventosCalendario);
             ViewBag.FeedActividad = feedActividad;
+
+            // Jobs generados para este proyecto (para badges en fases)
+            ViewBag.JobsCount = await _context.ArtefactosJob
+                .CountAsync(j => j.ProyectoId == id);
 
             // Meses con actividad (para navegación del calendario)
             var mesesConActividad = eventosCalendario

@@ -3,6 +3,44 @@
 @{
     bool isValidadoWorkspace = Model.EstadoValidacionWorkspace == "Validado";
     string toolTipRequisito = isValidadoWorkspace ? "" : "Esta herramienta requiere una validación de código aprobada y vigente.";
+
+    // ── Mapeo subcategoría → palabras clave de la fase ───────────────────────
+    var mapaSubcatFase = new Dictionary<string, string[]>
+    {
+        ["Análisis Técnico"] = new[] { "Diseño", "Arquitectura" },
+        ["Carta Gantt"] = new[] { "Diseño", "Arquitectura" },
+        ["Aprobación QA"] = new[] { "Pruebas", "Certificacion", "Certificación" },
+        ["Matriz de Pruebas"] = new[] { "Pruebas", "Certificacion", "Certificación" },
+        ["NUAD"] = new[] { "NUAD" },
+        ["RAT"] = new[] { "RAT" },
+        ["Manual de Operación"] = new[] { "Manual", "ManualOperacion" },
+    };
+
+    // Documentos subidos en la bitácora agrupados por subcategoría
+    var docsSubidos = (Model.Comentarios != null ? Model.Comentarios.ToList() : new List<ComentarioProyecto>())
+        .Where(c => c.Tipo == "Documento" && !string.IsNullOrEmpty(c.Subcategoria))
+        .GroupBy(c => c.Subcategoria!)
+        .ToDictionary(g => g.Key, g => g.ToList());
+
+    // Jobs generados (pasado desde el controller via ViewBag)
+    bool hayJobsGenerados = (ViewBag.JobsCount ?? 0) > 0;
+    int jobsCount = ViewBag.JobsCount ?? 0;
+
+    // Función: documentos relevantes para una fase dada
+    Func<string, List<(string Subcategoria, string ArchivoNombre, string? Url)>> getDocsParaFase =
+        (nombreFase) =>
+        {
+            var res = new List<(string, string, string?)>();
+            foreach (var kv in mapaSubcatFase)
+            {
+                bool aplica = kv.Value.Any(kw =>
+                    nombreFase.Contains(kw, StringComparison.OrdinalIgnoreCase));
+                if (aplica && docsSubidos.TryGetValue(kv.Key, out var docs))
+                    foreach (var d in docs)
+                        res.Add((kv.Key, d.ArchivoNombre ?? "Documento", d.ArchivoUrl));
+            }
+            return res;
+        };
 }
 
 <div class="tab-pane fade show active" id="dashboard-pane" role="tabpanel" aria-labelledby="dashboard-tab" tabindex="0">
@@ -54,6 +92,54 @@
                                 {
                                     <div class="font-monospace text-white-50 opacity-75 border-top border-secondary border-opacity-10 pt-1" style="font-size: 0.65rem;">
                                         <i class="bi bi-person-check-fill me-1 text-info"></i> Act: <strong>@fase.FechaActualizacion.Value.ToString("dd/MM/yyyy HH:mm")</strong> por <strong>@@@fase.UsuarioActualizacion</strong>
+                                    </div>
+                                }
+
+                                @{
+                                    var docsEstaFase = getDocsParaFase(fase.NombreFase);
+                                    bool esPasoProduccion = fase.NombreFase.Contains("Paso_A_Produccion",
+                                        StringComparison.OrdinalIgnoreCase) ||
+                                        fase.NombreFase.Contains("Paso A Produccion",
+                                        StringComparison.OrdinalIgnoreCase);
+                                }
+                                @if (docsEstaFase.Any() || (esPasoProduccion && hayJobsGenerados))
+                                {
+                                    <div class="d-flex flex-wrap gap-1 pt-1 border-top border-secondary border-opacity-10">
+                                        @foreach (var doc in docsEstaFase)
+                                        {
+                                            if (!string.IsNullOrEmpty(doc.Url))
+                                            {
+                                                <a href="@doc.Url" target="_blank" class="text-decoration-none"
+                                                   title="@doc.ArchivoNombre">
+                                                    <span class="badge d-flex align-items-center gap-1"
+                                                          style="background:rgba(25,135,84,0.15);border:1px solid rgba(25,135,84,0.4);
+                                                        color:#0ddb78;font-size:0.6rem;border-radius:5px;padding:3px 7px;">
+                                                        <i class="bi bi-check-circle-fill" style="font-size:0.65rem;"></i>
+                                                        @doc.Subcategoria
+                                                    </span>
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge d-flex align-items-center gap-1"
+                                                      style="background:rgba(25,135,84,0.15);border:1px solid rgba(25,135,84,0.4);
+                                                    color:#0ddb78;font-size:0.6rem;border-radius:5px;padding:3px 7px;"
+                                                      title="@doc.ArchivoNombre">
+                                                    <i class="bi bi-check-circle-fill" style="font-size:0.65rem;"></i>
+                                                    @doc.Subcategoria
+                                                </span>
+                                            }
+                                        }
+                                        @if (esPasoProduccion && hayJobsGenerados)
+                                        {
+                                            <span class="badge d-flex align-items-center gap-1"
+                                                  style="background:rgba(13,202,240,0.1);border:1px solid rgba(13,202,240,0.35);
+                                                color:#0dcaf0;font-size:0.6rem;border-radius:5px;padding:3px 7px;"
+                                                  title="Jobs generados: @jobsCount">
+                                                <i class="bi bi-check-circle-fill" style="font-size:0.65rem;"></i>
+                                                Jobs (@jobsCount)
+                                            </span>
+                                        }
                                     </div>
                                 }
                             </div>
