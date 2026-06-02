@@ -17,9 +17,10 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 
     <style>
+
             /* ==========================================================================
-                       ESTANDARIZACIÓN GLOBAL DE SIDEBAR AL ALTO IMPACTO (COMPACTO AL 75%)
-                       ========================================================================== */
+                                   ESTANDARIZACIÓN GLOBAL DE SIDEBAR AL ALTO IMPACTO (COMPACTO AL 75%)
+                                   ========================================================================== */
             :root {
                 --sidebar-width: 260px !important;
                 --topbar-height: 60px !important;
@@ -193,8 +194,8 @@
                 }
 
             /* ==========================================================================
-                       OMNI-SEARCH GLOBAL (ATLASSIAN / JIRA STYLE)
-                       ========================================================================== */
+                                   OMNI-SEARCH GLOBAL (ATLASSIAN / JIRA STYLE)
+                                   ========================================================================== */
             .global-search-container {
                 position: relative;
                 width: 100%;
@@ -345,6 +346,245 @@
             }
     </style>
 
+
+    <style>
+            /* ── SIDEBAR COLAPSABLE ────────────────────────────────── */
+            :root {
+                --sidebar-collapsed-width: 56px;
+            }
+
+            .sidebar {
+                transition: width 0.25s cubic-bezier(0.4,0,0.2,1) !important;
+                overflow: visible !important; /* necesario para que los tooltips no se corten */
+            }
+
+                .sidebar.collapsed {
+                    width: var(--sidebar-collapsed-width) !important;
+                    overflow: visible !important;
+                }
+
+            /* El scroll va en sidebar-nav, no en sidebar */
+            .sidebar-nav {
+                overflow-y: auto !important;
+                overflow-x: visible !important; /* permite que los tooltips salgan */
+            }
+
+            /* Logo y Brand Header */
+            .sidebar-brand {
+                height: auto !important;
+                min-height: 70px !important;
+                flex-direction: row !important; /* Fila cuando está expandido */
+                justify-content: space-between !important;
+                padding: 12px 16px !important;
+            }
+
+            .brand-left {
+                align-items: flex-start !important;
+            }
+
+            .logo-full {
+                transition: opacity 0.2s;
+                max-height: 28px;
+                width: auto;
+            }
+
+            .logo-mini {
+                display: none;
+                height: 26px;
+                width: auto;
+                transition: opacity 0.2s;
+            }
+
+            /* Comportamiento al colapsar */
+            .sidebar.collapsed .sidebar-brand {
+                flex-direction: column !important; /* Apila logo, badge y botón */
+                padding: 12px 0 !important;
+                gap: 12px !important;
+            }
+
+            .sidebar.collapsed .brand-left {
+                align-items: center !important; /* Centra logo y badge */
+                gap: 4px !important;
+            }
+
+            .sidebar.collapsed .logo-full {
+                display: none !important;
+            }
+
+            .sidebar.collapsed .logo-mini {
+                display: block !important;
+            }
+
+            .sidebar.collapsed #btnToggleSidebar {
+                margin: 0 auto;
+            }
+
+            /* Textos y cabeceras ocultos al colapsar */
+            .sidebar.collapsed .nav-header-custom,
+            .sidebar.collapsed hr,
+            .sidebar.collapsed .nav-link span,
+            .sidebar.collapsed .transition-icon {
+                display: none !important;
+            }
+
+            /* Badge de entorno: Oculta solo la palabra LOCAL/CLOUD, deja el icono */
+            .sidebar.collapsed .env-text {
+                display: none !important;
+            }
+
+            /* Iconos centrados */
+            .sidebar.collapsed .nav-link {
+                justify-content: center !important;
+                padding: 0.45rem 0 !important;
+                border-left: none !important;
+                border-radius: 6px !important;
+                margin: 1px 4px !important;
+                position: relative;
+            }
+
+                .sidebar.collapsed .nav-link i {
+                    margin-right: 0 !important;
+                    font-size: 1.15rem !important;
+                }
+
+                .sidebar.collapsed .nav-link.active {
+                    background-color: rgba(255,193,7,0.12) !important;
+                    border-left: none !important;
+                }
+
+                /* Tooltip nativo al hacer hover */
+                .sidebar.collapsed .nav-link[data-sidebar-label] {
+                    overflow: visible !important;
+                }
+
+                    .sidebar.collapsed .nav-link[data-sidebar-label]:hover::after {
+                        content: attr(data-sidebar-label);
+                        position: fixed;
+                        left: calc(var(--sidebar-collapsed-width) + 8px);
+                        top: var(--tooltip-top, 50%);
+                        transform: translateY(-50%);
+                        background: #1a1d2e;
+                        color: #fff;
+                        font-size: 0.75rem;
+                        font-weight: 600;
+                        padding: 5px 12px;
+                        border-radius: 6px;
+                        white-space: nowrap;
+                        z-index: 9999;
+                        border: 1px solid rgba(255,255,255,0.15);
+                        box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+                        pointer-events: none;
+                    }
+
+            /* Administración colapsada: panel flotante al hover */
+            .sidebar.collapsed .admin-collapse-wrapper {
+                position: static;
+            }
+
+            .sidebar.collapsed #adminCollapse {
+                display: none !important;
+            }
+
+            /* FIX 1: Ocultar el flyout SIEMPRE por defecto para que no manche la vista expandida */
+            .admin-flyout {
+                display: none;
+            }
+
+            /* Estilos del flyout cuando el sidebar está colapsado */
+            .sidebar.collapsed .admin-flyout {
+                position: fixed;
+                left: var(--sidebar-collapsed-width);
+                top: 0; /* se ajusta via JS */
+                background: #111424;
+                border: 1px solid rgba(255,255,255,0.1);
+                border-radius: 0 8px 8px 0;
+                min-width: 210px;
+                z-index: 9999;
+                box-shadow: 4px 0 20px rgba(0,0,0,0.4);
+                padding: 6px 0;
+            }
+
+                /* FIX 2: Puente invisible para que el mouse no pierda el hover al moverse hacia el panel */
+                .sidebar.collapsed .admin-flyout::before {
+                    content: '';
+                    position: absolute;
+                    left: -20px; /* Cubre el espacio vacío hacia la izquierda */
+                    top: 0;
+                    bottom: 0;
+                    width: 20px;
+                    background: transparent;
+                }
+
+            /* Mostrar el panel al hacer hover */
+            .sidebar.collapsed .admin-collapse-wrapper:hover .admin-flyout {
+                display: block !important;
+            }
+
+            .sidebar.collapsed .admin-flyout a {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 14px;
+                font-size: 0.78rem;
+                color: rgba(255,255,255,0.7);
+                text-decoration: none;
+                white-space: nowrap;
+            }
+
+                .sidebar.collapsed .admin-flyout a:hover {
+                    background: rgba(255,193,7,0.08);
+                    color: #fff;
+                }
+
+                .sidebar.collapsed .admin-flyout a i {
+                    font-size: 0.9rem;
+                    width: 16px;
+                    text-align: center;
+                }
+
+            .sidebar.collapsed .admin-flyout-title {
+                font-size: 0.62rem;
+                font-weight: 700;
+                color: rgba(255,255,255,0.28);
+                letter-spacing: 1.2px;
+                text-transform: uppercase;
+                padding: 4px 14px 6px;
+            }
+
+            /* Botón toggle */
+            #btnToggleSidebar {
+                background: none;
+                border: none;
+                color: rgba(255,255,255,0.4);
+                cursor: pointer;
+                padding: 4px 6px;
+                border-radius: 5px;
+                font-size: 1rem;
+                transition: color 0.2s, background 0.2s;
+                flex-shrink: 0;
+            }
+
+                #btnToggleSidebar:hover {
+                    color: #ffc107;
+                    background: rgba(255,193,7,0.08);
+                }
+
+            /* main-content se expande al colapsar sidebar */
+            .main-wrapper {
+                display: flex;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            .main-content {
+                flex: 1;
+                min-width: 0;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+            }
+    </style>
+
     @RenderSection("Styles", required: false)
 </head>
 <body>
@@ -365,21 +605,27 @@
 
     <div class="main-wrapper">
         <aside class="sidebar">
-            <div class="sidebar-brand">
-                <a class="d-flex align-items-center justify-content-center w-100 mb-1" asp-controller="Home" asp-action="Index">
-                    <img src="~/img/Bit-solucion-logo-menu.png" alt="Bit Solución Logo" class="logo-full" />
-                </a>
-
-                <div class="environment-badge text-uppercase text-center text-white-50 font-monospace" style="font-size: 0.62rem; letter-spacing: 1.5px; opacity: 0.7;">
-                    @if (Context.Request.Host.Host.Contains("localhost") || Context.Request.Host.Host.Contains("127.0.0.1"))
-                    {
-                        <span style="color: #ffc107;"><i class="bi bi-lightning-fill me-1"></i>Local</span>
-                    }
-                    else
-                    {
-                        <span style="color: #0ddb78;"><i class="bi bi-shield-fill-check me-1"></i>Cloud</span>
-                    }
+            <div class="sidebar-brand w-100 d-flex align-items-center">
+                <div class="brand-left d-flex flex-column gap-1">
+                    <a asp-controller="Home" asp-action="Index" class="text-decoration-none">
+                        <img src="~/img/Bit-solucion-logo-menu.png" alt="Bit Solución Logo" class="logo-full" />
+                        <img src="~/img/B-logo-menu.png" alt="B" class="logo-mini" />
+                    </a>
+                    <div class="environment-badge text-uppercase font-monospace" style="font-size: 0.65rem; letter-spacing: 1px; opacity: 0.85;">
+                        @if (Context.Request.Host.Host.Contains("localhost") || Context.Request.Host.Host.Contains("127.0.0.1"))
+                        {
+                            <span style="color: #ffc107;" title="LOCAL"><i class="bi bi-lightning-fill"></i><span class="env-text fw-bold ms-1">LOCAL</span></span>
+                        }
+                        else
+                        {
+                            <span style="color: #0ddb78;" title="CLOUD"><i class="bi bi-shield-fill-check"></i><span class="env-text fw-bold ms-1">CLOUD</span></span>
+                        }
+                    </div>
                 </div>
+
+                <button id="btnToggleSidebar" title="Colapsar/Expandir menú" class="ms-auto flex-shrink-0">
+                    <i class="bi bi-layout-sidebar-reverse"></i>
+                </button>
             </div>
 
             <nav class="sidebar-nav mt-2">
@@ -387,10 +633,28 @@
                     <li class="nav-header-custom">General</li>
 
                     <li class="nav-item">
-                        <a class="nav-link @(isHomePage ? "active" : "")" asp-controller="Home" asp-action="Index">
+                        <a class="nav-link @(isHomePage ? "active" : "")" asp-controller="Home" asp-action="Index"
+                           data-sidebar-label="Inicio">
                             <i class="bi bi-house-door"></i> <span>Inicio</span>
                         </a>
                     </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link @(currentController == "Proyectos" ? "active" : "")" asp-controller="Proyectos" asp-action="Index"
+                           data-sidebar-label="Gestor de Proyectos">
+                            <i class="bi bi-kanban"></i> <span>Gestor de Proyectos</span>
+                        </a>
+                    </li>
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "Clientes" ? "active" : "")" asp-controller="Clientes" asp-action="Index"
+                               data-sidebar-label="Empresas / Clientes">
+                                <i class="bi bi-buildings"></i> <span>Empresas / Clientes</span>
+                            </a>
+                        </li>
+                    }
 
                     <li><hr></li>
 
@@ -399,23 +663,9 @@
                     @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
                     {
                         <li class="nav-item">
-                            <a class="nav-link @(currentController == "Home" && currentAction == "Validador" ? "active" : "")" asp-controller="Home" asp-action="Validador">
+                            <a class="nav-link @(currentController == "Home" && currentAction == "Validador" ? "active" : "")" asp-controller="Home" asp-action="Validador"
+                               data-sidebar-label="Validador de Notebooks">
                                 <i class="bi bi-journal-code"></i> <span>Validador de Notebooks</span>
-                            </a>
-                        </li>
-                    }
-
-                    <li class="nav-item">
-                        <a class="nav-link @(currentController == "Proyectos" ? "active" : "")" asp-controller="Proyectos" asp-action="Index">
-                            <i class="bi bi-kanban"></i> <span>Gestor de Proyectos</span>
-                        </a>
-                    </li>
-
-                    @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "Clientes" ? "active" : "")" asp-controller="Clientes" asp-action="Index">
-                                <i class="bi bi-buildings"></i> <span>Empresas / Clientes</span>
                             </a>
                         </li>
                     }
@@ -423,7 +673,8 @@
                     @if (User.IsInRole("Admin") || User.IsInRole("ParameterValidatorUser"))
                     {
                         <li class="nav-item">
-                            <a class="nav-link @(currentController == "ParameterValidator" ? "active" : "")" asp-controller="ParameterValidator" asp-action="Index">
+                            <a class="nav-link @(currentController == "ParameterValidator" ? "active" : "")" asp-controller="ParameterValidator" asp-action="Index"
+                               data-sidebar-label="Validador de Parámetros">
                                 <i class="bi bi-filetype-py"></i> <span>Validador de Parámetros</span>
                             </a>
                         </li>
@@ -432,7 +683,8 @@
                     @if (User.IsInRole("Admin"))
                     {
                         <li class="nav-item">
-                            <a class="nav-link @(currentController == "RegexSandbox" ? "active" : "")" asp-controller="RegexSandbox" asp-action="Index">
+                            <a class="nav-link @(currentController == "RegexSandbox" ? "active" : "")" asp-controller="RegexSandbox" asp-action="Index"
+                               data-sidebar-label="Sandbox de Reglas">
                                 <i class="bi bi-shield-shaded"></i> <span>Sandbox de Reglas</span>
                             </a>
                         </li>
@@ -445,7 +697,8 @@
                     @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
                     {
                         <li class="nav-item">
-                            <a class="nav-link @(currentController == "DataProfiling" ? "active" : "")" asp-controller="DataProfiling" asp-action="Index">
+                            <a class="nav-link @(currentController == "DataProfiling" ? "active" : "")" asp-controller="DataProfiling" asp-action="Index"
+                               data-sidebar-label="Perfilamiento de Datos">
                                 <i class="bi bi-bar-chart-steps"></i> <span>Perfilamiento de Datos</span>
                             </a>
                         </li>
@@ -454,7 +707,8 @@
                     @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
                     {
                         <li class="nav-item">
-                            <a class="nav-link @(currentController == "Cuadratura" ? "active" : "")" asp-controller="Cuadratura" asp-action="Index">
+                            <a class="nav-link @(currentController == "Cuadratura" ? "active" : "")" asp-controller="Cuadratura" asp-action="Index"
+                               data-sidebar-label="Cuadratura de Datos">
                                 <i class="bi bi-table"></i> <span>Cuadratura de Datos</span>
                             </a>
                         </li>
@@ -463,7 +717,8 @@
                     @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
                     {
                         <li class="nav-item">
-                            <a class="nav-link @(currentController == "NotebookGenerator" ? "active" : "")" asp-controller="NotebookGenerator" asp-action="Index">
+                            <a class="nav-link @(currentController == "NotebookGenerator" ? "active" : "")" asp-controller="NotebookGenerator" asp-action="Index"
+                               data-sidebar-label="Generador de Notebooks">
                                 <i class="bi bi-file-earmark-plus"></i> <span>Generador de Notebooks</span>
                             </a>
                         </li>
@@ -472,14 +727,16 @@
                     @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
                     {
                         <li class="nav-item">
-                            <a class="nav-link @(currentController == "DocGen" ? "active" : "")" asp-controller="DocGen" asp-action="Index">
+                            <a class="nav-link @(currentController == "DocGen" ? "active" : "")" asp-controller="DocGen" asp-action="Index"
+                               data-sidebar-label="Documentador Técnico">
                                 <i class="bi bi-journal-text"></i> <span>Documentador Técnico</span>
                             </a>
                         </li>
                     }
 
                     <li class="nav-item">
-                        <a class="nav-link @(currentController == "JobConverter" ? "active" : "")" asp-controller="JobConverter" asp-action="Index">
+                        <a class="nav-link @(currentController == "JobConverter" ? "active" : "")" asp-controller="JobConverter" asp-action="Index"
+                           data-sidebar-label="Generador de Jobs">
                             <i class="bi bi-wrench-adjustable-circle-fill"></i> <span>Generador de Jobs</span>
                         </a>
                     </li>
@@ -487,7 +744,8 @@
                     @if (User.IsInRole("Admin") || User.IsInRole("TempCleanerUser"))
                     {
                         <li class="nav-item">
-                            <a class="nav-link @(currentController == "TempTable" ? "active" : "")" asp-controller="TempTable" asp-action="Index">
+                            <a class="nav-link @(currentController == "TempTable" ? "active" : "")" asp-controller="TempTable" asp-action="Index"
+                               data-sidebar-label="Limpieza Temporal">
                                 <i class="bi bi-trash3"></i> <span>Limpieza Temporal</span>
                             </a>
                         </li>
@@ -497,12 +755,15 @@
                     {
                         <li><hr></li>
                         <li class="nav-header-custom" style="color: #ffc107 !important; opacity: 0.85;">Sistema</li>
-                        <li class="nav-item">
+                        <li class="nav-item admin-collapse-wrapper">
                             <a class="nav-link @(isAdminActive ? "active" : "text-warning fw-bold") d-flex align-items-center"
-                               data-bs-toggle="collapse" href="#adminCollapse" role="button" aria-expanded="@(isAdminActive ? "true" : "false")" aria-controls="adminCollapse">
+                               data-bs-toggle="collapse" href="#adminCollapse" role="button"
+                               aria-expanded="@(isAdminActive ? "true" : "false")" aria-controls="adminCollapse"
+                               data-sidebar-label="Administración">
                                 <i class="bi bi-shield-lock-fill"></i> <span>Administración</span>
                                 <i class="bi bi-chevron-down ms-auto small transition-icon"></i>
                             </a>
+                            @* Collapse normal (sidebar expandido) *@
                             <div class="collapse @(isAdminActive ? "show" : "")" id="adminCollapse">
                                 <ul class="nav flex-column ms-3 mt-1 border-start border-secondary" style="border-width: 2px !important;">
                                     <li class="nav-item">
@@ -536,6 +797,16 @@
                                         </a>
                                     </li>
                                 </ul>
+                            </div>
+                            @* Flyout (sidebar colapsado — aparece al hacer hover sobre el ícono) *@
+                            <div class="admin-flyout" id="adminFlyout">
+                                <div class="admin-flyout-title">Administración</div>
+                                <a asp-controller="AdminDashboard" asp-action="Index"><i class="bi bi-speedometer2"></i>Dashboard Global</a>
+                                <a asp-controller="Admin" asp-action="Index"><i class="bi bi-people"></i>Gestionar Usuarios</a>
+                                <a asp-controller="ValidationRuleAdmin" asp-action="Index"><i class="bi bi-list-check"></i>Reglas Validador</a>
+                                <a asp-controller="FunctionsAdmin" asp-action="Index"><i class="bi bi-braces-asterisk"></i>Funciones (Maestro)</a>
+                                <a asp-controller="AuditLog" asp-action="Index"><i class="bi bi-shield-check"></i>Log de Auditoría</a>
+                                <a asp-controller="ParameterAdmin" asp-action="Index"><i class="bi bi-tags-fill"></i>Admin. Parámetros</a>
                             </div>
                         </li>
                     }
@@ -634,11 +905,9 @@
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl)
         });
-
         let searchTimeout;
         const searchInput = document.getElementById('globalSearchInput');
         const searchResults = document.getElementById('globalSearchResults');
-
         if(searchInput) {
         searchInput.addEventListener('input', function(e) {
         clearTimeout(searchTimeout);
@@ -695,7 +964,6 @@
         searchResults.style.display = 'none';
         }
         });
-
         searchInput.addEventListener('focus', function() {
         if (this.value.trim().length >= 2 && searchResults.innerHTML !== '') {
         searchResults.style.display = 'block';
@@ -703,6 +971,56 @@
         });
         }
         });
+    </script>
+
+    @* ── Toggle sidebar ── *@
+    <script>
+        (function() {
+        const sidebar     = document.querySelector('.sidebar');
+        const btn         = document.getElementById('btnToggleSidebar');
+        const STORAGE_KEY = 'sidebar_collapsed';
+        const adminWrapper = document.querySelector('.admin-collapse-wrapper');
+        const adminFlyout  = adminWrapper?.querySelector('.admin-flyout');
+
+        // Posicionar flyout de admin dinámicamente
+        if (adminWrapper && adminFlyout) {
+        adminWrapper.addEventListener('mouseenter', function() {
+        const rect = adminWrapper.getBoundingClientRect();
+        adminFlyout.style.top = rect.top + 'px';
+        });
+        }
+
+        // Posicionar tooltips de ::after via CSS variable por elemento
+        // Los tooltips usan position:fixed, necesitamos pasar el top via CSS custom property
+        document.querySelectorAll('.nav-link[data-sidebar-label]').forEach(link => {
+        link.addEventListener('mouseenter', function() {
+        const rect = this.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        this.style.setProperty('--tooltip-top', midY + 'px');
+        });
+        });
+
+        function applyState(collapsed) {
+        if (collapsed) {
+        sidebar.classList.add('collapsed');
+        btn.querySelector('i').className = 'bi bi-layout-sidebar';
+        btn.title = 'Expandir menú';
+        } else {
+        sidebar.classList.remove('collapsed');
+        btn.querySelector('i').className = 'bi bi-layout-sidebar-reverse';
+        btn.title = 'Colapsar menú';
+        }
+        }
+
+        const saved = localStorage.getItem(STORAGE_KEY);
+        applyState(saved === 'true');
+
+        btn.addEventListener('click', function() {
+        const newState = !sidebar.classList.contains('collapsed');
+        applyState(newState);
+        localStorage.setItem(STORAGE_KEY, newState);
+        });
+        })();
     </script>
 
     @await RenderSectionAsync("Scripts", required: false)
@@ -776,7 +1094,6 @@
             cargarNotificaciones();
             // Refrescar cada 60 segundos como fallback
             setInterval(cargarNotificaciones, 60000);
-
             // Toggle del panel
             document.getElementById('btnNotificaciones')?.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -786,20 +1103,17 @@
             panel.classList.toggle('d-none');
             if (!abierto) cargarNotificaciones(); // Refrescar al abrir
             });
-
             // Cerrar al hacer clic fuera
             document.addEventListener('click', function(e) {
             const container = document.getElementById('notif-container');
             if (container && !container.contains(e.target))
             document.getElementById('notif-panel')?.classList.add('d-none');
             });
-
             // ── SignalR: recibir notificaciones en tiempo real ─────
             const connection = new signalR.HubConnectionBuilder()
             .withUrl('/notificacionesHub')
             .withAutomaticReconnect()
             .build();
-
             connection.on('NuevaNotificacion', function(n) {
             const lista = document.getElementById('notif-lista');
             const vacio = document.getElementById('notif-vacio');
@@ -819,7 +1133,6 @@
             toastr.info(n.titulo, '', { timeOut: 4000, positionClass: 'toast-bottom-right' });
             }
             });
-
             connection.start().catch(() => {});
             })();
 

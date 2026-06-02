@@ -1,6 +1,6 @@
 @model NotebookValidator.Web.Models.GestorProyectos.Proyecto
-@using NotebookValidator.Web.Models.GestorProyectos
 @using NotebookValidator.Web.Models
+@using NotebookValidator.Web.Models.GestorProyectos
 @{
     bool isValidadoWorkspace = Model.EstadoValidacionWorkspace == "Validado";
     bool isRechazadoWorkspace = Model.EstadoValidacionWorkspace == "Rechazado";
@@ -45,6 +45,40 @@
 
     string eventosJson = ViewBag.EventosCalendario ?? "[]";
     string mesesJson = ViewBag.MesesConActividad ?? "[]";
+
+    // ── Mapeo subcategoría → palabras clave de fase ──────────────────────────
+    var mapaSubcatFaseCron = new Dictionary<string, string[]>
+    {
+        ["Análisis Técnico"] = new[] { "Diseño", "Arquitectura" },
+        ["Carta Gantt"] = new[] { "Diseño", "Arquitectura" },
+        ["Aprobación QA"] = new[] { "Pruebas", "Certificacion", "Certificación" },
+        ["Matriz de Pruebas"] = new[] { "Pruebas", "Certificacion", "Certificación" },
+        ["NUAD"] = new[] { "NUAD" },
+        ["RAT"] = new[] { "RAT" },
+        ["Manual de Operación"] = new[] { "Manual", "ManualOperacion" },
+    };
+
+    var docsSubidosCron = (Model.Comentarios != null ? Model.Comentarios.ToList() : new System.Collections.Generic.List<NotebookValidator.Web.Models.GestorProyectos.ComentarioProyecto>())
+        .Where(c => c.Tipo == "Documento" && !string.IsNullOrEmpty(c.Subcategoria))
+        .GroupBy(c => c.Subcategoria!)
+        .ToDictionary(g => g.Key, g => g.ToList());
+
+    bool hayJobsCron = (ViewBag.JobsCount ?? 0) > 0;
+    int jobsCountCron = ViewBag.JobsCount ?? 0;
+
+    Func<string, List<(string Subcategoria, string? Url)>> getDocsCron =
+        (nombreFase) =>
+        {
+            var res = new List<(string, string?)>();
+            foreach (var kv in mapaSubcatFaseCron)
+            {
+                if (kv.Value.Any(kw => nombreFase.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                    && docsSubidosCron.TryGetValue(kv.Key, out var docs))
+                    foreach (var d in docs)
+                        res.Add((kv.Key, d.ArchivoUrl));
+            }
+            return res;
+        };
 
     // Hitos para la barra de tiempo
     int diasTotalesBar = (Model.FechaInicio.HasValue && Model.FechaFinEstimada.HasValue)
@@ -498,6 +532,49 @@
                                         <i class="bi bi-person-check me-1 text-info"></i>@@@fase.UsuarioActualizacion
                                     </div>
                                 }
+
+                                @{
+                                    var docsCronFase = getDocsCron(fase.NombreFase);
+                                    bool esProdCron = fase.NombreFase.Contains("Paso_A_Produccion",
+                                        StringComparison.OrdinalIgnoreCase) ||
+                                        fase.NombreFase.Contains("Paso A Produccion",
+                                        StringComparison.OrdinalIgnoreCase);
+                                }
+                                @if (docsCronFase.Any() || (esProdCron && hayJobsCron))
+                                {
+                                    <div class="d-flex flex-wrap gap-1 mt-1 pt-1 border-top border-secondary border-opacity-10">
+                                        @foreach (var doc in docsCronFase)
+                                        {
+                                            if (!string.IsNullOrEmpty(doc.Url))
+                                            {
+                                                <a href="@doc.Url" target="_blank" class="text-decoration-none" title="Abrir en Drive">
+                                                    <span class="badge d-flex align-items-center gap-1"
+                                                          style="background:rgba(25,135,84,0.15);border:1px solid rgba(25,135,84,0.4);
+                                                        color:#0ddb78;font-size:0.58rem;border-radius:4px;padding:2px 6px;">
+                                                        <i class="bi bi-check-circle-fill" style="font-size:0.6rem;"></i>@doc.Subcategoria
+                                                    </span>
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge d-flex align-items-center gap-1"
+                                                      style="background:rgba(25,135,84,0.15);border:1px solid rgba(25,135,84,0.4);
+                                                    color:#0ddb78;font-size:0.58rem;border-radius:4px;padding:2px 6px;">
+                                                    <i class="bi bi-check-circle-fill" style="font-size:0.6rem;"></i>@doc.Subcategoria
+                                                </span>
+                                            }
+                                        }
+                                        @if (esProdCron && hayJobsCron)
+                                        {
+                                            <span class="badge d-flex align-items-center gap-1"
+                                                  style="background:rgba(13,202,240,0.1);border:1px solid rgba(13,202,240,0.35);
+                                                color:#0dcaf0;font-size:0.58rem;border-radius:4px;padding:2px 6px;"
+                                                  title="Jobs generados: @jobsCountCron">
+                                                <i class="bi bi-check-circle-fill" style="font-size:0.6rem;"></i>Jobs (@jobsCountCron)
+                                            </span>
+                                        }
+                                    </div>
+                                }
                             </div>
                         }
                     }
@@ -545,7 +622,13 @@
                         <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#6f42c1;flex-shrink:0;"></span>QA
                     </span>
                     <span class="badge d-flex align-items-center gap-1 px-2 py-1" style="background:rgba(253,126,20,0.12); border:1px solid rgba(253,126,20,0.3); font-size:0.72rem; font-weight:600; color:#fd7e14; border-radius:6px;">
-                        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fd7e14;flex-shrink:0;"></span>Alerta
+                        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fd7e14;flex-shrink:0;"></span>Recordatorio
+                    </span>
+                    <span class="badge d-flex align-items-center gap-1 px-2 py-1" style="background:rgba(220,53,69,0.12); border:1px solid rgba(220,53,69,0.3); font-size:0.72rem; font-weight:600; color:#ff6b7a; border-radius:6px;">
+                        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#dc3545;flex-shrink:0;"></span>Vencido
+                    </span>
+                    <span class="badge d-flex align-items-center gap-1 px-2 py-1" style="background:rgba(25,135,84,0.12); border:1px solid rgba(25,135,84,0.3); font-size:0.72rem; font-weight:600; color:#0ddb78; border-radius:6px;">
+                        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#198754;flex-shrink:0;"></span>Resuelto
                     </span>
                 </div>
             </div>

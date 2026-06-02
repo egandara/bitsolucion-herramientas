@@ -907,3 +907,74 @@ body.light-theme .list-group-item .text-muted {
 .topbar-dropdown-menu .dropdown-divider {
     border-top: 1px solid var(--border-color) !important;
 }
+
+/* --- ESTILOS DE TARJETAS DE PROYECTOS --- */
+.project-card {
+    background-color: #0b0d16;
+    border: 1px solid rgba(255, 193, 7, 0.15);
+    border-radius: 10px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+    .project-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        border-color: rgba(255, 193, 7, 0.4);
+    }
+
+.avatar-circle {
+    width: 28px;
+    height: 28px;
+    background-color: #172a45;
+    color: #ffc107;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+    border: 1px solid rgba(255,193,7,0.3);
+    margin-left: -8px;
+}
+
+    .avatar-circle:first-child {
+        margin-left: 0;
+    }
+
+.hover-warning:hover {
+    color: #ffc107 !important;
+}
+
+.progress-xl {
+    height: 6px;
+    background-color: #111424;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+@keyframes heartbeat {
+    0% {
+        transform: scale(1);
+    }
+
+    14% {
+        transform: scale(1.1);
+    }
+
+    28% {
+        transform: scale(1);
+    }
+
+    42% {
+        transform: scale(1.1);
+    }
+
+    70% {
+        transform: scale(1);
+    }
+}
+
+.heartbeat {
+    animation: heartbeat 2s infinite;
+    display: inline-block;
+}

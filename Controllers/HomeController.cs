@@ -61,6 +61,7 @@ namespace NotebookValidator.Web.Controllers
                 .Include(p => p.Cliente)
                 .Include(p => p.Fases.OrderBy(f => f.Orden))
                 .Include(p => p.UsuariosAsignados)
+                    .ThenInclude(ua => ua.Usuario)  // <--- ¡ESTA ES LA LÍNEA MÁGICA QUE FALTA!
                 .Where(p => p.Estado == "Activo")
                 .AsNoTracking()
                 .AsSplitQuery();
@@ -77,16 +78,43 @@ namespace NotebookValidator.Web.Controllers
                     .ToListAsync();
 
             // Métricas de resumen
+            // Métricas de resumen de tiempo (Originales)
             int totalActivos = proyectos.Count;
             int totalATiempo = proyectos.Count(p => p.EstadoRiesgo == "A Tiempo" || p.EstadoRiesgo == "Completado");
             int totalEnRiesgo = proyectos.Count(p => p.EstadoRiesgo == "En Riesgo");
             int totalAtrasado = proyectos.Count(p => p.EstadoRiesgo == "Atrasado");
 
+            // --- NUEVOS KPIs TÉCNICOS Y COLABORATIVOS ---
+            string shortUserName = userEmail.Split('@')[0];
+
+            // 1. Códigos Rechazados por QA
+            int qaRechazados = proyectos.Count(p => p.EstadoValidacionWorkspace == "Rechazado");
+
+            // 2. Códigos Subidos Pendientes de Validar
+            int qaPendientes = proyectos.Count(p => p.EstadoValidacionWorkspace == "Pendiente_Validacion");
+
+            // 3. Alertas Críticas (Vencidas y sin resolver)
+            int alertasCriticas = await _context.ComentariosProyecto
+                .CountAsync(c => !c.Resuelto &&
+                                 (c.Tipo == "Advertencia" || c.Tipo == "Recordatorio") &&
+                                 c.FechaVencimiento < DateTime.Now &&
+                                 (isAdmin || _context.ProyectosUsuarios.Any(pu => pu.ProyectoId == c.ProyectoId && pu.UsuarioId == currentUserId)));
+
+            // 4. Mis Menciones Pendientes
+            int misMenciones = await _context.ComentariosProyecto
+                .CountAsync(c => !c.Resuelto && c.Menciones != null && c.Menciones.Contains(shortUserName));
+
+            // Enviar todo a la vista
             ViewBag.ProyectosActivos = proyectos;
             ViewBag.TotalActivos = totalActivos;
             ViewBag.TotalATiempo = totalATiempo;
             ViewBag.TotalEnRiesgo = totalEnRiesgo;
             ViewBag.TotalAtrasado = totalAtrasado;
+
+            ViewBag.QaRechazados = qaRechazados;
+            ViewBag.QaPendientes = qaPendientes;
+            ViewBag.AlertasCriticas = alertasCriticas;
+            ViewBag.MisMenciones = misMenciones;
 
             return View();
         }

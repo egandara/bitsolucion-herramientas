@@ -118,7 +118,18 @@
         border-radius: 6px;
         padding: 8px 10px;
         text-align: center;
+        display: block; /* Convierte el div/a en un bloque clicable */
+        text-decoration: none; /* Quita el subrayado de los links */
+        transition: all 0.2s ease;
     }
+
+        .hero-stat-pill:hover {
+            border-color: rgba(13,202,240,0.5);
+            background-color: rgba(13,202,240,0.05);
+            transform: translateY(-2px);
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
 
     .tools-section-label {
         font-size: 0.7rem;
@@ -142,124 +153,80 @@
         <span id="sync-indicator" class="ms-2 small text-warning d-inline-block" style="font-size: 0.95rem; font-weight: normal; opacity: 0; transition: opacity 0.3s ease;"></span>
     </h1>
 
-    <p class="lead lead-dashboard text-light mb-4" style="opacity: 0.8;">
-        Organiza tus módulos arrastrándolos o cambiando su tamaño.
-        <button class="btn btn-outline-warning btn-sm ms-3 px-3 py-1" data-bs-toggle="offcanvas" data-bs-target="#offcanvasModules" style="border-radius: 6px; font-size: 0.85rem;"><i class="bi bi-grid-3x3-gap-fill me-1"></i> Gestionar Módulos</button>
-        <button id="btn-reset-layout" class="btn btn-link btn-sm text-white-50 ms-2 p-0 text-decoration-none" style="font-size: 0.85rem; vertical-align: baseline;"><i class="bi bi-arrow-counterclockwise"></i> Restablecer Layout</button>
-    </p>
+    <div class="mb-5 mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="text-white fw-bold mb-0">
+                <i class="bi bi-kanban text-warning me-2"></i>Vista Rápida de Proyectos
+            </h5>
+            <a href="@Url.Action("Index", "Proyectos")" class="btn btn-sm btn-outline-secondary text-white-50">
+                Ver todos los proyectos &rarr;
+            </a>
+        </div>
 
-    @* ══════════════════════════════════════════════════════════
-       HERO PANEL — GESTOR DE PROYECTOS
-       Fijo encima del grid, no arrastrable
-       ══════════════════════════════════════════════════════════ *@
-    @if (proyectos.Any())
-    {
-        <div class="hero-gp text-start mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-kanban-fill text-warning"></i>
-                    <span class="fw-bold text-warning" style="font-size: 0.85rem; letter-spacing: 0.3px;">Gestor de Proyectos — Vista Rápida</span>
-                </div>
-                <a asp-controller="Proyectos" asp-action="Index" class="text-decoration-none" style="font-size: 0.75rem; color: rgba(13,202,240,0.8); border: 1px solid rgba(13,202,240,0.3); padding: 3px 12px; border-radius: 4px;">
-                    <i class="bi bi-arrow-right me-1"></i>Ver todos los proyectos
+        <div class="row g-4 mb-4">
+            @if (ViewBag.ProyectosActivos != null)
+            {
+                foreach (var proyecto in ViewBag.ProyectosActivos)
+                {
+                    <div class="col-12 col-md-6 col-xl-3">
+                        <partial name="_ProyectoCard" model="proyecto" />
+                    </div>
+                }
+            }
+        </div>
+
+        <div class="row g-2">
+            <div class="col-6 col-md-3">
+                <a href="@Url.Action("Index", "Proyectos", new { filtro = "activos" })" class="hero-stat-pill">
+                    <div class="fw-bold font-monospace text-warning" style="font-size: 1.2rem;">@ViewBag.TotalActivos</div>
+                    <div class="text-white-50" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">Activos</div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="@Url.Action("Index", "Proyectos", new { filtro = "atiempo" })" class="hero-stat-pill">
+                    <div class="fw-bold font-monospace" style="font-size: 1.2rem; color: #0ddb78;">@ViewBag.TotalATiempo</div>
+                    <div class="text-white-50" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">A tiempo</div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="@Url.Action("Index", "Proyectos", new { filtro = "enriesgo" })" class="hero-stat-pill">
+                    <div class="fw-bold font-monospace" style="font-size: 1.2rem; color: #ffc107;">@ViewBag.TotalEnRiesgo</div>
+                    <div class="text-white-50" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">En riesgo</div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="@Url.Action("Index", "Proyectos", new { filtro = "atrasados" })" class="hero-stat-pill">
+                    <div class="fw-bold font-monospace" style="font-size: 1.2rem; color: #ff6b7a;">@ViewBag.TotalAtrasado</div>
+                    <div class="text-white-50" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">Atrasado</div>
                 </a>
             </div>
 
-            <div class="row g-2 mb-3">
-                @foreach (var p in proyectos)
-                {
-                    string barColor = p.EstadoRiesgo switch {
-                        "Atrasado"   => "#dc3545",
-                        "En Riesgo"  => "#ffc107",
-                        "Completado" => "#198754",
-                        _            => "#0dcaf0"
-                    };
-                    string badgeBg = p.EstadoRiesgo switch {
-                        "Atrasado"   => "rgba(220,53,69,0.15)",
-                        "En Riesgo"  => "rgba(255,193,7,0.12)",
-                        "Completado" => "rgba(25,135,84,0.15)",
-                        _            => "rgba(13,202,240,0.1)"
-                    };
-                    string badgeColor = p.EstadoRiesgo switch {
-                        "Atrasado"   => "#ff6b7a",
-                        "En Riesgo"  => "#ffc107",
-                        "Completado" => "#0ddb78",
-                        _            => "#0dcaf0"
-                    };
-                    string faseName = p.Fases?
-                        .OrderBy(f => f.Orden)
-                        .FirstOrDefault(f => f.EstadoFase == "En Progreso" || f.EstadoFase == "Pendiente")?
-                        .NombreFase.Replace("_", " ") ?? "—";
-
-                    <div class="col-lg-3">
-                        <a asp-controller="Proyectos" asp-action="Details" asp-route-id="@p.Id" class="proj-quick-card">
-                            <div class="d-flex justify-content-between align-items-start mb-1 gap-2">
-                                <span class="text-white fw-bold" style="font-size: 0.78rem; line-height: 1.3; flex: 1;">@p.Nombre</span>
-                                <span class="badge rounded-pill" style="font-size: 0.65rem; background-color: @badgeBg; color: @badgeColor; border: 1px solid @badgeColor; white-space: nowrap; flex-shrink: 0;">
-                                    @p.EstadoRiesgo
-                                </span>
-                            </div>
-                            @if (p.Cliente != null)
-                            {
-                                <div class="text-white-50 mb-1" style="font-size: 0.68rem; font-style: italic;">
-                                    <i class="bi bi-building" style="font-size: 0.65rem; margin-right: 3px;"></i>@p.Cliente.Nombre
-                                </div>
-                            }
-                            <div class="mb-2" style="font-size: 0.68rem; color: rgba(13,202,240,0.65);">
-                                <i class="bi bi-arrow-right-short"></i>@faseName
-                            </div>
-                            <div class="proj-prog-bg mb-1">
-                                <div class="proj-prog-fg" style="width: @p.PorcentajeProgreso%; background-color: @barColor;"></div>
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <span class="text-white-50 font-monospace" style="font-size: 0.65rem;">@p.PorcentajeProgreso%</span>
-                                <span class="font-monospace" style="font-size: 0.65rem; color: @barColor;">@p.MensajeTiempo</span>
-                            </div>
-                        </a>
-                    </div>
-                }
+            <div class="col-6 col-md-3 mt-2 mt-md-0">
+                <a href="@Url.Action("Index", "Proyectos", new { filtro = "qa_rechazados" })" class="hero-stat-pill">
+                    <div class="fw-bold font-monospace text-danger" style="font-size: 1.2rem;">@(ViewBag.QaRechazados ?? 0)</div>
+                    <div class="text-white-50" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">QA Rechazado</div>
+                </a>
             </div>
-
-            @* Métricas de resumen *@
-            <div class="row g-2 pt-2 border-top border-secondary border-opacity-10">
-                <div class="col-3">
-                    <div class="hero-stat-pill">
-                        <div class="fw-bold font-monospace text-warning" style="font-size: 1.2rem;">@totalActivos</div>
-                        <div class="text-white-50" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">Activos</div>
-                    </div>
-                </div>
-                <div class="col-3">
-                    <div class="hero-stat-pill">
-                        <div class="fw-bold font-monospace" style="font-size: 1.2rem; color: #0ddb78;">@totalATiempo</div>
-                        <div class="text-white-50" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">A tiempo</div>
-                    </div>
-                </div>
-                <div class="col-3">
-                    <div class="hero-stat-pill">
-                        <div class="fw-bold font-monospace" style="font-size: 1.2rem; color: #ffc107;">@totalEnRiesgo</div>
-                        <div class="text-white-50" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">En riesgo</div>
-                    </div>
-                </div>
-                <div class="col-3">
-                    <div class="hero-stat-pill">
-                        <div class="fw-bold font-monospace" style="font-size: 1.2rem; color: #ff6b7a;">@totalAtrasado</div>
-                        <div class="text-white-50" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">Atrasado</div>
-                    </div>
-                </div>
+            <div class="col-6 col-md-3 mt-2 mt-md-0">
+                <a href="@Url.Action("Index", "Proyectos", new { filtro = "qa_pendientes" })" class="hero-stat-pill">
+                    <div class="fw-bold font-monospace text-info" style="font-size: 1.2rem;">@(ViewBag.QaPendientes ?? 0)</div>
+                    <div class="text-white-50" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">Sin Validar</div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3 mt-2 mt-md-0">
+                <a href="@Url.Action("Index", "Proyectos", new { filtro = "alertas" })" class="hero-stat-pill">
+                    <div class="fw-bold font-monospace text-warning" style="font-size: 1.2rem;">@(ViewBag.AlertasCriticas ?? 0)</div>
+                    <div class="text-white-50" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">Alertas Vencidas</div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3 mt-2 mt-md-0">
+                <a href="@Url.Action("Index", "Proyectos", new { filtro = "menciones" })" class="hero-stat-pill">
+                    <div class="fw-bold font-monospace" style="font-size: 1.2rem; color: #0ddb78;">@(ViewBag.MisMenciones ?? 0)</div>
+                    <div class="text-white-50" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">Mis Menciones</div>
+                </a>
             </div>
         </div>
-    }
-    else
-    {
-        @* Estado vacío — no hay proyectos asignados *@
-        <a asp-controller="Proyectos" asp-action="Index" class="text-decoration-none d-block mb-4">
-            <div class="hero-gp text-center py-4" style="opacity: 0.7;">
-                <i class="bi bi-kanban d-block text-warning mb-2" style="font-size: 2rem;"></i>
-                <span class="text-white-50 small">No tienes proyectos activos asignados.</span>
-                <span class="d-block mt-1" style="font-size: 0.75rem; color: rgba(13,202,240,0.7);">Ir al Gestor de Proyectos →</span>
-            </div>
-        </a>
-    }
+    </div>
 
     @* ══════════════════════════════════════════════════════════
        GRID DE HERRAMIENTAS (sin cambios respecto al original)
