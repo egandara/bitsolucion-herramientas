@@ -1,0 +1,852 @@
+@{
+    ViewData["Title"] = "Visor de Arquitectura de Jobs";
+}
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+<style>
+    .timeline-container { position: relative; padding-left: 30px; margin-top: 20px; }
+    .timeline-container::before { content: ''; position: absolute; left: 11px; top: 0; bottom: 0; width: 2px; background: rgba(13, 202, 240, 0.3); }
+    .timeline-item { position: relative; margin-bottom: 1.5rem; background: #0b0d16; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .timeline-item::before { content: ''; position: absolute; left: -24px; top: 15px; width: 10px; height: 10px; border-radius: 50%; background: #0dcaf0; border: 2px solid #1a1d2e; z-index: 2; }
+
+    #notebookTabs { flex-wrap: nowrap !important; overflow-x: auto !important; overflow-y: hidden !important; border-bottom: 2px solid rgba(255, 255, 255, 0.1); padding-bottom: 2px; }
+    #notebookTabs::-webkit-scrollbar { height: 6px; }
+    #notebookTabs::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 4px; }
+    #notebookTabs::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+    #notebookTabs::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+
+    #notebookTabs .nav-link { color: rgba(255, 255, 255, 0.5); border: 1px solid transparent; border-bottom: 2px solid rgba(255, 255, 255, 0.1); border-radius: 0; background: transparent; transition: all 0.2s; display: flex; align-items: center; padding: 0.5rem 1rem; }
+    #notebookTabs .nav-link:hover { color: #fff; border-bottom: 2px solid rgba(255, 255, 255, 0.3); }
+    #notebookTabs .nav-link.active { color: #0dcaf0 !important; background-color: rgba(13, 202, 240, 0.05) !important; border-color: transparent; border-bottom: 2px solid #0dcaf0 !important; font-weight: 600; }
+
+    .tab-title-text { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
+    .close-tab-btn { font-size: 1.2rem; line-height: 0.5; cursor: pointer; opacity: 0.5; transition: all 0.2s; border-radius: 50%; padding: 2px 4px; margin-left: 8px; color: #fff; }
+    .close-tab-btn:hover { opacity: 1; color: #dc3545 !important; background-color: rgba(220,53,69,0.15); }
+
+    .link-origen-dato { color: #0dcaf0; text-decoration: underline; text-decoration-color: rgba(13, 202, 240, 0.4); text-underline-offset: 3px; font-weight: 600; transition: all 0.2s; }
+    .link-origen-dato:hover { color: #fff; text-decoration-color: #fff; }
+    
+    #jobListContainer::-webkit-scrollbar { width: 4px; }
+    #jobListContainer::-webkit-scrollbar-track { background: transparent; }
+    #jobListContainer::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+    
+    .job-list-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 4px; transition: all 0.2s; border: 1px solid transparent; }
+    .job-list-item:hover { background: rgba(13, 202, 240, 0.05); border-color: rgba(13, 202, 240, 0.2); }
+    .job-title-link { color: #0dcaf0; text-decoration: none; font-size: 0.8rem; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+    .job-title-link:hover { color: #fff; }
+    .job-actions button { padding: 2px 6px; font-size: 0.7rem; }
+    
+    #codeModal pre { margin: 0; border-radius: 0; max-height: 65vh; background-color: #1d1f21 !important; border: 1px solid rgba(255,255,255,0.05); }
+    #codeModal code { font-family: 'Consolas', 'Courier New', monospace; font-size: 0.85rem; }
+
+    .dropzone-container { border: 2px dashed rgba(255,255,255,0.2); border-radius: 8px; padding: 15px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: rgba(0,0,0,0.2); }
+    .dropzone-container:hover, .dropzone-container.dragover { border-color: #0dcaf0; background: rgba(13, 202, 240, 0.05); }
+    .dropzone-icon { font-size: 2rem; color: rgba(255,255,255,0.5); margin-bottom: 10px; transition: color 0.3s; }
+    .dropzone-container:hover .dropzone-icon, .dropzone-container.dragover .dropzone-icon { color: #0dcaf0; }
+
+    .vis-network .vis-navigation .vis-button {
+        width: 32px !important;
+        height: 32px !important;
+        background-color: #1a1d2e !important;
+        border: 1px solid rgba(13, 202, 240, 0.3) !important;
+        border-radius: 6px !important;
+        margin: 4px !important;
+        transition: all 0.2s ease !important;
+        filter: invert(1) opacity(0.7) !important; 
+    }
+    .vis-network .vis-navigation .vis-button:hover {
+        background-color: rgba(13, 202, 240, 0.2) !important;
+        border-color: #0dcaf0 !important;
+        box-shadow: 0 0 10px rgba(13, 202, 240, 0.5) !important;
+        filter: invert(1) opacity(1) !important;
+    }
+
+    .custom-nav-btn { transition: all 0.2s ease; cursor: pointer; }
+    .custom-nav-btn:hover { background-color: rgba(13, 202, 240, 0.15) !important; color: #fff !important; }
+    .custom-nav-btn:active { transform: scale(0.95); }
+</style>
+
+<div class="container-fluid dashboard-xl-container mt-3">
+    @Html.AntiForgeryToken()
+
+    <div class="d-flex align-items-center mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-0 text-white" style="font-family: 'Poppins', sans-serif;">
+                <i class="bi bi-diagram-3-fill text-info me-2"></i>Visor de Arquitectura de Jobs e Ing. Inversa
+            </h1>
+            <p class="mb-0 small text-white-50">Carga la configuración de uno o varios Jobs y el código fuente para extraer el linaje automático por celdas.</p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-md-4 col-lg-3">
+            <div class="card p-4 border-0 h-100 d-flex flex-column" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                <h6 class="fw-bold text-warning mb-3"><i class="bi bi-cloud-upload me-2"></i>Cargar Artefactos</h6>
+                
+                <div class="mb-3">
+                    <label class="form-label text-white-50 small">1. Configuración de Job(s) (.json, .yml)</label>
+                    <div class="dropzone-container" id="jobDropzone" onclick="document.getElementById('jobFileInput').click()">
+                        <i class="bi bi-filetype-json dropzone-icon"></i>
+                        <p class="mb-0 small text-white-50" id="jobDropzoneText">Arrastra o haz clic aquí</p>
+                    </div>
+                    <input type="file" id="jobFileInput" class="d-none" accept=".json,.yml,.yaml" multiple>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label text-white-50 small">2. Código Fuente (.zip) <span class="badge bg-secondary ms-1">Opcional</span></label>
+                    <div class="dropzone-container" id="zipDropzone" onclick="document.getElementById('zipFileInput').click()">
+                        <i class="bi bi-file-zip dropzone-icon"></i>
+                        <p class="mb-0 small text-white-50" id="zipDropzoneText">Arrastra el ZIP aquí</p>
+                    </div>
+                    <input type="file" id="zipFileInput" class="d-none" accept=".zip">
+                </div>
+
+                <button id="btnProcess" class="btn btn-info btn-sm w-100 fw-bold mb-3">
+                    <i class="bi bi-magic me-1"></i> Dibujar DAG(s)
+                </button>
+
+                <div id="jobDetailsPanel" class="d-none border-top border-secondary border-opacity-25 pt-3 flex-grow-1 d-flex flex-column">
+                    <h6 class="text-success fw-bold small">Detalles de la Carga</h6>
+                    <div class="font-monospace text-white-50" style="font-size: 0.75rem;">
+                        <div><strong class="text-white">Total Tareas:</strong> <span id="lblTaskCount">0</span></div>
+                        <div class="mt-2"><strong class="text-white">Jobs detectados (<span id="lblJobCount">0</span>):</strong></div>
+                    </div>
+                    <div id="jobListContainer" class="mt-2 pe-1 flex-grow-1" style="max-height: calc(100vh - 450px); min-height: 150px; overflow-y: auto; overflow-x: hidden;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-8 col-lg-9">
+            <div class="card p-0 border-0 position-relative" style="background-color: #1a1d2e; border-radius: 10px; min-height: 550px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                <div id="emptyStateMsg" class="position-absolute top-50 start-50 translate-middle text-center text-white-50" style="z-index: 10;">
+                    <i class="bi bi-diagram-2 d-block opacity-25" style="font-size: 4rem; margin-bottom: -10px;"></i>
+                    <p class="font-monospace small mt-2">Sube uno o varios archivos de configuración para generar el grafo.</p>
+                </div>
+
+                <div id="network-container" style="width: 100%; height: 550px; background-color: #0b0d16;"></div>
+                
+                <div class="position-absolute bottom-0 start-0 p-3 text-white-50" style="pointer-events:none; font-size: 0.7rem;" id="zoomHintMsg">
+                    <i class="bi bi-mouse3 me-1"></i>Arrastra el lienzo para moverte.
+                </div>
+
+                <div class="position-absolute bottom-0 end-0 p-3 d-none" style="z-index: 100;" id="customNavControls">
+                    <div class="bg-dark border border-secondary border-opacity-50 rounded-pill d-flex shadow-lg" style="backdrop-filter: blur(10px); background-color: rgba(11, 13, 22, 0.8) !important;">
+                        <button class="btn btn-sm text-info px-3 py-2 border-0 rounded-start-pill custom-nav-btn" onclick="if(network) network.moveTo({scale: network.getScale() * 1.5, animation: {duration: 300}})" title="Acercar (Zoom In)">
+                            <i class="bi bi-zoom-in fs-5"></i>
+                        </button>
+                        <div class="border-end border-secondary border-opacity-50 my-2"></div>
+                        <button class="btn btn-sm text-info px-3 py-2 border-0 custom-nav-btn" onclick="if(network) network.moveTo({scale: network.getScale() / 1.5, animation: {duration: 300}})" title="Alejar (Zoom Out)">
+                            <i class="bi bi-zoom-out fs-5"></i>
+                        </button>
+                        <div class="border-end border-secondary border-opacity-50 my-2"></div>
+                        <button class="btn btn-sm text-info px-3 py-2 border-0 rounded-end-pill custom-nav-btn" onclick="if(network) network.fit({animation: {duration: 500, easingFunction: 'easeInOutQuad'}})" title="Centrar todo (Fit)">
+                            <i class="bi bi-arrows-fullscreen fs-5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="lineagePlaceholder" class="d-none mt-4">
+                <div class="card p-5 border-0 text-center" style="background-color: #1a1d2e; border-radius: 10px; border: 2px dashed rgba(13, 202, 240, 0.3) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <i class="bi bi-hand-index-thumb text-info opacity-75" style="font-size: 3rem;"></i>
+                    <h5 class="text-white mt-3" style="font-family: 'Poppins', sans-serif;">Descubre el Linaje Interno</h5>
+                    <p class="text-white-50 mb-0 small">Haz clic en cualquier tarea del diagrama superior para explorar su código y extraer su lógica de negocio.</p>
+                </div>
+            </div>
+
+            <div class="d-none mt-4" id="lineagePanel">
+                <div class="card p-3 border-0" style="background-color: #1a1d2e; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <h6 class="fw-bold text-info mb-3"><i class="bi bi-search me-2"></i>Linaje Interno de Notebooks</h6>
+                    <ul class="nav nav-tabs" id="notebookTabs" role="tablist" style="font-size: 0.8rem;"></ul>
+                    <div class="tab-content pt-3" id="notebookTabContent"></div>
+                </div>
+            </div>
+        </div> 
+    </div>
+</div>
+
+<div class="modal fade" id="exportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white border-secondary">
+            <div class="modal-header border-secondary border-opacity-25">
+                <h5 class="modal-title" id="exportModalTitle">Exportar Documentación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info py-2 small border-0 bg-opacity-10" role="alert">
+                    <i class="bi bi-info-circle me-1"></i> La Hoja 1 contendrá un diagrama y un resumen nativo de la arquitectura de este Job.
+                </div>
+                <p class="small text-white-50 mb-2">Selecciona las tareas que deseas auditar y extraer como hojas adicionales:</p>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleAllExportCheckboxes(true)" style="font-size:0.7rem;">Marcar Todo</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleAllExportCheckboxes(false)" style="font-size:0.7rem;">Desmarcar Todo</button>
+                </div>
+                
+                <div id="exportTaskList" class="list-group list-group-flush mb-2 border border-secondary border-opacity-25 rounded overflow-auto" style="max-height: 300px; font-size:0.8rem;">
+                </div>
+            </div>
+            <div class="modal-footer border-secondary border-opacity-25">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success btn-sm" id="btnConfirmExport">
+                    <i class="bi bi-file-earmark-excel-fill me-1"></i> Generar Excel Analítico
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="codeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content bg-dark text-white border-secondary">
+            <div class="modal-header border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+                <h5 class="modal-title fw-bold text-info mb-0" id="codeModalTitle" style="font-family: 'Poppins', sans-serif;"><i class="bi bi-file-earmark-code me-2"></i>Código Fuente de la Celda</h5>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-light me-3" onclick="copyRawCode()">
+                        <i class="bi bi-clipboard me-1"></i>Copiar
+                    </button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+            <div class="modal-body p-0 position-relative">
+                <pre><code id="codeModalContent" class="language-python"></code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+
+    <script>
+        let network = null;
+        let globalNodesData = null; 
+        let currentLoadedJobs = []; 
+        let currentExportJobIndex = -1; 
+        let currentUploadedZipFileNames = []; 
+        window.globalCellsRawData = {}; 
+
+        const opTranslations = {
+            "CREATE TABLE": "CREACIÓN DE TABLA",
+            "CREATE VIEW": "CREACIÓN DE VISTA",
+            "DROP TABLE": "ELIMINACIÓN DE TABLA",
+            "DROP VIEW": "ELIMINACIÓN DE VISTA",
+            "TRUNCATE": "TRUNCADO DE TABLA",
+            "INSERT": "INSERCIÓN DE DATOS EN",
+            "SPARK INSERT": "SPARK INSERTA EN (insertInto)",
+            "MERGE": "ACTUALIZACIÓN (MERGE) EN",
+            "DELETE": "ELIMINACIÓN DE DATOS EN",
+            "READ TABLE": "LECTURA DE TABLA",
+            "JOIN TABLE": "CRUCE CON TABLA (JOIN)",
+            "WHERE FILTER": "FILTRO APLICADO (WHERE)",
+            "GROUP BY": "AGRUPACIÓN (GROUP BY)",
+            "ORDER BY": "ORDENAMIENTO (ORDER BY)",
+            "SPARK READ": "SPARK LEE DESDE",
+            "SPARK WRITE": "SPARK ESCRIBE EN",
+            "RUN NOTEBOOK": "EJECUCIÓN DE NOTEBOOK",
+            "GET PARAMETER": "OBTENCIÓN DE PARÁMETRO",
+            "DBFS MOVE": "MOVER ARCHIVO EN DBFS",
+            "DBFS REMOVE": "ELIMINAR ARCHIVO EN DBFS",
+            "DBFS LIST": "LISTAR ARCHIVOS EN DBFS",
+            "SAVE RDD": "GUARDADO DE RDD / ARCHIVO",
+            "CUSTOM EXPORT": "EXPORTACIÓN CUSTOMIZADA",
+            "LIST DEFINITION": "DEFINICIÓN DE LISTA",
+            "FOR LOOP": "BUCLE SOBRE COLECCIÓN"
+        };
+
+        // ── 1. CONEXIÓN CON EL BUSCADOR GLOBAL DEL LAYOUT ──
+        const topSearchBar = document.getElementById('globalSearchInput');
+        if (topSearchBar) {
+            topSearchBar.addEventListener('input', function(e) {
+                const term = e.target.value.toLowerCase().trim();
+                
+                // 1. Filtrar/Iluminar Cajitas en el Grafo (DAG)
+                if (globalNodesData) {
+                    const updates = [];
+                    globalNodesData.forEach(node => {
+                        if (node.isRoot) return; 
+                        
+                        let isMatch = false;
+                        
+                        if (term === '') {
+                            isMatch = true; 
+                        } else {
+                            if (node.originalTaskKey && node.originalTaskKey.toLowerCase().includes(term)) {
+                                isMatch = true;
+                            }
+                            if (!isMatch && window.globalCellsRawData) {
+                                const safeKey = node.originalTaskKey.replace(/[^a-zA-Z0-9]/g, '-');
+                                for (const tabId in window.globalCellsRawData) {
+                                    if (tabId.includes(safeKey)) { 
+                                        const cells = window.globalCellsRawData[tabId];
+                                        for (const cellNum in cells) {
+                                            if (cells[cellNum].toLowerCase().includes(term)) {
+                                                isMatch = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if (isMatch) break;
+                                }
+                            }
+                        }
+                        
+                        if (term === '') {
+                            updates.push({ 
+                                id: node.id, 
+                                color: { background: node.originalBg, border: node.originalBorder },
+                                shadow: { color: node.originalShadow, size: 15, x:0, y:0 } 
+                            });
+                        } else {
+                            if (isMatch) {
+                                updates.push({
+                                    id: node.id,
+                                    color: { background: '#92400e', border: '#fef08a' },
+                                    shadow: { color: '#f59e0b', size: 25, x: 0, y: 0 } 
+                                });
+                            } else {
+                                updates.push({
+                                    id: node.id,
+                                    color: { background: 'rgba(31, 41, 55, 0.4)', border: 'rgba(75, 85, 99, 0.4)' },
+                                    shadow: { color: 'rgba(0,0,0,0)', size: 0 }
+                                });
+                            }
+                        }
+                    });
+                    globalNodesData.update(updates);
+                }
+
+                // 2. Filtrar Celdas de la Línea de Tiempo (Panel Inferior)
+                const timelineItems = document.querySelectorAll('.timeline-item');
+                timelineItems.forEach(item => {
+                    if (term === '') {
+                        item.style.display = 'block';
+                    } else {
+                        const contentRendered = item.innerText.toLowerCase();
+                        const parts = item.id.split('-');
+                        const cellNum = parts.pop();
+                        parts.shift();
+                        const tabId = parts.join('-'); 
+                        
+                        let rawMatch = false;
+                        if (window.globalCellsRawData && window.globalCellsRawData[tabId] && window.globalCellsRawData[tabId][cellNum]) {
+                            rawMatch = window.globalCellsRawData[tabId][cellNum].toLowerCase().includes(term);
+                        }
+
+                        if (contentRendered.includes(term) || rawMatch) {
+                            item.style.display = 'block';
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    }
+                });
+            });
+        }
+
+        // --- Eventos Drag & Drop UI ---
+        function setupDropzone(dropzoneId, inputId, textId, defaultText) {
+            const dropzone = document.getElementById(dropzoneId);
+            const input = document.getElementById(inputId);
+            const textElement = document.getElementById(textId);
+
+            dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+            dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+            dropzone.addEventListener('drop', (e) => {
+                e.preventDefault(); dropzone.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) { input.files = e.dataTransfer.files; updateFileName(); }
+            });
+
+            input.addEventListener('change', updateFileName);
+
+            function updateFileName() {
+                if (input.files.length > 0) {
+                    textElement.textContent = input.files.length > 1 ? `${input.files.length} archivos seleccionados` : input.files[0].name;
+                    textElement.classList.replace('text-white-50', 'text-info');
+                } else {
+                    textElement.textContent = defaultText; textElement.classList.replace('text-info', 'text-white-50');
+                }
+            }
+        }
+
+        setupDropzone('jobDropzone', 'jobFileInput', 'jobDropzoneText', 'Arrastra o haz clic aquí');
+        setupDropzone('zipDropzone', 'zipFileInput', 'zipDropzoneText', 'Arrastra el ZIP aquí');
+
+
+        // --- LÓGICA DE DIBUJO DE DAG EN CELDAS EXCEL ---
+        function styleExcelHeader(row) { row.font = { bold: true, color: { argb: 'FFFFFFFF' } }; row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF343A40' } }; row.alignment = { vertical: 'middle', horizontal: 'center' }; row.eachCell((cell) => { cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} }; }); }
+        function styleExcelDataRow(row) { row.alignment = { vertical: 'top', wrapText: true }; row.eachCell((cell) => { cell.border = { top: {style:'thin', color: {argb:'FFDDDDDD'}}, left: {style:'thin', color: {argb:'FFDDDDDD'}}, bottom: {style:'thin', color: {argb:'FFDDDDDD'}}, right: {style:'thin', color: {argb:'FFDDDDDD'}} }; }); }
+        function autoFitColumns(worksheet) { worksheet.columns.forEach(column => { let maxColumnLength = 0; column.eachCell({ includeEmpty: true }, cell => { let columnLength = cell.value ? cell.value.toString().length : 0; if(columnLength > 80) columnLength = 80; if (columnLength > maxColumnLength) maxColumnLength = columnLength; }); column.width = maxColumnLength < 10 ? 10 : maxColumnLength + 2; }); }
+
+        function buildExcelDag(sheet, job) {
+            const levels = {};
+            job.tasks.forEach(t => levels[t.task_key] = 1); 
+            
+            let changed = true;
+            while(changed) {
+                changed = false;
+                job.tasks.forEach(t => {
+                    if(t.depends_on && t.depends_on.length > 0) {
+                        let maxDepLevel = 0;
+                        t.depends_on.forEach(dep => { if(levels[dep.task_key] > maxDepLevel) maxDepLevel = levels[dep.task_key]; });
+                        if(levels[t.task_key] <= maxDepLevel) { levels[t.task_key] = maxDepLevel + 1; changed = true; }
+                    }
+                });
+            }
+
+            const tasksByLevel = {}; let maxLevel = 1;
+            for(let key in levels) {
+                const lvl = levels[key];
+                if(!tasksByLevel[lvl]) tasksByLevel[lvl] = [];
+                tasksByLevel[lvl].push(job.tasks.find(t => t.task_key === key));
+                if(lvl > maxLevel) maxLevel = lvl;
+            }
+
+            let currentRow = 2; 
+            const rootCell = sheet.getCell(currentRow, 3);
+            rootCell.value = `🏁 INICIO\n${job.jobName}`;
+            rootCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6D28D9' } };
+            rootCell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+            rootCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            sheet.getRow(currentRow).height = 40; sheet.getColumn(3).width = 30; 
+            
+            currentRow++;
+            sheet.getCell(currentRow, 3).value = '⬇️'; sheet.getCell(currentRow, 3).alignment = { horizontal: 'center', vertical: 'middle' };
+            currentRow++;
+
+            for(let i = 1; i <= maxLevel; i++) {
+                let currentCol = 3; 
+                const lvlTasks = tasksByLevel[i] || [];
+                
+                lvlTasks.forEach(t => {
+                    sheet.getColumn(currentCol).width = 30;
+                    if(currentCol > 3) sheet.getColumn(currentCol - 1).width = 3; 
+
+                    let isZipOk = false;
+                    if (t.notebook_task && currentUploadedZipFileNames.length > 0) {
+                        const baseName = t.notebook_task.notebook_path.split('/').pop().toLowerCase();
+                        isZipOk = currentUploadedZipFileNames.some(f => {
+                            const fL = f.toLowerCase();
+                            return fL.endsWith(baseName + '.py') || fL.endsWith(baseName + '.sql') || fL.endsWith(baseName + '.ipynb');
+                        });
+                    }
+
+                    let icon = "⚙️"; let bg = "FF192231";
+                    if (t.notebook_task) { icon = "📓"; bg = "FF1E3A8A"; } else if (t.spark_python_task) { icon = "🐍"; bg = "FF14532D"; } else if (t.sql_task) { icon = "💾"; bg = "FF701A75"; } 
+                    
+                    let borderColor = isZipOk ? 'FF10B981' : 'FFEF4444'; 
+                    if (!t.notebook_task) borderColor = 'FF3B82F6'; 
+
+                    const c = sheet.getCell(currentRow, currentCol);
+                    c.value = `${icon} ${t.task_key}`;
+                    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+                    c.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+                    c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                    c.border = { top:{style:'medium',color:{argb:borderColor}}, left:{style:'medium',color:{argb:borderColor}}, bottom:{style:'medium',color:{argb:borderColor}}, right:{style:'medium',color:{argb:borderColor}} };
+                    
+                    sheet.getRow(currentRow).height = 40;
+
+                    if(i < maxLevel) {
+                        const arrowCell = sheet.getCell(currentRow + 1, currentCol);
+                        arrowCell.value = '⬇️'; arrowCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    }
+                    currentCol += 2; 
+                });
+                currentRow += 2; 
+            }
+            return currentRow + 2; 
+        }
+
+        document.getElementById('btnProcess').addEventListener('click', async function() {
+            const fileInput = document.getElementById('jobFileInput');
+            if (fileInput.files.length === 0) { toastr.warning('Por favor selecciona al menos una Configuración de Job (.json o .yml).'); return; }
+
+            currentUploadedZipFileNames = [];
+            const zipInput = document.getElementById('zipFileInput');
+            if (zipInput.files.length > 0) {
+                try {
+                    const jszip = new JSZip();
+                    const zipContent = await jszip.loadAsync(zipInput.files[0]);
+                    currentUploadedZipFileNames = Object.keys(zipContent.files); 
+                } catch (e) {
+                    console.error("Error leyendo ZIP:", e); toastr.error("No se pudo leer el archivo ZIP para validación visual.");
+                }
+            }
+
+            let allJobs = [];
+
+            try {
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    const file = fileInput.files[i];
+                    const content = await file.text();
+                    let parsedData;
+                    if (file.name.endsWith('.yml') || file.name.endsWith('.yaml')) { parsedData = jsyaml.load(content); } else { parsedData = JSON.parse(content); }
+
+                    if (parsedData.tasks) {
+                        allJobs.push({ jobName: parsedData.name || `Job_${i+1}`, tasks: parsedData.tasks });
+                    } else if (parsedData.resources && parsedData.resources.jobs) {
+                        for(const jobKey in parsedData.resources.jobs) {
+                            const jobObj = parsedData.resources.jobs[jobKey];
+                            if(jobObj.tasks) { allJobs.push({ jobName: jobObj.name || jobKey, tasks: jobObj.tasks }); }
+                        }
+                    }
+                }
+
+                if (allJobs.length === 0) { toastr.warning('Los archivos no contienen tareas válidas para graficar.'); return; }
+
+                currentLoadedJobs = allJobs;
+                processDatabricksJobs(allJobs, currentUploadedZipFileNames); 
+                document.getElementById('customNavControls').classList.remove('d-none');
+            } catch (err) {
+                console.error(err); toastr.error('Error al parsear los archivos. Asegúrate de que sean JSON o YAML válidos.');
+            }
+        });
+
+        window.focusOnJob = function(jobIndex) {
+            if(!network) return;
+            const rootId = `ROOT_JOB_${jobIndex}`;
+            const job = currentLoadedJobs[jobIndex];
+            let jobNodeIds = [rootId];
+            job.tasks.forEach(t => jobNodeIds.push(`${rootId}_${t.task_key}`));
+
+            network.fit({ nodes: jobNodeIds, animation: { duration: 800, easingFunction: 'easeInOutQuad' } });
+            network.selectNodes(jobNodeIds);
+        };
+
+        window.openExportModal = function(jobIndex) {
+            currentExportJobIndex = jobIndex;
+            const job = currentLoadedJobs[jobIndex];
+            document.getElementById('exportModalTitle').textContent = `Exportar: ${job.jobName}`;
+            
+            const listContainer = document.getElementById('exportTaskList'); listContainer.innerHTML = '';
+            const zipInput = document.getElementById('zipFileInput');
+            const hasZip = zipInput.files.length > 0;
+
+            job.tasks.forEach(task => {
+                let isExportable = task.notebook_task && task.notebook_task.notebook_path && hasZip;
+                const labelColor = isExportable ? 'text-white' : 'text-white-50 text-decoration-line-through';
+                const badge = isExportable ? '' : '<span class="badge bg-danger ms-2" style="font-size:0.6rem;">Sin Código Fuente</span>';
+                
+                listContainer.innerHTML += `
+                    <label class="list-group-item bg-dark border-secondary ${labelColor} d-flex align-items-center">
+                        <input class="form-check-input me-2 export-task-chk" type="checkbox" value='${JSON.stringify({key: task.task_key, path: isExportable ? task.notebook_task.notebook_path : ''})}' ${isExportable ? 'checked' : 'disabled'}>
+                        <i class="bi bi-journal-code me-2 text-primary"></i> ${task.task_key} ${badge}
+                    </label>`;
+            });
+
+            if(!hasZip) { listContainer.innerHTML += `<div class="p-2 text-warning small text-center"><i class="bi bi-exclamation-triangle me-1"></i> Sube un archivo .zip para poder exportar el linaje de los notebooks.</div>`; }
+            new bootstrap.Modal(document.getElementById('exportModal')).show();
+        };
+
+        window.toggleAllExportCheckboxes = function(state) { document.querySelectorAll('.export-task-chk:not(:disabled)').forEach(c => c.checked = state); };
+
+        document.getElementById('btnConfirmExport').addEventListener('click', async function() {
+            const btn = this;
+            const chks = document.querySelectorAll('.export-task-chk:checked');
+            const zipFile = document.getElementById('zipFileInput').files[0];
+            const job = currentLoadedJobs[currentExportJobIndex];
+
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Generando...';
+            btn.disabled = true;
+
+            const workbook = new ExcelJS.Workbook();
+            workbook.creator = 'Visor de Arquitectura de Jobs';
+            workbook.created = new Date();
+
+            const sheet1 = workbook.addWorksheet('Resumen de Arquitectura');
+            sheet1.views = [{ showGridLines: false }];
+
+            let tableStartRow = buildExcelDag(sheet1, job);
+            
+            const headerRow = sheet1.getRow(tableStartRow);
+            headerRow.values = ['Tarea (Task Key)', 'Depende De', 'Tipo Tarea', 'Ruta / Código', '¿Código en ZIP?'];
+            styleExcelHeader(headerRow);
+            sheet1.autoFilter = `A${tableStartRow}:E${tableStartRow}`; 
+
+            job.tasks.forEach((task, idx) => {
+                let dependeTxt = (task.depends_on && task.depends_on.length > 0) ? task.depends_on.map(d => d.task_key).join(', ') : '(Inicio - Sin Dependencias)';
+                let tipoTxt = 'Desconocido'; let rutaTxt = 'N/A'; let statusTxt = 'N/A';
+
+                if (task.notebook_task) { 
+                    tipoTxt = 'Notebook'; rutaTxt = task.notebook_task.notebook_path; 
+                    if (currentUploadedZipFileNames.length > 0) {
+                        const baseName = rutaTxt.split('/').pop().toLowerCase();
+                        const exists = currentUploadedZipFileNames.some(f => f.toLowerCase().endsWith(baseName + '.py') || f.toLowerCase().endsWith(baseName + '.sql') || f.toLowerCase().endsWith(baseName + '.ipynb'));
+                        statusTxt = exists ? 'Sí (Encontrado)' : 'No (Falta)';
+                    }
+                } 
+                else if (task.spark_python_task) { tipoTxt = 'Python Script'; rutaTxt = task.spark_python_task.python_file; } 
+                else if (task.sql_task) { tipoTxt = 'SQL'; rutaTxt = 'Query/File interno'; }
+
+                const row = sheet1.getRow(tableStartRow + 1 + idx);
+                row.values = [task.task_key, dependeTxt, tipoTxt, rutaTxt, statusTxt];
+                styleExcelDataRow(row);
+
+                if (statusTxt === 'Sí (Encontrado)') { row.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } }); row.getCell(5).font = { color: { argb: 'FF198754' }, bold:true }; }
+                if (statusTxt === 'No (Falta)') { row.eachCell(c => c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8D7DA' } }); row.getCell(5).font = { color: { argb: 'FFDC3545' }, bold:true }; }
+            });
+
+            sheet1.getColumn(1).width = 25; sheet1.getColumn(2).width = 30; sheet1.getColumn(4).width = 40; sheet1.getColumn(5).width = 20; 
+
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+            for (let i = 0; i < chks.length; i++) {
+                const taskData = JSON.parse(chks[i].value);
+                const formData = new FormData();
+                formData.append('fileZip', zipFile); formData.append('notebookPath', taskData.path);
+
+                try {
+                    const response = await fetch('/JobVisualizer/EscanearNotebookDesdeZip', { method: 'POST', headers: { 'RequestVerificationToken': token }, body: formData });
+                    const resData = await response.json();
+
+                    if (resData.success) {
+                        let safeSheetName = taskData.key.substring(0, 30).replace(/[*?:\/\[\]]/g, '');
+                        const sheet = workbook.addWorksheet(safeSheetName);
+                        sheet.views = [{ showGridLines: false }];
+                        
+                        sheet.columns = [
+                            { header: 'Celda #', key: 'celda' }, { header: 'Tipo de Operación', key: 'tipo' },
+                            { header: 'Objetivo / Sentencia / Tabla', key: 'objetivo' }, { header: 'Lógica Detallada (ON / WHERE / LOCATION)', key: 'detalle' }
+                        ];
+                        styleExcelHeader(sheet.getRow(1)); sheet.autoFilter = 'A1:D1';
+
+                        resData.celdas.forEach(celda => {
+                            celda.operaciones.forEach(op => {
+                                const translated = opTranslations[op.tipoOperacion] || op.tipoOperacion;
+                                const lines = op.objetivo.split('\n');
+                                const targetMain = lines[0].trim(); const extraInfo = lines.length > 1 ? lines.slice(1).join('\n') : '';
+                                const row = sheet.addRow({ celda: celda.numeroCelda, tipo: translated, objetivo: targetMain, detalle: extraInfo });
+                                styleExcelDataRow(row);
+
+                                const typeCell = row.getCell('tipo');
+                                let bgCol = 'FF6C757D'; let textCol = 'FFFFFFFF'; 
+                                if (translated.includes("CREACIÓN")) { bgCol = 'FF198754'; } else if (translated.includes("INSERCIÓN") || translated.includes("SPARK INSERTA") || translated.includes("MERGE")) { bgCol = 'FFFFC107'; textCol = 'FF000000'; } else if (translated.includes("ELIMINACIÓN") || translated.includes("TRUNCADO") || translated.includes("REMOVE")) { bgCol = 'FFDC3545'; } else if (translated.includes("LECTURA") || translated.includes("CRUCE") || translated.includes("SPARK LEE")) { bgCol = 'FF0DCAF0'; textCol = 'FF000000'; } else if (translated.includes("PARÁMETRO")) { bgCol = 'FF0D6EFD'; } else if (translated.includes("FILTRO") || translated.includes("AGRUPACIÓN") || translated.includes("ORDENAMIENTO") || translated.includes("BUCLE")) { bgCol = 'FF20C997'; textCol = 'FF000000'; }
+                                typeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgCol } }; typeCell.font = { color: { argb: textCol }, bold: true };
+                            });
+                        });
+                        autoFitColumns(sheet);
+                    }
+                } catch (err) { console.error(`Error exportando tarea ${taskData.key}`, err); }
+            }
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            saveAs(blob, `Doc_Auditoria_${job.jobName}.xlsx`);
+
+            btn.innerHTML = '<i class="bi bi-file-earmark-excel-fill me-1"></i> Generar Excel Analítico';
+            btn.disabled = false; bootstrap.Modal.getInstance(document.getElementById('exportModal')).hide(); toastr.success("Documento Excel generado exitosamente.");
+        });
+
+        function processDatabricksJobs(jobsArray, uploadedZipFileNames) {
+            const totalTasks = jobsArray.reduce((acc, job) => acc + job.tasks.length, 0);
+            document.getElementById('emptyStateMsg').classList.add('d-none'); document.getElementById('jobDetailsPanel').classList.remove('d-none');
+            document.getElementById('lblTaskCount').textContent = totalTasks; document.getElementById('lblJobCount').textContent = jobsArray.length;
+            document.getElementById('lineagePlaceholder').classList.remove('d-none'); document.getElementById('lineagePanel').classList.add('d-none');
+
+            const jobListContainer = document.getElementById('jobListContainer'); jobListContainer.innerHTML = '';
+            jobsArray.forEach((job, index) => {
+                const item = document.createElement('div'); item.className = 'job-list-item mb-1';
+                item.innerHTML = `
+                    <a href="javascript:void(0)" class="job-title-link" onclick="focusOnJob(${index})" title="Ver Job: ${job.jobName}"> <i class="bi bi-box me-1"></i> ${job.jobName} </a>
+                    <div class="job-actions text-nowrap"> <button class="btn btn-outline-info border-0" onclick="focusOnJob(${index})" title="Enfocar Cámara"><i class="bi bi-search"></i></button> <button class="btn btn-outline-success border-0 ms-1" onclick="openExportModal(${index})" title="Exportar a Excel"><i class="bi bi-file-earmark-excel"></i></button> </div>
+                `;
+                jobListContainer.appendChild(item);
+            });
+
+            const nodes = new vis.DataSet(); const edges = new vis.DataSet(); globalNodesData = nodes; 
+
+            jobsArray.forEach((job, index) => {
+                const jobRootId = `ROOT_JOB_${index}`;
+                nodes.add({ id: jobRootId, label: `🏁 INICIO\n${job.jobName}`, title: `Punto de entrada del Job: ${job.jobName}`, shape: 'box', color: { background: '#6d28d9', border: '#c084fc', highlight: { background: '#9333ea', border: '#e9d5ff' } }, font: { color: '#ffffff', size: 14, bold: true }, margin: 15, isRoot: true });
+
+                job.tasks.forEach(task => {
+                    const taskKey = task.task_key; const uniqueNodeId = `${jobRootId}_${taskKey}`; 
+                    let icon = "⚙️"; let bgColor = "#192231";
+                    if (task.notebook_task) { icon = "📓"; bgColor = "#1e3a8a"; } else if (task.spark_python_task) { icon = "🐍"; bgColor = "#14532d"; } else if (task.sql_task) { icon = "💾"; bgColor = "#701a75"; } 
+
+                    let borderColor = '#3b82f6'; let shadowColor = 'rgba(0,0,0,0.5)'; let tooltipStatus = 'Clic para ver linaje interno.';
+
+                    if (task.notebook_task && task.notebook_task.notebook_path && uploadedZipFileNames.length > 0) {
+                        const baseName = task.notebook_task.notebook_path.split('/').pop().toLowerCase();
+                        const hasSourceCode = uploadedZipFileNames.some(f => { const fL = f.toLowerCase(); return fL.endsWith(baseName + '.py') || fL.endsWith(baseName + '.sql') || fL.endsWith(baseName + '.ipynb'); });
+                        if (hasSourceCode) { borderColor = '#10b981'; shadowColor = 'rgba(16, 185, 129, 0.8)'; tooltipStatus = '✅ CÓDIGO ENCONTRADO EN EL ZIP.\nClic para escanear.'; } 
+                        else { borderColor = '#ef4444'; shadowColor = 'rgba(239, 68, 68, 0.8)'; tooltipStatus = '❌ ALERTA: Código NO encontrado en el ZIP subido.'; }
+                    }
+
+                    nodes.add({ 
+                        id: uniqueNodeId, label: `${icon} ${taskKey}`, title: `Tarea: ${taskKey}\n${tooltipStatus}`, shape: 'box', widthConstraint: { maximum: 220 }, 
+                        color: { background: bgColor, border: borderColor, highlight: { background: bgColor, border: borderColor } }, shadow: { enabled: true, color: shadowColor, size: 15, x: 0, y: 0 }, borderWidth: 2, taskData: task, originalTaskKey: taskKey,
+                        originalBg: bgColor, originalBorder: borderColor, originalShadow: shadowColor 
+                    });
+
+                    if (task.depends_on && task.depends_on.length > 0) { task.depends_on.forEach(dep => edges.add({ from: `${jobRootId}_${dep.task_key}`, to: uniqueNodeId })); } else { edges.add({ from: jobRootId, to: uniqueNodeId, dashes: true, color: { color: '#475569', opacity: 0.7 }, arrows: '' }); }
+                });
+            });
+
+            const container = document.getElementById('network-container');
+            const dataGraph = { nodes: nodes, edges: edges };
+            
+            const options = {
+                layout: { hierarchical: { direction: "UD", sortMethod: "directed", nodeSpacing: 250, levelSeparation: 150, treeSpacing: 400 } }, physics: false, 
+                edges: { arrows: { to: { enabled: true, scaleFactor: 0.8, type: 'arrow' } }, color: { color: '#64748b', highlight: '#94a3b8' }, smooth: { type: 'cubicBezier', forceDirection: 'vertical', roundness: 0.4 } },
+                nodes: { margin: { top: 12, bottom: 12, left: 15, right: 15 }, font: { color: '#e2e8f0', face: 'monospace', size: 13 } }, interaction: { hover: true, dragNodes: true, navigationButtons: false, keyboard: true } 
+            };
+
+            if (network !== null) { network.destroy(); }
+            network = new vis.Network(container, dataGraph, options);
+            
+            network.on("beforeDrawing", function (ctx) {
+                currentLoadedJobs.forEach((job, index) => {
+                    const jobRootId = `ROOT_JOB_${index}`; let nodeIds = [jobRootId]; job.tasks.forEach(t => nodeIds.push(`${jobRootId}_${t.task_key}`));
+                    let positions = network.getPositions(nodeIds); let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity; let hasNodes = false;
+                    for (let id in positions) { if (!positions[id]) continue; hasNodes = true; let p = positions[id]; minX = Math.min(minX, p.x - 140); maxX = Math.max(maxX, p.x + 140); minY = Math.min(minY, p.y - 60); maxY = Math.max(maxY, p.y + 60); }
+                    if (hasNodes) {
+                        const x = minX - 30; const y = minY - 70; const w = (maxX - minX) + 60; const h = (maxY - minY) + 100; const r = 15; 
+                        ctx.fillStyle = "rgba(255, 255, 255, 0.02)"; ctx.strokeStyle = "rgba(13, 202, 240, 0.25)"; ctx.lineWidth = 2; ctx.setLineDash([8, 8]); 
+                        ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+                        ctx.fill(); ctx.stroke(); ctx.setLineDash([]); 
+                        ctx.font = "bold 18px 'Poppins', sans-serif"; ctx.fillStyle = "#0dcaf0"; ctx.textAlign = "left"; ctx.fillText("📦 Grupo: " + job.jobName, x + 20, y + 35);
+                    }
+                });
+            });
+
+            network.on("click", function (params) {
+                if (params.nodes.length > 0) {
+                    const nodeId = params.nodes[0]; const nodeInfo = globalNodesData.get(nodeId);
+                    if (nodeInfo && nodeInfo.isRoot) return;
+                    if (nodeInfo && nodeInfo.taskData) {
+                        const task = nodeInfo.taskData; const originalKey = nodeInfo.originalTaskKey;
+                        if (task.notebook_task && task.notebook_task.notebook_path) {
+                            const zipInput = document.getElementById('zipFileInput');
+                            if (zipInput.files.length > 0) { fetchAndDrawNotebookLineage(originalKey, task.notebook_task.notebook_path, zipInput.files[0], null); } else { toastr.info(`Para ver el linaje de '${originalKey}', sube el ZIP con el código fuente.`); }
+                        } else { toastr.warning(`La tarea '${originalKey}' no es un Notebook estándar con ruta.`); }
+                    }
+                }
+            });
+        }
+
+        function fetchAndDrawNotebookLineage(taskKey, notebookPath, zipFile, parentTaskKey) {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            const formData = new FormData(); formData.append('fileZip', zipFile); formData.append('notebookPath', notebookPath);
+            toastr.info(`Escaneando celdas de ${taskKey}...`, '', {timeOut: 2000});
+
+            fetch('/JobVisualizer/EscanearNotebookDesdeZip', { method: 'POST', headers: { 'RequestVerificationToken': token }, body: formData })
+            .then(r => r.json())
+            .then(data => { if (data.success) { createOrUpdateTab(taskKey, data.fileName, data.celdas, parentTaskKey); } else { toastr.error(data.message); } })
+            .catch(() => toastr.error('Error de conexión al escanear el ZIP.'));
+        }
+
+        window.viewRawCode = function(tabId, cellNumber) {
+            const rawCode = window.globalCellsRawData[tabId][cellNumber] || 'El código fuente original no está disponible para esta celda.';
+            document.getElementById('codeModalTitle').innerHTML = `<i class="bi bi-file-earmark-code me-2"></i>Código Crudo - Celda #${cellNumber}`;
+            const codeEl = document.getElementById('codeModalContent');
+            if(rawCode.includes('%sql') || rawCode.includes('spark.sql') || rawCode.includes('dbutils.notebook.run')) { codeEl.className = 'language-sql'; } else { codeEl.className = 'language-python'; }
+            codeEl.textContent = rawCode; Prism.highlightElement(codeEl);
+            new bootstrap.Modal(document.getElementById('codeModal')).show();
+        };
+
+        window.copyRawCode = function() {
+            const code = document.getElementById('codeModalContent').textContent;
+            navigator.clipboard.writeText(code).then(() => { toastr.success('Código copiado al portapapeles'); }).catch(err => { console.error('Error al copiar', err); toastr.error('No se pudo copiar el código'); });
+        };
+
+        window.scrollToCell = function(tabId, cellNumber) {
+            const cellId = `cell-${tabId}-${cellNumber}`; const cellElement = document.getElementById(cellId);
+            if (cellElement) {
+                cellElement.scrollIntoView({ behavior: 'smooth', block: 'center' }); cellElement.style.transition = 'all 0.4s ease';
+                const originalBoxShadow = cellElement.style.boxShadow; const originalBorderColor = cellElement.style.borderColor;
+                cellElement.style.boxShadow = '0 0 20px 5px rgba(13, 202, 240, 0.4)'; cellElement.style.borderColor = '#0dcaf0';
+                setTimeout(() => { cellElement.style.boxShadow = originalBoxShadow || '0 4px 12px rgba(0,0,0,0.2)'; cellElement.style.borderColor = originalBorderColor || 'rgba(255,255,255,0.1)'; }, 2000);
+            }
+        };
+
+        function createOrUpdateTab(taskKey, fileName, celdas, parentTaskKey) {
+            const tabsUl = document.getElementById('notebookTabs'); const tabsContent = document.getElementById('notebookTabContent');
+            const uniqueTabString = parentTaskKey ? `${parentTaskKey}-${taskKey}` : taskKey; const tabId = 'tab-' + uniqueTabString.replace(/[^a-zA-Z0-9]/g, '-'); const liId = 'li-' + tabId;
+
+            window.globalCellsRawData[tabId] = window.globalCellsRawData[tabId] || {};
+            document.getElementById('lineagePlaceholder').classList.add('d-none'); document.getElementById('lineagePanel').classList.remove('d-none');
+
+            if (!document.getElementById(tabId)) {
+                const li = document.createElement('li'); li.className = 'nav-item position-relative'; li.id = liId;
+                li.innerHTML = `
+                    <button class="nav-link text-white-50" id="${tabId}-btn" data-bs-toggle="tab" data-bs-target="#${tabId}" type="button" role="tab">
+                        <i class="bi bi-journal-code me-2 text-primary"></i> <span class="tab-title-text" title="${taskKey}">${taskKey}</span>
+                        <span class="close-tab-btn" onclick="closeNotebookTab(event, '${tabId}', '${liId}')" title="Cerrar pestaña">&times;</span>
+                    </button>`;
+                tabsUl.appendChild(li);
+                const pane = document.createElement('div'); pane.className = 'tab-pane fade'; pane.id = tabId; pane.role = 'tabpanel'; tabsContent.appendChild(pane);
+            }
+
+            const paneEl = document.getElementById(tabId); const creationsMap = {};
+            
+            celdas.forEach(celda => {
+                window.globalCellsRawData[tabId][celda.numeroCelda] = celda.codigoFuenteCrudo;
+                celda.operaciones.forEach(op => { if (op.tipoOperacion.includes("CREATE") || op.tipoOperacion === "LIST DEFINITION") { const targetName = op.objetivo.split('\n')[0].trim(); creationsMap[targetName] = celda.numeroCelda; } });
+            });
+
+            let breadcrumbHtml = '';
+            if (parentTaskKey) { breadcrumbHtml = `<div class="mb-3 d-flex align-items-center text-white-50 bg-dark p-2 rounded border border-secondary border-opacity-25" style="font-size: 0.75rem;"><i class="bi bi-diagram-3 me-2 text-info"></i> Origen: <span class="badge bg-secondary border border-secondary text-white-50 mx-2">${parentTaskKey}</span> <i class="bi bi-arrow-right-short text-white-50"></i> <span class="badge bg-primary ms-2">${taskKey}</span></div>`; }
+
+            if (celdas.length === 0) {
+                paneEl.innerHTML = `${breadcrumbHtml}<div class="text-center text-white-50 py-4"><i class="bi bi-emoji-frown d-block fs-3 mb-2"></i>No se detectaron comandos clave en este archivo (${fileName}).</div>`;
+            } else {
+                let html = breadcrumbHtml; html += `<div class="mb-3"><span class="badge bg-primary">Archivo: ${fileName}</span> <span class="badge bg-dark border border-secondary text-white-50">Celdas clave encontradas: ${celdas.length}</span></div><div class="timeline-container">`;
+                celdas.forEach(celda => {
+                    let actionButtons = ''; let detailsHtml = '';
+                    celda.operaciones.forEach(op => {
+                        if (op.tipoOperacion === "RUN NOTEBOOK") {
+                            let subTaskName = op.objetivo.split('/').pop();
+                            actionButtons += `<button type="button" class="btn btn-sm btn-primary badge me-2 border-0 shadow-sm" style="font-size:0.75rem; cursor:pointer;" onclick="fetchAndDrawNotebookLineage('${subTaskName}', '${op.objetivo}', document.getElementById('zipFileInput').files[0], '${taskKey}')" title="Clic para escanear este Sub-Notebook"><i class="bi bi-box-arrow-in-down-right me-1"></i>Escanear Sub-Notebook: ${op.objetivo}</button>`;
+                        } 
+                        else {
+                            const translated = opTranslations[op.tipoOperacion] || op.tipoOperacion; const parts = op.objetivo.split('\n'); const targetName = parts[0].trim(); const extraInfo = parts.length > 1 ? '\n' + parts.slice(1).join('\n') : '';
+                            let displayTarget = escapeHtml(targetName);
+                            if (!op.tipoOperacion.includes("CREATE") && !op.tipoOperacion.includes("DEFINITION") && creationsMap[targetName] && creationsMap[targetName] !== celda.numeroCelda) {
+                                const sourceCell = creationsMap[targetName];
+                                displayTarget = `<a href="javascript:void(0)" onclick="scrollToCell('${tabId}', ${sourceCell})" class="link-origen-dato" title="Ir a la celda ${sourceCell} donde se declara/crea">${escapeHtml(targetName)} <i class="bi bi-link-45deg" style="font-size: 0.85rem;"></i></a>`;
+                            }
+
+                            let icon = "⚡"; 
+                            if (op.tipoOperacion.includes("CREATE")) icon = "🔨"; else if (op.tipoOperacion.includes("INSERT") || op.tipoOperacion.includes("SPARK INSERT")) icon = "➕"; else if (op.tipoOperacion.includes("MERGE")) icon = "📝"; else if (op.tipoOperacion.includes("DELETE") || op.tipoOperacion.includes("DROP") || op.tipoOperacion.includes("TRUNCATE")) icon = "🗑️"; else if (op.tipoOperacion.includes("JOIN")) icon = "🔗"; else if (op.tipoOperacion.includes("READ") || op.tipoOperacion.includes("SPARK READ")) icon = "🔍"; else if (op.tipoOperacion.includes("WRITE") || op.tipoOperacion.includes("EXPORT") || op.tipoOperacion.includes("SAVE")) icon = "💾"; else if (op.tipoOperacion === "LIST DEFINITION") icon = "📦"; else if (op.tipoOperacion === "FOR LOOP") icon = "🔄"; else if (op.tipoOperacion === "WHERE FILTER") icon = "🎯"; else if (op.tipoOperacion === "GROUP BY") icon = "🗂️"; else if (op.tipoOperacion === "ORDER BY") icon = "⬇️"; else if (op.tipoOperacion.includes("PARAMETER")) icon = "🔑";
+
+                            detailsHtml += `<div class="mb-2 p-2 rounded" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); font-family: monospace; font-size: 0.75rem;"><strong class="text-info">${icon} ${escapeHtml(translated)}:</strong> ${displayTarget}${extraInfo ? `<div class="mt-1 text-white-50 ms-4 ps-2 border-start border-secondary" style="white-space: pre-wrap;">${escapeHtml(extraInfo)}</div>` : ''}</div>`;
+                        }
+                    });
+
+                    html += `
+                    <div class="timeline-item" id="cell-${tabId}-${celda.numeroCelda}">
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-secondary border-opacity-25">
+                            <span class="fw-bold text-info small"><i class="bi bi-terminal me-1"></i>Celda #${celda.numeroCelda}</span>
+                            <div><button type="button" class="btn btn-sm btn-outline-info py-0 px-2 me-2 border-0 shadow-none" onclick="viewRawCode('${tabId}', ${celda.numeroCelda})" title="Ver Código Fuente de la Celda"><i class="bi bi-code-slash me-1"></i> Ver Código</button>${actionButtons}</div>
+                        </div>
+                        <div>${detailsHtml}</div>
+                    </div>`;
+                });
+                html += `</div>`; paneEl.innerHTML = html;
+            }
+
+            const tabEl = document.getElementById(`${tabId}-btn`); const tab = new bootstrap.Tab(tabEl); tab.show();
+            const ul = document.getElementById('notebookTabs'); ul.scrollTo({ left: ul.scrollWidth, behavior: 'smooth' });
+        }
+
+        window.closeNotebookTab = function(event, tabId, liId) {
+            event.stopPropagation(); const li = document.getElementById(liId); const pane = document.getElementById(tabId); const wasActive = li.querySelector('.nav-link').classList.contains('active');
+            if (li) li.remove(); if (pane) pane.remove();
+            if (wasActive) {
+                const remainingTabs = document.querySelectorAll('#notebookTabs .nav-link');
+                if (remainingTabs.length > 0) { new bootstrap.Tab(remainingTabs[remainingTabs.length - 1]).show(); } else { document.getElementById('lineagePanel').classList.add('d-none'); document.getElementById('lineagePlaceholder').classList.remove('d-none'); }
+            } else { if (document.querySelectorAll('#notebookTabs .nav-link').length === 0) { document.getElementById('lineagePanel').classList.add('d-none'); document.getElementById('lineagePlaceholder').classList.remove('d-none'); } }
+        };
+
+        function escapeHtml(unsafe) { return (unsafe || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+    </script>
+}
