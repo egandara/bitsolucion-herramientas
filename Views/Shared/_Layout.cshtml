@@ -741,6 +741,14 @@
                         </a>
                     </li>
 
+                    @* ── NUEVO MÓDULO AGREGADO AQUÍ ── *@
+                    <li class="nav-item">
+                        <a class="nav-link @(currentController == "JobVisualizer" ? "active" : "")" asp-controller="JobVisualizer" asp-action="Index"
+                           data-sidebar-label="Ingeniería Inversa">
+                            <i class="bi bi-diagram-3-fill"></i> <span>Ingeniería Inversa</span>
+                        </a>
+                    </li>
+
                     @if (User.IsInRole("Admin") || User.IsInRole("TempCleanerUser"))
                     {
                         <li class="nav-item">
