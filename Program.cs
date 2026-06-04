@@ -101,6 +101,7 @@ builder.Services.AddScoped<NotebookValidator.Web.Services.GestorProyectos.JobGen
 builder.Services.AddScoped<NotebookValidator.Web.Services.GestorProyectos.ProyectosSearchService>();
 builder.Services.AddScoped<NotebookValidator.Web.Services.NotificacionesService>();
 
+builder.Services.AddScoped<LegacyJobMigrationService>();
 
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>

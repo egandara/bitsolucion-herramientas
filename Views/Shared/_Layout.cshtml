@@ -748,6 +748,13 @@
                             <i class="bi bi-diagram-3-fill"></i> <span>Ingeniería Inversa</span>
                         </a>
                     </li>
+                    @* ── NUEVO MÓDULO JSON A YAML ── *@
+                    <li class="nav-item">
+                        <a class="nav-link @(currentController == "LegacyJobMigration" ? "active" : "")" asp-controller="LegacyJobMigration" asp-action="Index"
+                           data-sidebar-label="Migración Jobs Legacy">
+                            <i class="bi bi-file-earmark-code-fill"></i> <span>Migración Jobs Legacy</span>
+                        </a>
+                    </li>
 
                     @if (User.IsInRole("Admin") || User.IsInRole("TempCleanerUser"))
                     {

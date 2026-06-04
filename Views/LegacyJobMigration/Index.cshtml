@@ -1,0 +1,363 @@
+@{
+    ViewData["Title"] = "Migración de Jobs Legacy";
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<style>
+    /* Estilos Dark Premium */
+    .text-muted-light {
+    color: #adb5bd !important;
+    }
+
+    .bg-dark-subtle {
+    background-color: rgba(255,255,255,0.03) !important;
+    }
+
+    .custom-file-upload {
+    border: 2px dashed #495057;
+    border-radius: 8px;
+    background-color: rgba(0,0,0,0.2);
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    }
+
+    .custom-file-upload:hover {
+    border-color: #ffc107;
+    background-color: rgba(255, 193, 7, 0.05);
+    }
+
+    /* Solución definitiva para que el Placeholder siempre se vea gris claro */
+    .placeholder-visible::placeholder {
+    color: #adb5bd !important;
+    opacity: 0.7 !important;
+    }
+
+    /* Visor de código */
+    .code-container {
+    position: relative;
+    background-color: #282c34;
+    border-radius: 6px;
+    border: 1px solid #495057;
+    padding: 1rem;
+    }
+
+    .code-editor {
+    background-color: #282c34 !important;
+    color: #abb2bf !important;
+    font-family: 'Cascadia Code', 'Courier New', monospace !important;
+    border: 1px solid #ffc107 !important;
+    border-radius: 6px;
+    }
+
+    .code-editor:focus {
+    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25) !important;
+    }
+
+    /* Pestañas de resultados */
+    .nav-tabs .nav-link {
+    color: #adb5bd;
+    background-color: #212529;
+    border: 1px solid #495057;
+    margin-right: 2px;
+    border-bottom: none;
+    transition: all 0.2s ease;
+    }
+
+    .nav-tabs .nav-link:hover {
+    color: #fff;
+    }
+
+    .nav-tabs .nav-link.active {
+    color: #ffc107 !important;
+    background-color: #2b3035 !important;
+    border-color: #ffc107 #ffc107 #2b3035 !important;
+    font-weight: bold;
+    }
+</style>
+
+<div class="container mt-4 mb-5">
+    <h2 class="text-white mb-4">
+        <i class="bi bi-file-earmark-code text-warning me-2"></i> Migración de Jobs Legacy
+    </h2>
+
+    <div class="alert bg-dark border-info text-white mb-4 shadow-sm" role="alert">
+        <h5 class="text-info mb-3"><i class="bi bi-info-circle-fill me-2"></i>Instrucciones de Uso</h5>
+        <p class="small text-muted-light mb-3">
+            Este módulo aplica ingeniería inversa a los Jobs configurados en el workspace antiguo de producción (formato JSON), aplicando políticas de clúster actualizadas, rutas dinámicas y parámetros de Unity Catalog, para transformarlos al estándar <strong>Databricks Asset Bundles (YAML)</strong> de desarrollo.
+        </p>
+        <hr class="border-info opacity-25">
+        <div class="row mt-3">
+            <div class="col-md-4">
+                <h6 class="text-info small fw-bold"><i class="bi bi-1-circle me-1"></i> Extraer el JSON antiguo</h6>
+                <p class="small text-muted-light mb-0">Ingresa a Databricks PRD, abre el Job que deseas migrar y en la esquina superior derecha selecciona <em>"Job Details" > "JSON"</em>. Guárdalo como <code>.json</code>.</p>
+            </div>
+            <div class="col-md-4">
+                <h6 class="text-info small fw-bold"><i class="bi bi-2-circle me-1"></i> Parametrizar y Convertir</h6>
+                <p class="small text-muted-light mb-0">Sube tus archivos JSON aquí. Puedes modificar dinámicamente el propietario o repositorio de destino antes de procesar.</p>
+            </div>
+            <div class="col-md-4">
+                <h6 class="text-info small fw-bold"><i class="bi bi-3-circle me-1"></i> Desplegar en Desarrollo</h6>
+                <p class="small text-muted-light mb-0">Copia el YAML resultante o descarga el paquete .ZIP y pega el código en la opción <em>"Edit as YAML"</em> de un Job nuevo en el workspace.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card bg-dark text-white border-secondary mb-4 shadow-sm" id="uploadSection">
+        <div class="card-header bg-dark-subtle border-secondary">
+            <h5 class="mb-0 text-warning">Configuración y Carga</h5>
+        </div>
+        <div class="card-body p-4">
+            <form id="migrationForm">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label for="targetUser" class="form-label text-muted-light small fw-bold">Usuario / Entorno de Destino</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-dark border-secondary text-muted-light"><i class="bi bi-person-badge"></i></span>
+                            <input type="text" class="form-control bg-dark text-white border-secondary placeholder-visible" id="targetUser" name="targetUser" value="exegaam@bci.cl" placeholder="Ej. exegaam@bci.cl">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="targetRepo" class="form-label text-muted-light small fw-bold">Nombre del Repositorio (Opcional)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-dark border-secondary text-muted-light"><i class="bi bi-folder-symlink"></i></span>
+                            <input type="text" class="form-control bg-dark text-white border-secondary placeholder-visible" id="targetRepo" name="targetRepo" placeholder="Dejar en blanco para mantener original">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="custom-file-upload mb-4" onclick="document.getElementById('jsonFiles').click()">
+                    <i class="bi bi-cloud-arrow-up text-warning" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3 text-white">Haz clic aquí o arrastra tus archivos .json</h5>
+                    <p class="text-muted-light small mb-0">Soporta múltiples archivos simultáneamente</p>
+                    <input class="d-none" type="file" id="jsonFiles" name="jsonFiles" multiple accept=".json" required>
+                </div>
+
+                <div id="fileList" class="mb-3 text-muted-light"></div>
+
+                <div class="text-end">
+                    <button type="submit" class="btn btn-warning btn-lg fw-bold shadow-lg" id="btnSubmit">
+                        <i class="bi bi-gear-fill me-2"></i> Procesar Códigos
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="resultsSection" class="d-none">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="text-warning"><i class="bi bi-check-circle-fill me-2"></i> Resultados de Transformación</h4>
+            <div>
+                <button class="btn btn-sm btn-success me-2" onclick="downloadAllZip()"><i class="bi bi-file-earmark-zip me-1"></i> Descargar Todo (.zip)</button>
+                <button class="btn btn-sm btn-outline-light" onclick="resetForm()"><i class="bi bi-arrow-counterclockwise me-1"></i> Procesar más archivos</button>
+            </div>
+        </div>
+
+        <div class="card bg-dark text-white border-secondary shadow-sm">
+            <div class="card-header bg-dark-subtle border-secondary p-0">
+                <ul class="nav nav-tabs border-secondary" id="filesTab" role="tablist" style="margin-bottom: -1px;"></ul>
+            </div>
+            <div class="card-body p-0">
+                <div class="tab-content" id="filesTabContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/yaml.min.js"></script>
+
+    <script>
+        let globalProcessedFiles = [];
+
+        document.getElementById('jsonFiles').addEventListener('change', function () {
+        var fileList = document.getElementById('fileList');
+        fileList.innerHTML = '';
+        if (this.files.length > 0) {
+        fileList.innerHTML = `<strong class="text-warning"><i class="bi bi-check2-circle me-1"></i> ${this.files.length} archivo(s) seleccionado(s):</strong><ul class="mt-2 list-unstyled ms-3">`;
+        for (var i = 0; i < this.files.length; i++) {
+        fileList.innerHTML += `<li class="mb-1"><i class="bi bi-filetype-json text-info me-2"></i>${this.files[i].name}</li>`;
+        }
+        fileList.innerHTML += '</ul>';
+        }
+        });
+
+        document.getElementById('migrationForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        var btn = document.getElementById('btnSubmit');
+        var files = document.getElementById('jsonFiles').files;
+
+        if (files.length === 0) return;
+
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Transformando...';
+        btn.classList.add('disabled');
+
+        var formData = new FormData();
+        for (var i = 0; i < files.length; i++) {
+        formData.append('jsonFiles', files[i]);
+        }
+        formData.append('targetUser', document.getElementById('targetUser').value);
+        formData.append('targetRepo', document.getElementById('targetRepo').value);
+
+        try {
+        let response = await fetch('@Url.Action("ProcessFiles", "LegacyJobMigration")', {
+        method: 'POST',
+        body: formData
+        });
+
+        let result = await response.json();
+
+        if (result.success) {
+        globalProcessedFiles = result.files;
+        renderResults(globalProcessedFiles);
+        document.getElementById('uploadSection').classList.add('d-none');
+        document.getElementById('resultsSection').classList.remove('d-none');
+        } else {
+        alert(result.message);
+        }
+        } catch (error) {
+        alert("Error de conexión al procesar los archivos.");
+        } finally {
+        btn.innerHTML = '<i class="bi bi-gear-fill me-2"></i> Procesar Códigos';
+        btn.classList.remove('disabled');
+        }
+        });
+
+        function renderResults(files) {
+        const tabs = document.getElementById('filesTab');
+        const content = document.getElementById('filesTabContent');
+        tabs.innerHTML = '';
+        content.innerHTML = '';
+
+        files.forEach((file, index) => {
+        const isActive = index === 0 ? 'active' : '';
+        const tabId = `tab-${index}`;
+
+        if (!file.success) {
+        tabs.innerHTML += `<li class="nav-item" role="presentation">
+        <button class="nav-link text-danger ${isActive}" id="${tabId}-tab" data-bs-toggle="tab" data-bs-target="#${tabId}" type="button" role="tab"><i class="bi bi-exclamation-triangle"></i> ${file.originalName}</button>
+        </li>`;
+        content.innerHTML += `<div class="tab-pane fade p-4 ${isActive ? 'show active' : ''}" id="${tabId}" role="tabpanel">
+        <div class="alert alert-danger">${file.error}</div>
+        </div>`;
+        return;
+        }
+
+        tabs.innerHTML += `<li class="nav-item" role="presentation">
+        <button class="nav-link ${isActive}" id="${tabId}-tab" data-bs-toggle="tab" data-bs-target="#${tabId}" type="button" role="tab"><i class="bi bi-filetype-yml"></i> ${file.newName}</button>
+        </li>`;
+
+        let warningsHtml = '';
+        if (file.warnings && file.warnings.length > 0) {
+        warningsHtml = '<div class="alert alert-warning m-3 p-2 small border-warning" style="background-color: rgba(255, 193, 7, 0.1); color:#ffc107;">' +
+        '<strong class="d-block mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i> Linter de Migración detectó posibles riesgos:</strong><ul class="mb-0 ps-3">';
+        file.warnings.forEach(w => warningsHtml += `<li>${w}</li>`);
+        warningsHtml += '</ul></div>';
+        }
+
+        content.innerHTML += `
+        <div class="tab-pane fade ${isActive ? 'show active' : ''}" id="${tabId}" role="tabpanel">
+        <div class="d-flex justify-content-between p-3 border-bottom border-secondary bg-dark-subtle">
+        <div>
+        <button class="btn btn-sm btn-outline-info me-2" onclick="copyCode(${index})"><i class="bi bi-clipboard"></i> Copiar Código</button>
+        <button class="btn btn-sm btn-outline-warning" onclick="toggleEdit(${index})" id="btnEdit_${index}"><i class="bi bi-unlock"></i> Desbloquear Edición</button>
+        </div>
+        <button class="btn btn-sm btn-outline-success" onclick="downloadFile(${index}, '${file.newName}')"><i class="bi bi-download"></i> Descargar .yml</button>
+        </div>
+
+        ${warningsHtml}
+
+        <div class="code-container p-3 border-top-0 border-start-0 border-end-0 border-bottom-0" id="viewMode_${index}">
+        <pre class="m-0"><code class="language-yaml hljs" id="codeView_${index}">${escapeHtml(file.yaml)}</code></pre>
+        </div>
+        <div class="p-3 d-none" id="editMode_${index}">
+        <textarea class="form-control code-editor w-100" id="codeEdit_${index}" rows="20">${file.yaml}</textarea>
+        </div>
+        </div>`;
+        });
+
+        document.querySelectorAll('pre code').forEach((el) => {
+        hljs.highlightElement(el);
+        });
+        }
+
+        async function downloadAllZip() {
+        if (!globalProcessedFiles || globalProcessedFiles.length === 0) return;
+
+        var zip = new JSZip();
+        let hasValidFiles = false;
+
+        globalProcessedFiles.forEach((file, index) => {
+        if (file.success) {
+        const code = document.getElementById(`codeEdit_${index}`).value;
+        zip.file(file.newName, code);
+        hasValidFiles = true;
+        }
+        });
+
+        if (hasValidFiles) {
+        const blob = await zip.generateAsync({type:"blob"});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `Migracion_YAML_DABs_${new Date().toISOString().slice(0,10)}.zip`;
+        link.click();
+        }
+        }
+
+        function copyCode(index) {
+        const code = document.getElementById(`codeEdit_${index}`).value;
+        navigator.clipboard.writeText(code).then(() => {
+        alert("¡Código YAML copiado al portapapeles listo para pegar en Databricks!");
+        });
+        }
+
+        function downloadFile(index, filename) {
+        const code = document.getElementById(`codeEdit_${index}`).value;
+        const blob = new Blob([code], { type: 'text/yaml' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+        }
+
+        function toggleEdit(index) {
+        const viewMode = document.getElementById(`viewMode_${index}`);
+        const editMode = document.getElementById(`editMode_${index}`);
+        const btnEdit = document.getElementById(`btnEdit_${index}`);
+        const codeView = document.getElementById(`codeView_${index}`);
+        const codeEdit = document.getElementById(`codeEdit_${index}`);
+
+        if (editMode.classList.contains('d-none')) {
+        viewMode.classList.add('d-none');
+        editMode.classList.remove('d-none');
+        btnEdit.innerHTML = '<i class="bi bi-lock-fill"></i> Guardar y Bloquear';
+        btnEdit.classList.replace('btn-outline-warning', 'btn-warning');
+        } else {
+        editMode.classList.add('d-none');
+        viewMode.classList.remove('d-none');
+        btnEdit.innerHTML = '<i class="bi bi-unlock"></i> Desbloquear Edición';
+        btnEdit.classList.replace('btn-warning', 'btn-outline-warning');
+
+        codeView.textContent = codeEdit.value;
+        codeView.removeAttribute('data-highlighted');
+        hljs.highlightElement(codeView);
+        }
+        }
+
+        function escapeHtml(text) {
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function resetForm() {
+        document.getElementById('migrationForm').reset();
+        document.getElementById('fileList').innerHTML = '';
+        document.getElementById('resultsSection').classList.add('d-none');
+        document.getElementById('uploadSection').classList.remove('d-none');
+        globalProcessedFiles = [];
+        }
+    </script>
+}
