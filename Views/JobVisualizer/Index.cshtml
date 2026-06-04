@@ -67,23 +67,23 @@
     .custom-nav-btn:active { transform: scale(0.95); }
 </style>
 
-<div class="container-fluid dashboard-xl-container mt-3">
+<div class="container-fluid dashboard-xl-container mt-4 mb-5">
     @Html.AntiForgeryToken()
 
-    <div class="d-flex align-items-center mb-4">
-        <div>
-            <h1 class="h4 fw-bold mb-0 text-white" style="font-family: 'Poppins', sans-serif;">
-                <i class="bi bi-diagram-3-fill text-info me-2"></i>Visor de Arquitectura de Jobs e Ing. Inversa
-            </h1>
-            <p class="mb-0 small text-white-50">Carga la configuración de uno o varios Jobs y el código fuente para extraer el linaje automático por celdas.</p>
-        </div>
+    <partial name="_JobManagementTabs" />
+
+    <div class="mb-4 mt-2">
+        <h1 class="h4 fw-bold mb-2 text-white" style="font-family: 'Poppins', sans-serif;">
+            <i class="bi bi-diagram-3-fill text-info me-2"></i>Visor de Arquitectura de Jobs e Ing. Inversa
+        </h1>
+        <p class="mb-0 small text-white-50">Carga la configuración de uno o varios Jobs y el código fuente para extraer el linaje automático por celdas.</p>
     </div>
 
     <div class="row g-4">
         <div class="col-12 col-md-4 col-lg-3">
             <div class="card p-4 border-0 h-100 d-flex flex-column" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
                 <h6 class="fw-bold text-warning mb-3"><i class="bi bi-cloud-upload me-2"></i>Cargar Artefactos</h6>
-                
+
                 <div class="mb-3">
                     <label class="form-label text-white-50 small">1. Configuración de Job(s) (.json, .yml)</label>
                     <div class="dropzone-container" id="jobDropzone" onclick="document.getElementById('jobFileInput').click()">

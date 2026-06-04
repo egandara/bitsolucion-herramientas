@@ -163,11 +163,13 @@
     }
 </style>
 
-<div class="container-fluid dashboard-xl-container">
-    <div class="mb-4 text-center">
+<div class="container-fluid dashboard-xl-container mt-4 mb-5">
+
+    <partial name="_JobManagementTabs" />
+
+    <div class="mb-4 text-center mt-2">
         <h1 class="h3 fw-bold mb-2" style="font-family: 'Poppins', sans-serif; color: #fff; font-size: 1.8rem;">Generador de Jobs Multi-Ambiente</h1>
         <p class="mb-3 small text-white-50" style="font-size: 0.85rem;">Transforma, parametriza y limpia configuraciones de tareas para Databricks según el flujo de arquitectura.</p>
-
         <div class="d-flex justify-content-center mt-3">
             <div class="btn-group shadow-lg" role="group" aria-label="Modo de Operación" style="border-radius: 8px; overflow: hidden; border: 1px solid rgba(255, 193, 7, 0.4);">
                 <input type="radio" class="btn-check" name="modeSwitch" id="modeUC" autocomplete="off" checked>

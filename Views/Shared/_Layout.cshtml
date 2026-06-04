@@ -734,25 +734,14 @@
                         </li>
                     }
 
+                    @* ── NUEVO SÚPER MÓDULO AGREGADO AQUÍ ── *@
+                    @{
+                        var isJobMgmtActive = currentController == "JobConverter" || currentController == "JobVisualizer" || currentController == "LegacyJobMigration";
+                    }
                     <li class="nav-item">
-                        <a class="nav-link @(currentController == "JobConverter" ? "active" : "")" asp-controller="JobConverter" asp-action="Index"
-                           data-sidebar-label="Generador de Jobs">
-                            <i class="bi bi-wrench-adjustable-circle-fill"></i> <span>Generador de Jobs</span>
-                        </a>
-                    </li>
-
-                    @* ── NUEVO MÓDULO AGREGADO AQUÍ ── *@
-                    <li class="nav-item">
-                        <a class="nav-link @(currentController == "JobVisualizer" ? "active" : "")" asp-controller="JobVisualizer" asp-action="Index"
-                           data-sidebar-label="Ingeniería Inversa">
-                            <i class="bi bi-diagram-3-fill"></i> <span>Ingeniería Inversa</span>
-                        </a>
-                    </li>
-                    @* ── NUEVO MÓDULO JSON A YAML ── *@
-                    <li class="nav-item">
-                        <a class="nav-link @(currentController == "LegacyJobMigration" ? "active" : "")" asp-controller="LegacyJobMigration" asp-action="Index"
-                           data-sidebar-label="Migración Jobs Legacy">
-                            <i class="bi bi-file-earmark-code-fill"></i> <span>Migración Jobs Legacy</span>
+                        <a class="nav-link @(isJobMgmtActive ? "active" : "")" asp-controller="JobConverter" asp-action="Index"
+                           data-sidebar-label="Suite de Jobs">
+                            <i class="bi bi-stack"></i> <span>Suite de Jobs</span>
                         </a>
                     </li>
 
