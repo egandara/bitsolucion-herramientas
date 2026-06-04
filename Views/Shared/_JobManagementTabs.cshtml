@@ -1,0 +1,72 @@
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+}
+
+<style>
+    .job-suite-tabs {
+        background-color: #161b22;
+        border-radius: 8px;
+        padding: 6px;
+        margin-bottom: 25px;
+        border: 1px solid #30363d;
+    }
+
+        /* 1. USAMOS GRID PARA FORZAR 3 COLUMNAS MATEMÁTICAMENTE IGUALES */
+        .job-suite-tabs .nav {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 10px;
+        }
+
+        .job-suite-tabs .nav-item {
+            margin: 0 !important;
+        }
+
+        .job-suite-tabs .nav-link {
+            color: #adb5bd;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 10px 15px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            /* 2. BORDE TRANSPARENTE PREVIENE EL SALTO DE 1PX */
+            border: 1px solid transparent;
+        }
+
+            .job-suite-tabs .nav-link:hover {
+                color: #fff;
+                background-color: rgba(255,255,255,0.05);
+            }
+
+            .job-suite-tabs .nav-link.active {
+                background-color: rgba(255, 193, 7, 0.12);
+                color: #ffc107 !important;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                border: 1px solid rgba(255, 193, 7, 0.2);
+            }
+</style>
+
+<div class="job-suite-tabs shadow-sm">
+    <ul class="nav w-100 m-0" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link @(currentController == "JobConverter" ? "active" : "")" href="@Url.Action("Index", "JobConverter")">
+                <i class="bi bi-wrench-adjustable-circle-fill me-2"></i> Generador (YAML Bundles)
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(currentController == "JobVisualizer" ? "active" : "")" href="@Url.Action("Index", "JobVisualizer")">
+                <i class="bi bi-diagram-3-fill me-2"></i> Ingeniería Inversa (LINAJE)
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(currentController == "LegacyJobMigration" ? "active" : "")" href="@Url.Action("Index", "LegacyJobMigration")">
+                <i class="bi bi-file-earmark-code-fill me-2"></i> Migración Legacy (JSON a YAML)
+            </a>
+        </li>
+    </ul>
+</div>
