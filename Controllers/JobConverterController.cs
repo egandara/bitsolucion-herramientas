@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Security.Claims;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -14,10 +16,12 @@ namespace NotebookValidator.Web.Controllers
     public class JobConverterController : Controller
     {
         private readonly JobTransformationService _transformationService;
+        private readonly AuditService _auditService; // 1. Inyectamos el servicio de auditoría
 
-        public JobConverterController(JobTransformationService transformationService)
+        public JobConverterController(JobTransformationService transformationService, AuditService auditService)
         {
             _transformationService = transformationService;
+            _auditService = auditService;
         }
 
         [HttpGet]
@@ -152,16 +156,12 @@ namespace NotebookValidator.Web.Controllers
 
                 if (masterAutocert && zipBytes != null)
                 {
-                    // Inferir carpeta del job desde notebook_path del YAML
-                    // Ej: .../Notebooks/C11/BCI_001_... -> folderKey = "C11"
                     string folderKey = "";
-                    var nbPathMatches = Regex.Matches(content,
-                        @"/Notebooks/([^/\r\n]+)/");
+                    var nbPathMatches = Regex.Matches(content, @"/Notebooks/([^/\r\n]+)/");
                     if (nbPathMatches.Count > 0)
                         folderKey = nbPathMatches[0].Groups[1].Value.Trim();
 
-                    var (jobSrcs, jobTgts) = await ExtractTablesForFolderAsync(
-                        zipBytes, folderKey, isTempOrJunk);
+                    var (jobSrcs, jobTgts) = await ExtractTablesForFolderAsync(zipBytes, folderKey, isTempOrJunk);
 
                     foreach (var s in jobSrcs)
                     {
@@ -190,7 +190,6 @@ namespace NotebookValidator.Web.Controllers
                 });
             }
 
-            // Ordenamiento Mágico: Aprovisionamiento de primero.
             var sortedJobs = tempStagedJobs.OrderByDescending(j => j.IsProvisioning).ThenBy(j => j.OriginalFileName).ToList();
 
             foreach (var j in sortedJobs)
@@ -219,17 +218,14 @@ namespace NotebookValidator.Web.Controllers
             return Json(new { success = true, token = token, jobs = stagedJobs });
         }
 
-        private static async Task<(List<string> srcs, List<string> tgts)> ExtractTablesForFolderAsync(
-            byte[] zipData, string folderKey, Func<string, bool> isJunk)
+        private static async Task<(List<string> srcs, List<string> tgts)> ExtractTablesForFolderAsync(byte[] zipData, string folderKey, Func<string, bool> isJunk)
         {
             var rSrc = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var rTgt = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             using var arc = new ZipArchive(new MemoryStream(zipData), ZipArchiveMode.Read);
             foreach (var entry in arc.Entries)
             {
-                bool inFolder = string.IsNullOrEmpty(folderKey) ||
-                    entry.FullName.Split('/').Any(seg =>
-                        seg.Equals(folderKey, StringComparison.OrdinalIgnoreCase));
+                bool inFolder = string.IsNullOrEmpty(folderKey) || entry.FullName.Split('/').Any(seg => seg.Equals(folderKey, StringComparison.OrdinalIgnoreCase));
                 if (!inFolder) continue;
                 if (!entry.FullName.EndsWith(".py", StringComparison.OrdinalIgnoreCase) &&
                     !entry.FullName.EndsWith(".sql", StringComparison.OrdinalIgnoreCase) &&
@@ -238,38 +234,29 @@ namespace NotebookValidator.Web.Controllers
                 using var stream = entry.Open();
                 using var reader = new StreamReader(stream);
                 var nb = await reader.ReadToEndAsync();
-                nb = Regex.Replace(nb,
-                    @"[""'{}]{1,3}\s*\+\s*([a-zA-Z0-9_]+)\s*\+\s*[""'{}]{1,3}",
-                    "${$1}");
+                nb = Regex.Replace(nb, @"[""'{}]{1,3}\s*\+\s*([a-zA-Z0-9_]+)\s*\+\s*[""'{}]{1,3}", "${$1}");
 
-                foreach (Match m in Regex.Matches(nb,
-                    @"(?i)(?:FROM|JOIN)\s+([`a-zA-Z0-9_.{}$]+)"))
+                foreach (Match m in Regex.Matches(nb, @"(?i)(?:FROM|JOIN)\s+([`a-zA-Z0-9_.{}$]+)"))
                 {
                     string v = m.Groups[1].Value.Replace("`", "").Trim();
-                    if (!v.Equals("SELECT", StringComparison.OrdinalIgnoreCase) &&
-                        !string.IsNullOrWhiteSpace(v)) rSrc.Add(v);
+                    if (!v.Equals("SELECT", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(v)) rSrc.Add(v);
                 }
-                foreach (Match m in Regex.Matches(nb,
-                    @"(?i)spark\.(?:read\.)?table\s*\(\s*f?[""'](  [^""']+)[""'  ]\s*\)"))
+                foreach (Match m in Regex.Matches(nb, @"(?i)spark\.(?:read\.)?table\s*\(\s*f?[""'](  [^""']+)[""'  ]\s*\)"))
                     rSrc.Add(m.Groups[1].Value);
-                foreach (Match m in Regex.Matches(nb,
-                    @"(?i)(?:saveAsTable|insertInto)\s*\(\s*f?[""'](  [^""']+)[""'  ]\s*\)"))
+                foreach (Match m in Regex.Matches(nb, @"(?i)(?:saveAsTable|insertInto)\s*\(\s*f?[""'](  [^""']+)[""'  ]\s*\)"))
                     rTgt.Add(m.Groups[1].Value);
-                foreach (Match m in Regex.Matches(nb,
-                    @"(?i)(?:INSERT\s+(?:INTO|OVERWRITE)|MERGE\s+INTO|CREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS)?)\s+([`a-zA-Z0-9_.{}$]+)"))
+                foreach (Match m in Regex.Matches(nb, @"(?i)(?:INSERT\s+(?:INTO|OVERWRITE)|MERGE\s+INTO|CREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS)?)\s+([`a-zA-Z0-9_.{}$]+)"))
                 {
                     string v = m.Groups[1].Value.Replace("`", "").Trim();
                     if (!string.IsNullOrWhiteSpace(v)) rTgt.Add(v);
                 }
             }
-            return (rSrc.Where(x => !isJunk(x)).ToList(),
-                    rTgt.Where(x => !isJunk(x)).ToList());
+            return (rSrc.Where(x => !isJunk(x)).ToList(), rTgt.Where(x => !isJunk(x)).ToList());
         }
 
         private (string param, string table) ParseTableString(string raw, List<string> knownParams)
         {
             string cleaned = raw.Replace("{", "").Replace("}", "").Replace("$", "").Replace("`", "");
-
             if (cleaned.Contains("."))
             {
                 var parts = cleaned.Split('.');
@@ -280,8 +267,7 @@ namespace NotebookValidator.Web.Controllers
                 if (exactParam == null)
                 {
                     string cleanPossible = Regex.Replace(possibleParam, @"(?i)_?[xw]$", "");
-                    exactParam = knownParams.FirstOrDefault(p =>
-                        Regex.Replace(p, @"(?i)_?[xw]$", "").Equals(cleanPossible, StringComparison.OrdinalIgnoreCase));
+                    exactParam = knownParams.FirstOrDefault(p => Regex.Replace(p, @"(?i)_?[xw]$", "").Equals(cleanPossible, StringComparison.OrdinalIgnoreCase));
                 }
 
                 if (exactParam != null) return (exactParam, tablePart);
@@ -340,18 +326,15 @@ namespace NotebookValidator.Web.Controllers
                             if (!System.IO.File.Exists(filePath)) continue;
 
                             string rawContent = await System.IO.File.ReadAllTextAsync(filePath);
-                            // Aplicar schemaBitacora global si fue proporcionado
-                            if (!string.IsNullOrWhiteSpace(globalSchemaBitacora) &&
-                                (fileKey.EndsWith(".yml") || fileKey.EndsWith(".yaml")))
+
+                            if (!string.IsNullOrWhiteSpace(globalSchemaBitacora) && (fileKey.EndsWith(".yml") || fileKey.EndsWith(".yaml")))
                             {
                                 int sbIdx = rawContent.IndexOf("schemaBitacora:");
                                 if (sbIdx >= 0)
                                 {
                                     int lineEnd = rawContent.IndexOf("\n", sbIdx);
                                     if (lineEnd < 0) lineEnd = rawContent.Length;
-                                    rawContent = rawContent.Substring(0, sbIdx)
-                                        + "schemaBitacora: " + globalSchemaBitacora
-                                        + rawContent.Substring(lineEnd);
+                                    rawContent = rawContent.Substring(0, sbIdx) + "schemaBitacora: " + globalSchemaBitacora + rawContent.Substring(lineEnd);
                                 }
                             }
                             bool isYaml = fileKey.EndsWith(".yml") || fileKey.EndsWith(".yaml");
@@ -431,8 +414,6 @@ namespace NotebookValidator.Web.Controllers
                                     foreach (var fullJobName in yamlDevNames)
                                     {
                                         string cleanJobName = Regex.Replace(fullJobName, @"^\d{3}-(?:qa|noqa)-(?:run|norun)-", "");
-
-                                        // La llave de la variable limpia de _aprovisionamiento
                                         string variableKeyName = Regex.Replace(cleanJobName, @"(?i)_aprovisionamiento$", "");
 
                                         content = content.Replace($"jobName_{fullJobName}", $"jobName_{variableKeyName}");
@@ -458,8 +439,6 @@ namespace NotebookValidator.Web.Controllers
                                     content = Regex.Replace(content, badTaskRegex, "");
 
                                     content = Regex.Replace(content, @"(notebook_path:.*?)\d{3}-(?:qa|noqa)-(?:run|norun)-", "$1");
-
-                                    // Corrección del parámetro 'nombreJob' para usar siempre la variable limpia
                                     content = Regex.Replace(content, @"(nombreJob:\s*""\$\{?var\.jobName_)[^""\}]+(\}?"")", $"$1{variableKeyName}$2");
                                 }
 
@@ -467,6 +446,29 @@ namespace NotebookValidator.Web.Controllers
                             }
                         }
                     }
+
+                    // 2. REGISTRO DE AUDITORÍA
+                    try
+                    {
+                        string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                        if (!string.IsNullOrEmpty(userId))
+                        {
+                            string ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
+                            string operacion = yamlContents.Count > 0 ? "Generación Unity Catalog (YAML Bundles)" : "Generación Legacy (JSON Plano)";
+
+                            var auditDetails = new
+                            {
+                                Operacion = operacion,
+                                Bundle = string.IsNullOrWhiteSpace(bundleName) ? "N/A" : bundleName,
+                                Jobs_Generados = fileKeys.Count,
+                                Nombres_Desarrollo = devNames
+                            };
+
+                            string jsonDetails = JsonSerializer.Serialize(auditDetails);
+                            await _auditService.LogActionAsync(userId, "GENERACION_JOBS_MULTI", jsonDetails, ip);
+                        }
+                    }
+                    catch { /* Si falla la auditoría, no interrumpimos la descarga del ZIP al usuario */ }
 
                     if (Directory.Exists(cacheFolder)) Directory.Delete(cacheFolder, true);
                     return File(memoryStream.ToArray(), "application/zip", $"Pipeline_Jobs_BCI_{DateTime.Now:yyyyMMdd}.zip");
