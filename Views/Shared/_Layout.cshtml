@@ -19,8 +19,8 @@
     <style>
 
             /* ==========================================================================
-                                   ESTANDARIZACIÓN GLOBAL DE SIDEBAR AL ALTO IMPACTO (COMPACTO AL 75%)
-                                   ========================================================================== */
+                                               ESTANDARIZACIÓN GLOBAL DE SIDEBAR AL ALTO IMPACTO (COMPACTO AL 75%)
+                                               ========================================================================== */
             :root {
                 --sidebar-width: 260px !important;
                 --topbar-height: 60px !important;
@@ -118,25 +118,104 @@
                         }
 
             .nav-header-custom {
-                font-size: 0.62rem !important;
-                letter-spacing: 1.2px !important;
+                font-size: 0.60rem !important;
+                letter-spacing: 1.3px !important;
                 font-weight: 700 !important;
                 color: rgba(255, 255, 255, 0.28) !important;
-                padding: 0.8rem 0.8rem 0.2rem !important;
+                padding: 0.75rem 0.8rem 0.25rem !important;
                 text-transform: uppercase !important;
                 white-space: nowrap;
                 margin-top: 0px !important;
                 margin-bottom: 0px !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 6px !important;
             }
 
                 .nav-header-custom:first-child {
                     padding-top: 0.5rem !important;
                 }
 
+                /* Línea separadora integrada en el header */
+                .nav-header-custom::after {
+                    content: '' !important;
+                    flex: 1 !important;
+                    height: 1px !important;
+                    background: rgba(255, 255, 255, 0.06) !important;
+                    display: block !important;
+                }
+
             .sidebar-nav hr {
-                margin: 0.25rem 0.75rem !important;
-                border-color: rgba(255, 255, 255, 0.05) !important;
-                opacity: 0.15 !important;
+                display: none !important; /* Reemplazados por ::after en nav-header-custom */
+            }
+
+            /* Área de perfil de usuario al pie del sidebar */
+            .sidebar-user-footer {
+                flex-shrink: 0 !important;
+                padding: 0.6rem 0.75rem !important;
+                border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 0.6rem !important;
+                background-color: #0b0d16 !important;
+                cursor: default !important;
+            }
+
+            .sidebar-user-avatar {
+                width: 28px !important;
+                height: 28px !important;
+                border-radius: 50% !important;
+                background: rgba(255, 193, 7, 0.15) !important;
+                border: 1px solid rgba(255, 193, 7, 0.25) !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                font-size: 0.65rem !important;
+                font-weight: 700 !important;
+                color: #ffc107 !important;
+                flex-shrink: 0 !important;
+                text-transform: uppercase !important;
+            }
+
+            .sidebar-user-info {
+                flex: 1 !important;
+                min-width: 0 !important;
+                overflow: hidden !important;
+            }
+
+                .sidebar-user-info .user-name {
+                    font-size: 0.75rem !important;
+                    font-weight: 600 !important;
+                    color: rgba(255, 255, 255, 0.85) !important;
+                    white-space: nowrap !important;
+                    overflow: hidden !important;
+                    text-overflow: ellipsis !important;
+                    line-height: 1.2 !important;
+                }
+
+                .sidebar-user-info .user-role {
+                    font-size: 0.62rem !important;
+                    color: rgba(255, 255, 255, 0.3) !important;
+                    white-space: nowrap !important;
+                    overflow: hidden !important;
+                    text-overflow: ellipsis !important;
+                    line-height: 1.3 !important;
+                }
+
+            /* Ocultar user footer al colapsar */
+            .sidebar.collapsed .sidebar-user-footer {
+                padding: 0.6rem 0 !important;
+                justify-content: center !important;
+            }
+
+            .sidebar.collapsed .sidebar-user-info,
+            .sidebar.collapsed .sidebar-user-role-badge {
+                display: none !important;
+            }
+
+            .sidebar.collapsed .sidebar-user-avatar {
+                width: 30px !important;
+                height: 30px !important;
             }
 
             .sidebar-nav .nav-link[aria-expanded="true"] .transition-icon {
@@ -194,8 +273,8 @@
                 }
 
             /* ==========================================================================
-                                   OMNI-SEARCH GLOBAL (ATLASSIAN / JIRA STYLE)
-                                   ========================================================================== */
+                                               OMNI-SEARCH GLOBAL (ATLASSIAN / JIRA STYLE)
+                                               ========================================================================== */
             .global-search-container {
                 position: relative;
                 width: 100%;
@@ -476,81 +555,6 @@
                         pointer-events: none;
                     }
 
-            /* Administración colapsada: panel flotante al hover */
-            .sidebar.collapsed .admin-collapse-wrapper {
-                position: static;
-            }
-
-            .sidebar.collapsed #adminCollapse {
-                display: none !important;
-            }
-
-            /* FIX 1: Ocultar el flyout SIEMPRE por defecto para que no manche la vista expandida */
-            .admin-flyout {
-                display: none;
-            }
-
-            /* Estilos del flyout cuando el sidebar está colapsado */
-            .sidebar.collapsed .admin-flyout {
-                position: fixed;
-                left: var(--sidebar-collapsed-width);
-                top: 0; /* se ajusta via JS */
-                background: #111424;
-                border: 1px solid rgba(255,255,255,0.1);
-                border-radius: 0 8px 8px 0;
-                min-width: 210px;
-                z-index: 9999;
-                box-shadow: 4px 0 20px rgba(0,0,0,0.4);
-                padding: 6px 0;
-            }
-
-                /* FIX 2: Puente invisible para que el mouse no pierda el hover al moverse hacia el panel */
-                .sidebar.collapsed .admin-flyout::before {
-                    content: '';
-                    position: absolute;
-                    left: -20px; /* Cubre el espacio vacío hacia la izquierda */
-                    top: 0;
-                    bottom: 0;
-                    width: 20px;
-                    background: transparent;
-                }
-
-            /* Mostrar el panel al hacer hover */
-            .sidebar.collapsed .admin-collapse-wrapper:hover .admin-flyout {
-                display: block !important;
-            }
-
-            .sidebar.collapsed .admin-flyout a {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                padding: 8px 14px;
-                font-size: 0.78rem;
-                color: rgba(255,255,255,0.7);
-                text-decoration: none;
-                white-space: nowrap;
-            }
-
-                .sidebar.collapsed .admin-flyout a:hover {
-                    background: rgba(255,193,7,0.08);
-                    color: #fff;
-                }
-
-                .sidebar.collapsed .admin-flyout a i {
-                    font-size: 0.9rem;
-                    width: 16px;
-                    text-align: center;
-                }
-
-            .sidebar.collapsed .admin-flyout-title {
-                font-size: 0.62rem;
-                font-weight: 700;
-                color: rgba(255,255,255,0.28);
-                letter-spacing: 1.2px;
-                text-transform: uppercase;
-                padding: 4px 14px 6px;
-            }
-
             /* Botón toggle */
             #btnToggleSidebar {
                 background: none;
@@ -630,7 +634,9 @@
 
             <nav class="sidebar-nav mt-2">
                 <ul class="nav flex-column">
-                    <li class="nav-header-custom">General</li>
+
+                    @* ── GENERAL ── *@
+                    <li class="nav-header-custom"><i class="bi bi-house-door" style="font-size:0.6rem; opacity:0.5;"></i> General</li>
 
                     <li class="nav-item">
                         <a class="nav-link @(isHomePage ? "active" : "")" asp-controller="Home" asp-action="Index"
@@ -656,9 +662,8 @@
                         </li>
                     }
 
-                    <li><hr></li>
-
-                    <li class="nav-header-custom">Motor de Validación</li>
+                    @* ── MOTOR DE VALIDACIÓN ── *@
+                    <li class="nav-header-custom"><i class="bi bi-check2-circle" style="font-size:0.6rem; opacity:0.5;"></i> Validación</li>
 
                     @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
                     {
@@ -690,9 +695,8 @@
                         </li>
                     }
 
-                    <li><hr></li>
-
-                    <li class="nav-header-custom">Datos y Procesamiento</li>
+                    @* ── DATOS Y PROCESAMIENTO ── *@
+                    <li class="nav-header-custom"><i class="bi bi-database" style="font-size:0.6rem; opacity:0.5;"></i> Datos</li>
 
                     @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
                     {
@@ -734,10 +738,12 @@
                         </li>
                     }
 
-                    @* ── NUEVO SÚPER MÓDULO AGREGADO AQUÍ ── *@
+                    @* ── HERRAMIENTAS ── *@
                     @{
                         var isJobMgmtActive = currentController == "JobConverter" || currentController == "JobVisualizer" || currentController == "LegacyJobMigration";
                     }
+                    <li class="nav-header-custom"><i class="bi bi-tools" style="font-size:0.6rem; opacity:0.5;"></i> Herramientas</li>
+
                     <li class="nav-item">
                         <a class="nav-link @(isJobMgmtActive ? "active" : "")" asp-controller="JobConverter" asp-action="Index"
                            data-sidebar-label="Suite de Jobs">
@@ -755,67 +761,72 @@
                         </li>
                     }
 
+                    @* ── SISTEMA / ADMIN (expandido directamente, solo visible para Admin) ── *@
                     @if (User.IsInRole("Admin"))
                     {
-                        <li><hr></li>
-                        <li class="nav-header-custom" style="color: #ffc107 !important; opacity: 0.85;">Sistema</li>
-                        <li class="nav-item admin-collapse-wrapper">
-                            <a class="nav-link @(isAdminActive ? "active" : "text-warning fw-bold") d-flex align-items-center"
-                               data-bs-toggle="collapse" href="#adminCollapse" role="button"
-                               aria-expanded="@(isAdminActive ? "true" : "false")" aria-controls="adminCollapse"
-                               data-sidebar-label="Administración">
-                                <i class="bi bi-shield-lock-fill"></i> <span>Administración</span>
-                                <i class="bi bi-chevron-down ms-auto small transition-icon"></i>
+                        <li class="nav-header-custom" style="color: rgba(255, 193, 7, 0.5) !important;"><i class="bi bi-shield-lock-fill" style="font-size:0.6rem; opacity:0.7; color:#ffc107;"></i> Sistema</li>
+
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "AdminDashboard" ? "active" : "")" asp-controller="AdminDashboard" asp-action="Index"
+                               data-sidebar-label="Dashboard Global">
+                                <i class="bi bi-speedometer2"></i> <span>Dashboard Global</span>
                             </a>
-                            @* Collapse normal (sidebar expandido) *@
-                            <div class="collapse @(isAdminActive ? "show" : "")" id="adminCollapse">
-                                <ul class="nav flex-column ms-3 mt-1 border-start border-secondary" style="border-width: 2px !important;">
-                                    <li class="nav-item">
-                                        <a class="nav-link py-2 @(currentController == "AdminDashboard" ? "active" : "")" asp-controller="AdminDashboard" asp-action="Index">
-                                            <i class="bi bi-speedometer2"></i> <span>Dashboard Global</span>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link py-2 @(currentController == "Admin" ? "active" : "")" asp-controller="Admin" asp-action="Index">
-                                            <i class="bi bi-people"></i> <span>Gestionar Usuarios</span>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link py-2 @(currentController == "ValidationRuleAdmin" ? "active" : "")" asp-controller="ValidationRuleAdmin" asp-action="Index">
-                                            <i class="bi bi-list-check"></i> <span>Reglas Validador</span>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link py-2 @(currentController == "FunctionsAdmin" ? "active" : "")" asp-controller="FunctionsAdmin" asp-action="Index">
-                                            <i class="bi bi-braces-asterisk"></i> <span>Funciones (Maestro)</span>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link py-2 @(currentController == "AuditLog" ? "active" : "")" asp-controller="AuditLog" asp-action="Index">
-                                            <i class="bi bi-shield-check"></i> <span>Log de Auditoría</span>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link py-2 @(currentController == "ParameterAdmin" ? "active" : "")" asp-controller="ParameterAdmin" asp-action="Index">
-                                            <i class="bi bi-tags-fill"></i> <span>Admin. Parámetros</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                            @* Flyout (sidebar colapsado — aparece al hacer hover sobre el ícono) *@
-                            <div class="admin-flyout" id="adminFlyout">
-                                <div class="admin-flyout-title">Administración</div>
-                                <a asp-controller="AdminDashboard" asp-action="Index"><i class="bi bi-speedometer2"></i>Dashboard Global</a>
-                                <a asp-controller="Admin" asp-action="Index"><i class="bi bi-people"></i>Gestionar Usuarios</a>
-                                <a asp-controller="ValidationRuleAdmin" asp-action="Index"><i class="bi bi-list-check"></i>Reglas Validador</a>
-                                <a asp-controller="FunctionsAdmin" asp-action="Index"><i class="bi bi-braces-asterisk"></i>Funciones (Maestro)</a>
-                                <a asp-controller="AuditLog" asp-action="Index"><i class="bi bi-shield-check"></i>Log de Auditoría</a>
-                                <a asp-controller="ParameterAdmin" asp-action="Index"><i class="bi bi-tags-fill"></i>Admin. Parámetros</a>
-                            </div>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "Admin" ? "active" : "")" asp-controller="Admin" asp-action="Index"
+                               data-sidebar-label="Gestionar Usuarios">
+                                <i class="bi bi-people"></i> <span>Gestionar Usuarios</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "ValidationRuleAdmin" ? "active" : "")" asp-controller="ValidationRuleAdmin" asp-action="Index"
+                               data-sidebar-label="Reglas Validador">
+                                <i class="bi bi-list-check"></i> <span>Reglas Validador</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "FunctionsAdmin" ? "active" : "")" asp-controller="FunctionsAdmin" asp-action="Index"
+                               data-sidebar-label="Funciones (Maestro)">
+                                <i class="bi bi-braces-asterisk"></i> <span>Funciones (Maestro)</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "AuditLog" ? "active" : "")" asp-controller="AuditLog" asp-action="Index"
+                               data-sidebar-label="Log de Auditoría">
+                                <i class="bi bi-shield-check"></i> <span>Log de Auditoría</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "ParameterAdmin" ? "active" : "")" asp-controller="ParameterAdmin" asp-action="Index"
+                               data-sidebar-label="Admin. Parámetros">
+                                <i class="bi bi-tags-fill"></i> <span>Admin. Parámetros</span>
+                            </a>
                         </li>
                     }
+
                 </ul>
             </nav>
+
+            @* ── PERFIL DE USUARIO AL PIE DEL SIDEBAR ── *@
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                var userName = User.Identity.Name ?? "Usuario";
+                var userInitials = string.Join("", userName.Split(' ', System.StringSplitOptions.RemoveEmptyEntries)
+                    .Take(2).Select(w => w[0].ToString().ToUpper()));
+                if (string.IsNullOrEmpty(userInitials)) userInitials = userName.Length >= 2 ? userName[..2].ToUpper() : userName.ToUpper();
+                var userRole = User.IsInRole("Admin") ? "Administrador" :
+                               User.IsInRole("ValidatorUser") ? "Validador" :
+                               User.IsInRole("ParameterValidatorUser") ? "Val. Parámetros" :
+                               User.IsInRole("TempCleanerUser") ? "Limpieza" : "Usuario";
+                <div class="sidebar-user-footer">
+                    <div class="sidebar-user-avatar" title="@userName">@userInitials</div>
+                    <div class="sidebar-user-info">
+                        <div class="user-name">@userName</div>
+                        <div class="user-role">@userRole</div>
+                    </div>
+                </div>
+            }
+
         </aside>
         <main class="main-content">
             <header class="top-bar px-4 d-flex justify-content-between align-items-center">
@@ -983,16 +994,6 @@
         const sidebar     = document.querySelector('.sidebar');
         const btn         = document.getElementById('btnToggleSidebar');
         const STORAGE_KEY = 'sidebar_collapsed';
-        const adminWrapper = document.querySelector('.admin-collapse-wrapper');
-        const adminFlyout  = adminWrapper?.querySelector('.admin-flyout');
-
-        // Posicionar flyout de admin dinámicamente
-        if (adminWrapper && adminFlyout) {
-        adminWrapper.addEventListener('mouseenter', function() {
-        const rect = adminWrapper.getBoundingClientRect();
-        adminFlyout.style.top = rect.top + 'px';
-        });
-        }
 
         // Posicionar tooltips de ::after via CSS variable por elemento
         // Los tooltips usan position:fixed, necesitamos pasar el top via CSS custom property

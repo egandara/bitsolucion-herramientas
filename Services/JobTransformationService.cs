@@ -393,8 +393,8 @@ namespace NotebookValidator.Web.Services
                         lastTaskKey = taskKeyMatches[taskKeyMatches.Count - 1].Groups[1].Value;
                     }
 
-                    string rawSources = sourceTables.Count > i ? sourceTables[i] : "";
-                    string rawTargets = targetTables.Count > i ? targetTables[i] : "";
+                    string rawSources = (sourceTables != null && sourceTables.Count > i && sourceTables[i] != null) ? sourceTables[i] : "";
+                    string rawTargets = (targetTables != null && targetTables.Count > i && targetTables[i] != null) ? targetTables[i] : "";
 
                     var sourceList = rawSources.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
                     var targetList = rawTargets.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList();
@@ -432,7 +432,7 @@ namespace NotebookValidator.Web.Services
 
                     var autocertTaskBlock = new StringBuilder();
                     autocertTaskBlock.AppendLine();
-                    autocertTaskBlock.AppendLine("        - task_key: Auto_Certificacion_BigData");
+                    autocertTaskBlock.AppendLine("        - task_key: auto_certification_bigdata");
 
                     if (!string.IsNullOrEmpty(lastTaskKey))
                     {
@@ -447,7 +447,7 @@ namespace NotebookValidator.Web.Services
                     autocertTaskBlock.AppendLine($"              nombreJob: \"${{var.jobName_{jCleanName}}}\"");
                     autocertTaskBlock.AppendLine("              nombreTarea: \"Auto_Certificacion_BigData\"");
                     autocertTaskBlock.AppendLine("              tipo: \"A\"");
-                    autocertTaskBlock.AppendLine("              schemaBitacora: \"catalog_bcidigital_prd_001.prd_slv_governance\"");
+                    autocertTaskBlock.AppendLine("              schemaBitacora: \"catalog_bcidigital_dsr_001.sch_ida\"");
 
                     foreach (var kvp in sourceYamlParams)
                     {

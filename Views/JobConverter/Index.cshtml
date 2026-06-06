@@ -361,21 +361,21 @@
                 <div id="bannerGlobal" class="p-3 mb-3 rounded border border-secondary border-opacity-25" style="background-color:#0b0d16;">
                     <div class="row g-3 align-items-end">
                         <div class="col-12 col-md-5">
-                            <label class="text-white-50 fw-bold mb-1 d-block" style="font-size:0.72rem;">
+                            <label class="text-white fw-bold mb-1 d-block" style="font-size:0.72rem;">
                                 <i class="bi bi-journal-bookmark me-1 text-warning"></i>
                                 <span class="text-warning">schemaBitacora</span>
-                                <span class="text-white-50 ms-1">— se aplica a todos los jobs</span>
+                                <span class="text-white ms-1">— se aplica a todos los jobs</span>
                             </label>
                             <input type="text" id="globalSchemaBitacora" name="globalSchemaBitacora"
-                                   class="form-control form-control-sm font-monospace bg-dark text-white border-secondary"
+                                   class="form-control form-control-sm font-monospace bg-dark border-secondary custom-placeholder shadow-sm"
                                    placeholder="catalog_bcidigital_dsr_001.sch_ida"
-                                   style="font-size:0.78rem;" />
+                                   style="font-size:0.78rem; color:#fff !important;" />
                         </div>
                         <div class="col-12 col-md-7">
-                            <label class="text-white-50 fw-bold mb-1 d-block" style="font-size:0.72rem;">
+                            <label class="text-white fw-bold mb-1 d-block" style="font-size:0.72rem;">
                                 <i class="bi bi-table me-1 text-info"></i>
                                 <span class="text-info">Agregar tabla masiva</span>
-                                <span class="text-white-50 ms-1">— agrega a todos los jobs visibles</span>
+                                <span class="text-white ms-1">— agrega a todos los jobs visibles</span>
                             </label>
                             <div class="d-flex gap-2 align-items-center flex-wrap">
                                 <select id="globalMassType" class="form-select form-select-sm bg-dark text-white border-secondary font-monospace" style="width:110px; font-size:0.72rem;">
@@ -385,10 +385,11 @@
                                 <select id="globalMassParam" class="form-select form-select-sm bg-dark text-white border-secondary font-monospace" style="width:160px; font-size:0.72rem;">
                                     <option value="">-- Sin Variable --</option>
                                 </select>
-                                <span class="text-white-50 fw-bold">.</span>
+                                <span class="text-white fw-bold">.</span>
                                 <input type="text" id="globalMassTable"
-                                       class="form-control form-control-sm bg-dark text-white border-secondary font-monospace"
-                                       placeholder="nombre_tabla" style="width:180px; font-size:0.72rem;" />
+                                       class="form-control form-control-sm bg-dark border-secondary font-monospace custom-placeholder shadow-sm"
+                                       placeholder="nombre_tabla"
+                                       style="width:180px; font-size:0.72rem; color:#fff !important;" />
                                 <button type="button" class="btn btn-sm btn-info fw-bold px-3"
                                         onclick="addMassiveTable()" title="Agregar esta tabla a todos los jobs">
                                     <i class="bi bi-plus-lg me-1"></i>Agregar a todos
@@ -490,9 +491,38 @@
     </div>
 </div>
 
+<div class="modal fade" id="missingTargetsModal" tabindex="-1" aria-labelledby="missingTargetsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-white shadow-lg" style="background-color: #0b0d16; border: 1px solid #ffc107;">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold text-warning" id="missingTargetsModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Alerta de Linaje
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body px-4 py-4" style="background-color: #07091e;">
+                <p class="mb-3 text-white-50" style="font-size: 0.9rem;">
+                    Se detectaron Jobs con Autocertificación <strong class="text-warning">'qa'</strong> activada pero <strong class="text-danger">SIN tablas de destino</strong> definidas.
+                </p>
+                <p class="mb-0 text-white-50" style="font-size: 0.85rem;">
+                    ¿Estás seguro que estos procesos no generan ninguna tabla física y deseas continuar con la descarga de todos modos?
+                </p>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">No, revisar jobs</button>
+                <button type="button" class="btn btn-warning fw-bold px-4" id="btnConfirmDownload">Sí, descargar de todos modos</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         window.jobParametersMap = {};
+
+        // Variable para controlar si el usuario ya aprobó omitir la validación de tablas
+        let userApprovedMissingTargets = false;
+
         document.addEventListener('DOMContentLoaded', function () {
             const fileUpload = document.getElementById('job-file-upload');
             const dropZone = document.getElementById('job-drop-zone');
@@ -824,8 +854,8 @@
                                                 <div class="d-flex align-items-center gap-3 p-2 border border-secondary rounded mt-1 shadow-inner" style="background-color: #111424;">
                                                     <div class="radio-dot-container">
                                                         <span class="text-warning fw-bold" style="font-size:0.68rem; letter-spacing:0.3px;">Autocert QA:</span>
-                                                        <label class="radio-dot-label"><input type="radio" class="radio-dot-input" name="dev_radio_${index}" value="qa" checked onchange="updateJobFileName(${index})"> qa</label>
-                                                        <label class="radio-dot-label"><input type="radio" class="radio-dot-input" name="dev_radio_${index}" value="noqa" onchange="updateJobFileName(${index})"> noqa</label>
+                                                        <label class="radio-dot-label"><input type="radio" class="radio-dot-input qa-check" name="dev_radio_${index}" value="qa" checked onchange="updateJobFileName(${index})"> qa</label>
+                                                        <label class="radio-dot-label"><input type="radio" class="radio-dot-input qa-check" name="dev_radio_${index}" value="noqa" onchange="updateJobFileName(${index})"> noqa</label>
                                                     </div>
                                                     <div class="radio-dot-container border-start border-secondary ps-3">
                                                         <span class="text-info fw-bold" style="font-size:0.68rem; letter-spacing:0.3px;">Producción:</span>
@@ -906,6 +936,10 @@
                                     } else addTableMappingRow(index, 'target');
                                 }
                             });
+
+                            // Resetear la confirmación del usuario para cada nueva carga de fase 1
+                            userApprovedMissingTargets = false;
+
                             $('#panel-fase1').addClass('d-none');
                             $('#panel-fase2').removeClass('d-none');
                             toastr.success('Jobs analizados correctamente.');
@@ -942,6 +976,47 @@
             });
 
             $('#package-form').on('submit', function(e) {
+                // 1. VALIDACIÓN INTELIGENTE DE TABLAS DE DESTINO CON MODAL
+                if (modeUC.checked && !userApprovedMissingTargets) {
+                    let missingTargetFound = false;
+                    let firstMissingRowId = null;
+
+                    $('#staging-tbody > tr.gov-row:not(.d-none)').each(function() {
+                        const rowId = $(this).attr('id');
+                        const index = rowId.split('_')[1];
+
+                        let hasValidTarget = false;
+                        const targetRows = document.querySelectorAll(`#targetTablesContainer_${index} .mapping-row`);
+
+                        targetRows.forEach(row => {
+                            const tableValue = row.querySelector('input').value.trim();
+                            if(tableValue) hasValidTarget = true;
+                        });
+
+                        if (!hasValidTarget) {
+                            missingTargetFound = true;
+                            if (!firstMissingRowId) firstMissingRowId = rowId;
+                            $(`#targetTablesContainer_${index}`).addClass('border border-danger rounded p-1');
+                        } else {
+                            $(`#targetTablesContainer_${index}`).removeClass('border border-danger rounded p-1');
+                        }
+                    });
+
+                    if (missingTargetFound) {
+                        e.preventDefault(); // Detenemos el envío nativo
+
+                        // Scroll suave al primer error
+                        document.getElementById(firstMissingRowId).scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                        // Lanzamos el modal de Bootstrap en lugar del alert nativo
+                        var alertModal = new bootstrap.Modal(document.getElementById('missingTargetsModal'));
+                        alertModal.show();
+
+                        return false;
+                    }
+                }
+
+                // 2. CONSTRUCCIÓN DE VARIABLES OCULTAS Y ENVÍO REAL
                 const hiddenContainer = document.getElementById('hidden-permissions-container');
                 hiddenContainer.innerHTML = '';
 
@@ -954,7 +1029,6 @@
 
                 $(hiddenContainer).append(`<input type="hidden" name="bundleName" value="${bundleNameVal}" />`);
 
-                // Pasar schemaBitacora global al controller
                 const schemaBitacora = document.getElementById('globalSchemaBitacora').value.trim();
                 if (schemaBitacora) {
                     $(hiddenContainer).append(`<input type="hidden" name="globalSchemaBitacora" value="${schemaBitacora}" />`);
@@ -1000,11 +1074,23 @@
                     }
                 });
 
-                return true;
+                return true; // Permite el envío del formulario
+            });
+
+            // 3. CAPTURAR EL CLIC DEL BOTÓN "SÍ, DESCARGAR" EN EL MODAL
+            $('#btnConfirmDownload').on('click', function() {
+                userApprovedMissingTargets = true; // Autoriza el salto de validación
+
+                // Ocultar modal
+                var modalEl = document.getElementById('missingTargetsModal');
+                var modalInstance = bootstrap.Modal.getInstance(modalEl);
+                modalInstance.hide();
+
+                // Re-disparar el envío del formulario (esta vez pasará la validación y construirá los campos ocultos)
+                $('#package-form').trigger('submit');
             });
         });
 
-        // ── Poblar el selector de parámetros masivos al renderizar staging ────
         window.populateGlobalMassParam = function() {
             const allParams = new Set();
             Object.values(window.jobParametersMap).forEach(params => {
@@ -1017,7 +1103,6 @@
             });
         };
 
-        // ── Agregar tabla masiva a todos los jobs visibles ────────────────────
         window.addMassiveTable = function() {
             const type  = document.getElementById('globalMassType').value;
             const param = document.getElementById('globalMassParam').value;
@@ -1031,15 +1116,12 @@
                 addTableMappingRow(parseInt(idx), type, param, table);
                 count++;
             });
-
             if (count === 0) toastr.warning('No hay jobs visibles con linaje activo.');
             else toastr.success(`Tabla agregada a ${count} job(s) como ${type === 'source' ? 'origen' : 'destino'}.`);
             document.getElementById('globalMassTable').value = '';
         };
 
-        // ── Poblar globalMassParam después de renderizar staging ─────────────
         const origSuccess = window._origAjaxSuccess;
-        // Hook: después de que se renderizan los jobs, poblar el selector
         $(document).ajaxComplete(function(event, xhr, settings) {
             if (settings.url && settings.url.includes('PrepareStaging')) {
                 setTimeout(window.populateGlobalMassParam, 100);
@@ -1060,7 +1142,7 @@
                         ${optionsHtml}
                     </select>
                     <span class="text-white-50" style="font-weight:bold;">.</span>
-                    <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace" placeholder="nombre_tabla" style="width: 48%; font-size: 0.7rem;" value="${prefillTable}" />
+                    <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace custom-placeholder" placeholder="nombre_tabla" style="width: 48%; font-size: 0.7rem; color:#fff !important;" value="${prefillTable}" />
                     <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" onclick="this.parentElement.remove()" style="font-size: 0.75rem;"><i class="bi bi-trash"></i></button>
                 </div>
             `;
