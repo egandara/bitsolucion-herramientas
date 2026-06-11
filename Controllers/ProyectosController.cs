@@ -229,6 +229,23 @@ namespace NotebookValidator.Web.Controllers
                 if (adminUser?.Email != null)
                     await _driveService.ShareFolderWithUserAsync(nuevoProyecto.DriveFolderId, adminUser.Email, "writer");
 
+                // --- NUEVA LÓGICA DE AUTO-ASIGNACIÓN ---
+                if (usuariosAsignadosIds == null) usuariosAsignadosIds = new List<string>();
+
+                // Si hay responsables en las subfases, los extraemos y los sumamos a la lista global
+                if (subfases != null && subfases.Any())
+                {
+                    var responsablesExtras = subfases
+                        .Where(s => !string.IsNullOrWhiteSpace(s.ResponsableId))
+                        .Select(s => s.ResponsableId!)
+                        .ToList();
+
+                    usuariosAsignadosIds.AddRange(responsablesExtras);
+                }
+
+                // Eliminamos duplicados por si el usuario lo marcó abajo y también le dio una tarea
+                usuariosAsignadosIds = usuariosAsignadosIds.Distinct().ToList();
+
                 if (usuariosAsignadosIds != null)
                 {
                     foreach (var uId in usuariosAsignadosIds.Where(id => id != creadorId))
@@ -361,6 +378,7 @@ namespace NotebookValidator.Web.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int id)
         {
             var proyecto = await _context.Proyectos
@@ -379,6 +397,7 @@ namespace NotebookValidator.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int id, string descripcion, int? clienteId, string estado, string? repositorioGitHub,
             string? contraparteCliente, DateTime? fechaInicio, DateTime? fechaFinEstimada, DateTime? fechaPasoProduccion,
             string notas, int maxWarningsPermitidos, int maxInfosPermitidos, List<string> usuariosAsignadosIds,
@@ -466,6 +485,23 @@ namespace NotebookValidator.Web.Controllers
 
             // 3. Reasignar Equipo
             _context.ProyectosUsuarios.RemoveRange(proyecto.UsuariosAsignados.Where(u => u.RolEnProyecto == "Developer"));
+
+            // --- NUEVA LÓGICA DE AUTO-ASIGNACIÓN ---
+            if (usuariosAsignadosIds == null) usuariosAsignadosIds = new List<string>();
+
+            // Si hay responsables en las subfases, los extraemos y los sumamos a la lista global
+            if (subfases != null && subfases.Any())
+            {
+                var responsablesExtras = subfases
+                    .Where(s => !string.IsNullOrWhiteSpace(s.ResponsableId))
+                    .Select(s => s.ResponsableId!)
+                    .ToList();
+
+                usuariosAsignadosIds.AddRange(responsablesExtras);
+            }
+
+            // Eliminamos duplicados por si el usuario lo marcó abajo y también le dio una tarea
+            usuariosAsignadosIds = usuariosAsignadosIds.Distinct().ToList();
 
             if (usuariosAsignadosIds != null)
             {

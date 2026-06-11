@@ -4,7 +4,7 @@
     var usuariosBanco = ViewBag.UsuariosBanco as IEnumerable<dynamic>;
 }
 
-<div class="container-fluid dashboard-xl-container mt-3" style="max-width: 900px !important;">
+<div class="container-fluid dashboard-xl-container mt-3" style="max-width: 1000px !important;">
     <div class="d-flex align-items-center mb-4">
         <a asp-action="Index" class="btn btn-outline-secondary btn-sm me-3"><i class="bi bi-arrow-left"></i> Volver</a>
         <div>
@@ -99,15 +99,22 @@
                 </div>
             </div>
 
-            <h5 class="fw-bold text-light mb-3 border-bottom border-secondary pb-2 mt-4" style="font-size: 1rem;"><i class="bi bi-diagram-2-fill me-2"></i>4. Subfases Específicas (Opcional)</h5>
-            <p class="text-white-50 small mb-2">Agrega subfases (Ej: Validadores C11, C12, etc.) y asigna responsables específicos por tarea.</p>
-
-            <div id="subfases-container" class="mb-2">
+            <div class="d-flex justify-content-between align-items-center mb-3 mt-4 border-bottom border-secondary pb-2">
+                <div>
+                    <h5 class="fw-bold text-light mb-0" style="font-size: 1rem;"><i class="bi bi-list-task me-2"></i>4. Subfases y Entregables (Opcional)</h5>
+                    <p class="text-white-50 small mb-0 mt-1">Agrega tareas específicas y asigna responsables y fechas por actividad.</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-success shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalPegadoInteligente">
+                        <i class="bi bi-magic me-1"></i> Pegado Inteligente (Excel/Project)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-info" id="btnAddSubfase">
+                        <i class="bi bi-plus-lg"></i> Añadir Manual
+                    </button>
+                </div>
             </div>
 
-            <button type="button" class="btn btn-sm btn-outline-info mb-4" id="btnAddSubfase">
-                <i class="bi bi-plus-circle me-1"></i> Añadir Subfase
-            </button>
+            <div id="subfases-container" class="mb-4 d-flex flex-column gap-2"></div>
 
             <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>5. Asignación de Equipo (Global)</h5>
             <div class="bg-dark border border-secondary p-3 mb-4" style="border-radius: 6px; max-height: 200px; overflow-y: auto;">
@@ -133,9 +140,52 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalPegadoInteligente" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #198754;">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold text-success"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Importación Inteligente</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body px-4 py-4" style="background-color: #07091e;">
+                <p class="text-white-50 small mb-3">
+                    Copia las filas directamente desde <strong>Excel</strong> o <strong>MS Project</strong> y pégalas en el cuadro inferior.
+                    <strong class="text-white">No importa el orden de las columnas ni si faltan datos.</strong> Nuestro motor leerá el texto, ignorará basuras como porcentajes o duraciones, y detectará automáticamente:
+                </p>
+
+                <div class="row mb-3 g-2 font-monospace" style="font-size: 0.75rem;">
+                    <div class="col-4">
+                        <div class="p-2 border border-secondary rounded bg-dark text-center">
+                            <i class="bi bi-fonts text-info fs-5 d-block mb-1"></i>Nombre de Tarea
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2 border border-secondary rounded bg-dark text-center">
+                            <i class="bi bi-calendar-range text-warning fs-5 d-block mb-1"></i>Fechas (Inicio/Fin)
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2 border border-secondary rounded bg-dark text-center">
+                            <i class="bi bi-person-badge text-success fs-5 d-block mb-1"></i>Responsable (@@email)
+                        </div>
+                    </div>
+                </div>
+
+                <textarea id="txtPegadoMasivo" class="form-control form-control-sm bg-dark text-white font-monospace border-success" rows="8" placeholder="Pega tus filas de Excel o Project aquí (Usa Ctrl+V)..." style="font-size: 0.8rem;"></textarea>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success fw-bold" onclick="procesarPegadoHeuristico()">
+                    <i class="bi bi-magic me-2"></i>Procesar Filas
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
-        document.getElementById('formCreateProject').addEventListener('submit', function() {
+        document.getElementById('formCreateProject').addEventListener('submit', function () {
             var btn = document.getElementById('btnSubmit');
             var spinner = document.getElementById('spinnerSubmit');
             var icon = document.getElementById('iconSubmit');
@@ -146,43 +196,50 @@
             btn.innerHTML = spinner.outerHTML + ' Hablando con Google Drive... Por favor, no cierres la ventana.';
         });
 
-        // ── Lógica de Subfases Dinámicas ──
+        // ── Variables Globales y Options pre-renderizados ──
         let subfaseIndex = 0;
-
-        // Pre-renderizamos las opciones de usuarios desde el backend para usarlas en JS
         const usuariosOptions = `
             @if (usuariosBanco != null)
             {
-                    foreach (var user in usuariosBanco)
-                    {
-                            <option value="@user.Id">@user.Email</option>
-                    }
+                foreach (var user in usuariosBanco)
+                {
+                    <option value="@user.Id">@user.Email</option>
+                }
             }
         `;
 
-        document.getElementById('btnAddSubfase').addEventListener('click', function() {
+        // ── FUNCIÓN MAESTRA PARA INYECTAR FILAS (Manual y Automático) ──
+        function inyectarFilaSubfase(nombre = "", fechaIni = "", fechaFin = "", responsableVal = "") {
             const container = document.getElementById('subfases-container');
             const row = document.createElement('div');
-            row.className = 'row g-2 mb-2 align-items-center subfase-row p-2 bg-dark bg-opacity-50 border border-secondary border-opacity-50';
+            row.className = 'row g-2 mb-1 align-items-center subfase-row p-2 bg-dark bg-opacity-50 border border-secondary border-opacity-50';
             row.style.borderRadius = "6px";
 
             row.innerHTML = `
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label text-white-50 small mb-1">Fase Principal</label>
                     <select name="Subfases[${subfaseIndex}].FasePadre" class="form-select form-select-sm bg-dark text-white border-secondary" required>
-                        <option value="1_Diseño_Arquitectura">1. Diseño Arquitectura</option>
-                        <option value="2_Desarrollo_Notebooks">2. Desarrollo Notebooks</option>
-                        <option value="3_Pruebas_Certificacion">3. Pruebas Certificacion</option>
-                        <option value="4_Paso_A_Produccion">4. Paso A Producción</option>
+                        <option value="2_Desarrollo_Notebooks" selected>2. Desarrollo</option>
+                        <option value="1_Diseño_Arquitectura">1. Diseño</option>
+                        <option value="3_Pruebas_Certificacion">3. Pruebas QA</option>
+                        <option value="4_Paso_A_Produccion">4. Producción</option>
                     </select>
                 </div>
-                <div class="col-md-5">
-                    <label class="form-label text-white-50 small mb-1">Nombre Subfase</label>
-                    <input type="text" name="Subfases[${subfaseIndex}].Nombre" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Ej: Validador C11" required />
-                </div>
                 <div class="col-md-3">
+                    <label class="form-label text-white-50 small mb-1">Nombre Subfase</label>
+                    <input type="text" name="Subfases[${subfaseIndex}].Nombre" class="form-control form-control-sm bg-dark text-white border-secondary" value="${nombre}" placeholder="Ej: Validador C11" required />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label text-white-50 small mb-1">Inicio</label>
+                    <input type="date" name="Subfases[${subfaseIndex}].FechaInicio" class="form-control form-control-sm bg-dark text-white border-secondary" value="${fechaIni}" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label text-white-50 small mb-1">Fin Estimado</label>
+                    <input type="date" name="Subfases[${subfaseIndex}].FechaFinEstimada" class="form-control form-control-sm bg-dark text-white border-secondary" value="${fechaFin}" />
+                </div>
+                <div class="col-md-2">
                     <label class="form-label text-white-50 small mb-1">Responsable</label>
-                    <select name="Subfases[${subfaseIndex}].ResponsableId" class="form-select form-select-sm bg-dark text-white border-secondary">
+                    <select name="Subfases[${subfaseIndex}].ResponsableId" class="form-select form-select-sm bg-dark text-white border-secondary subfase-user-select">
                         <option value="">-- Sin asignar --</option>
                         ${usuariosOptions}
                     </select>
@@ -191,13 +248,21 @@
                     <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase" title="Eliminar Subfase"><i class="bi bi-trash"></i></button>
                 </div>
             `;
-
             container.appendChild(row);
-            subfaseIndex++;
-        });
 
-        // Eliminar fila y reindexar nombres para que el binding de ASP.NET MVC funcione correctamente
-        document.getElementById('subfases-container').addEventListener('click', function(e) {
+            // Si el pegado heurístico detectó un responsable, lo autoselecciona
+            if (responsableVal) {
+                row.querySelector('.subfase-user-select').value = responsableVal;
+            }
+
+            subfaseIndex++;
+        }
+
+        // ── Botón Manual ──
+        document.getElementById('btnAddSubfase').addEventListener('click', () => inyectarFilaSubfase());
+
+        // ── Eliminar fila y reindexar nombres para ASP.NET MVC ──
+        document.getElementById('subfases-container').addEventListener('click', function (e) {
             const btnRemove = e.target.closest('.btn-remove-subfase');
             if (btnRemove) {
                 btnRemove.closest('.subfase-row').remove();
@@ -210,9 +275,123 @@
             rows.forEach((row, index) => {
                 row.querySelector('select[name$=".FasePadre"]').name = `Subfases[${index}].FasePadre`;
                 row.querySelector('input[name$=".Nombre"]').name = `Subfases[${index}].Nombre`;
+                row.querySelector('input[name$=".FechaInicio"]').name = `Subfases[${index}].FechaInicio`;
+                row.querySelector('input[name$=".FechaFinEstimada"]').name = `Subfases[${index}].FechaFinEstimada`;
                 row.querySelector('select[name$=".ResponsableId"]').name = `Subfases[${index}].ResponsableId`;
             });
             subfaseIndex = rows.length;
+        }
+
+        // ==========================================
+        // MOTOR HEURÍSTICO (MAGIA DE PARSEO)
+        // ==========================================
+        function procesarPegadoHeuristico() {
+            const texto = document.getElementById('txtPegadoMasivo').value.trim();
+            if (!texto) return;
+
+            // 1. Diccionario temporal de usuarios para encontrar matches por correo o nombre
+            const comboTemp = document.createElement('select');
+            comboTemp.innerHTML = `<option value=""></option>` + usuariosOptions;
+            const usuariosDict = Array.from(comboTemp.options)
+                .filter(o => o.value !== "")
+                .map(o => ({ id: o.value, emailText: o.text.toLowerCase() }));
+
+            const filas = texto.split('\n');
+            let agregadas = 0;
+
+            // Regex para atrapar fechas: 14/06/2026, 14-06-26, etc.
+            const regexFecha = /\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})\b/g;
+
+            filas.forEach(fila => {
+                if (!fila.trim()) return;
+
+                // Dividir por tabulación (copiado clásico de excel/project)
+                const celdas = fila.split('\t').map(c => c.trim());
+
+                let nombre = "";
+                let fecha1 = "";
+                let fecha2 = "";
+                let respId = "";
+                let celdasRestantes = [];
+
+                celdas.forEach(celda => {
+                    let celdaLow = celda.toLowerCase();
+
+                    // Filtrar basura (porcentajes o cosas tipo "5 días")
+                    if (celdaLow.includes('%') || celdaLow.match(/\b\d+(,\d+)?\s*(días|dias|days|hrs|horas|d|h)\b/)) {
+                        return;
+                    }
+
+                    // Atrapar Fechas
+                    let matchesFecha = celda.match(regexFecha);
+                    if (matchesFecha && matchesFecha.length > 0) {
+                        matchesFecha.forEach(strFecha => {
+                            let isoDate = convertirAFechaISO(strFecha);
+                            if (isoDate) {
+                                if (!fecha1) fecha1 = isoDate;
+                                else if (!fecha2) fecha2 = isoDate;
+                            }
+                        });
+                        // Si la celda era casi pura fecha, no la usamos para el nombre
+                        if (celda.replace(regexFecha, '').trim().length < 3) return;
+                    }
+
+                            // Atrapar Responsable
+                            if (!respId) {
+                                let userMatch = usuariosDict.find(u =>
+                                    (celda.includes('\x40') && celdaLow.includes(u.emailText)) ||
+                                    celdaLow.includes(u.emailText.split('\x40')[0])
+                                );
+                                if (userMatch) {
+                                    respId = userMatch.id;
+                                    if (celda.includes('\x40')) return; // No usar correo como nombre
+                                }
+                            }
+
+                    celdasRestantes.push(celda);
+                });
+
+                // El nombre de la tarea será la celda restante más larga
+                if (celdasRestantes.length > 0) {
+                    nombre = celdasRestantes.reduce((a, b) => a.length > b.length ? a : b, "");
+                }
+
+                // Inyectar fila si hay nombre o al menos una fecha
+                if (nombre || fecha1) {
+                    // Asegurar orden lógico de fechas
+                    if (fecha1 && fecha2 && new Date(fecha1) > new Date(fecha2)) {
+                        let temp = fecha1; fecha1 = fecha2; fecha2 = temp;
+                    }
+
+                    inyectarFilaSubfase(nombre, fecha1, fecha2, respId);
+                    agregadas++;
+                }
+            });
+
+            if (agregadas > 0) {
+                toastr.success(`¡Se auto-generaron ${agregadas} subfases con éxito!`, 'Importación Completada');
+                document.getElementById('txtPegadoMasivo').value = '';
+                var modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente'));
+                modalInstance.hide();
+            } else {
+                toastr.warning('No se detectó información válida en el texto pegado. Revisa tus columnas de Excel.');
+            }
+        }
+
+        function convertirAFechaISO(fechaTexto) {
+            let partes = fechaTexto.split(/[\/\-]/);
+            if (partes.length === 3) {
+                // DD/MM/YYYY
+                if (partes[0].length <= 2 && (partes[2].length === 4 || partes[2].length === 2)) {
+                    let year = partes[2].length === 2 ? "20" + partes[2] : partes[2];
+                    return `${year}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+                }
+                // YYYY-MM-DD
+                if (partes[0].length === 4) {
+                    return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
+                }
+            }
+            return null;
         }
     </script>
 }

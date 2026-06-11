@@ -280,7 +280,10 @@
                 <button type="button" class="btn btn-primary fw-bold btn-sm d-flex align-items-center gap-2 px-3 shadow" style="height:36px; border-radius:6px;" data-bs-toggle="modal" data-bs-target="#modalValidacion" @(isPendienteWorkspace ? "" : "disabled") title="@validarTitle">
                     <i class="bi bi-shield-check"></i> Validar Código
                 </button>
-                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-warning fw-bold btn-sm d-flex align-items-center gap-1 px-3" style="height:36px; border-radius:6px;"><i class="bi bi-pencil-square"></i> Editar</a>
+                @if (User.IsInRole("Admin"))
+                {
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-warning fw-bold btn-sm d-flex align-items-center gap-1 px-3" style="height:36px; border-radius:6px;"><i class="bi bi-pencil-square"></i> Editar</a>
+                }
                 @if (!string.IsNullOrEmpty(Model.DriveFolderUrl))
                 {
                     <a href="@Model.DriveFolderUrl" target="_blank" class="btn btn-info fw-bold btn-sm d-flex align-items-center gap-1 px-3" style="height:36px; border-radius:6px;"><i class="bi bi-google"></i> Drive</a>

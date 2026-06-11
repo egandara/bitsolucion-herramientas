@@ -342,7 +342,7 @@
                 <div class="d-flex flex-wrap gap-2" style="max-height: 200px; overflow-y: auto;">
                     @foreach (var user in Model.UsuariosAsignados)
                     {
-                        var initials = (!string.IsNullOrEmpty(user.Usuario.Email) ? user.Usuario.Email : "??U").Substring(0, 2).ToUpper();
+                        var initials = (!string.IsNullOrEmpty(user.Usuario?.Email) ? user.Usuario.Email : "??U").Substring(0, 2).ToUpper();
                         <div class="d-flex align-items-center gap-2 p-2 rounded border border-secondary border-opacity-25" style="background-color: #07091e; min-width: 135px; max-width: 170px;" data-bs-toggle="tooltip" title="@user.Usuario.Email">
                             <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold small shadow-sm" style="width: 28px; height: 28px; font-size: 0.75rem; background: linear-gradient(135deg, #172a45, #0dcaf0);">@initials</div>
                             <div class="text-truncate">
