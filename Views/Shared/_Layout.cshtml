@@ -19,11 +19,15 @@
     <style>
 
             /* ==========================================================================
-                                               ESTANDARIZACIÓN GLOBAL DE SIDEBAR AL ALTO IMPACTO (COMPACTO AL 75%)
-                                               ========================================================================== */
+                                                           ESTANDARIZACIÓN GLOBAL DE SIDEBAR AL ALTO IMPACTO (COMPACTO AL 75%)
+                                                           ========================================================================== */
             :root {
                 --sidebar-width: 260px !important;
                 --topbar-height: 60px !important;
+            }
+
+            #worldCupWidget, #worldCupWidget * {
+                font-family: 'Twemoji Country Flags', 'Montserrat', 'Poppins', 'Segoe UI Emoji', sans-serif !important;
             }
 
             html, body {
@@ -273,8 +277,8 @@
                 }
 
             /* ==========================================================================
-                                               OMNI-SEARCH GLOBAL (ATLASSIAN / JIRA STYLE)
-                                               ========================================================================== */
+                                                           OMNI-SEARCH GLOBAL (ATLASSIAN / JIRA STYLE)
+                                                           ========================================================================== */
             .global-search-container {
                 position: relative;
                 width: 100%;
@@ -423,8 +427,70 @@
                 background: rgba(255,255,255,0.1);
                 border-radius: 10px;
             }
-    </style>
 
+            /* ── HOJA DE ESTILOS DEL WIDGET MUNDIAL FIFA ──────────────── */
+            .wc-time-badge-future {
+                background: rgba(13, 202, 240, 0.15);
+                color: #0dcaf0;
+                border: 1px solid rgba(13, 202, 240, 0.3);
+                font-size: 0.58rem;
+                padding: 1px 5px;
+                border-radius: 4px;
+                margin-right: 6px;
+                font-weight: bold;
+            }
+
+            .wc-live-pulse-badge {
+                background: rgba(220, 53, 69, 0.15);
+                color: #dc3545;
+                border: 1px solid rgba(220, 53, 69, 0.4);
+                font-size: 0.62rem;
+                padding: 1px 6px;
+                border-radius: 4px;
+                margin-right: 6px;
+                font-weight: bold;
+            }
+
+            .wc-fin-badge {
+                background: rgba(255, 255, 255, 0.05);
+                color: rgba(255, 255, 255, 0.4);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                font-size: 0.58rem;
+                padding: 1px 4px;
+                border-radius: 4px;
+                margin-right: 6px;
+            }
+
+            .wc-score-live-highlight {
+                background: #ffc107;
+                color: #000;
+                font-weight: bold;
+                font-size: 0.75rem;
+                padding: 1px 6px;
+                border-radius: 4px;
+                margin: 0 4px;
+                box-shadow: 0 0 8px rgba(255, 193, 7, 0.4);
+            }
+
+            .wc-score-past-badge {
+                background: rgba(255, 255, 255, 0.08);
+                color: #fff;
+                font-weight: 600;
+                font-size: 0.7rem;
+                padding: 1px 5px;
+                border-radius: 4px;
+                margin: 0 4px;
+            }
+
+            /* Banderas Twemoji: tamaño compacto para la barra del widget */
+            #worldCupWidget img.emoji {
+                width: 16px !important;
+                height: 16px !important;
+                display: inline !important;
+                vertical-align: middle !important;
+                margin: 0 2px !important;
+            }
+    </style>
 
     <style>
             /* ── SIDEBAR COLAPSABLE ────────────────────────────────── */
@@ -587,9 +653,38 @@
                 display: flex;
                 flex-direction: column;
             }
+
+            /* === WIDGET MUNDIAL === */
+            @@keyframes heartbeat {
+                0% {
+                    transform: scale(1);
+                }
+
+                14% {
+                    transform: scale(1.15);
+                }
+
+                28% {
+                    transform: scale(1);
+                }
+
+                42% {
+                    transform: scale(1.15);
+                }
+
+                70% {
+                    transform: scale(1);
+                }
+            }
+
+            .heartbeat {
+                animation: heartbeat 2s infinite;
+                display: inline-block;
+            }
     </style>
 
     @RenderSection("Styles", required: false)
+    <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
     @{
@@ -634,8 +729,6 @@
 
             <nav class="sidebar-nav mt-2">
                 <ul class="nav flex-column">
-
-                    @* ── GENERAL ── *@
                     <li class="nav-header-custom"><i class="bi bi-house-door" style="font-size:0.6rem; opacity:0.5;"></i> General</li>
 
                     <li class="nav-item">
@@ -662,7 +755,6 @@
                         </li>
                     }
 
-                    @* ── MOTOR DE VALIDACIÓN ── *@
                     <li class="nav-header-custom"><i class="bi bi-check2-circle" style="font-size:0.6rem; opacity:0.5;"></i> Validación</li>
 
                     @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
@@ -695,7 +787,6 @@
                         </li>
                     }
 
-                    @* ── DATOS Y PROCESAMIENTO ── *@
                     <li class="nav-header-custom"><i class="bi bi-database" style="font-size:0.6rem; opacity:0.5;"></i> Datos</li>
 
                     @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
@@ -706,30 +797,18 @@
                                 <i class="bi bi-bar-chart-steps"></i> <span>Perfilamiento de Datos</span>
                             </a>
                         </li>
-                    }
-
-                    @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
-                    {
                         <li class="nav-item">
                             <a class="nav-link @(currentController == "Cuadratura" ? "active" : "")" asp-controller="Cuadratura" asp-action="Index"
                                data-sidebar-label="Cuadratura de Datos">
                                 <i class="bi bi-table"></i> <span>Cuadratura de Datos</span>
                             </a>
                         </li>
-                    }
-
-                    @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
-                    {
                         <li class="nav-item">
                             <a class="nav-link @(currentController == "NotebookGenerator" ? "active" : "")" asp-controller="NotebookGenerator" asp-action="Index"
                                data-sidebar-label="Generador de Notebooks">
                                 <i class="bi bi-file-earmark-plus"></i> <span>Generador de Notebooks</span>
                             </a>
                         </li>
-                    }
-
-                    @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
-                    {
                         <li class="nav-item">
                             <a class="nav-link @(currentController == "DocGen" ? "active" : "")" asp-controller="DocGen" asp-action="Index"
                                data-sidebar-label="Documentador Técnico">
@@ -738,7 +817,6 @@
                         </li>
                     }
 
-                    @* ── HERRAMIENTAS ── *@
                     @{
                         var isJobMgmtActive = currentController == "JobConverter" || currentController == "JobVisualizer" || currentController == "LegacyJobMigration";
                     }
@@ -761,7 +839,6 @@
                         </li>
                     }
 
-                    @* ── SISTEMA / ADMIN (expandido directamente, solo visible para Admin) ── *@
                     @if (User.IsInRole("Admin"))
                     {
                         <li class="nav-header-custom" style="color: rgba(255, 193, 7, 0.5) !important;"><i class="bi bi-shield-lock-fill" style="font-size:0.6rem; opacity:0.7; color:#ffc107;"></i> Sistema</li>
@@ -803,11 +880,9 @@
                             </a>
                         </li>
                     }
-
                 </ul>
             </nav>
 
-            @* ── PERFIL DE USUARIO AL PIE DEL SIDEBAR ── *@
             @if (User.Identity?.IsAuthenticated == true)
             {
                 var userName = User.Identity.Name ?? "Usuario";
@@ -826,8 +901,8 @@
                     </div>
                 </div>
             }
-
         </aside>
+
         <main class="main-content">
             <header class="top-bar px-4 d-flex justify-content-between align-items-center">
                 <div class="global-search-container flex-grow-1" style="max-width: 450px;">
@@ -836,8 +911,25 @@
                     <div id="globalSearchResults" class="global-search-results"></div>
                 </div>
 
+                <!-- INICIO WIDGET MUNDIAL 2026 -->
+                <div id="worldCupWidget" class="d-none d-lg-flex align-items-center mx-auto gap-2" style="max-width: 820px; user-select: none;">
+
+                    <div class="d-flex align-items-center px-3 py-1 font-monospace" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 15px; font-size: 0.72rem; height: 28px; opacity: 0.55;" id="wc-ant">
+                        -
+                    </div>
+
+                    <div class="d-flex align-items-center px-3 py-1 font-monospace shadow-sm" style="background: rgba(255, 193, 7, 0.03); border: 1px solid rgba(255, 193, 7, 0.35); box-shadow: 0 0 12px rgba(255, 193, 7, 0.12); border-radius: 18px; font-size: 0.76rem; height: 32px;" id="wc-act">
+                        -
+                    </div>
+
+                    <div class="d-flex align-items-center px-3 py-1 font-monospace" style="background: rgba(13, 202, 240, 0.02); border: 1px solid rgba(13, 202, 240, 0.25); border-radius: 15px; font-size: 0.72rem; height: 28px;" id="wc-sig">
+                        -
+                    </div>
+
+                </div>
+                <!-- FIN WIDGET MUNDIAL 2026 -->
+
                 <div class="d-flex align-items-center gap-3">
-                    @* ── Badge de Notificaciones ── *@
                     <div class="position-relative" id="notif-container">
                         <button id="btnNotificaciones"
                                 class="btn btn-link p-0 position-relative"
@@ -851,7 +943,6 @@
                             </span>
                         </button>
 
-                        @* Panel desplegable *@
                         <div id="notif-panel"
                              class="d-none position-absolute end-0 mt-2 shadow-lg"
                              style="width: 340px; background-color: #111424; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; z-index: 1050; top: 100%;">
@@ -988,15 +1079,12 @@
         });
     </script>
 
-    @* ── Toggle sidebar ── *@
     <script>
         (function() {
         const sidebar     = document.querySelector('.sidebar');
         const btn         = document.getElementById('btnToggleSidebar');
         const STORAGE_KEY = 'sidebar_collapsed';
 
-        // Posicionar tooltips de ::after via CSS variable por elemento
-        // Los tooltips usan position:fixed, necesitamos pasar el top via CSS custom property
         document.querySelectorAll('.nav-link[data-sidebar-label]').forEach(link => {
         link.addEventListener('mouseenter', function() {
         const rect = this.getBoundingClientRect();
@@ -1028,9 +1116,38 @@
         })();
     </script>
 
+    <!-- SCRIPT DEL WIDGET MUNDIAL (LLAMADA AL BACKEND) -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+        const elAnt = document.getElementById('wc-ant');
+        const elAct = document.getElementById('wc-act');
+        const elSig = document.getElementById('wc-sig');
+        if (!elAct) return;
+
+        function actualizarBarraMundial() {
+        fetch('/Widget/GetWorldCupWidget')
+        .then(response => response.json())
+        .then(data => {
+        if (data.error) { console.log(data.error); return; }
+        elAnt.innerHTML = data.anterior;
+        elAct.innerHTML = data.actual;
+        elSig.innerHTML = data.siguiente;
+        // ← AGREGAR ESTO:
+        twemoji.parse(document.getElementById('worldCupWidget'), { folder: 'svg', ext: '.svg' });
+        })
+        .catch(err => console.log("Widget en pausa"));
+        }
+
+        // Ejecutar inmediatamente
+        actualizarBarraMundial();
+
+        // Refrescar los datos desde la RAM del servidor cada 15 segundos (Totalmente gratis)
+        setInterval(actualizarBarraMundial, 15000);
+        });
+    </script>
+
     @await RenderSectionAsync("Scripts", required: false)
 
-    @* ── Sistema de Notificaciones ── *@
     @if (User.Identity?.IsAuthenticated == true)
     {
         <script src="~/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
@@ -1095,26 +1212,24 @@
             .catch(() => {});
             }
 
-            // Cargar al iniciar
             cargarNotificaciones();
-            // Refrescar cada 60 segundos como fallback
             setInterval(cargarNotificaciones, 60000);
-            // Toggle del panel
+
             document.getElementById('btnNotificaciones')?.addEventListener('click', function(e) {
             e.stopPropagation();
             const panel = document.getElementById('notif-panel');
             if (!panel) return;
             const abierto = !panel.classList.contains('d-none');
             panel.classList.toggle('d-none');
-            if (!abierto) cargarNotificaciones(); // Refrescar al abrir
+            if (!abierto) cargarNotificaciones();
             });
-            // Cerrar al hacer clic fuera
+
             document.addEventListener('click', function(e) {
             const container = document.getElementById('notif-container');
             if (container && !container.contains(e.target))
             document.getElementById('notif-panel')?.classList.add('d-none');
             });
-            // ── SignalR: recibir notificaciones en tiempo real ─────
+
             const connection = new signalR.HubConnectionBuilder()
             .withUrl('/notificacionesHub')
             .withAutomaticReconnect()
@@ -1126,15 +1241,12 @@
             if (vacio) vacio.remove();
             lista.insertAdjacentHTML('afterbegin', buildNotifHtml(n));
             }
-            // Actualizar badge
             const badge = document.getElementById('notif-badge');
             if (badge) {
             const actual = parseInt(badge.textContent) || 0;
             actualizarBadge(actual + 1);
             }
-            // Toastr discreto
             if (typeof toastr !== 'undefined') {
-            const cfg = NOTIF_TIPOS_ICONOS[n.tipo] || {};
             toastr.info(n.titulo, '', { timeOut: 4000, positionClass: 'toast-bottom-right' });
             }
             });

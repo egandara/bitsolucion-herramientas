@@ -18,6 +18,18 @@
             @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
 
+            <div id="draftAlert" class="alert alert-warning d-none align-items-center mb-4 shadow-sm" style="background-color: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.4); color: #ffc107;">
+                <i class="bi bi-life-preserver me-3 fs-3"></i>
+                <div class="flex-grow-1">
+                    <strong class="text-white">Borrador de seguridad encontrado</strong><br />
+                    <span class="small text-white-50">Se detectaron datos no guardados de tu última sesión (incluyendo subtareas).</span>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-warning fw-bold text-dark" onclick="restaurarBorrador()">Recuperar Todo</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="descartarBorrador()">Descartar</button>
+                </div>
+            </div>
+
             <h5 class="fw-bold text-warning mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-info-square me-2"></i>1. Información General</h5>
             <div class="row g-3 mb-4">
                 <div class="col-md-8">
@@ -26,8 +38,8 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label text-white small fw-bold">Empresa / Cliente</label>
-                    <select name="clienteId" class="form-select bg-dark text-white border-secondary" asp-items="ViewBag.Clientes">
-                        <option value="">-- Interno / Sin Cliente --</option>
+                    <select name="clienteId" id="selectClienteId" class="form-select bg-dark text-white border-secondary" asp-items="ViewBag.Clientes">
+                        <option value="">-- Interno / Estándar --</option>
                     </select>
                 </div>
                 <div class="row g-3 mb-3">
@@ -37,7 +49,6 @@
                             <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-github"></i></span>
                             <input type="text" name="repositorioGitHub" class="form-control bg-dark text-white border-secondary font-monospace" placeholder="Ej: bitsolucion/repo-pipeline" />
                         </div>
-                        <span class="text-white-50" style="font-size: 0.65rem;">Ruta corta u organización/repositorio.</span>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-white small fw-bold">Contraparte del Cliente</label>
@@ -45,68 +56,45 @@
                             <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-person-badge"></i></span>
                             <input type="text" name="contraparteCliente" class="form-control bg-dark text-white border-secondary" placeholder="Ej: Juan Pérez (Líder QA)" />
                         </div>
-                        <span class="text-white-50" style="font-size: 0.65rem;">Nombre del contacto directo o validador técnico de la empresa.</span>
                     </div>
                 </div>
                 <div class="col-md-12">
                     <label class="form-label text-white small fw-bold">Descripción Corta</label>
-                    <textarea name="descripcion" class="form-control bg-dark text-white border-secondary" rows="2" placeholder="Objetivo principal del proyecto..."></textarea>
+                    <textarea name="descripcion" class="form-control bg-dark text-white border-secondary" rows="2"></textarea>
                 </div>
             </div>
 
-            <h5 class="fw-bold text-info mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-calendar-event me-2"></i>2. Cronograma y Notas</h5>
+            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
+                <h5 class="fw-bold text-info mb-0" style="font-size: 1rem;"><i class="bi bi-calendar-event me-2"></i>2. Cronograma y Notas</h5>
+                <button type="button" class="btn btn-sm btn-outline-info shadow-sm" onclick="sincronizarFechas()" title="Auto-calcular fechas maestras según tareas">
+                    <i class="bi bi-magic me-1"></i> Auto-Calcular Fechas
+                </button>
+            </div>
             <div class="row g-3 mb-4">
                 <div class="col-md-4">
                     <label class="form-label text-white small fw-bold">Fecha de Inicio</label>
-                    <input type="date" name="fechaInicio" class="form-control bg-dark text-white border-secondary" />
+                    <input type="date" name="fechaInicio" class="form-control bg-dark text-white border-secondary" id="gFechaInicio" />
                 </div>
                 <div class="col-md-4">
                     <label class="form-label text-white small fw-bold">Fin Estimado (Cierre)</label>
-                    <input type="date" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" />
+                    <input type="date" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" id="gFechaFin" />
                 </div>
                 <div class="col-md-4">
                     <label class="form-label text-white small fw-bold">Paso a Producción</label>
                     <input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" />
                 </div>
-                <div class="col-md-12">
-                    <label class="form-label text-white small fw-bold">Notas Iniciales</label>
-                    <textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="2" placeholder="Añade contexto, riesgos iniciales o alcances..."></textarea>
-                </div>
-            </div>
-
-            <h5 class="fw-bold text-primary mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-diagram-3 me-2"></i>3. Fases y Artefactos Opcionales</h5>
-            <p class="text-white-50 small mb-2">Las fases core se crearán automáticamente. Selecciona entregables extra requeridos:</p>
-            <div class="row g-3 mb-4 ps-2">
-                <div class="col-md-6">
-                    <div class="form-check custom-switch-warning">
-                        <input class="form-check-input" type="checkbox" name="fasesSeleccionadas" value="Artefacto_NUAD" id="chkNuad">
-                        <label class="form-check-label text-white small" for="chkNuad">Documento NUAD (Arquitectura)</label>
-                    </div>
-                    <div class="form-check custom-switch-warning mt-2">
-                        <input class="form-check-input" type="checkbox" name="fasesSeleccionadas" value="Artefacto_RAT" id="chkRat">
-                        <label class="form-check-label text-white small" for="chkRat">Documento RAT (Seguridad)</label>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-check custom-switch-warning">
-                        <input class="form-check-input" type="checkbox" name="fasesSeleccionadas" value="Artefacto_MatrizPruebas" id="chkMatriz">
-                        <label class="form-check-label text-white small" for="chkMatriz">Matriz de Pruebas QA</label>
-                    </div>
-                    <div class="form-check custom-switch-warning mt-2">
-                        <input class="form-check-input" type="checkbox" name="fasesSeleccionadas" value="Artefacto_ManualOperacion" id="chkManual">
-                        <label class="form-check-label text-white small" for="chkManual">Manual de Operación / Runbook</label>
-                    </div>
-                </div>
             </div>
 
             <div class="d-flex justify-content-between align-items-center mb-3 mt-4 border-bottom border-secondary pb-2">
                 <div>
-                    <h5 class="fw-bold text-light mb-0" style="font-size: 1rem;"><i class="bi bi-list-task me-2"></i>4. Subfases y Entregables (Opcional)</h5>
-                    <p class="text-white-50 small mb-0 mt-1">Agrega tareas específicas y asigna responsables y fechas por actividad.</p>
+                    <h5 class="fw-bold text-light mb-0" style="font-size: 1rem;"><i class="bi bi-list-task me-2"></i>3. Subfases y Entregables (Opcional)</h5>
                 </div>
                 <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalDomino">
+                        <i class="bi bi-calendar-range"></i> Dominó
+                    </button>
                     <button type="button" class="btn btn-sm btn-outline-success shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalPegadoInteligente">
-                        <i class="bi bi-magic me-1"></i> Pegado Inteligente (Excel/Project)
+                        <i class="bi bi-magic me-1"></i> Pegar Excel/Project
                     </button>
                     <button type="button" class="btn btn-sm btn-outline-info" id="btnAddSubfase">
                         <i class="bi bi-plus-lg"></i> Añadir Manual
@@ -114,9 +102,29 @@
                 </div>
             </div>
 
+            <div id="tray-asignacion" class="bg-dark border border-info border-opacity-25 p-3 mb-3 d-none" style="border-radius: 8px;">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-cursor-fill text-info me-2"></i>
+                    <span class="text-white small fw-bold me-auto">Bandeja de Asignación Rápida</span>
+                </div>
+                <div class="d-flex flex-wrap gap-3 mt-2 px-1 pb-2">
+                    @if (usuariosBanco != null)
+                    {
+                        foreach (var user in usuariosBanco)
+                        {
+                            <div class="badge bg-secondary border border-secondary text-white draggable-user shadow-sm position-relative"
+                                 draggable="true" data-uid="@user.Id" style="cursor: grab; font-size: 0.75rem; padding: 6px 12px; user-select: none;">
+                                <i class="bi bi-grip-vertical me-1 opacity-50"></i>@user.Email.Split('@')[0]
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-dark border border-secondary task-counter d-none" id="counter_@user.Id" style="font-size: 0.6rem; z-index: 5;">0</span>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+
             <div id="subfases-container" class="mb-4 d-flex flex-column gap-2"></div>
 
-            <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>5. Asignación de Equipo (Global)</h5>
+            <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>4. Asignación de Equipo (Global)</h5>
             <div class="bg-dark border border-secondary p-3 mb-4" style="border-radius: 6px; max-height: 200px; overflow-y: auto;">
                 @if (usuariosBanco != null)
                 {
@@ -140,44 +148,41 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalDomino" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #ffc107;">
+            <div class="modal-header border-secondary p-3">
+                <h6 class="modal-title fw-bold text-warning"><i class="bi bi-calendar-range me-2"></i>Desplazar Fechas</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3" style="background-color: #07091e;">
+                <label class="text-white-50 small mb-2 d-block">¿Desplazar todas las tareas por días?</label>
+                <div class="input-group input-group-sm mb-2">
+                    <input type="number" id="inputDominoDias" class="form-control bg-dark text-white border-warning text-center" placeholder="Ej: 7 o -3" />
+                    <span class="input-group-text bg-secondary border-warning text-white">días</span>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary p-2">
+                <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="ejecutarEfectoDomino()">Aplicar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalPegadoInteligente" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #198754;">
             <div class="modal-header border-secondary">
-                <h5 class="modal-title fw-bold text-success"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Importación Inteligente</h5>
+                <h5 class="modal-title fw-bold text-success">Importación Inteligente</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body px-4 py-4" style="background-color: #07091e;">
-                <p class="text-white-50 small mb-3">
-                    Copia las filas directamente desde <strong>Excel</strong> o <strong>MS Project</strong> y pégalas en el cuadro inferior.
-                    <strong class="text-white">No importa el orden de las columnas ni si faltan datos.</strong> Nuestro motor leerá el texto, ignorará basuras como porcentajes o duraciones, y detectará automáticamente:
-                </p>
-
-                <div class="row mb-3 g-2 font-monospace" style="font-size: 0.75rem;">
-                    <div class="col-4">
-                        <div class="p-2 border border-secondary rounded bg-dark text-center">
-                            <i class="bi bi-fonts text-info fs-5 d-block mb-1"></i>Nombre de Tarea
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="p-2 border border-secondary rounded bg-dark text-center">
-                            <i class="bi bi-calendar-range text-warning fs-5 d-block mb-1"></i>Fechas (Inicio/Fin)
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="p-2 border border-secondary rounded bg-dark text-center">
-                            <i class="bi bi-person-badge text-success fs-5 d-block mb-1"></i>Responsable (@@email)
-                        </div>
-                    </div>
-                </div>
-
-                <textarea id="txtPegadoMasivo" class="form-control form-control-sm bg-dark text-white font-monospace border-success" rows="8" placeholder="Pega tus filas de Excel o Project aquí (Usa Ctrl+V)..." style="font-size: 0.8rem;"></textarea>
+                <textarea id="txtPegadoMasivo" class="form-control form-control-sm bg-dark text-white font-monospace border-success" rows="8" placeholder="Pega tus filas de Excel o Project aquí (Usa Ctrl+V)..."></textarea>
             </div>
             <div class="modal-footer border-secondary">
                 <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success fw-bold" onclick="procesarPegadoHeuristico()">
-                    <i class="bi bi-magic me-2"></i>Procesar Filas
-                </button>
+                <button type="button" class="btn btn-success fw-bold" onclick="procesarPegadoHeuristico()">Procesar Filas</button>
             </div>
         </div>
     </div>
@@ -185,19 +190,35 @@
 
 @section Scripts {
     <script>
-        document.getElementById('formCreateProject').addEventListener('submit', function () {
-            var btn = document.getElementById('btnSubmit');
-            var spinner = document.getElementById('spinnerSubmit');
-            var icon = document.getElementById('iconSubmit');
+        // ── MOTOR DE HORARIOS DINÁMICOS ──
+        // Recibimos los horarios desde el Controller
+        const clientesHorarios = @Html.Raw(ViewBag.ClientesHorariosJson ?? "[]");
 
-            btn.disabled = true;
-            spinner.classList.remove('d-none');
-            icon.classList.add('d-none');
-            btn.innerHTML = spinner.outerHTML + ' Hablando con Google Drive... Por favor, no cierres la ventana.';
+        // Horario por defecto (Si no hay cliente o es proyecto interno)
+        let activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
+
+        document.getElementById('selectClienteId').addEventListener('change', function() {
+            const val = this.value;
+            const match = clientesHorarios.find(c => c.id === val);
+            if(match) {
+                activeSchedule = match;
+            } else {
+                activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
+            }
+            // Recalcular todas las tareas existentes con el nuevo horario
+            document.querySelectorAll('.input-horas').forEach(inp => inp.dispatchEvent(new Event('input')));
         });
 
-        // ── Variables Globales y Options pre-renderizados ──
+        document.getElementById('formCreateProject').addEventListener('submit', function () {
+            var btn = document.getElementById('btnSubmit');
+            btn.disabled = true;
+            document.getElementById('spinnerSubmit').classList.remove('d-none');
+            localStorage.removeItem(DRAFT_KEY);
+        });
+
         let subfaseIndex = 0;
+        window.currentDraggedUser = null;
+
         const usuariosOptions = `
             @if (usuariosBanco != null)
             {
@@ -208,13 +229,33 @@
             }
         `;
 
-        // ── FUNCIÓN MAESTRA PARA INYECTAR FILAS (Manual y Automático) ──
-        function inyectarFilaSubfase(nombre = "", fechaIni = "", fechaFin = "", responsableVal = "") {
+        document.addEventListener("DOMContentLoaded", function () {
+            document.querySelectorAll('.draggable-user').forEach(pill => {
+                pill.addEventListener('dragstart', function(e) {
+                    window.currentDraggedUser = this.getAttribute('data-uid');
+                    e.dataTransfer.setData('text/plain', window.currentDraggedUser);
+                    e.dataTransfer.effectAllowed = 'copy';
+                    this.style.opacity = '0.5';
+                });
+                pill.addEventListener('dragend', function(e) {
+                    window.currentDraggedUser = null;
+                    this.style.opacity = '1';
+                });
+            });
+        });
+
+        // ==========================================
+        // INYECCIÓN DE FILA (Con DateTime y Horas)
+        // ==========================================
+        function inyectarFilaSubfase(nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
             const container = document.getElementById('subfases-container');
             const row = document.createElement('div');
+
             row.className = 'row g-2 mb-1 align-items-center subfase-row p-2 bg-dark bg-opacity-50 border border-secondary border-opacity-50';
             row.style.borderRadius = "6px";
+            row.style.transition = "background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease";
 
+            // Se cambia type="date" a type="datetime-local" y Días a Horas
             row.innerHTML = `
                 <div class="col-md-2">
                     <label class="form-label text-white-50 small mb-1">Fase Principal</label>
@@ -225,48 +266,158 @@
                         <option value="4_Paso_A_Produccion">4. Producción</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label text-white-50 small mb-1">Nombre Subfase</label>
-                    <input type="text" name="Subfases[${subfaseIndex}].Nombre" class="form-control form-control-sm bg-dark text-white border-secondary" value="${nombre}" placeholder="Ej: Validador C11" required />
+                    <input type="text" name="Subfases[${subfaseIndex}].Nombre" class="form-control form-control-sm bg-dark text-white border-secondary" value="${nombre}" required />
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label text-white-50 small mb-1">Inicio</label>
-                    <input type="date" name="Subfases[${subfaseIndex}].FechaInicio" class="form-control form-control-sm bg-dark text-white border-secondary" value="${fechaIni}" />
+                    <label class="form-label text-white-50 small mb-1">Inicio (Hora)</label>
+                    <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaInicio" class="form-control form-control-sm bg-dark text-white border-secondary input-inicio" value="${fechaIni}" />
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label text-warning small mb-1" title="Horas de esfuerzo">Horas <i class="bi bi-clock"></i></label>
+                    <input type="number" step="0.5" class="form-control form-control-sm bg-dark text-warning border-secondary input-horas text-center" min="0.5" placeholder="#" value="${horasVal}" />
                 </div>
                 <div class="col-md-2">
                     <label class="form-label text-white-50 small mb-1">Fin Estimado</label>
-                    <input type="date" name="Subfases[${subfaseIndex}].FechaFinEstimada" class="form-control form-control-sm bg-dark text-white border-secondary" value="${fechaFin}" />
+                    <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaFinEstimada" class="form-control form-control-sm bg-dark text-white border-secondary input-fin" value="${fechaFin}" />
                 </div>
                 <div class="col-md-2">
                     <label class="form-label text-white-50 small mb-1">Responsable</label>
-                    <select name="Subfases[${subfaseIndex}].ResponsableId" class="form-select form-select-sm bg-dark text-white border-secondary subfase-user-select">
-                        <option value="">-- Sin asignar --</option>
-                        ${usuariosOptions}
-                    </select>
+                    <div class="d-flex align-items-center gap-1">
+                        <select name="Subfases[${subfaseIndex}].ResponsableId" class="form-select form-select-sm bg-dark text-white border-secondary subfase-user-select" style="flex-grow: 1;">
+                            <option value="">-- Sin asignar --</option>
+                            ${usuariosOptions}
+                        </select>
+                        <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="¡Desliza por aquí para pintar al usuario!" style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;">
+                            <i class="bi bi-brush-fill text-warning opacity-75"></i>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-1 text-center mt-4">
-                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase" title="Eliminar Subfase"><i class="bi bi-trash"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button>
                 </div>
             `;
             container.appendChild(row);
 
-            // Si el pegado heurístico detectó un responsable, lo autoselecciona
-            if (responsableVal) {
-                row.querySelector('.subfase-user-select').value = responsableVal;
+            if (responsableVal) row.querySelector('.subfase-user-select').value = responsableVal;
+
+            // --- EL CEREBRO: CÁLCULO DE HORAS LABORALES DINÁMICO ---
+            const inpInicio = row.querySelector('.input-inicio');
+            const inpHoras = row.querySelector('.input-horas');
+            const inpFin = row.querySelector('.input-fin');
+
+            function formatDatetimeLocal(d) {
+                // Formatear Date a YYYY-MM-DDThh:mm (Requerido por datetime-local)
+                let tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                return (new Date(d - tzoffset)).toISOString().slice(0, 16);
             }
 
+            function calcularFin() {
+                if (!inpInicio.value || !inpHoras.value) return;
+
+                let date = new Date(inpInicio.value);
+                let hoursRemaining = parseFloat(inpHoras.value);
+                if(isNaN(hoursRemaining) || hoursRemaining <= 0) return;
+
+                let safety = 0; // Evitar loops infinitos
+                while (hoursRemaining > 0 && safety < 100) {
+                    safety++;
+                    let dayOfWeek = date.getDay();
+
+                    // Si cae en fin de semana, saltar al Lunes a la hora de entrada
+                    if (dayOfWeek === 0 || dayOfWeek === 6) {
+                        date.setDate(date.getDate() + (dayOfWeek === 6 ? 2 : 1));
+                        date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+                        continue;
+                    }
+
+                    // Definir topes según el día
+                    let exitH = (dayOfWeek === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH;
+                    let exitM = (dayOfWeek === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
+
+                    let endOfDay = new Date(date);
+                    endOfDay.setHours(exitH, exitM, 0, 0);
+
+                    let startOfDay = new Date(date);
+                    startOfDay.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+
+                    // Si empezó antes de la hora, moverlo a la entrada
+                    if (date < startOfDay) date = new Date(startOfDay);
+
+                    // Si ya pasó la salida, saltar al día siguiente
+                    if (date >= endOfDay) {
+                        date.setDate(date.getDate() + 1);
+                        date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+                        continue;
+                    }
+
+                    // ¿Cuántas horas le quedan al día de hoy?
+                    let msRemainingToday = endOfDay - date;
+                    let hoursRemainingToday = msRemainingToday / (1000 * 60 * 60);
+
+                    if (hoursRemaining <= hoursRemainingToday) {
+                        // Terminamos hoy
+                        date.setTime(date.getTime() + (hoursRemaining * 60 * 60 * 1000));
+                        hoursRemaining = 0;
+                    } else {
+                        // Consumimos el resto del día y saltamos a mañana
+                        hoursRemaining -= hoursRemainingToday;
+                        date.setDate(date.getDate() + 1);
+                        date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+                    }
+                }
+
+                inpFin.value = formatDatetimeLocal(date);
+                inpFin.style.backgroundColor = 'rgba(255, 193, 7, 0.2)';
+                setTimeout(() => inpFin.style.backgroundColor = '', 400);
+                guardarBorradorSilencioso();
+            }
+
+            inpInicio.addEventListener('change', calcularFin);
+            inpHoras.addEventListener('input', calcularFin);
+
+            // MODO PINCEL (Simplificado para el código)
+            const paintZone = row.querySelector('.paint-zone');
+            paintZone.addEventListener('dragenter', function(e) {
+                e.preventDefault();
+                if (window.currentDraggedUser && row.querySelector('.subfase-user-select').value !== window.currentDraggedUser) {
+                    row.querySelector('.subfase-user-select').value = window.currentDraggedUser;
+                    row.style.boxShadow = 'inset 0 0 20px rgba(25, 135, 84, 0.3)';
+                    row.style.borderColor = '#198754';
+                    setTimeout(() => { row.style.boxShadow = ''; row.style.borderColor = ''; }, 500);
+                    const globalCb = document.getElementById('user_' + window.currentDraggedUser);
+                    if (globalCb) globalCb.checked = true;
+                    actualizarTermometro();
+                }
+            });
+            paintZone.addEventListener('dragover', e => e.preventDefault());
+            row.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+            row.addEventListener('drop', function(e) {
+                e.preventDefault();
+                const uid = e.dataTransfer.getData('text/plain');
+                if (uid) {
+                    this.querySelector('.subfase-user-select').value = uid;
+                    const globalCb = document.getElementById('user_' + uid);
+                    if (globalCb) globalCb.checked = true;
+                    actualizarTermometro();
+                }
+            });
+
+            document.getElementById('tray-asignacion').classList.remove('d-none');
             subfaseIndex++;
         }
 
-        // ── Botón Manual ──
         document.getElementById('btnAddSubfase').addEventListener('click', () => inyectarFilaSubfase());
 
-        // ── Eliminar fila y reindexar nombres para ASP.NET MVC ──
         document.getElementById('subfases-container').addEventListener('click', function (e) {
             const btnRemove = e.target.closest('.btn-remove-subfase');
             if (btnRemove) {
                 btnRemove.closest('.subfase-row').remove();
                 reindexSubfases();
+                actualizarTermometro();
+                if (document.querySelectorAll('.subfase-row').length === 0) document.getElementById('tray-asignacion').classList.add('d-none');
+                guardarBorradorSilencioso();
             }
         });
 
@@ -283,113 +434,228 @@
         }
 
         // ==========================================
-        // MOTOR HEURÍSTICO (MAGIA DE PARSEO)
+        // EFECTO DOMINÓ (DESPLAZAR FECHAS MASIVAMENTE)
+        // ==========================================
+        function ejecutarEfectoDomino() {
+            const dias = parseInt(document.getElementById('inputDominoDias').value, 10);
+            if (isNaN(dias) || dias === 0) return;
+
+            document.querySelectorAll('.subfase-row').forEach(row => {
+                const iInicio = row.querySelector('.input-inicio');
+                const iFin = row.querySelector('.input-fin');
+
+                function formatLocal(d) {
+                    let tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                    return (new Date(d - tzoffset)).toISOString().slice(0, 16);
+                }
+
+                if (iInicio.value) {
+                    let d = new Date(iInicio.value);
+                    d.setDate(d.getDate() + dias);
+                    iInicio.value = formatLocal(d);
+                }
+                if (iFin.value) {
+                    let d = new Date(iFin.value);
+                    d.setDate(d.getDate() + dias);
+                    iFin.value = formatLocal(d);
+                }
+                row.style.boxShadow = 'inset 0 0 15px rgba(255,193,7,0.3)';
+                setTimeout(() => row.style.boxShadow = '', 400);
+            });
+
+            sincronizarFechas();
+            bootstrap.Modal.getInstance(document.getElementById('modalDomino')).hide();
+            toastr.success(`Todas las fechas desplazadas ${dias} días.`);
+        }
+
+        // ==========================================
+        // TERMÓMETRO ANTI-BURNOUT
+        // ==========================================
+        function actualizarTermometro() {
+            document.querySelectorAll('.task-counter').forEach(b => { b.textContent = '0'; b.classList.add('d-none'); });
+            document.querySelectorAll('.draggable-user').forEach(p => { p.classList.remove('border-warning', 'border-danger'); p.classList.add('border-secondary'); });
+
+            let conteo = {};
+            document.querySelectorAll('.subfase-user-select').forEach(sel => { if (sel.value) conteo[sel.value] = (conteo[sel.value] || 0) + 1; });
+
+            for (let uid in conteo) {
+                let total = conteo[uid];
+                let badge = document.getElementById('counter_' + uid);
+                let pill = document.querySelector(`.draggable-user[data-uid="${uid}"]`);
+                if (badge && pill) {
+                    badge.textContent = total;
+                    badge.classList.remove('d-none', 'bg-dark');
+                    pill.classList.remove('border-secondary');
+                    if (total >= 5) { badge.classList.add('bg-danger'); pill.classList.add('border-danger'); }
+                    else if (total >= 3) { badge.classList.add('bg-warning'); pill.classList.add('border-warning'); }
+                    else { badge.classList.add('bg-info'); pill.classList.add('border-info'); }
+                }
+            }
+        }
+
+        // ==========================================
+        // AUTO-CÁLCULO MAGNÉTICO (FECHAS MAESTRAS)
+        // ==========================================
+        function sincronizarFechas() {
+            const rows = document.querySelectorAll('.subfase-row');
+            if (rows.length === 0) return;
+
+            let minDate = null; let maxDate = null;
+
+            rows.forEach(row => {
+                const startInput = row.querySelector('.input-inicio').value;
+                const endInput = row.querySelector('.input-fin').value;
+                if (startInput) { let d = new Date(startInput); if (!minDate || d < minDate) minDate = d; }
+                if (endInput) { let d = new Date(endInput); if (!maxDate || d > maxDate) maxDate = d; }
+            });
+
+            const gStart = document.getElementById('gFechaInicio');
+            const gEnd = document.getElementById('gFechaFin');
+            // Fechas maestras siguen siendo solo 'date' (YYYY-MM-DD)
+            if (minDate) gStart.value = minDate.toISOString().split('T')[0];
+            if (maxDate) gEnd.value = maxDate.toISOString().split('T')[0];
+
+            [gStart, gEnd].forEach(el => {
+                const oldBg = el.style.backgroundColor;
+                el.style.backgroundColor = 'rgba(13, 202, 240, 0.4)';
+                setTimeout(() => el.style.backgroundColor = oldBg, 500);
+            });
+            guardarBorradorSilencioso();
+        }
+
+        // ==========================================
+        // ESCUDO ANTI-DESASTRES (LOCALSTORAGE)
+        // ==========================================
+        const DRAFT_KEY = 'ProyectoDraftBackupV2';
+
+        function guardarBorradorSilencioso() {
+            const form = document.getElementById('formCreateProject');
+            const draft = {
+                nombre: form.querySelector('input[name="nombre"]').value,
+                clienteId: form.querySelector('select[name="clienteId"]').value,
+                subfases: []
+            };
+
+            document.querySelectorAll('.subfase-row').forEach(row => {
+                draft.subfases.push({
+                    nombre: row.querySelector('input[name$=".Nombre"]').value,
+                    fInicio: row.querySelector('.input-inicio').value,
+                    fFin: row.querySelector('.input-fin').value,
+                    horas: row.querySelector('.input-horas').value, // Guardamos las horas
+                    resp: row.querySelector('.subfase-user-select').value
+                });
+            });
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        }
+
+        function restaurarBorrador() {
+            const saved = localStorage.getItem(DRAFT_KEY);
+            if (!saved) return;
+            const draft = JSON.parse(saved);
+
+            if(draft.nombre) document.querySelector('input[name="nombre"]').value = draft.nombre;
+            if(draft.clienteId) {
+                const sel = document.querySelector('select[name="clienteId"]');
+                sel.value = draft.clienteId;
+                sel.dispatchEvent(new Event('change')); // Cargar horario del cliente restaurado
+            }
+
+            if (draft.subfases && draft.subfases.length > 0) {
+                document.getElementById('subfases-container').innerHTML = '';
+                subfaseIndex = 0;
+                draft.subfases.forEach(sf => inyectarFilaSubfase(sf.nombre, sf.fInicio, sf.fFin, sf.resp, sf.horas));
+                actualizarTermometro();
+            }
+            document.getElementById('draftAlert').classList.add('d-none');
+        }
+
+        function descartarBorrador() {
+            localStorage.removeItem(DRAFT_KEY);
+            document.getElementById('draftAlert').classList.add('d-none');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem(DRAFT_KEY);
+            if (saved) {
+                const draft = JSON.parse(saved);
+                if (draft.nombre || (draft.subfases && draft.subfases.length > 0)) {
+                    document.getElementById('draftAlert').classList.remove('d-none');
+                }
+            }
+            document.getElementById('formCreateProject').addEventListener('input', guardarBorradorSilencioso);
+            document.getElementById('subfases-container').addEventListener('DOMSubtreeModified', guardarBorradorSilencioso);
+            // Simular click en el select de cliente para cargar horario base
+            document.getElementById('selectClienteId').dispatchEvent(new Event('change'));
+        });
+
+        // ==========================================
+        // MOTOR HEURÍSTICO (PEGADO INTELIGENTE)
         // ==========================================
         function procesarPegadoHeuristico() {
             const texto = document.getElementById('txtPegadoMasivo').value.trim();
             if (!texto) return;
 
-            // 1. Diccionario temporal de usuarios para encontrar matches por correo o nombre
             const comboTemp = document.createElement('select');
             comboTemp.innerHTML = `<option value=""></option>` + usuariosOptions;
-            const usuariosDict = Array.from(comboTemp.options)
-                .filter(o => o.value !== "")
-                .map(o => ({ id: o.value, emailText: o.text.toLowerCase() }));
-
+            const usuariosDict = Array.from(comboTemp.options).filter(o => o.value !== "").map(o => ({ id: o.value, emailText: o.text.toLowerCase() }));
             const filas = texto.split('\n');
             let agregadas = 0;
-
-            // Regex para atrapar fechas: 14/06/2026, 14-06-26, etc.
             const regexFecha = /\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})\b/g;
 
             filas.forEach(fila => {
                 if (!fila.trim()) return;
-
-                // Dividir por tabulación (copiado clásico de excel/project)
                 const celdas = fila.split('\t').map(c => c.trim());
-
-                let nombre = "";
-                let fecha1 = "";
-                let fecha2 = "";
-                let respId = "";
-                let celdasRestantes = [];
+                let nombre = ""; let fecha1 = ""; let fecha2 = ""; let respId = ""; let celdasRestantes = [];
 
                 celdas.forEach(celda => {
                     let celdaLow = celda.toLowerCase();
+                    if (celdaLow.includes('%') || celdaLow.match(/\b\d+(,\d+)?\s*(días|dias|days|hrs|horas|d|h)\b/)) return;
 
-                    // Filtrar basura (porcentajes o cosas tipo "5 días")
-                    if (celdaLow.includes('%') || celdaLow.match(/\b\d+(,\d+)?\s*(días|dias|days|hrs|horas|d|h)\b/)) {
-                        return;
-                    }
-
-                    // Atrapar Fechas
                     let matchesFecha = celda.match(regexFecha);
                     if (matchesFecha && matchesFecha.length > 0) {
                         matchesFecha.forEach(strFecha => {
                             let isoDate = convertirAFechaISO(strFecha);
                             if (isoDate) {
-                                if (!fecha1) fecha1 = isoDate;
-                                else if (!fecha2) fecha2 = isoDate;
+                                // Al pegar desde Excel, asumimos que empieza a la hora de entrada del cliente
+                                let dtLocal = `${isoDate}T${activeSchedule.entradaH.toString().padStart(2,'0')}:${activeSchedule.entradaM.toString().padStart(2,'0')}`;
+                                if (!fecha1) fecha1 = dtLocal;
+                                else if (!fecha2) fecha2 = dtLocal;
                             }
                         });
-                        // Si la celda era casi pura fecha, no la usamos para el nombre
                         if (celda.replace(regexFecha, '').trim().length < 3) return;
                     }
 
-                            // Atrapar Responsable
-                            if (!respId) {
-                                let userMatch = usuariosDict.find(u =>
-                                    (celda.includes('\x40') && celdaLow.includes(u.emailText)) ||
-                                    celdaLow.includes(u.emailText.split('\x40')[0])
-                                );
-                                if (userMatch) {
-                                    respId = userMatch.id;
-                                    if (celda.includes('\x40')) return; // No usar correo como nombre
-                                }
-                            }
-
+                    if (!respId) {
+                        let userMatch = usuariosDict.find(u => (celda.includes('\x40') && celdaLow.includes(u.emailText)) || celdaLow.includes(u.emailText.split('\x40')[0]));
+                        if (userMatch) { respId = userMatch.id; if (celda.includes('\x40')) return; }
+                    }
                     celdasRestantes.push(celda);
                 });
 
-                // El nombre de la tarea será la celda restante más larga
-                if (celdasRestantes.length > 0) {
-                    nombre = celdasRestantes.reduce((a, b) => a.length > b.length ? a : b, "");
-                }
-
-                // Inyectar fila si hay nombre o al menos una fecha
+                if (celdasRestantes.length > 0) nombre = celdasRestantes.reduce((a, b) => a.length > b.length ? a : b, "");
                 if (nombre || fecha1) {
-                    // Asegurar orden lógico de fechas
-                    if (fecha1 && fecha2 && new Date(fecha1) > new Date(fecha2)) {
-                        let temp = fecha1; fecha1 = fecha2; fecha2 = temp;
-                    }
-
                     inyectarFilaSubfase(nombre, fecha1, fecha2, respId);
                     agregadas++;
                 }
             });
 
             if (agregadas > 0) {
-                toastr.success(`¡Se auto-generaron ${agregadas} subfases con éxito!`, 'Importación Completada');
+                toastr.success(`¡Se auto-generaron ${agregadas} subfases con éxito!`);
                 document.getElementById('txtPegadoMasivo').value = '';
-                var modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente'));
-                modalInstance.hide();
-            } else {
-                toastr.warning('No se detectó información válida en el texto pegado. Revisa tus columnas de Excel.');
+                bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide();
+                actualizarTermometro();
+                guardarBorradorSilencioso();
             }
         }
 
         function convertirAFechaISO(fechaTexto) {
             let partes = fechaTexto.split(/[\/\-]/);
             if (partes.length === 3) {
-                // DD/MM/YYYY
                 if (partes[0].length <= 2 && (partes[2].length === 4 || partes[2].length === 2)) {
                     let year = partes[2].length === 2 ? "20" + partes[2] : partes[2];
                     return `${year}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
                 }
-                // YYYY-MM-DD
-                if (partes[0].length === 4) {
-                    return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
-                }
+                if (partes[0].length === 4) return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
             }
             return null;
         }

@@ -107,8 +107,27 @@ namespace NotebookValidator.Web.Controllers
         [HttpGet]
         public async Task<IActionResult> Create()
         {
-            ViewBag.UsuariosBanco = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.Email).ToListAsync();
-            ViewBag.Clientes = new SelectList(await _context.Clientes.Where(c => c.Activo).OrderBy(c => c.Nombre).ToListAsync(), "Id", "Nombre");
+            // Cargar usuarios para el combo de responsables
+            var usuarios = await _userManager.Users.OrderBy(u => u.Email).ToListAsync();
+            ViewBag.UsuariosBanco = usuarios;
+
+            // Cargar clientes para el combo principal
+            var clientes = await _context.Clientes.Where(c => c.Activo).OrderBy(c => c.Nombre).ToListAsync();
+            ViewBag.Clientes = new SelectList(clientes, "Id", "Nombre");
+
+            // EL PUENTE: Mandamos los horarios al Javascript en formato JSON
+            var horarios = clientes.Select(c => new {
+                id = c.Id.ToString(),
+                entradaH = c.HoraEntrada.Hours,
+                entradaM = c.HoraEntrada.Minutes,
+                salidaNormalH = c.HoraSalidaNormal.Hours,
+                salidaNormalM = c.HoraSalidaNormal.Minutes,
+                salidaViernesH = c.HoraSalidaViernes.Hours,
+                salidaViernesM = c.HoraSalidaViernes.Minutes
+            }).ToList();
+
+            ViewBag.ClientesHorariosJson = System.Text.Json.JsonSerializer.Serialize(horarios);
+
             return View();
         }
 
@@ -392,6 +411,21 @@ namespace NotebookValidator.Web.Controllers
 
             ViewBag.Clientes = new SelectList(await _context.Clientes.Where(c => c.Activo).OrderBy(c => c.Nombre).ToListAsync(), "Id", "Nombre", proyecto.ClienteId);
             ViewBag.UsuariosBanco = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.Email).ToListAsync();
+
+            // EL PUENTE: Mandamos los horarios al Javascript en formato JSON para el Motor de Horas
+            var clientes = await _context.Clientes.Where(c => c.Activo).ToListAsync();
+            var horarios = clientes.Select(c => new {
+                id = c.Id.ToString(),
+                entradaH = c.HoraEntrada.Hours,
+                entradaM = c.HoraEntrada.Minutes,
+                salidaNormalH = c.HoraSalidaNormal.Hours,
+                salidaNormalM = c.HoraSalidaNormal.Minutes,
+                salidaViernesH = c.HoraSalidaViernes.Hours,
+                salidaViernesM = c.HoraSalidaViernes.Minutes
+            }).ToList();
+
+            ViewBag.ClientesHorariosJson = System.Text.Json.JsonSerializer.Serialize(horarios);
+
             return View(proyecto);
         }
 

@@ -36,11 +36,36 @@ namespace NotebookValidator.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(string nombre)
+        public async Task<IActionResult> Create(string nombre, TimeSpan horaEntrada, TimeSpan horaSalidaNormal, TimeSpan horaSalidaViernes)
         {
             if (!string.IsNullOrWhiteSpace(nombre))
             {
-                _context.Clientes.Add(new Cliente { Nombre = nombre.Trim().ToUpper(), Activo = true });
+                _context.Clientes.Add(new Cliente
+                {
+                    Nombre = nombre.Trim().ToUpper(),
+                    Activo = true,
+                    // Asignamos los horarios personalizados
+                    HoraEntrada = horaEntrada,
+                    HoraSalidaNormal = horaSalidaNormal,
+                    HoraSalidaViernes = horaSalidaViernes
+                });
+                await _context.SaveChangesAsync();
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, string nombre, TimeSpan horaEntrada, TimeSpan horaSalidaNormal, TimeSpan horaSalidaViernes)
+        {
+            var cliente = await _context.Clientes.FindAsync(id);
+            if (cliente != null && !string.IsNullOrWhiteSpace(nombre))
+            {
+                cliente.Nombre = nombre.Trim().ToUpper();
+                cliente.HoraEntrada = horaEntrada;
+                cliente.HoraSalidaNormal = horaSalidaNormal;
+                cliente.HoraSalidaViernes = horaSalidaViernes;
+
                 await _context.SaveChangesAsync();
             }
             return RedirectToAction(nameof(Index));

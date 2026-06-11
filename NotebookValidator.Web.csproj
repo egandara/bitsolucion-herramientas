@@ -41,6 +41,7 @@
 
   <ItemGroup>
     <Folder Include="wwwroot\lib\qrcode\" />
+    <Folder Include="wwwroot\data\" />
   </ItemGroup>
 
   <ItemGroup>

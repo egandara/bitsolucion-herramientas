@@ -2,20 +2,16 @@
 @{
     ViewData["Title"] = "Editar Proyecto";
     var usuariosBanco = ViewBag.UsuariosBanco as IEnumerable<dynamic>;
-
-    // Lista de IDs de usuarios que ya están asignados para dejar sus checkboxes marcados
     var asignadosActuales = Model.UsuariosAsignados.Select(u => u.UsuarioId).ToList();
-
-    // Índice inicial para las subfases existentes
     int subIndex = 0;
 }
 
-<div class="container-fluid dashboard-xl-container mt-3" style="max-width: 900px !important;">
+<div class="container-fluid dashboard-xl-container mt-3" style="max-width: 1000px !important;">
     <div class="d-flex align-items-center mb-4">
         <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm me-3"><i class="bi bi-arrow-left"></i> Volver</a>
         <div>
             <h1 class="h4 fw-bold mb-0 text-white" style="font-family: 'Poppins', sans-serif;">Editar Proyecto: @Model.Nombre</h1>
-            <p class="mb-0 small text-white-50">Actualiza el cronograma, notas, subfases y equipo asignado.</p>
+            <p class="mb-0 small text-white-50">Actualiza el cronograma, subfases, horas estimadas y equipo.</p>
         </div>
     </div>
 
@@ -28,27 +24,9 @@
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
                     <label class="form-label text-white small fw-bold">Empresa / Cliente</label>
-                    <select name="clienteId" class="form-select bg-dark text-white border-secondary" asp-items="ViewBag.Clientes">
+                    <select name="clienteId" id="selectClienteId" class="form-select bg-dark text-white border-secondary" asp-items="ViewBag.Clientes">
                         <option value="">-- Interno / Sin Cliente --</option>
                     </select>
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label text-white small fw-bold">Repositorio GitHub</label>
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-github"></i></span>
-                            <input type="text" name="repositorioGitHub" class="form-control bg-dark text-white border-secondary font-monospace"
-                                   value="@Model.RepositorioGitHub" placeholder="Ej: bitsolucion/repo-pipeline" />
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label text-white small fw-bold">Contraparte del Cliente</label>
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-person-badge"></i></span>
-                            <input type="text" name="contraparteCliente" class="form-control bg-dark text-white border-secondary"
-                                   value="@Model.ContraparteCliente" placeholder="Ej: Juan Pérez (Líder QA)" />
-                        </div>
-                    </div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label text-white small fw-bold">Estado del Proyecto</label>
@@ -58,21 +36,42 @@
                         <!option value="Finalizado" @(Model.Estado == "Finalizado" ? "selected" : "")>Finalizado</!option>
                     </select>
                 </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-white small fw-bold">Repositorio GitHub</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-github"></i></span>
+                            <input type="text" name="repositorioGitHub" class="form-control bg-dark text-white border-secondary font-monospace" value="@Model.RepositorioGitHub" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-white small fw-bold">Contraparte del Cliente</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-person-badge"></i></span>
+                            <input type="text" name="contraparteCliente" class="form-control bg-dark text-white border-secondary" value="@Model.ContraparteCliente" />
+                        </div>
+                    </div>
+                </div>
                 <div class="col-md-12">
                     <label class="form-label text-white small fw-bold">Descripción</label>
                     <textarea name="descripcion" class="form-control bg-dark text-white border-secondary" rows="2">@Model.Descripcion</textarea>
                 </div>
             </div>
 
-            <h5 class="fw-bold text-info mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-calendar-event me-2"></i>2. Cronograma y Notas</h5>
+            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
+                <h5 class="fw-bold text-info mb-0" style="font-size: 1rem;"><i class="bi bi-calendar-event me-2"></i>2. Cronograma y Notas</h5>
+                <button type="button" class="btn btn-sm btn-outline-info shadow-sm" onclick="sincronizarFechas()" title="Auto-calcular fechas maestras según tareas">
+                    <i class="bi bi-magic me-1"></i> Auto-Calcular Fechas
+                </button>
+            </div>
             <div class="row g-3 mb-4">
                 <div class="col-md-4">
                     <label class="form-label text-white small fw-bold">Fecha de Inicio</label>
-                    <input type="date" id="proyectoFechaInicio" name="fechaInicio" class="form-control bg-dark text-white border-secondary" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" />
+                    <input type="date" id="gFechaInicio" name="fechaInicio" class="form-control bg-dark text-white border-secondary" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" />
                 </div>
                 <div class="col-md-4">
                     <label class="form-label text-white small fw-bold">Fin Estimado (Cierre)</label>
-                    <input type="date" id="proyectoFechaFin" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" value="@Model.FechaFinEstimada?.ToString("yyyy-MM-dd")" />
+                    <input type="date" id="gFechaFin" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" value="@Model.FechaFinEstimada?.ToString("yyyy-MM-dd")" />
                 </div>
                 <div class="col-md-4">
                     <label class="form-label text-white small fw-bold">Paso a Producción</label>
@@ -80,45 +79,74 @@
                 </div>
                 <div class="col-md-12">
                     <label class="form-label text-white small fw-bold">Notas o Reprogramaciones</label>
-                    <textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="3" placeholder="Añade comentarios sobre retrasos, cambios de alcance, etc.">@Model.Notas</textarea>
+                    <textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="2">@Model.Notas</textarea>
                 </div>
             </div>
 
             <h5 class="fw-bold text-danger mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;">
                 <i class="bi bi-sliders me-2"></i>3. Configuración de Umbrales de Calidad (Gobernanza)
             </h5>
-            <p class="text-white-50 small mb-3">
-                Define el nivel de exigencia para este proyecto. Las revisiones que superen estos límites serán rechazadas automáticamente. Los errores de tipo <strong class="text-danger">Critical</strong> nunca se perdonan (Tolerancia cero).
-            </p>
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
-                    <label class="form-label text-white small fw-bold">Máximo de Warnings Permitidos por revisión</label>
-                    <input type="number" name="maxWarningsPermitidos" class="form-control bg-dark text-white border-secondary font-monospace"
-                           min="0" max="100" value="@Model.MaxWarningsPermitidos" required />
-                    <span class="text-white-50" style="font-size: 0.65rem;">Revisiones con más warnings que este límite se marcarán como "Rechazado".</span>
+                    <label class="form-label text-white small fw-bold">Máximo Warnings</label>
+                    <input type="number" name="maxWarningsPermitidos" class="form-control bg-dark text-white border-secondary font-monospace" min="0" value="@Model.MaxWarningsPermitidos" required />
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label text-white small fw-bold">Máximo de Infos Permitidos por revisión</label>
-                    <input type="number" name="maxInfosPermitidos" class="form-control bg-dark text-white border-secondary font-monospace"
-                           min="0" max="200" value="@Model.MaxInfosPermitidos" required />
-                    <span class="text-white-50" style="font-size: 0.65rem;">Filtro flexible para prints duras o avisos de documentación interna.</span>
+                    <label class="form-label text-white small fw-bold">Máximo Infos</label>
+                    <input type="number" name="maxInfosPermitidos" class="form-control bg-dark text-white border-secondary font-monospace" min="0" value="@Model.MaxInfosPermitidos" required />
                 </div>
             </div>
 
-            <h5 class="fw-bold text-light mb-3 border-bottom border-secondary pb-2 mt-4" style="font-size: 1rem;"><i class="bi bi-diagram-2-fill me-2"></i>4. Subfases Específicas</h5>
-            <p class="text-white-50 small mb-2">Edita las subfases existentes o agrega nuevas. Sus fechas estimadas de inicio y fin estarán limitadas automáticamente a los plazos del proyecto.</p>
+            <!-- ========================================== -->
+            <!-- CABECERA TAREAS: Efecto Dominó y Pincel    -->
+            <!-- ========================================== -->
+            <div class="d-flex justify-content-between align-items-center mb-3 mt-4 border-bottom border-secondary pb-2">
+                <div>
+                    <h5 class="fw-bold text-light mb-0" style="font-size: 1rem;"><i class="bi bi-diagram-2-fill me-2"></i>4. Subfases Específicas</h5>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalDomino">
+                        <i class="bi bi-calendar-range"></i> Dominó
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-success shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalPegadoInteligente">
+                        <i class="bi bi-magic me-1"></i> Pegar Excel/Project
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-info" id="btnAddSubfase">
+                        <i class="bi bi-plus-lg"></i> Añadir Manual
+                    </button>
+                </div>
+            </div>
 
-            <div id="subfases-container" class="mb-2">
+            <div id="tray-asignacion" class="bg-dark border border-info border-opacity-25 p-3 mb-3" style="border-radius: 8px;">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-cursor-fill text-info me-2"></i>
+                    <span class="text-white small fw-bold me-auto">Bandeja de Asignación Rápida</span>
+                </div>
+                <div class="d-flex flex-wrap gap-3 mt-2 px-1 pb-2">
+                    @if (usuariosBanco != null)
+                    {
+                        foreach (var user in usuariosBanco)
+                        {
+                            <div class="badge bg-secondary border border-secondary text-white draggable-user shadow-sm position-relative"
+                                 draggable="true" data-uid="@user.Id" style="cursor: grab; font-size: 0.75rem; padding: 6px 12px; user-select: none;">
+                                <i class="bi bi-grip-vertical me-1 opacity-50"></i>@user.Email.Split('@')[0]
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-dark border border-secondary task-counter d-none" id="counter_@user.Id" style="font-size: 0.6rem; z-index: 5;">0</span>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+
+            <div id="subfases-container" class="mb-2 d-flex flex-column gap-2">
                 @if (Model.Fases != null)
                 {
                     foreach (var fase in Model.Fases.OrderBy(f => f.Orden))
                     {
-                        // IMPORTANTE: Asegúrate de que tu modelo Fases esté incluyendo .SubFases en la consulta del Edit [HttpGet] en el Controller
                         if (fase.SubFases != null)
                         {
                             foreach (var sub in fase.SubFases)
                             {
-                                <div class="row g-2 mb-2 align-items-center subfase-row p-2 bg-dark bg-opacity-50 border border-secondary border-opacity-50" style="border-radius: 6px;">
+                                <div class="row g-2 align-items-center subfase-row p-2 bg-dark bg-opacity-50 border border-secondary border-opacity-50" style="border-radius: 6px;">
                                     <input type="hidden" name="Subfases[@subIndex].Id" value="@sub.Id" />
                                     <div class="col-md-2">
                                         <label class="form-label text-white-50 small mb-1">Fase Principal</label>
@@ -129,33 +157,42 @@
                                             }
                                         </select>
                                     </div>
-                                    <div class="col-md-3">
+                                    <div class="col-md-2">
                                         <label class="form-label text-white-50 small mb-1">Nombre Subfase</label>
                                         <input type="text" name="Subfases[@subIndex].Nombre" class="form-control form-control-sm bg-dark text-white border-secondary" value="@sub.Nombre" required />
                                     </div>
                                     <div class="col-md-2">
-                                        <label class="form-label text-white-50 small mb-1">Responsable</label>
-                                        <select name="Subfases[@subIndex].ResponsableId" class="form-select form-select-sm bg-dark text-white border-secondary">
-                                            <option value="">-- Sin asignar --</option>
-                                            @if (usuariosBanco != null)
-                                            {
-                                                foreach (var user in usuariosBanco)
-                                                {
-                                                    <!option value="@user.Id" @(sub.ResponsableId == user.Id ? "selected" : "")>@user.Email</!option>
-                                                }
-                                            }
-                                        </select>
+                                        <label class="form-label text-white-50 small mb-1">Inicio (Hora)</label>
+                                        <input type="datetime-local" name="Subfases[@subIndex].FechaInicio" class="form-control form-control-sm bg-dark text-white border-secondary input-inicio" value="@(sub.FechaInicio?.ToString("yyyy-MM-ddTHH:mm"))" />
                                     </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label text-white-50 small mb-1">Inicio Estimado</label>
-                                        <input type="date" name="Subfases[@subIndex].FechaInicio" class="form-control form-control-sm bg-dark text-white border-secondary subfase-date" value="@sub.FechaInicio?.ToString("yyyy-MM-dd")" />
+                                    <div class="col-md-1">
+                                        <label class="form-label text-warning small mb-1">Horas <i class="bi bi-clock"></i></label>
+                                        <input type="number" step="0.5" class="form-control form-control-sm bg-dark text-warning border-secondary input-horas text-center" min="0.5" placeholder="#" />
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label text-white-50 small mb-1">Fin Estimado</label>
-                                        <input type="date" name="Subfases[@subIndex].FechaFinEstimada" class="form-control form-control-sm bg-dark text-white border-secondary subfase-date" value="@sub.FechaFinEstimada?.ToString("yyyy-MM-dd")" />
+                                        <input type="datetime-local" name="Subfases[@subIndex].FechaFinEstimada" class="form-control form-control-sm bg-dark text-white border-secondary input-fin" value="@(sub.FechaFinEstimada?.ToString("yyyy-MM-ddTHH:mm"))" />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label text-white-50 small mb-1">Responsable</label>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <select name="Subfases[@subIndex].ResponsableId" class="form-select form-select-sm bg-dark text-white border-secondary subfase-user-select" style="flex-grow: 1;">
+                                                <option value="">-- Sin asignar --</option>
+                                                @if (usuariosBanco != null)
+                                                {
+                                                    foreach (var user in usuariosBanco)
+                                                    {
+                                                        <!option value="@user.Id" @(sub.ResponsableId == user.Id ? "selected" : "")>@user.Email</!option>
+                                                    }
+                                                }
+                                            </select>
+                                            <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="¡Desliza por aquí para pintar al usuario!" style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;">
+                                                <i class="bi bi-brush-fill text-warning opacity-75"></i>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="col-md-1 text-center mt-4">
-                                        <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase" title="Eliminar Subfase"><i class="bi bi-trash"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button>
                                     </div>
                                 </div>
                                 subIndex++;
@@ -165,11 +202,7 @@
                 }
             </div>
 
-            <button type="button" class="btn btn-sm btn-outline-info mb-4" id="btnAddSubfase">
-                <i class="bi bi-plus-circle me-1"></i> Añadir Subfase
-            </button>
-
-            <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>5. Actualizar Equipo Global</h5>
+            <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2 mt-4" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>5. Actualizar Equipo Global</h5>
             <div class="bg-dark border border-secondary p-3 mb-4" style="border-radius: 6px; max-height: 200px; overflow-y: auto;">
                 @if (usuariosBanco != null)
                 {
@@ -178,9 +211,7 @@
                         bool isChecked = asignadosActuales.Contains((string)user.Id);
                         <div class="form-check mb-1">
                             <input class="form-check-input" type="checkbox" name="usuariosAsignadosIds" value="@user.Id" id="user_@user.Id" @(isChecked ? "checked" : "")>
-                            <label class="form-check-label text-white small" for="user_@user.Id">
-                                @user.Email
-                            </label>
+                            <label class="form-check-label text-white small" for="user_@user.Id">@user.Email</label>
                         </div>
                     }
                 }
@@ -199,47 +230,202 @@
     </div>
 </div>
 
+<!-- MODAL EFECTO DOMINÓ -->
+<div class="modal fade" id="modalDomino" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #ffc107;">
+            <div class="modal-header border-secondary p-3">
+                <h6 class="modal-title fw-bold text-warning"><i class="bi bi-calendar-range me-2"></i>Desplazar Fechas</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3" style="background-color: #07091e;">
+                <label class="text-white-50 small mb-2 d-block">¿Desplazar todas las tareas por días?</label>
+                <div class="input-group input-group-sm mb-2">
+                    <input type="number" id="inputDominoDias" class="form-control bg-dark text-white border-warning text-center" placeholder="Ej: 7 o -3" />
+                    <span class="input-group-text bg-secondary border-warning text-white">días</span>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary p-2">
+                <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="ejecutarEfectoDomino()">Aplicar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PEGADO INTELIGENTE -->
+<div class="modal fade" id="modalPegadoInteligente" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #198754;">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title fw-bold text-success">Importación Inteligente</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body px-4 py-4" style="background-color: #07091e;">
+                <textarea id="txtPegadoMasivo" class="form-control form-control-sm bg-dark text-white font-monospace border-success" rows="8" placeholder="Pega tus filas de Excel o Project aquí..."></textarea>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success fw-bold" onclick="procesarPegadoHeuristico()">Procesar Filas</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
-        document.getElementById('formEditProject').addEventListener('submit', function() {
-            var btn = document.getElementById('btnSubmit');
-            var spinner = document.getElementById('spinnerSubmit');
-            var icon = document.getElementById('iconSubmit');
+        // ── MOTOR DE HORARIOS DINÁMICOS ──
+        const clientesHorarios = @Html.Raw(ViewBag.ClientesHorariosJson ?? "[]");
+        let activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
 
-            btn.disabled = true;
-            spinner.classList.remove('d-none');
-            icon.classList.add('d-none');
-            btn.innerHTML = spinner.outerHTML + ' Guardando cambios...';
+        document.getElementById('selectClienteId').addEventListener('change', function() {
+            const val = this.value;
+            const match = clientesHorarios.find(c => c.id === val);
+            if(match) activeSchedule = match;
+            else activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
+            document.querySelectorAll('.input-horas').forEach(inp => inp.dispatchEvent(new Event('input')));
         });
 
-        // ── Lógica de Subfases Dinámicas ──
+        // ── INICIALIZACIÓN DRAG & DROP ──
         let subfaseIndex = @subIndex;
+        window.currentDraggedUser = null;
 
         const usuariosOptions = `
             @if (usuariosBanco != null)
             {
-                    foreach (var user in usuariosBanco)
-                    {
-                            <option value="@user.Id">@user.Email</option>
-                    }
+                foreach (var user in usuariosBanco)
+                {
+                    <option value="@user.Id">@user.Email</option>
+                }
             }
         `;
-
         const fasesOptions = `
             @if (Model.Fases != null)
             {
-                    foreach (var f in Model.Fases.OrderBy(x => x.Orden))
-                    {
-                            <option value="@f.NombreFase">@f.Orden. @f.NombreFase.Replace("_", " ")</option>
-                    }
+                foreach (var f in Model.Fases.OrderBy(x => x.Orden))
+                {
+                    <option value="@f.NombreFase">@f.Orden. @f.NombreFase.Replace("_", " ")</option>
+                }
             }
         `;
 
-        document.getElementById('btnAddSubfase').addEventListener('click', function() {
+        document.addEventListener("DOMContentLoaded", function () {
+            // Inicializar las fichas arrastrables
+            document.querySelectorAll('.draggable-user').forEach(pill => {
+                pill.addEventListener('dragstart', function(e) {
+                    window.currentDraggedUser = this.getAttribute('data-uid');
+                    e.dataTransfer.setData('text/plain', window.currentDraggedUser);
+                    e.dataTransfer.effectAllowed = 'copy';
+                    this.style.opacity = '0.5';
+                });
+                pill.addEventListener('dragend', function(e) {
+                    window.currentDraggedUser = null;
+                    this.style.opacity = '1';
+                });
+            });
+
+            // Enlazar eventos a las filas que ya vinieron desde la Base de Datos
+            document.querySelectorAll('.subfase-row').forEach(row => bindRowEvents(row));
+
+            // Cargar horario del cliente seleccionado y actualizar burbujas
+            document.getElementById('selectClienteId').dispatchEvent(new Event('change'));
+            actualizarTermometro();
+        });
+
+        function bindRowEvents(row) {
+            const inpInicio = row.querySelector('.input-inicio');
+            const inpHoras = row.querySelector('.input-horas');
+            const inpFin = row.querySelector('.input-fin');
+            const selectResp = row.querySelector('.subfase-user-select');
+            const paintZone = row.querySelector('.paint-zone');
+
+            function formatDatetimeLocal(d) {
+                let tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                return (new Date(d - tzoffset)).toISOString().slice(0, 16);
+            }
+
+            function calcularFin() {
+                if (!inpInicio.value || !inpHoras.value) return;
+                let date = new Date(inpInicio.value);
+                let hoursRemaining = parseFloat(inpHoras.value);
+                if(isNaN(hoursRemaining) || hoursRemaining <= 0) return;
+
+                let safety = 0;
+                while (hoursRemaining > 0 && safety < 100) {
+                    safety++;
+                    let dayOfWeek = date.getDay();
+                    if (dayOfWeek === 0 || dayOfWeek === 6) {
+                        date.setDate(date.getDate() + (dayOfWeek === 6 ? 2 : 1));
+                        date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+                        continue;
+                    }
+                    let exitH = (dayOfWeek === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH;
+                    let exitM = (dayOfWeek === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
+                    let endOfDay = new Date(date); endOfDay.setHours(exitH, exitM, 0, 0);
+                    let startOfDay = new Date(date); startOfDay.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+
+                    if (date < startOfDay) date = new Date(startOfDay);
+                    if (date >= endOfDay) {
+                        date.setDate(date.getDate() + 1);
+                        date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+                        continue;
+                    }
+
+                    let hoursRemainingToday = (endOfDay - date) / (1000 * 60 * 60);
+                    if (hoursRemaining <= hoursRemainingToday) {
+                        date.setTime(date.getTime() + (hoursRemaining * 60 * 60 * 1000));
+                        hoursRemaining = 0;
+                    } else {
+                        hoursRemaining -= hoursRemainingToday;
+                        date.setDate(date.getDate() + 1);
+                        date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+                    }
+                }
+                inpFin.value = formatDatetimeLocal(date);
+                inpFin.style.backgroundColor = 'rgba(255, 193, 7, 0.2)';
+                setTimeout(() => inpFin.style.backgroundColor = '', 400);
+            }
+
+            inpInicio.addEventListener('change', calcularFin);
+            inpHoras.addEventListener('input', calcularFin);
+            selectResp.addEventListener('change', actualizarTermometro);
+
+            // Eventos Modo Pincel
+            paintZone.addEventListener('dragenter', function(e) {
+                e.preventDefault();
+                if (window.currentDraggedUser && selectResp.value !== window.currentDraggedUser) {
+                    selectResp.value = window.currentDraggedUser;
+                    row.style.boxShadow = 'inset 0 0 20px rgba(25, 135, 84, 0.3)';
+                    row.style.borderColor = '#198754';
+                    setTimeout(() => { row.style.boxShadow = ''; row.style.borderColor = ''; }, 500);
+                    const globalCb = document.getElementById('user_' + window.currentDraggedUser);
+                    if (globalCb) globalCb.checked = true;
+                    actualizarTermometro();
+                }
+            });
+            paintZone.addEventListener('dragover', e => e.preventDefault());
+            row.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+            row.addEventListener('drop', function(e) {
+                e.preventDefault();
+                const uid = e.dataTransfer.getData('text/plain');
+                if (uid) {
+                    selectResp.value = uid;
+                    const globalCb = document.getElementById('user_' + uid);
+                    if (globalCb) globalCb.checked = true;
+                    actualizarTermometro();
+                }
+            });
+        }
+
+        // ==========================================
+        // INYECTAR NUEVA TAREA
+        // ==========================================
+        function inyectarFilaSubfase(nombre = "", fechaIni = "", fechaFin = "", responsableVal = "") {
             const container = document.getElementById('subfases-container');
             const row = document.createElement('div');
             row.className = 'row g-2 mb-2 align-items-center subfase-row p-2 bg-dark bg-opacity-50 border border-secondary border-opacity-50';
             row.style.borderRadius = "6px";
+            row.style.transition = "background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease";
 
             row.innerHTML = `
                 <input type="hidden" name="Subfases[${subfaseIndex}].Id" value="0" />
@@ -249,48 +435,60 @@
                         ${fasesOptions}
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label text-white-50 small mb-1">Nombre Subfase</label>
-                    <input type="text" name="Subfases[${subfaseIndex}].Nombre" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Ej: Validador C11" required />
+                    <input type="text" name="Subfases[${subfaseIndex}].Nombre" class="form-control form-control-sm bg-dark text-white border-secondary" value="${nombre}" required />
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label text-white-50 small mb-1">Responsable</label>
-                    <select name="Subfases[${subfaseIndex}].ResponsableId" class="form-select form-select-sm bg-dark text-white border-secondary">
-                        <option value="">-- Sin asignar --</option>
-                        ${usuariosOptions}
-                    </select>
+                    <label class="form-label text-white-50 small mb-1">Inicio (Hora)</label>
+                    <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaInicio" class="form-control form-control-sm bg-dark text-white border-secondary input-inicio" value="${fechaIni}" />
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label text-white-50 small mb-1">Inicio Estimado</label>
-                    <input type="date" name="Subfases[${subfaseIndex}].FechaInicio" class="form-control form-control-sm bg-dark text-white border-secondary subfase-date" />
+                <div class="col-md-1">
+                    <label class="form-label text-warning small mb-1">Horas <i class="bi bi-clock"></i></label>
+                    <input type="number" step="0.5" class="form-control form-control-sm bg-dark text-warning border-secondary input-horas text-center" min="0.5" placeholder="#" />
                 </div>
                 <div class="col-md-2">
                     <label class="form-label text-white-50 small mb-1">Fin Estimado</label>
-                    <input type="date" name="Subfases[${subfaseIndex}].FechaFinEstimada" class="form-control form-control-sm bg-dark text-white border-secondary subfase-date" />
+                    <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaFinEstimada" class="form-control form-control-sm bg-dark text-white border-secondary input-fin" value="${fechaFin}" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label text-white-50 small mb-1">Responsable</label>
+                    <div class="d-flex align-items-center gap-1">
+                        <select name="Subfases[${subfaseIndex}].ResponsableId" class="form-select form-select-sm bg-dark text-white border-secondary subfase-user-select" style="flex-grow: 1;">
+                            <option value="">-- Sin asignar --</option>
+                            ${usuariosOptions}
+                        </select>
+                        <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="¡Desliza por aquí para pintar al usuario!" style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;">
+                            <i class="bi bi-brush-fill text-warning opacity-75"></i>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-1 text-center mt-4">
-                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase" title="Eliminar Subfase"><i class="bi bi-trash"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button>
                 </div>
             `;
-
             container.appendChild(row);
+            if (responsableVal) row.querySelector('.subfase-user-select').value = responsableVal;
+
+            bindRowEvents(row);
             subfaseIndex++;
-            syncDateConstraints(); // Aplicar límites de fecha a la nueva fila
-        });
+        }
+
+        document.getElementById('btnAddSubfase').addEventListener('click', () => inyectarFilaSubfase());
 
         document.getElementById('subfases-container').addEventListener('click', function(e) {
             const btnRemove = e.target.closest('.btn-remove-subfase');
             if (btnRemove) {
                 btnRemove.closest('.subfase-row').remove();
                 reindexSubfases();
+                actualizarTermometro();
             }
         });
 
         function reindexSubfases() {
             const rows = document.querySelectorAll('.subfase-row');
             rows.forEach((row, index) => {
-                const hiddenId = row.querySelector('input[type="hidden"]');
-                if(hiddenId) hiddenId.name = `Subfases[${index}].Id`;
+                row.querySelector('input[type="hidden"]').name = `Subfases[${index}].Id`;
                 row.querySelector('select[name$=".FasePadre"]').name = `Subfases[${index}].FasePadre`;
                 row.querySelector('input[name$=".Nombre"]').name = `Subfases[${index}].Nombre`;
                 row.querySelector('select[name$=".ResponsableId"]').name = `Subfases[${index}].ResponsableId`;
@@ -300,53 +498,151 @@
             subfaseIndex = rows.length;
         }
 
-        // ── Limitación dinámica de fechas ──
-        function syncDateConstraints() {
-            const pInicio = document.getElementById('proyectoFechaInicio').value;
-            const pFin = document.getElementById('proyectoFechaFin').value;
+        // ==========================================
+        // FUNCIONALIDADES ADICIONALES (Dominó, Termómetro, Fechas)
+        // ==========================================
+        function ejecutarEfectoDomino() {
+            const dias = parseInt(document.getElementById('inputDominoDias').value, 10);
+            if (isNaN(dias) || dias === 0) return;
 
-            document.querySelectorAll('.subfase-date').forEach(input => {
-                if (pInicio) input.min = pInicio;
-                if (pFin) input.max = pFin;
+            document.querySelectorAll('.subfase-row').forEach(row => {
+                const iInicio = row.querySelector('.input-inicio');
+                const iFin = row.querySelector('.input-fin');
+
+                function formatLocal(d) {
+                    let tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                    return (new Date(d - tzoffset)).toISOString().slice(0, 16);
+                }
+
+                if (iInicio.value) {
+                    let d = new Date(iInicio.value); d.setDate(d.getDate() + dias); iInicio.value = formatLocal(d);
+                }
+                if (iFin.value) {
+                    let d = new Date(iFin.value); d.setDate(d.getDate() + dias); iFin.value = formatLocal(d);
+                }
+                row.style.boxShadow = 'inset 0 0 15px rgba(255,193,7,0.3)';
+                setTimeout(() => row.style.boxShadow = '', 400);
             });
+
+            sincronizarFechas();
+            bootstrap.Modal.getInstance(document.getElementById('modalDomino')).hide();
+            toastr.success(`Fechas desplazadas ${dias} días.`);
         }
 
-                function eliminarProyecto(id) {
-            // Confirmación nativa de seguridad
-            if (confirm("⚠️ ¡ATENCIÓN! ¿Estás completamente seguro de que deseas ELIMINAR este proyecto?\n\nEsta acción borrará todas sus fases, tareas, responsables y bitácoras de forma IRREVERSIBLE.")) {
+        function actualizarTermometro() {
+            document.querySelectorAll('.task-counter').forEach(b => { b.textContent = '0'; b.classList.add('d-none'); });
+            document.querySelectorAll('.draggable-user').forEach(p => { p.classList.remove('border-warning', 'border-danger'); p.classList.add('border-secondary'); });
 
-                // Obtener el token de seguridad del formulario actual
-                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            let conteo = {};
+            document.querySelectorAll('.subfase-user-select').forEach(sel => { if (sel.value) conteo[sel.value] = (conteo[sel.value] || 0) + 1; });
 
-                fetch(`/Proyectos/Delete/${id}`, {
-                    method: 'POST',
-                    headers: {
-                        'RequestVerificationToken': token,
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        toastr.success(data.message, "Eliminado");
-                        // Redirigir al listado maestro de proyectos tras 1.5 segundos
-                        setTimeout(() => {
-                            window.location.href = '/Proyectos/Index';
-                        }, 1500);
-                    } else {
-                        toastr.error(data.message, "Error");
-                    }
-                })
-                .catch(error => {
-                    toastr.error("Error de conexión al intentar eliminar.", "Fallo Crítico");
-                });
+            for (let uid in conteo) {
+                let total = conteo[uid];
+                let badge = document.getElementById('counter_' + uid);
+                let pill = document.querySelector(`.draggable-user[data-uid="${uid}"]`);
+                if (badge && pill) {
+                    badge.textContent = total;
+                    badge.classList.remove('d-none', 'bg-dark');
+                    pill.classList.remove('border-secondary');
+                    if (total >= 5) { badge.classList.add('bg-danger'); pill.classList.add('border-danger'); }
+                    else if (total >= 3) { badge.classList.add('bg-warning'); pill.classList.add('border-warning'); }
+                    else { badge.classList.add('bg-info'); pill.classList.add('border-info'); }
+                }
             }
         }
 
-        document.getElementById('proyectoFechaInicio').addEventListener('change', syncDateConstraints);
-        document.getElementById('proyectoFechaFin').addEventListener('change', syncDateConstraints);
+        function sincronizarFechas() {
+            const rows = document.querySelectorAll('.subfase-row');
+            if (rows.length === 0) return;
+            let minDate = null; let maxDate = null;
 
-        // Ejecutar validación inicial al cargar la vista
-        syncDateConstraints();
+            rows.forEach(row => {
+                const startInput = row.querySelector('.input-inicio').value;
+                const endInput = row.querySelector('.input-fin').value;
+                if (startInput) { let d = new Date(startInput); if (!minDate || d < minDate) minDate = d; }
+                if (endInput) { let d = new Date(endInput); if (!maxDate || d > maxDate) maxDate = d; }
+            });
+
+            const gStart = document.getElementById('gFechaInicio');
+            const gEnd = document.getElementById('gFechaFin');
+            if (minDate) gStart.value = minDate.toISOString().split('T')[0];
+            if (maxDate) gEnd.value = maxDate.toISOString().split('T')[0];
+
+            [gStart, gEnd].forEach(el => {
+                const oldBg = el.style.backgroundColor;
+                el.style.backgroundColor = 'rgba(13, 202, 240, 0.4)';
+                setTimeout(() => el.style.backgroundColor = oldBg, 500);
+            });
+        }
+
+        function procesarPegadoHeuristico() {
+            const texto = document.getElementById('txtPegadoMasivo').value.trim();
+            if (!texto) return;
+            const comboTemp = document.createElement('select');
+            comboTemp.innerHTML = `<option value=""></option>` + usuariosOptions;
+            const usuariosDict = Array.from(comboTemp.options).filter(o => o.value !== "").map(o => ({ id: o.value, emailText: o.text.toLowerCase() }));
+            const filas = texto.split('\n');
+            let agregadas = 0;
+            const regexFecha = /\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})\b/g;
+
+            filas.forEach(fila => {
+                if (!fila.trim()) return;
+                const celdas = fila.split('\t').map(c => c.trim());
+                let nombre = ""; let fecha1 = ""; let fecha2 = ""; let respId = ""; let celdasRestantes = [];
+
+                celdas.forEach(celda => {
+                    let celdaLow = celda.toLowerCase();
+                    if (celdaLow.includes('%') || celdaLow.match(/\b\d+(,\d+)?\s*(días|dias|days|hrs|horas|d|h)\b/)) return;
+
+                    let matchesFecha = celda.match(regexFecha);
+                    if (matchesFecha && matchesFecha.length > 0) {
+                        matchesFecha.forEach(strFecha => {
+                            let parts = strFecha.split(/[\/\-]/);
+                            if(parts.length === 3) {
+                                let y = parts[2].length === 2 ? "20" + parts[2] : parts[2];
+                                let iso = y.length === 4 ? `${y}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}` : `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
+                                let dtLocal = `${iso}T${activeSchedule.entradaH.toString().padStart(2,'0')}:${activeSchedule.entradaM.toString().padStart(2,'0')}`;
+                                if (!fecha1) fecha1 = dtLocal; else if (!fecha2) fecha2 = dtLocal;
+                            }
+                        });
+                        if (celda.replace(regexFecha, '').trim().length < 3) return;
+                    }
+
+                    if (!respId) {
+                        let userMatch = usuariosDict.find(u => (celda.includes('\x40') && celdaLow.includes(u.emailText)) || celdaLow.includes(u.emailText.split('\x40')[0]));
+                        if (userMatch) { respId = userMatch.id; if (celda.includes('\x40')) return; }
+                    }
+                    celdasRestantes.push(celda);
+                });
+
+                if (celdasRestantes.length > 0) nombre = celdasRestantes.reduce((a, b) => a.length > b.length ? a : b, "");
+                if (nombre || fecha1) { inyectarFilaSubfase(nombre, fecha1, fecha2, respId); agregadas++; }
+            });
+
+            if (agregadas > 0) {
+                toastr.success(`¡Se auto-generaron ${agregadas} subfases!`);
+                document.getElementById('txtPegadoMasivo').value = '';
+                bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide();
+                actualizarTermometro();
+            }
+        }
+
+        document.getElementById('formEditProject').addEventListener('submit', function() {
+            var btn = document.getElementById('btnSubmit');
+            btn.disabled = true;
+            document.getElementById('spinnerSubmit').classList.remove('d-none');
+            document.getElementById('iconSubmit').classList.add('d-none');
+        });
+
+        function eliminarProyecto(id) {
+            if (confirm("⚠️ ¡ATENCIÓN! ¿Estás completamente seguro de que deseas ELIMINAR este proyecto?\n\nEsta acción borrará todas sus fases, tareas y bitácoras de forma IRREVERSIBLE.")) {
+                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                fetch(`/Proyectos/Delete/${id}`, { method: 'POST', headers: { 'RequestVerificationToken': token, 'Content-Type': 'application/json' } })
+                .then(r => r.json()).then(data => {
+                    if (data.success) { toastr.success(data.message, "Eliminado"); setTimeout(() => window.location.href = '/Proyectos/Index', 1500); }
+                    else toastr.error(data.message, "Error");
+                }).catch(() => toastr.error("Error de conexión.", "Fallo Crítico"));
+            }
+        }
     </script>
 }

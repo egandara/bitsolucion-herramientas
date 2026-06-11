@@ -1,0 +1,364 @@
+[
+    {
+        "Home": "Mexico",
+        "Away": "South Africa",
+        "StartTime": "2026-06-11T15:00:00-04:00",
+        "GolesHome": 2,
+        "GolesAway": 0
+    },
+    {
+        "Home": "Rep. of Korea",
+        "Away": "Czech Rep.",
+        "StartTime": "2026-06-11T22:00:00-04:00"
+    },
+    {
+        "Home": "Canada",
+        "Away": "Bosnia/Herzeg.",
+        "StartTime": "2026-06-12T15:00:00-04:00"
+    },
+    {
+        "Home": "USA",
+        "Away": "Paraguay",
+        "StartTime": "2026-06-12T21:00:00-04:00"
+    },
+    {
+        "Home": "Qatar",
+        "Away": "Switzerland",
+        "StartTime": "2026-06-13T15:00:00-04:00"
+    },
+    {
+        "Home": "Brazil",
+        "Away": "Morocco",
+        "StartTime": "2026-06-13T18:00:00-04:00"
+    },
+    {
+        "Home": "Haiti",
+        "Away": "Scotland",
+        "StartTime": "2026-06-13T21:00:00-04:00"
+    },
+    {
+        "Home": "Australia",
+        "Away": "Turkey",
+        "StartTime": "2026-06-14T00:00:00-04:00"
+    },
+    {
+        "Home": "Germany",
+        "Away": "Curaçao",
+        "StartTime": "2026-06-14T13:00:00-04:00"
+    },
+    {
+        "Home": "Netherlands",
+        "Away": "Japan",
+        "StartTime": "2026-06-14T16:00:00-04:00"
+    },
+    {
+        "Home": "Ivory Coast",
+        "Away": "Ecuador",
+        "StartTime": "2026-06-14T19:00:00-04:00"
+    },
+    {
+        "Home": "Sweden",
+        "Away": "Tunisia",
+        "StartTime": "2026-06-14T22:00:00-04:00"
+    },
+    {
+        "Home": "Spain",
+        "Away": "Cape Verde",
+        "StartTime": "2026-06-15T12:00:00-04:00"
+    },
+    {
+        "Home": "Belgium",
+        "Away": "Egypt",
+        "StartTime": "2026-06-15T15:00:00-04:00"
+    },
+    {
+        "Home": "Saudi Arabia",
+        "Away": "Uruguay",
+        "StartTime": "2026-06-15T18:00:00-04:00"
+    },
+    {
+        "Home": "IR Iran",
+        "Away": "New Zealand",
+        "StartTime": "2026-06-15T21:00:00-04:00"
+    },
+    {
+        "Home": "France",
+        "Away": "Senegal",
+        "StartTime": "2026-06-16T15:00:00-04:00"
+    },
+    {
+        "Home": "Iraq",
+        "Away": "Norway",
+        "StartTime": "2026-06-16T18:00:00-04:00"
+    },
+    {
+        "Home": "Argentina",
+        "Away": "Algeria",
+        "StartTime": "2026-06-16T21:00:00-04:00"
+    },
+    {
+        "Home": "Austria",
+        "Away": "Jordan",
+        "StartTime": "2026-06-17T00:00:00-04:00"
+    },
+    {
+        "Home": "Portugal",
+        "Away": "DR Congo",
+        "StartTime": "2026-06-17T13:00:00-04:00"
+    },
+    {
+        "Home": "England",
+        "Away": "Croatia",
+        "StartTime": "2026-06-17T16:00:00-04:00"
+    },
+    {
+        "Home": "Ghana",
+        "Away": "Panama",
+        "StartTime": "2026-06-17T19:00:00-04:00"
+    },
+    {
+        "Home": "Uzbekistan",
+        "Away": "Colombia",
+        "StartTime": "2026-06-17T22:00:00-04:00"
+    },
+    {
+        "Home": "Czech Rep.",
+        "Away": "South Africa",
+        "StartTime": "2026-06-18T12:00:00-04:00"
+    },
+    {
+        "Home": "Switzerland",
+        "Away": "Bosnia/Herzeg.",
+        "StartTime": "2026-06-18T15:00:00-04:00"
+    },
+    {
+        "Home": "Canada",
+        "Away": "Qatar",
+        "StartTime": "2026-06-18T18:00:00-04:00"
+    },
+    {
+        "Home": "Mexico",
+        "Away": "Rep. of Korea",
+        "StartTime": "2026-06-18T21:00:00-04:00"
+    },
+    {
+        "Home": "USA",
+        "Away": "Australia",
+        "StartTime": "2026-06-19T15:00:00-04:00"
+    },
+    {
+        "Home": "Scotland",
+        "Away": "Morocco",
+        "StartTime": "2026-06-19T18:00:00-04:00"
+    },
+    {
+        "Home": "Brazil",
+        "Away": "Haiti",
+        "StartTime": "2026-06-19T20:30:00-04:00"
+    },
+    {
+        "Home": "Turkey",
+        "Away": "Paraguay",
+        "StartTime": "2026-06-19T23:00:00-04:00"
+    },
+    {
+        "Home": "Netherlands",
+        "Away": "Sweden",
+        "StartTime": "2026-06-20T13:00:00-04:00"
+    },
+    {
+        "Home": "Germany",
+        "Away": "Ivory Coast",
+        "StartTime": "2026-06-20T16:00:00-04:00"
+    },
+    {
+        "Home": "Ecuador",
+        "Away": "Curaçao",
+        "StartTime": "2026-06-20T20:00:00-04:00"
+    },
+    {
+        "Home": "Tunisia",
+        "Away": "Japan",
+        "StartTime": "2026-06-21T00:00:00-04:00"
+    },
+    {
+        "Home": "Spain",
+        "Away": "Saudi Arabia",
+        "StartTime": "2026-06-21T12:00:00-04:00"
+    },
+    {
+        "Home": "Belgium",
+        "Away": "IR Iran",
+        "StartTime": "2026-06-21T15:00:00-04:00"
+    },
+    {
+        "Home": "Uruguay",
+        "Away": "Cape Verde",
+        "StartTime": "2026-06-21T18:00:00-04:00"
+    },
+    {
+        "Home": "New Zealand",
+        "Away": "Egypt",
+        "StartTime": "2026-06-21T21:00:00-04:00"
+    },
+    {
+        "Home": "Argentina",
+        "Away": "Austria",
+        "StartTime": "2026-06-22T13:00:00-04:00"
+    },
+    {
+        "Home": "France",
+        "Away": "Iraq",
+        "StartTime": "2026-06-22T17:00:00-04:00"
+    },
+    {
+        "Home": "Norway",
+        "Away": "Senegal",
+        "StartTime": "2026-06-22T20:00:00-04:00"
+    },
+    {
+        "Home": "Jordan",
+        "Away": "Algeria",
+        "StartTime": "2026-06-22T23:00:00-04:00"
+    },
+    {
+        "Home": "Portugal",
+        "Away": "Uzbekistan",
+        "StartTime": "2026-06-23T13:00:00-04:00"
+    },
+    {
+        "Home": "England",
+        "Away": "Ghana",
+        "StartTime": "2026-06-23T16:00:00-04:00"
+    },
+    {
+        "Home": "Panama",
+        "Away": "Croatia",
+        "StartTime": "2026-06-23T19:00:00-04:00"
+    },
+    {
+        "Home": "Colombia",
+        "Away": "DR Congo",
+        "StartTime": "2026-06-23T22:00:00-04:00"
+    },
+    {
+        "Home": "Switzerland",
+        "Away": "Canada",
+        "StartTime": "2026-06-24T15:00:00-04:00"
+    },
+    {
+        "Home": "Bosnia/Herzeg.",
+        "Away": "Qatar",
+        "StartTime": "2026-06-24T15:00:00-04:00"
+    },
+    {
+        "Home": "Scotland",
+        "Away": "Brazil",
+        "StartTime": "2026-06-24T18:00:00-04:00"
+    },
+    {
+        "Home": "Morocco",
+        "Away": "Haiti",
+        "StartTime": "2026-06-24T18:00:00-04:00"
+    },
+    {
+        "Home": "Czech Rep.",
+        "Away": "Mexico",
+        "StartTime": "2026-06-24T21:00:00-04:00"
+    },
+    {
+        "Home": "South Africa",
+        "Away": "Rep. of Korea",
+        "StartTime": "2026-06-24T21:00:00-04:00"
+    },
+    {
+        "Home": "Curaçao",
+        "Away": "Ivory Coast",
+        "StartTime": "2026-06-25T16:00:00-04:00"
+    },
+    {
+        "Home": "Ecuador",
+        "Away": "Germany",
+        "StartTime": "2026-06-25T16:00:00-04:00"
+    },
+    {
+        "Home": "Japan",
+        "Away": "Sweden",
+        "StartTime": "2026-06-25T19:00:00-04:00"
+    },
+    {
+        "Home": "Tunisia",
+        "Away": "Netherlands",
+        "StartTime": "2026-06-25T19:00:00-04:00"
+    },
+    {
+        "Home": "Turkey",
+        "Away": "USA",
+        "StartTime": "2026-06-25T22:00:00-04:00"
+    },
+    {
+        "Home": "Paraguay",
+        "Away": "Australia",
+        "StartTime": "2026-06-25T22:00:00-04:00"
+    },
+    {
+        "Home": "Norway",
+        "Away": "France",
+        "StartTime": "2026-06-26T15:00:00-04:00"
+    },
+    {
+        "Home": "Senegal",
+        "Away": "Iraq",
+        "StartTime": "2026-06-26T15:00:00-04:00"
+    },
+    {
+        "Home": "Cape Verde",
+        "Away": "Saudi Arabia",
+        "StartTime": "2026-06-26T20:00:00-04:00"
+    },
+    {
+        "Home": "Uruguay",
+        "Away": "Spain",
+        "StartTime": "2026-06-26T20:00:00-04:00"
+    },
+    {
+        "Home": "Egypt",
+        "Away": "IR Iran",
+        "StartTime": "2026-06-26T23:00:00-04:00"
+    },
+    {
+        "Home": "New Zealand",
+        "Away": "Belgium",
+        "StartTime": "2026-06-26T23:00:00-04:00"
+    },
+    {
+        "Home": "Panama",
+        "Away": "England",
+        "StartTime": "2026-06-27T17:00:00-04:00"
+    },
+    {
+        "Home": "Croatia",
+        "Away": "Ghana",
+        "StartTime": "2026-06-27T17:00:00-04:00"
+    },
+    {
+        "Home": "Colombia",
+        "Away": "Portugal",
+        "StartTime": "2026-06-27T19:30:00-04:00"
+    },
+    {
+        "Home": "DR Congo",
+        "Away": "Uzbekistan",
+        "StartTime": "2026-06-27T19:30:00-04:00"
+    },
+    {
+        "Home": "Algeria",
+        "Away": "Austria",
+        "StartTime": "2026-06-27T22:00:00-04:00"
+    },
+    {
+        "Home": "Jordan",
+        "Away": "Argentina",
+        "StartTime": "2026-06-27T22:00:00-04:00"
+    }
+]

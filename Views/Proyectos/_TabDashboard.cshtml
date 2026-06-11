@@ -256,12 +256,12 @@
                                                         </div>
 
                                                         <div class="d-flex align-items-center gap-4">
-                                                            @* Fechas MS Project Style *@
+                                                            @* Fechas MS Project Style (AHORA CON HORAS) *@
                                                             <div class="text-white-50 font-monospace d-none d-sm-block text-end" style="font-size: 0.65rem; line-height: 1.2;">
                                                                 @if (subfase.FechaInicio.HasValue || subfase.FechaFinEstimada.HasValue)
                                                                 {
-                                                                    <div class="text-info"><i class="bi bi-play-fill"></i> @(subfase.FechaInicio?.ToString("dd MMM yyyy") ?? "-")</div>
-                                                                    <div class="text-warning"><i class="bi bi-stop-fill"></i> @(subfase.FechaFinEstimada?.ToString("dd MMM yyyy") ?? "-")</div>
+                                                                    <div class="text-info"><i class="bi bi-play-fill"></i> @(subfase.FechaInicio?.ToString("dd MMM, HH:mm") ?? "-")</div>
+                                                                    <div class="text-warning"><i class="bi bi-stop-fill"></i> @(subfase.FechaFinEstimada?.ToString("dd MMM, HH:mm") ?? "-")</div>
                                                                 }
                                                                 else
                                                                 {
@@ -541,6 +541,8 @@
         </div>
     </div>
 </div>
+
+<!-- MANTENER LOS SCRIPTS INTACTOS AQUÍ ABAJO -->
 
 <script>
     // ============================================================
