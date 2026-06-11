@@ -187,6 +187,9 @@
             </div>
 
             <div class="text-end border-top border-secondary border-opacity-25 pt-3 mt-2">
+                <button type="button" class="btn btn-outline-danger shadow-sm" onclick="eliminarProyecto(@Model.Id)">
+                    <i class="bi bi-trash3-fill me-2"></i>Eliminar Proyecto
+                </button>
                 <button type="submit" class="btn btn-warning px-5 py-2 fw-bold" id="btnSubmit">
                     <span id="spinnerSubmit" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
                     <i class="bi bi-save me-1" id="iconSubmit"></i> Guardar Cambios
@@ -306,6 +309,38 @@
                 if (pInicio) input.min = pInicio;
                 if (pFin) input.max = pFin;
             });
+        }
+
+                function eliminarProyecto(id) {
+            // Confirmación nativa de seguridad
+            if (confirm("⚠️ ¡ATENCIÓN! ¿Estás completamente seguro de que deseas ELIMINAR este proyecto?\n\nEsta acción borrará todas sus fases, tareas, responsables y bitácoras de forma IRREVERSIBLE.")) {
+
+                // Obtener el token de seguridad del formulario actual
+                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+                fetch(`/Proyectos/Delete/${id}`, {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': token,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        toastr.success(data.message, "Eliminado");
+                        // Redirigir al listado maestro de proyectos tras 1.5 segundos
+                        setTimeout(() => {
+                            window.location.href = '/Proyectos/Index';
+                        }, 1500);
+                    } else {
+                        toastr.error(data.message, "Error");
+                    }
+                })
+                .catch(error => {
+                    toastr.error("Error de conexión al intentar eliminar.", "Fallo Crítico");
+                });
+            }
         }
 
         document.getElementById('proyectoFechaInicio').addEventListener('change', syncDateConstraints);

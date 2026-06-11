@@ -43,12 +43,111 @@
         };
 }
 
+<style>
+    /* Estilos Generales Fases */
+    .fase-row {
+        background-color: #0b0d16;
+        border: 1px solid rgba(255, 193, 7, 0.1);
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+        .fase-row:hover {
+            border-color: rgba(255, 193, 7, 0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+    .fase-header {
+        cursor: pointer;
+        background: rgba(255,255,255,0.01);
+        transition: background 0.2s;
+    }
+
+        .fase-header:hover {
+            background: rgba(255,255,255,0.03);
+        }
+
+    /* Checklist y Sub-tareas (Mini-Gantt Look) */
+    .task-item {
+        background-color: rgba(255,255,255,0.02);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-left: 3px solid #6c757d;
+        transition: all 0.2s;
+    }
+
+        .task-item:hover {
+            background-color: rgba(255,255,255,0.05);
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        .task-item.completed {
+            border-left-color: #198754;
+            background-color: rgba(25, 135, 84, 0.05);
+        }
+
+        .task-item.in-progress {
+            border-left-color: #ffc107;
+        }
+
+    /* Checkbox Personalizado */
+    .custom-task-check {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: #198754;
+        border-radius: 4px;
+        border: 2px solid rgba(255,255,255,0.2);
+        background-color: #0b0d16;
+    }
+
+        .custom-task-check:checked {
+            background-color: #198754;
+            border-color: #198754;
+        }
+
+    .task-text {
+        transition: all 0.3s ease;
+    }
+
+    /* Selectores e Inputs */
+    .status-select {
+        font-size: 0.75rem;
+        background-color: #111424 !important;
+        color: #fff !important;
+        border-color: rgba(255,255,255,0.15) !important;
+        cursor: pointer;
+        height: 30px;
+        padding: 2px 8px;
+        width: 120px;
+    }
+
+        .status-select:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+    /* Icono de rotación Acordeón */
+    .accordion-indicator {
+        transition: transform 0.3s ease;
+    }
+
+    .collapsed .accordion-indicator {
+        transform: rotate(-90deg);
+    }
+</style>
+
 <div class="tab-pane fade show active" id="dashboard-pane" role="tabpanel" aria-labelledby="dashboard-tab" tabindex="0">
     <div class="row g-4">
         <div class="col-12 col-lg-8">
             <div class="card p-4 border-0 h-100" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-                <h5 class="fw-bold text-warning mb-3" style="font-size: 1.1rem;"><i class="bi bi-check2-square me-2"></i>Seguimiento de Fases Secuenciales</h5>
-                <div class="d-flex flex-column gap-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-warning mb-0" style="font-size: 1.1rem;"><i class="bi bi-list-check me-2"></i>Entregables y Tareas por Fase</h5>
+                    <span class="badge bg-dark border border-secondary text-white-50"><i class="bi bi-info-circle me-1"></i>Haz clic en una fase para expandir</span>
+                </div>
+
+                <div class="d-flex flex-column" id="accordionFases">
                     @if (Model.Fases != null)
                     {
                         var fasesLista = Model.Fases.OrderBy(f => f.Orden).ToList();
@@ -60,122 +159,146 @@
                             if (fase.EstadoFase == "Completado") badgeClass = "bg-success text-white";
 
                             bool faseBloqueada = i > 0 && fasesLista[i - 1].EstadoFase != "Completado";
+                            bool isExpanded = fase.EstadoFase == "En Progreso" || (i == 0 && fase.EstadoFase == "Pendiente");
 
-                            <div class="fase-row p-3 d-flex flex-column gap-2" id="fase_row_@fase.Id" style="@(faseBloqueada ? "opacity: 0.55; background-color: rgba(0,0,0,0.15);" : "")">
-                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                    <div class="d-flex align-items-center gap-3">
-                                        <span class="text-secondary font-monospace fw-bold" style="font-size: 0.85rem;">#@fase.Orden</span>
-                                        <h6 class="text-white fw-bold mb-0" style="font-size: 0.9rem;">
-                                            @if (faseBloqueada)
+                            <div class="fase-row shadow-sm" id="fase_row_@fase.Id" style="@(faseBloqueada ? "opacity: 0.6; filter: grayscale(50%);" : "")">
+
+                                @* CABECERA DE LA FASE (ACORDEÓN) *@
+                                <div class="fase-header p-3 d-flex flex-column gap-2 @(isExpanded ? "" : "collapsed")" data-bs-toggle="collapse" data-bs-target="#collapse_fase_@fase.Id" aria-expanded="@(isExpanded ? "true" : "false")">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <i class="bi bi-chevron-down text-warning accordion-indicator"></i>
+                                            <span class="text-secondary font-monospace fw-bold" style="font-size: 0.85rem;">#@fase.Orden</span>
+                                            <h6 class="text-white fw-bold mb-0" style="font-size: 0.95rem;">
+                                                @if (faseBloqueada)
+                                                {
+                                                    <i class="bi bi-lock-fill text-secondary me-1" title="Fase Bloqueada por dependencia"></i>
+                                                }
+                                                @fase.NombreFase.Replace("_", " ")
+                                            </h6>
+                                        </div>
+
+                                        <div class="d-flex align-items-center gap-3 ms-auto" onclick="event.stopPropagation();">
+                                            @if (fase.NombreFase.Contains("Paso_A_Produccion"))
                                             {
-                                                <i class="bi bi-lock-fill text-secondary me-1" title="Fase Bloqueada Sequence"></i>
+                                                <button class="btn-generate-job me-2" data-bs-toggle="modal" data-bs-target="#modalGenerarJobs" @(isValidadoWorkspace && !faseBloqueada ? "" : "disabled") title="@toolTipRequisito">
+                                                    <i class="bi bi-box-seam me-2"></i> Generar Jobs
+                                                </button>
                                             }
-                                            @fase.NombreFase.Replace("_", " ")
-                                        </h6>
+                                            <span class="badge @badgeClass id-badge-@fase.Id js-status-badge fase-badge" style="font-size: 0.7rem; min-width: 90px;">@fase.EstadoFase</span>
+                                            <select class="form-select form-select-sm status-select" onchange="changeFaseStatus(@fase.Id, this)" @(faseBloqueada ? "disabled" : "")>
+                                                <option value="Pendiente" selected="@(fase.EstadoFase == "Pendiente")">Pendiente</option>
+                                                <option value="En Progreso" selected="@(fase.EstadoFase == "En Progreso")">En Progreso</option>
+                                                <option value="Completado" selected="@(fase.EstadoFase == "Completado")">Completado</option>
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div class="d-flex align-items-center gap-3 ms-auto">
-                                        @if (fase.NombreFase.Contains("Paso_A_Produccion"))
+
+                                    @* Detalles de actualización y documentos de la fase *@
+                                    <div class="d-flex justify-content-between align-items-end mt-1">
+                                        @if (fase.FechaActualizacion.HasValue && !string.IsNullOrEmpty(fase.UsuarioActualizacion))
                                         {
-                                            <button class="btn-generate-job me-3" data-bs-toggle="modal" data-bs-target="#modalGenerarJobs" @(isValidadoWorkspace && !faseBloqueada ? "" : "disabled") title="@toolTipRequisito">
-                                                <i class="bi bi-box-seam me-2"></i> Generar Jobs
-                                            </button>
+                                            <div class="font-monospace text-white-50 opacity-75" style="font-size: 0.65rem;">
+                                                <i class="bi bi-person-check-fill me-1 text-info"></i> Act: <strong>@fase.FechaActualizacion.Value.ToString("dd/MM/yyyy HH:mm")</strong> por <strong>@@@fase.UsuarioActualizacion</strong>
+                                            </div>
                                         }
-                                        <span class="badge @badgeClass id-badge-@fase.Id js-status-badge fase-badge" style="font-size: 0.7rem;">@fase.EstadoFase</span>
-                                        <select class="form-select form-select-sm status-select" onchange="changeFaseStatus(@fase.Id, this)" @(faseBloqueada ? "disabled" : "")>
-                                            <option value="Pendiente" selected="@(fase.EstadoFase == "Pendiente")">Pendiente</option>
-                                            <option value="En Progreso" selected="@(fase.EstadoFase == "En Progreso")">En Progreso</option>
-                                            <option value="Completado" selected="@(fase.EstadoFase == "Completado")">Completado</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                @if (fase.FechaActualizacion.HasValue && !string.IsNullOrEmpty(fase.UsuarioActualizacion))
-                                {
-                                    <div class="font-monospace text-white-50 opacity-75 border-top border-secondary border-opacity-10 pt-1" style="font-size: 0.65rem;">
-                                        <i class="bi bi-person-check-fill me-1 text-info"></i> Act: <strong>@fase.FechaActualizacion.Value.ToString("dd/MM/yyyy HH:mm")</strong> por <strong>@@@fase.UsuarioActualizacion</strong>
-                                    </div>
-                                }
 
-                                @* ── NUEVO: Listado de Subfases ── *@
-                                @if (fase.SubFases != null && fase.SubFases.Any())
-                                {
-                                    <div class="mt-2 ms-2 ps-3 border-start border-info border-opacity-50 d-flex flex-column gap-2">
-                                        @foreach (var subfase in fase.SubFases)
+                                        @{
+                                            var docsEstaFase = getDocsParaFase(fase.NombreFase);
+                                            bool esPasoProduccion = fase.NombreFase.Contains("Paso_A_Produccion", StringComparison.OrdinalIgnoreCase) || fase.NombreFase.Contains("Paso A Produccion", StringComparison.OrdinalIgnoreCase);
+                                        }
+                                        @if (docsEstaFase.Any() || (esPasoProduccion && hayJobsGenerados))
                                         {
-                                            string badgeSubClass = "bg-secondary text-white-50";
-                                            if (subfase.Estado == "En Progreso") badgeSubClass = "bg-warning text-dark";
-                                            if (subfase.Estado == "Completado") badgeSubClass = "bg-success text-white";
-
-                                            <div class="p-2 rounded d-flex justify-content-between align-items-center flex-wrap gap-2" style="background-color: rgba(255,255,255,0.03);">
-                                                <div class="d-flex align-items-center">
-                                                    <i class="bi bi-arrow-return-right text-white-50 me-2" style="font-size: 0.8rem;"></i>
-                                                    <span class="text-white" style="font-size: 0.82rem;">@subfase.Nombre</span>
-                                                    @if (subfase.Responsable != null && !string.IsNullOrEmpty(subfase.Responsable.Email))
+                                            <div class="d-flex flex-wrap gap-1" onclick="event.stopPropagation();">
+                                                @foreach (var doc in docsEstaFase)
+                                                {
+                                                    if (!string.IsNullOrEmpty(doc.Url))
                                                     {
-                                                        <span class="ms-3 badge bg-dark border border-secondary text-info font-monospace" style="font-size: 0.65rem;">
-                                                            <i class="bi bi-person-fill me-1"></i>@@@subfase.Responsable.Email.Split('@')[0]
-                                                        </span>
+                                                        <a href="@doc.Url" target="_blank" class="text-decoration-none" title="@doc.ArchivoNombre">
+                                                            <span class="badge d-flex align-items-center gap-1" style="background:rgba(25,135,84,0.15);border:1px solid rgba(25,135,84,0.4);color:#0ddb78;font-size:0.6rem;border-radius:5px;padding:3px 7px;">
+                                                                <i class="bi bi-file-earmark-check" style="font-size:0.65rem;"></i> @doc.Subcategoria
+                                                            </span>
+                                                        </a>
                                                     }
-                                                </div>
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <span class="badge @badgeSubClass" style="font-size: 0.65rem; min-width: 75px;">@subfase.Estado</span>
-                                                    <select class="form-select form-select-sm status-select" style="width: 120px; font-size: 0.7rem; background-color: #1a1d2e;" onchange="changeSubFaseStatus(@subfase.Id, this)" @(faseBloqueada ? "disabled" : "")>
-                                                        <option value="Pendiente" selected="@(subfase.Estado == "Pendiente")">Pendiente</option>
-                                                        <option value="En Progreso" selected="@(subfase.Estado == "En Progreso")">En Progreso</option>
-                                                        <option value="Completado" selected="@(subfase.Estado == "Completado")">Completado</option>
-                                                    </select>
-                                                </div>
+                                                }
+                                                @if (esPasoProduccion && hayJobsGenerados)
+                                                {
+                                                    <span class="badge d-flex align-items-center gap-1" style="background:rgba(13,202,240,0.1);border:1px solid rgba(13,202,240,0.35);color:#0dcaf0;font-size:0.6rem;border-radius:5px;padding:3px 7px;" title="Jobs generados: @jobsCount">
+                                                        <i class="bi bi-gear-wide-connected" style="font-size:0.65rem;"></i> Jobs (@jobsCount)
+                                                    </span>
+                                                }
                                             </div>
                                         }
                                     </div>
-                                }
+                                </div>
 
-                                @{
-                                    var docsEstaFase = getDocsParaFase(fase.NombreFase);
-                                    bool esPasoProduccion = fase.NombreFase.Contains("Paso_A_Produccion",
-                                        StringComparison.OrdinalIgnoreCase) ||
-                                        fase.NombreFase.Contains("Paso A Produccion",
-                                        StringComparison.OrdinalIgnoreCase);
-                                }
-                                @if (docsEstaFase.Any() || (esPasoProduccion && hayJobsGenerados))
-                                {
-                                    <div class="d-flex flex-wrap gap-1 pt-1 border-top border-secondary border-opacity-10">
-                                        @foreach (var doc in docsEstaFase)
+                                @* CUERPO DE LA FASE: LISTA DE TAREAS (SUBFASES) *@
+                                <div id="collapse_fase_@fase.Id" class="collapse @(isExpanded ? "show" : "")" data-bs-parent="#accordionFases">
+                                    <div class="p-3 border-top border-secondary border-opacity-25" style="background-color: rgba(0,0,0,0.15);">
+
+                                        @if (fase.SubFases != null && fase.SubFases.Any())
                                         {
-                                            if (!string.IsNullOrEmpty(doc.Url))
-                                            {
-                                                <a href="@doc.Url" target="_blank" class="text-decoration-none"
-                                                   title="@doc.ArchivoNombre">
-                                                    <span class="badge d-flex align-items-center gap-1"
-                                                          style="background:rgba(25,135,84,0.15);border:1px solid rgba(25,135,84,0.4);
-                                                        color:#0ddb78;font-size:0.6rem;border-radius:5px;padding:3px 7px;">
-                                                        <i class="bi bi-check-circle-fill" style="font-size:0.65rem;"></i>
-                                                        @doc.Subcategoria
-                                                    </span>
-                                                </a>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge d-flex align-items-center gap-1"
-                                                      style="background:rgba(25,135,84,0.15);border:1px solid rgba(25,135,84,0.4);
-                                                    color:#0ddb78;font-size:0.6rem;border-radius:5px;padding:3px 7px;"
-                                                      title="@doc.ArchivoNombre">
-                                                    <i class="bi bi-check-circle-fill" style="font-size:0.65rem;"></i>
-                                                    @doc.Subcategoria
-                                                </span>
-                                            }
+                                            <div class="d-flex flex-column gap-2">
+                                                @foreach (var subfase in fase.SubFases.OrderBy(s => s.FechaInicio ?? DateTime.MaxValue))
+                                                {
+                                                    bool isCompleted = subfase.Estado == "Completado";
+                                                    bool isProgress = subfase.Estado == "En Progreso";
+                                                    string taskClass = isCompleted ? "completed" : (isProgress ? "in-progress" : "");
+
+                                                    <div class="task-item p-2 rounded d-flex justify-content-between align-items-center flex-wrap gap-2 @taskClass">
+
+                                                        <div class="d-flex align-items-center gap-3 flex-grow-1">
+                                                            <input type="checkbox" class="custom-task-check" id="chk_sub_@subfase.Id" @(isCompleted ? "checked" : "") onchange="toggleSubTask(@subfase.Id, this)" @(faseBloqueada ? "disabled" : "") title="Marcar como completada">
+
+                                                            <label for="chk_sub_@subfase.Id" class="mb-0 text-white task-text @(isCompleted ? "text-decoration-line-through opacity-50" : "")" id="lbl_sub_@subfase.Id" style="font-size: 0.85rem; cursor: pointer;">
+                                                                @subfase.Nombre
+                                                            </label>
+                                                        </div>
+
+                                                        <div class="d-flex align-items-center gap-4">
+                                                            @* Fechas MS Project Style *@
+                                                            <div class="text-white-50 font-monospace d-none d-sm-block text-end" style="font-size: 0.65rem; line-height: 1.2;">
+                                                                @if (subfase.FechaInicio.HasValue || subfase.FechaFinEstimada.HasValue)
+                                                                {
+                                                                    <div class="text-info"><i class="bi bi-play-fill"></i> @(subfase.FechaInicio?.ToString("dd MMM yyyy") ?? "-")</div>
+                                                                    <div class="text-warning"><i class="bi bi-stop-fill"></i> @(subfase.FechaFinEstimada?.ToString("dd MMM yyyy") ?? "-")</div>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="opacity-50"><i class="bi bi-calendar-x me-1"></i>Sin fechas programadas</span>
+                                                                }
+                                                            </div>
+
+                                                            @* Asignación de Recursos *@
+                                                            <div style="min-width: 90px; text-align: right;">
+                                                                @if (subfase.Responsable != null && !string.IsNullOrEmpty(subfase.Responsable.Email))
+                                                                {
+                                                                    var respInitials = subfase.Responsable.Email.Substring(0, 2).ToUpper();
+                                                                    <span class="badge bg-dark border border-secondary text-info font-monospace d-inline-flex align-items-center px-2 py-1" style="font-size: 0.65rem;" title="@subfase.Responsable.Email">
+                                                                        <span class="rounded-circle bg-info text-dark d-inline-flex align-items-center justify-content-center me-2 fw-bold" style="width: 16px; height: 16px; font-size: 0.5rem;">@respInitials</span>
+                                                                        @@@subfase.Responsable.Email.Split('@')[0]
+                                                                    </span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="badge bg-dark border border-secondary text-white-50 font-monospace" style="font-size: 0.65rem;"><i class="bi bi-person-x me-1"></i>Sin Asignar</span>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
                                         }
-                                        @if (esPasoProduccion && hayJobsGenerados)
+                                        else
                                         {
-                                            <span class="badge d-flex align-items-center gap-1"
-                                                  style="background:rgba(13,202,240,0.1);border:1px solid rgba(13,202,240,0.35);
-                                                color:#0dcaf0;font-size:0.6rem;border-radius:5px;padding:3px 7px;"
-                                                  title="Jobs generados: @jobsCount">
-                                                <i class="bi bi-check-circle-fill" style="font-size:0.65rem;"></i>
-                                                Jobs (@jobsCount)
-                                            </span>
+                                            <div class="text-center py-3 text-white-50 font-monospace small border border-dashed border-secondary border-opacity-25 rounded">
+                                                <i class="bi bi-list-task d-block fs-4 mb-2 opacity-50"></i>
+                                                Esta fase no tiene entregables o tareas detalladas.<br />
+                                                <a href="/Proyectos/Edit/@Model.Id" class="text-info text-decoration-none mt-1 d-inline-block">Agregar tareas en edición</a>
+                                            </div>
                                         }
                                     </div>
-                                }
+                                </div>
                             </div>
                         }
                     }
@@ -242,8 +365,6 @@
 
         <div class="row g-4">
             <div class="col-12 col-md-5 border-end border-secondary border-opacity-10 pe-md-4">
-
-                @* ── Tabs: Comentario / Documento ── *@
                 <ul class="nav nav-tabs border-bottom border-secondary border-opacity-25 mb-3" id="muroTabs" style="font-size: 0.78rem;">
                     <li class="nav-item">
                         <button class="nav-link active px-3 py-2" id="tab-comentario" data-bs-toggle="tab" data-bs-target="#pane-comentario" type="button">
@@ -258,8 +379,6 @@
                 </ul>
 
                 <div class="tab-content">
-
-                    @* ── Panel: Comentario/Nota/Recordatorio ── *@
                     <div class="tab-pane fade show active" id="pane-comentario">
                         <form id="formAddComentarioMuro" class="d-flex flex-column gap-2">
                             <div>
@@ -267,18 +386,13 @@
                                     Escribe tu comentario <span class="text-danger">*</span>
                                     <span class="text-white-50 opacity-50" style="font-size: 0.65rem;">— usa @@nombre para mencionar</span>
                                 </label>
-                                <textarea id="txtComentarioMuro" rows="3"
-                                          class="form-control form-control-sm bg-dark text-white border-secondary font-monospace"
-                                          placeholder="Ej: Validado el flujo... @@daniel.pasten revisa esto" required></textarea>
-                                @* Dropdown de menciones *@
-                                <div id="muroMencionesDrop" class="d-none position-absolute"
-                                     style="background:#1a1d2e; border:1px solid rgba(255,255,255,0.12); border-radius:6px; z-index:100; min-width:180px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
+                                <textarea id="txtComentarioMuro" rows="3" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace" placeholder="Ej: Validado el flujo... @@daniel.pasten revisa esto" required></textarea>
+
+                                <div id="muroMencionesDrop" class="d-none position-absolute" style="background:#1a1d2e; border:1px solid rgba(255,255,255,0.12); border-radius:6px; z-index:100; min-width:180px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
                                     @foreach (var u in Model.UsuariosAsignados)
                                     {
                                         string username = u.Usuario.Email.Split('@')[0];
-                                        <div class="menciones-option px-3 py-2 font-monospace"
-                                             style="font-size:0.75rem; cursor:pointer; color:rgba(255,255,255,0.7);"
-                                             onmousedown="insertarMencion('@username')">
+                                        <div class="menciones-option px-3 py-2 font-monospace" style="font-size:0.75rem; cursor:pointer; color:rgba(255,255,255,0.7);" onmousedown="insertarMencion('@username')">
                                             <i class="bi bi-person-fill me-2 text-info"></i>@@@username
                                         </div>
                                     }
@@ -306,7 +420,6 @@
                         </form>
                     </div>
 
-                    @* ── Panel: Documento ── *@
                     <div class="tab-pane fade" id="pane-documento">
                         <form id="formSubirDocumento" class="d-flex flex-column gap-2">
                             <div>
@@ -330,21 +443,17 @@
                             </div>
                             <div>
                                 <label class="text-white-50 small mb-1">Descripción (Opcional)</label>
-                                <input type="text" id="txtDescDocumento"
-                                       class="form-control form-control-sm bg-dark text-white border-secondary"
-                                       placeholder="Ej: Análisis técnico versión 2 aprobada">
+                                <input type="text" id="txtDescDocumento" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Ej: Análisis técnico versión 2 aprobada">
                             </div>
                             <div>
                                 <label class="text-white-50 small mb-1">Archivo <span class="text-danger">*</span></label>
                                 <div class="d-flex align-items-center gap-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary fw-bold"
-                                            onclick="document.getElementById('inputDocumento').click()">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="document.getElementById('inputDocumento').click()">
                                         <i class="bi bi-folder2-open me-1"></i>Seleccionar
                                     </button>
                                     <span id="txtNombreArchivo" class="text-white-50 font-monospace" style="font-size:0.72rem;">Sin archivo</span>
                                 </div>
-                                <input type="file" id="inputDocumento" class="d-none"
-                                       accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip,.msg,.eml">
+                                <input type="file" id="inputDocumento" class="d-none" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip,.msg,.eml">
                             </div>
                             <div class="d-grid mt-1">
                                 <button type="submit" class="btn btn-sm btn-warning fw-bold text-dark" id="btnSubirDocumento">
@@ -353,7 +462,6 @@
                             </div>
                         </form>
                     </div>
-
                 </div>
             </div>
 
@@ -363,19 +471,11 @@
                     {
                         foreach (var c in Model.Comentarios.OrderByDescending(x => x.FechaCreacion))
                         {
-                            string claseTipo = c.Tipo == "Advertencia" ? "comentario-advertencia"
-                                : c.Tipo == "Recordatorio" ? "comentario-recordatorio"
-                                : c.Tipo == "Documento" ? "comentario-documento"
-                                : "comentario-nota";
+                            string claseTipo = c.Tipo == "Advertencia" ? "comentario-advertencia" : c.Tipo == "Recordatorio" ? "comentario-recordatorio" : c.Tipo == "Documento" ? "comentario-documento" : "comentario-nota";
                             if (c.Resuelto) claseTipo = "comentario-resuelto";
 
-                            string iconoTipo = c.Tipo == "Advertencia" ? "bi-exclamation-triangle text-warning"
-                                : c.Tipo == "Recordatorio" ? "bi-clock-history text-warning"
-                                : c.Tipo == "Documento" ? "bi-paperclip text-success"
-                                : "bi-chat-left text-info";
-
-                            if (c.Tipo == "Documento" && !string.IsNullOrEmpty(c.Subcategoria) &&
-                                DocumentoSubcategorias.Mapa.TryGetValue(c.Subcategoria, out var docInfo))
+                            string iconoTipo = c.Tipo == "Advertencia" ? "bi-exclamation-triangle text-warning" : c.Tipo == "Recordatorio" ? "bi-clock-history text-warning" : c.Tipo == "Documento" ? "bi-paperclip text-success" : "bi-chat-left text-info";
+                            if (c.Tipo == "Documento" && !string.IsNullOrEmpty(c.Subcategoria) && DocumentoSubcategorias.Mapa.TryGetValue(c.Subcategoria, out var docInfo))
                                 iconoTipo = docInfo.Icono + " text-success";
 
                             <div class="comentario-item p-3 @claseTipo" id="item-comentario-@c.Id">
@@ -400,36 +500,24 @@
                                     </div>
                                 </div>
 
-                                @* Texto con menciones resaltadas *@
                                 @{
                                     var textoSeguro = System.Net.WebUtility.HtmlEncode(c.Texto ?? "");
-                                    var textoMenciones = System.Text.RegularExpressions.Regex.Replace(
-                                        textoSeguro,
-                                        @"@([\w\.]+)",
-                                        m => $"<span class='text-warning fw-bold'>@@{m.Groups[1].Value}</span>");
+                                    var textoMenciones = System.Text.RegularExpressions.Regex.Replace(textoSeguro, @"@([\w\.]+)", m => $"<span class='text-warning fw-bold'>@@{m.Groups[1].Value}</span>");
                                 }
-                                <p class="text-white mb-0 text-wrap font-monospace" style="font-size: 0.75rem;">
-                                    @Html.Raw(textoMenciones)
-                                </p>
+                                <p class="text-white mb-0 text-wrap font-monospace" style="font-size: 0.75rem;">@Html.Raw(textoMenciones)</p>
 
-                                @* Archivo adjunto *@
                                 @if (!string.IsNullOrEmpty(c.ArchivoNombre))
                                 {
-                                    <div class="mt-2 d-flex align-items-center gap-2 p-2 rounded"
-                                         style="background:rgba(25,135,84,0.07); border:1px solid rgba(25,135,84,0.2);">
+                                    <div class="mt-2 d-flex align-items-center gap-2 p-2 rounded" style="background:rgba(25,135,84,0.07); border:1px solid rgba(25,135,84,0.2);">
                                         <i class="bi bi-file-earmark text-success" style="font-size:0.85rem;"></i>
                                         <span class="text-white font-monospace flex-grow-1" style="font-size:0.7rem;">@c.ArchivoNombre</span>
                                         @if (!string.IsNullOrEmpty(c.ArchivoUrl))
                                         {
-                                            <a href="@c.ArchivoUrl" target="_blank"
-                                               class="btn btn-sm btn-outline-success border-0 py-0 px-1" title="Abrir en Drive">
-                                                <i class="bi bi-box-arrow-up-right" style="font-size:0.75rem;"></i>
-                                            </a>
+                                            <a href="@c.ArchivoUrl" target="_blank" class="btn btn-sm btn-outline-success border-0 py-0 px-1" title="Abrir en Drive"><i class="bi bi-box-arrow-up-right" style="font-size:0.75rem;"></i></a>
                                         }
                                     </div>
                                 }
 
-                                @* Recordatorio: fecha de vencimiento *@
                                 @if (c.Tipo == "Recordatorio" && c.FechaVencimiento.HasValue)
                                 {
                                     <div class="mt-1 d-flex gap-2 align-items-center" style="font-size: 0.65rem;">
@@ -456,7 +544,59 @@
 
 <script>
     // ============================================================
-    // CAMBIO DE ESTADO DE SUBFASES
+    // NUEVO: INTERACTIVIDAD DE CHECKBOX PARA SUBTAREAS (Mini-Gantt)
+    // ============================================================
+    function toggleSubTask(subFaseId, checkbox) {
+        const nuevoEstado = checkbox.checked ? 'Completado' : 'Pendiente';
+        const token = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]').value;
+        checkbox.disabled = true;
+
+        const formData = new FormData();
+        formData.append('subFaseId', subFaseId);
+        formData.append('nuevoEstado', nuevoEstado);
+        formData.append('__RequestVerificationToken', token);
+
+        fetch('/Proyectos/UpdateSubFaseStatus', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                toastr.success(checkbox.checked ? 'Entregable completado.' : 'Entregable reabierto.');
+
+                // Actualización Visual en Tiempo Real
+                const taskContainer = checkbox.closest('.task-item');
+                const lbl = document.getElementById('lbl_sub_' + subFaseId);
+                const selectEl = taskContainer.querySelector('.status-select');
+                const badge = taskContainer.querySelector('.badge:not(.bg-dark)');
+
+                if (checkbox.checked) {
+                    lbl.classList.add('text-decoration-line-through', 'opacity-50');
+                    taskContainer.classList.remove('in-progress');
+                    taskContainer.classList.add('completed');
+                    if(selectEl) selectEl.value = 'Completado';
+                    if(badge) { badge.textContent = 'Completado'; badge.className = 'badge bg-success text-white'; }
+                } else {
+                    lbl.classList.remove('text-decoration-line-through', 'opacity-50');
+                    taskContainer.classList.remove('completed');
+                    if(selectEl) selectEl.value = 'Pendiente';
+                    if(badge) { badge.textContent = 'Pendiente'; badge.className = 'badge bg-secondary text-white-50'; }
+                }
+            } else {
+                toastr.error(data.message || 'Error al actualizar subfase.');
+                checkbox.checked = !checkbox.checked; // Revertir visualmente
+            }
+        })
+        .catch(() => {
+            toastr.error('Error de conexión.');
+            checkbox.checked = !checkbox.checked; // Revertir visualmente
+        })
+        .finally(() => checkbox.disabled = false);
+    }
+
+    // ============================================================
+    // CAMBIO DE ESTADO DE SUBFASES (Sincronizado con Checkbox)
     // ============================================================
     function changeSubFaseStatus(subFaseId, selectElement) {
         const nuevoEstado = selectElement.value;
@@ -476,10 +616,32 @@
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                toastr.success('Estado de subfase actualizado.');
+                toastr.success('Estado de entregable actualizado.');
+
+                // Sincronización Visual
+                const taskContainer = selectElement.closest('.task-item');
+                const checkbox = document.getElementById('chk_sub_' + subFaseId);
+                const lbl = document.getElementById('lbl_sub_' + subFaseId);
                 const badge = selectElement.previousElementSibling;
+
                 badge.textContent = nuevoEstado;
                 badge.className = 'badge ' + (nuevoEstado === 'Completado' ? 'bg-success text-white' : (nuevoEstado === 'En Progreso' ? 'bg-warning text-dark' : 'bg-secondary text-white-50'));
+
+                if (nuevoEstado === 'Completado') {
+                    if(checkbox) checkbox.checked = true;
+                    if(lbl) lbl.classList.add('text-decoration-line-through', 'opacity-50');
+                    taskContainer.classList.remove('in-progress');
+                    taskContainer.classList.add('completed');
+                } else if (nuevoEstado === 'En Progreso') {
+                    if(checkbox) checkbox.checked = false;
+                    if(lbl) lbl.classList.remove('text-decoration-line-through', 'opacity-50');
+                    taskContainer.classList.remove('completed');
+                    taskContainer.classList.add('in-progress');
+                } else {
+                    if(checkbox) checkbox.checked = false;
+                    if(lbl) lbl.classList.remove('text-decoration-line-through', 'opacity-50');
+                    taskContainer.classList.remove('completed', 'in-progress');
+                }
             } else {
                 toastr.error(data.message || 'Error al actualizar subfase.');
             }
@@ -489,10 +651,10 @@
     }
 
     // ============================================================
-    // MURO SIN RECARGA — construye el HTML del comentario en el DOM
+    // LÓGICA ORIGINAL DE BITÁCORA, MURO Y MENCIONES MANTENIDA
     // ============================================================
-    // AT = arroba, definido via charCode para evitar que Razor lo interprete
     const AT = String.fromCharCode(64);
+
     function _buildComentarioHtml(c) {
         const esVencido  = c.fechaVencimiento && new Date(c.fechaVencimiento) < new Date();
         const esDocumento = c.tipo === 'Documento';
@@ -508,27 +670,24 @@
             'Documento':    (c.icono || 'bi-paperclip') + ' text-success',
             'Nota':         'bi-chat-left text-info'
         };
+
         const icono = iconoMap[c.tipo] || 'bi-chat-left text-info';
 
-        // Badge subcategoría
         const badgeSubcat = c.subcategoria
             ? `<span class="badge ms-1" style="font-size:0.58rem;background:rgba(25,135,84,0.15);color:#0ddb78;border:1px solid rgba(25,135,84,0.3);">${c.subcategoria}</span>`
             : '';
 
-        // Texto con menciones resaltadas
         const textoHtml = (c.texto || '').replace(new RegExp(AT + '([\\w\\.]+)', 'g'),
             '<span class="text-warning fw-bold">' + AT + '$1</span>');
 
-        // Archivo adjunto
-        const archivoHtml = c.archivoNombre ? `
-            <div class="mt-2 d-flex align-items-center gap-2 p-2 rounded"
+        const archivoHtml = c.archivoNombre ?
+            `<div class="mt-2 d-flex align-items-center gap-2 p-2 rounded"
                  style="background:rgba(25,135,84,0.07);border:1px solid rgba(25,135,84,0.2);">
                 <i class="bi bi-file-earmark text-success" style="font-size:0.85rem;"></i>
                 <span class="text-white font-monospace flex-grow-1" style="font-size:0.7rem;">${c.archivoNombre}</span>
                 ${c.archivoUrl ? `<a href="${c.archivoUrl}" target="_blank" class="btn btn-sm btn-outline-success border-0 py-0 px-1" title="Abrir en Drive"><i class="bi bi-box-arrow-up-right" style="font-size:0.75rem;"></i></a>` : ''}
             </div>` : '';
 
-        // Recordatorio
         let recordatorioHtml = '';
         if (c.tipo === 'Recordatorio' && c.fechaVencimiento) {
             const fv  = new Date(c.fechaVencimiento);
@@ -587,24 +746,19 @@
         .then(data => {
             if (data.success) {
                 toastr.success(data.message);
-
-                // Quitar mensaje de vacío si existe
                 const vacioMsg = document.getElementById('muro-vacio-msg');
                 if (vacioMsg) vacioMsg.remove();
 
-                // Insertar el nuevo comentario al principio sin recargar
                 const contenedor = document.getElementById('contenedorMuroComentarios');
                 const html = _buildComentarioHtml(data.comentario);
                 contenedor.insertAdjacentHTML('afterbegin', html);
 
-                // Actualizar contador
                 const contador = document.getElementById('muro-contador');
                 if (contador) {
                     const actual = parseInt(contador.textContent) || 0;
                     contador.textContent = (actual + 1) + ' registros';
                 }
 
-                // Limpiar formulario
                 document.getElementById('txtComentarioMuro').value = '';
                 document.getElementById('selectTipoComentario').value = 'Nota';
                 document.getElementById('dateComentarioVence').value = '';
@@ -629,7 +783,6 @@
         .then(r => r.json())
         .then(d => {
             if (d.success) {
-                // Marcar visualmente sin recargar
                 const item = document.getElementById(`item-comentario-${id}`);
                 if (item) {
                     item.className = item.className.replace(/comentario-\w+/, 'comentario-resuelto');
@@ -645,7 +798,6 @@
         });
     }
 
-    // ── Menciones @@usuario ───────────────────────────────────
     function toggleMuroCalendar(tipo) {
         const divCalendar = document.getElementById('divCalendarMuro');
         const dateInput   = document.getElementById('dateComentarioVence');
@@ -677,7 +829,6 @@
             });
             if (visibles > 0) {
                 dropdown.classList.remove('d-none');
-                const rect = this.getBoundingClientRect();
                 dropdown.style.top  = (this.offsetTop + this.offsetHeight + 2) + 'px';
                 dropdown.style.left = this.offsetLeft + 'px';
             } else {
@@ -703,7 +854,6 @@
             document.getElementById('muroMencionesDrop')?.classList.add('d-none');
     });
 
-    // ── Mostrar nombre del archivo seleccionado ───────────────
     document.getElementById('inputDocumento')?.addEventListener('change', function() {
         const label = document.getElementById('txtNombreArchivo');
         if (this.files?.length > 0) {
@@ -715,7 +865,6 @@
         }
     });
 
-    // ── Subir documento ───────────────────────────────────────
     document.getElementById('formSubirDocumento')?.addEventListener('submit', function(e) {
         e.preventDefault();
         const archivo     = document.getElementById('inputDocumento').files?.[0];
@@ -744,14 +893,15 @@
             toastr.clear();
             if (data.success) {
                 toastr.success(data.message);
-                // Insertar en el muro sin recargar
                 const vacioMsg  = document.getElementById('muro-vacio-msg');
                 if (vacioMsg) vacioMsg.remove();
+
                 const contenedor = document.getElementById('contenedorMuroComentarios');
                 contenedor.insertAdjacentHTML('afterbegin', _buildComentarioHtml(data.comentario));
+
                 const contador = document.getElementById('muro-contador');
                 if (contador) contador.textContent = (parseInt(contador.textContent) + 1) + ' registros';
-                // Limpiar formulario
+
                 document.getElementById('inputDocumento').value = '';
                 document.getElementById('txtNombreArchivo').textContent = 'Sin archivo';
                 document.getElementById('txtNombreArchivo').classList.remove('text-info');
@@ -783,13 +933,11 @@
                     item.style.opacity = '0';
                     setTimeout(() => {
                         item.remove();
-                        // Mostrar mensaje vacío si no quedan items
                         const contenedor = document.getElementById('contenedorMuroComentarios');
                         if (!contenedor.querySelector('.comentario-item')) {
                             contenedor.innerHTML = `<div class="text-center text-white-50 py-4 opacity-50" id="muro-vacio-msg">
                                 <i class="bi bi-chat-square-dots d-block fs-3 mb-1 text-secondary"></i>No hay comentarios ni alertas registradas.</div>`;
                         }
-                        // Actualizar contador
                         const contador = document.getElementById('muro-contador');
                         if (contador) {
                             const actual = parseInt(contador.textContent) || 1;

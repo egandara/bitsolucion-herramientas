@@ -114,6 +114,31 @@ namespace NotebookValidator.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(int id)
+        {
+            try
+            {
+                var proyecto = await _context.Proyectos.FindAsync(id);
+                if (proyecto == null)
+                {
+                    return Json(new { success = false, message = "El proyecto no existe o ya fue eliminado." });
+                }
+
+                // Al eliminar el proyecto, la base de datos aplicará el borrado en cascada
+                // a las fases, usuarios asignados y bitácoras gracias a tu ApplicationDbContext.
+                _context.Proyectos.Remove(proyecto);
+                await _context.SaveChangesAsync();
+
+                return Json(new { success = true, message = "Proyecto eliminado de forma permanente." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error al eliminar el proyecto: {ex.Message}" });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(string nombre, string descripcion, int? clienteId, string? repositorioGitHub, string? contraparteCliente,
             DateTime? fechaInicio, DateTime? fechaFinEstimada, DateTime? fechaPasoProduccion, string notas,
             List<string> fasesSeleccionadas, List<string> usuariosAsignadosIds,
