@@ -428,59 +428,224 @@
                 border-radius: 10px;
             }
 
-            /* ── HOJA DE ESTILOS DEL WIDGET MUNDIAL FIFA ──────────────── */
-            .wc-time-badge-future {
-                background: rgba(13, 202, 240, 0.15);
-                color: #0dcaf0;
-                border: 1px solid rgba(13, 202, 240, 0.3);
-                font-size: 0.58rem;
-                padding: 1px 5px;
-                border-radius: 4px;
+            /* ── HOJA DE ESTILOS TIMELINE HORIZONTAL COPA MUNDIAL ── */
+            .wc-timeline-container {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                max-width: 820px; /* 💡 CORREGIDO: De 580px subimos a 820px para conquistar el espacio vacío */
+                width: 100%;
+                position: relative;
+            }
+
+            .wc-timeline-viewport {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                overflow-x: hidden;
+                scroll-behavior: smooth;
+                width: 100%;
+                padding: 4px 0;
+            }
+
+            .wc-day-group-node {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                border-left: 2px dashed rgba(255, 193, 7, 0.35);
+                padding-left: 10px;
+                margin-left: 4px;
+                flex-shrink: 0;
+            }
+
+            .wc-day-column-label {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                line-height: 1.1;
+                flex-shrink: 0;
                 margin-right: 6px;
+            }
+
+                .wc-day-column-label .day-name-txt {
+                    font-size: 0.52rem;
+                    color: rgba(255, 255, 255, 0.4);
+                    text-transform: uppercase;
+                    font-weight: 700;
+                    letter-spacing: 0.3px;
+                }
+
+                .wc-day-column-label .day-date-txt {
+                    font-size: 0.68rem;
+                    color: #ffc107;
+                    font-weight: 800;
+                    white-space: nowrap;
+                }
+
+            .wc-time-match-segment {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-shrink: 0;
+            }
+
+            .wc-time-sub {
+                color: #0dcaf0;
+                font-weight: 700;
+                font-size: 0.65rem;
+                background: rgba(13, 202, 240, 0.08);
+                padding: 2px 5px;
+                border-radius: 4px;
+                border: 1px solid rgba(13, 202, 240, 0.25);
+                white-space: nowrap;
+            }
+
+            .wc-match-interactive-pill {
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                color: #fff;
+                padding: 3px 8px;
+                border-radius: 5px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 0.72rem;
+                white-space: nowrap !important;
+            }
+
+                .wc-match-interactive-pill:hover, .wc-match-interactive-pill.popover-active {
+                    background: rgba(255, 255, 255, 0.08);
+                    border-color: rgba(255, 193, 7, 0.5);
+                    box-shadow: 0 0 8px rgba(255, 193, 7, 0.15);
+                }
+
+            .wc-fin-badge {
+                background: rgba(255, 255, 255, 0.06);
+                color: rgba(255, 255, 255, 0.45);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                font-size: 0.55rem;
+                padding: 0px 3px;
+                border-radius: 3px;
                 font-weight: bold;
             }
 
             .wc-live-pulse-badge {
                 background: rgba(220, 53, 69, 0.15);
-                color: #dc3545;
-                border: 1px solid rgba(220, 53, 69, 0.4);
-                font-size: 0.62rem;
-                padding: 1px 6px;
-                border-radius: 4px;
-                margin-right: 6px;
+                color: #ff4a5a;
+                border: 1px solid rgba(220, 53, 69, 0.45);
+                font-size: 0.58rem;
+                padding: 0px 4px;
+                border-radius: 3px;
                 font-weight: bold;
             }
 
-            .wc-fin-badge {
-                background: rgba(255, 255, 255, 0.05);
-                color: rgba(255, 255, 255, 0.4);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                font-size: 0.58rem;
-                padding: 1px 4px;
-                border-radius: 4px;
-                margin-right: 6px;
+            .wc-future-badge {
+                background: rgba(13, 202, 240, 0.12);
+                color: #0dcaf0;
+                border: 1px solid rgba(13, 202, 240, 0.3);
+                font-size: 0.55rem;
+                padding: 0px 3px;
+                border-radius: 3px;
+                font-weight: bold;
             }
 
             .wc-score-live-highlight {
                 background: #ffc107;
                 color: #000;
-                font-weight: bold;
-                font-size: 0.75rem;
-                padding: 1px 6px;
-                border-radius: 4px;
-                margin: 0 4px;
-                box-shadow: 0 0 8px rgba(255, 193, 7, 0.4);
+                font-weight: 800;
+                padding: 0px 5px;
+                border-radius: 3px;
             }
 
-            .wc-score-past-badge {
+            .wc-score-finished-badge {
                 background: rgba(255, 255, 255, 0.08);
-                color: #fff;
-                font-weight: 600;
-                font-size: 0.7rem;
-                padding: 1px 5px;
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                color: #ffffff !important;
+                font-weight: 800;
+                padding: 0px 5px;
                 border-radius: 4px;
+                margin: 0 2px;
+                font-size: 0.72rem;
+            }
+
+            .wc-score-vs-text {
+                color: rgba(255, 255, 255, 0.35) !important;
+                font-weight: 600;
+                font-size: 0.65rem;
                 margin: 0 4px;
             }
+            /* CORECTOR FIXED PARA GOLEADORES (INMUNES AL CLIPPING HORIZONTAL) */
+            .wc-scorers-popover {
+                position: fixed;
+                transform: translateX(-50%);
+                background: #111424;
+                border: 1px solid rgba(255, 193, 7, 0.4);
+                border-radius: 6px;
+                min-width: 240px;
+                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.85);
+                z-index: 9999;
+                padding: 8px 12px;
+                font-family: monospace;
+                font-size: 0.7rem;
+            }
+
+            .wc-scorer-home-text {
+                color: #3bf79c !important;
+            }
+
+            .wc-scorer-away-text {
+                color: #4adcff !important;
+            }
+
+            .wc-nav-arrow {
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                color: #ffc107;
+                border-radius: 50%;
+                width: 22px;
+                height: 22px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: all 0.2s;
+                font-size: 0.65rem;
+                flex-shrink: 0;
+            }
+
+                .wc-nav-arrow:hover {
+                    background: rgba(255,193,7,0.15);
+                    color: #fff;
+                    border-color: #ffc107;
+                }
+
+            /* BOTÓN PREMIUM DE RETORNO AL PRESENTE */
+            .wc-btn-today {
+                background: rgba(255, 193, 7, 0.1);
+                border: 1px solid rgba(255, 193, 7, 0.35);
+                color: #ffc107;
+                font-size: 0.58rem;
+                font-weight: 700;
+                padding: 1px 8px;
+                border-radius: 12px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+                height: 18px;
+            }
+
+                .wc-btn-today:hover {
+                    background: rgba(255, 193, 7, 0.25);
+                    color: #fff;
+                    border-color: #ffc107;
+                    box-shadow: 0 0 8px rgba(255, 193, 7, 0.2);
+                }
 
             /* Banderas Twemoji: tamaño compacto para la barra del widget */
             #worldCupWidget img.emoji {
@@ -489,6 +654,27 @@
                 display: inline !important;
                 vertical-align: middle !important;
                 margin: 0 2px !important;
+            }
+
+            /* NUEVAS CLASES PARA DARLE PODER A LOS GOLES */
+            .wc-score-finished-badge {
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                color: #ffffff !important;
+                font-weight: 800; /* Super negrita */
+                padding: 0px 6px;
+                border-radius: 4px;
+                margin: 0 3px;
+                font-size: 0.72rem;
+                letter-spacing: 0.5px;
+                display: inline-block;
+            }
+
+            .wc-score-vs-text {
+                color: rgba(255, 255, 255, 0.35) !important;
+                font-weight: 600;
+                font-size: 0.65rem;
+                margin: 0 5px;
             }
     </style>
 
@@ -911,23 +1097,30 @@
                     <div id="globalSearchResults" class="global-search-results"></div>
                 </div>
 
-                <!-- INICIO WIDGET MUNDIAL 2026 -->
-                <div id="worldCupWidget" class="d-none d-lg-flex align-items-center mx-auto gap-2" style="max-width: 820px; user-select: none;">
+                <!-- INICIO WIDGET MUNDIAL TIMELINE FLUIDO -->
+                <div id="worldCupWidget" class="d-none d-lg-flex align-items-center flex-grow-1 mx-3" style="max-width: 880px;">
+                    <div class="wc-timeline-container">
 
-                    <div class="d-flex align-items-center px-3 py-1 font-monospace" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 15px; font-size: 0.72rem; height: 28px; opacity: 0.55;" id="wc-ant">
-                        -
+                        <button class="wc-nav-arrow" id="wc-btn-prev" title="Desplazar Izquierda">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+
+                        <!-- 🎯 BOTÓN INTERACTIVO INTEGRADO -->
+                        <button class="wc-btn-today" id="wc-btn-today" title="Volver al partido actual" style="display: none;">
+                            <i class="bi bi-circle-fill text-danger heartbeat" style="font-size: 0.35rem;"></i> Hoy
+                        </button>
+
+                        <div class="wc-timeline-viewport" id="wc-timeline-viewport-core">
+                            <div class="spinner-border spinner-border-sm text-warning mx-auto" role="status"></div>
+                        </div>
+
+                        <button class="wc-nav-arrow" id="wc-btn-next" title="Desplazar Derecha">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+
                     </div>
-
-                    <div class="d-flex align-items-center px-3 py-1 font-monospace shadow-sm" style="background: rgba(255, 193, 7, 0.03); border: 1px solid rgba(255, 193, 7, 0.35); box-shadow: 0 0 12px rgba(255, 193, 7, 0.12); border-radius: 18px; font-size: 0.76rem; height: 32px;" id="wc-act">
-                        -
-                    </div>
-
-                    <div class="d-flex align-items-center px-3 py-1 font-monospace" style="background: rgba(13, 202, 240, 0.02); border: 1px solid rgba(13, 202, 240, 0.25); border-radius: 15px; font-size: 0.72rem; height: 28px;" id="wc-sig">
-                        -
-                    </div>
-
                 </div>
-                <!-- FIN WIDGET MUNDIAL 2026 -->
+                <!-- FIN WIDGET MUNDIAL TIMELINE FLUIDO -->
 
                 <div class="d-flex align-items-center gap-3">
                     <div class="position-relative" id="notif-container">
@@ -1116,33 +1309,167 @@
         })();
     </script>
 
-    <!-- SCRIPT DEL WIDGET MUNDIAL (LLAMADA AL BACKEND) -->
+    <!-- ENGINE TIMELINE PREMIUM CON AGRUPACIÓN UNIFICADA DE DÍA Y VIEWPORT AUTO-CENTRADOR -->
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-        const elAnt = document.getElementById('wc-ant');
-        const elAct = document.getElementById('wc-act');
-        const elSig = document.getElementById('wc-sig');
-        if (!elAct) return;
+        const viewport = document.getElementById('wc-timeline-viewport-core');
+        const btnPrev = document.getElementById('wc-btn-prev');
+        const btnNext = document.getElementById('wc-btn-next');
+        const btnToday = document.getElementById('wc-btn-today');
+        if (!viewport) return;
 
-        function actualizarBarraMundial() {
+        let cacheTorneo = null;
+
+        function cargarDatosMundial() {
         fetch('/Widget/GetWorldCupWidget')
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
         if (data.error) { console.log(data.error); return; }
-        elAnt.innerHTML = data.anterior;
-        elAct.innerHTML = data.actual;
-        elSig.innerHTML = data.siguiente;
-        // ← AGREGAR ESTO:
-        twemoji.parse(document.getElementById('worldCupWidget'), { folder: 'svg', ext: '.svg' });
+        cacheTorneo = data.dates;
+        renderizarTimelineFluido(data.dates, data.currentDateIndex);
         })
-        .catch(err => console.log("Widget en pausa"));
+        .catch(err => console.log("Widget en pausa externa"));
         }
 
-        // Ejecutar inmediatamente
-        actualizarBarraMundial();
+        function renderizarTimelineFluido(dates, activeDateIdx) {
+        let html = "";
 
-        // Refrescar los datos desde la RAM del servidor cada 15 segundos (Totalmente gratis)
-        setInterval(actualizarBarraMundial, 15000);
+        dates.forEach((grupoFecha, dateIdx) => {
+        const partesFecha = grupoFecha.dateLabel.split(' ');
+        const nombreDia = partesFecha[0] || "";
+        const numeroFecha = partesFecha[1] || "";
+
+        html += `<div class="wc-day-group-node">
+        <div class="wc-day-column-label">
+        <span class="day-name-txt">${nombreDia.substring(0,3)}.</span>
+        <span class="day-date-txt">${numeroFecha}</span>
+        </div>`;
+
+        grupoFecha.times.forEach(tGrp => {
+        html += `<div class="wc-time-match-segment">
+        <span class="wc-time-sub">⏰ ${tGrp.timeLabel}</span>`;
+
+        tGrp.matches.forEach(m => {
+        const tieneDetalles = m.hasDetails && (m.homeScorersList.length > 0 || m.awayScorersList.length > 0);
+        const triggerClass = tieneDetalles ? "wc-pill-trigger" : "";
+        const iconDropdown = tieneDetalles ? `<i class="bi bi-chevron-down ms-1 opacity-50" style="font-size:0.55rem;"></i>` : "";
+
+        let scoreDisplay = "";
+        if (m.scoreVisual === "vs") {
+        scoreDisplay = `<span class="wc-score-vs-text">vs</span>`;
+        } else if (m.statusBadgeHtml.includes("🔴")) {
+        scoreDisplay = `<span class="wc-score-live-highlight">${m.scoreVisual}</span>`;
+        } else {
+        scoreDisplay = `<span class="wc-score-finished-badge">${m.scoreVisual}</span>`;
+        }
+
+        const pivotAttr = (dateIdx === activeDateIdx) ? 'id="wc-match-active-pivot"' : '';
+
+        html += `
+        <div class="position-relative d-inline-block flex-shrink-0" ${pivotAttr}>
+        <div class="wc-match-interactive-pill ${triggerClass}" data-id="${m.id}">
+        ${m.statusBadgeHtml}
+        <span>${m.homeFlag} <strong>${m.homeCode}</strong> ${scoreDisplay} <strong>${m.awayCode}</strong> ${m.awayFlag}</span>
+        ${iconDropdown}
+        </div>`;
+
+        if (tieneDetalles) {
+        html += `<div id="popover-${m.id}" class="wc-scorers-popover d-none">
+        <div class="text-center border-bottom border-secondary border-opacity-25 pb-1 mb-2 text-warning fw-bold" style="font-size:0.6rem;">⚽ DETALLE DE GOLES</div>`;
+        m.homeScorersList.forEach(s => {
+        html += `<div class="d-flex align-items-center gap-2 wc-scorer-home-text text-start py-0.5"><span class="me-1">⚽</span> ${s}</div>`;
+        });
+        m.awayScorersList.forEach(s => {
+        html += `<div class="d-flex align-items-center gap-2 wc-scorer-away-text justify-content-end text-end py-0.5">${s} <span class="ms-1">⚽</span></div>`;
+        });
+        html += `</div>`;
+        }
+
+        html += `</div>`;
+        });
+
+        html += `</div>`;
+        });
+
+        html += `</div>`;
+        });
+
+        viewport.innerHTML = html;
+
+        if (typeof twemoji !== 'undefined') {
+        twemoji.parse(viewport, { folder: 'svg', ext: '.svg' });
+        }
+
+        // Mostrar botón hoy si el timeline cargó correctamente
+        if (btnToday) btnToday.style.display = 'inline-flex';
+
+        setTimeout(() => {
+        const pivot = document.getElementById('wc-match-active-pivot');
+        if (pivot) {
+        pivot.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+        }
+        }, 150);
+
+        // ASIGNACIÓN DE CLICK POP-OVERS
+        document.querySelectorAll('.wc-pill-trigger').forEach(pill => {
+        pill.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const id = this.getAttribute('data-id');
+        const targetPopover = document.getElementById(`popover-${id}`);
+
+        document.querySelectorAll('.wc-scorers-popover').forEach(p => {
+        if (p.id !== `popover-${id}`) p.classList.add('d-none');
+        });
+        document.querySelectorAll('.wc-match-interactive-pill').forEach(p => p.classList.remove('popover-active'));
+
+        if (targetPopover) {
+        const rect = this.getBoundingClientRect();
+        targetPopover.style.top = (rect.bottom + 6) + 'px';
+        targetPopover.style.left = (rect.left + rect.width / 2) + 'px';
+
+        const seMuestra = targetPopover.classList.contains('d-none');
+        if (seMuestra) {
+        targetPopover.classList.remove('d-none');
+        this.classList.add('popover-active');
+        } else {
+        targetPopover.classList.add('d-none');
+        this.classList.remove('popover-active');
+        }
+        }
+        });
+        });
+        }
+
+        // EVENTOS TOP-LEVEL (FUERA DE RENDER)
+        btnPrev.addEventListener('click', function () {
+        viewport.scrollLeft -= 220;
+        });
+
+        btnNext.addEventListener('click', function () {
+        viewport.scrollLeft += 220;
+        });
+
+        // RETORNO SUAVE AL PARTIDO ACTUAL
+        btnToday?.addEventListener('click', function() {
+        const pivot = document.getElementById('wc-match-active-pivot');
+        if (pivot) {
+        pivot.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+        });
+
+        document.addEventListener('click', function () {
+        document.querySelectorAll('.wc-scorers-popover').forEach(p => p.classList.add('d-none'));
+        document.querySelectorAll('.wc-match-interactive-pill').forEach(p => p.classList.remove('popover-active'));
+        });
+
+        viewport.addEventListener('scroll', function() {
+        document.querySelectorAll('.wc-scorers-popover').forEach(p => p.classList.add('d-none'));
+        document.querySelectorAll('.wc-match-interactive-pill').forEach(p => p.classList.remove('popover-active'));
+        });
+
+        // ARRANQUE AUTOMÁTICO
+        cargarDatosMundial();
+        setInterval(cargarDatosMundial, 60000);
         });
     </script>
 

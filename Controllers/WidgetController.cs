@@ -2,35 +2,67 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration; // Aseguramos el espacio de nombres para IConfiguration
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace NotebookValidator.Web.Controllers
 {
+    // MODELOS DE ENTRADA (MAPEO DEL JSON DE GITHUB)
     public class PartidoLocal
     {
-        public string Home { get; set; }
-        public string Away { get; set; }
-        public string StartTime { get; set; }
-        public int? GolesHome { get; set; }
-        public int? GolesAway { get; set; }
+        [JsonPropertyName("id")] public string Id { get; set; }
+        [JsonPropertyName("group")] public string Group { get; set; }
+        [JsonPropertyName("local_date")] public string LocalDate { get; set; }
+        [JsonPropertyName("finished")] public string Finished { get; set; }
+        [JsonPropertyName("time_elapsed")] public string TimeElapsed { get; set; }
+        [JsonPropertyName("type")] public string Type { get; set; }
+        [JsonPropertyName("home_team_name_en")] public string HomeTeamNameEn { get; set; }
+        [JsonPropertyName("away_team_name_en")] public string AwayTeamNameEn { get; set; }
+        [JsonPropertyName("home_team_label")] public string HomeTeamLabel { get; set; }
+        [JsonPropertyName("away_team_label")] public string AwayTeamLabel { get; set; }
+        [JsonPropertyName("home_score")] public string HomeScore { get; set; }
+        [JsonPropertyName("away_score")] public string AwayScore { get; set; }
+        [JsonPropertyName("home_scorers")] public string HomeScorers { get; set; }
+        [JsonPropertyName("away_scorers")] public string AwayScorers { get; set; }
     }
 
-    public class PartidoDisplayModel
+    public class RootGamesContainer
     {
-        public string Home { get; set; }
-        public string Away { get; set; }
-        public DateTimeOffset Time { get; set; }
-        public string Key { get; set; }
-        public int? GolesH { get; set; }
-        public int? GolesA { get; set; }
-        public PartidoLocal RawRef { get; set; }
+        [JsonPropertyName("games")] public List<PartidoLocal> Games { get; set; }
+    }
+
+    // MODELOS DE SALIDA OPTIMIZADOS PARA EL CARRUSEL DEL FRONTEND
+    public class WidgetMatchModel
+    {
+        public string Id { get; set; }
+        public string HomeCode { get; set; }
+        public string HomeFlag { get; set; }
+        public string AwayCode { get; set; }
+        public string AwayFlag { get; set; }
+        public string ScoreVisual { get; set; }
+        public string StatusBadgeHtml { get; set; }
+        public List<string> HomeScorersList { get; set; }
+        public List<string> AwayScorersList { get; set; }
+        public bool HasDetails { get; set; }
+    }
+
+    public class WidgetTimeGroup
+    {
+        public string TimeLabel { get; set; }
+        public List<WidgetMatchModel> Matches { get; set; }
+    }
+
+    public class WidgetDateGroup
+    {
+        public string DateLabel { get; set; }
+        public List<WidgetTimeGroup> Times { get; set; }
     }
 
     [AllowAnonymous]
@@ -43,57 +75,32 @@ namespace NotebookValidator.Web.Controllers
 
         private static readonly Dictionary<string, (string Code, string Flag)> DiccionarioFIFA = new Dictionary<string, (string Code, string Flag)>(StringComparer.OrdinalIgnoreCase)
         {
-            { "Mexico", ("MEX", "🇲🇽") },
-            { "South Africa", ("RSA", "🇿🇦") },
-            { "Rep. of Korea", ("KOR", "🇰🇷") },
-            { "Czech Rep.", ("CZE", "🇨🇿") },
-            { "Canada", ("CAN", "🇨🇦") },
-            { "Bosnia/Herzeg.", ("BIH", "🇧🇦") },
-            { "USA", ("USA", "🇺🇸") },
-            { "Paraguay", ("PAR", "🇵🇾") },
-            { "Qatar", ("QAT", "🇶🇦") },
-            { "Switzerland", ("SUI", "🇨🇭") },
-            { "Brazil", ("BRA", "🇧🇷") },
-            { "Morocco", ("MAR", "🇲🇦") },
-            { "Haiti", ("HAI", "🇭🇹") },
-            { "Scotland", ("SCO", "🏴󠁧󠁢󠁳󠁣󠁴󠁿") },
-            { "Australia", ("AUS", "🇦🇺") },
-            { "Turkey", ("TUR", "🇹🇷") },
-            { "Germany", ("GER", "🇩🇪") },
-            { "Curaçao", ("CUW", "🇨🇼") },
-            { "Ivory Coast", ("CIV", "🇨🇮") },
-            { "Ecuador", ("ECU", "🇪🇨") },
-            { "Netherlands", ("NED", "🇳🇱") },
-            { "Japan", ("JPN", "🇯🇵") },
-            { "Sweden", ("SWE", "🇸🇪") },
-            { "Tunisia", ("TUN", "🇹🇳") },
-            { "Belgium", ("BEL", "🇧🇪") },
-            { "Egypt", ("EGY", "🇪🇬") },
-            { "IR Iran", ("IRN", "🇮🇷") },
-            { "New Zealand", ("NZL", "🇳🇿") },
-            { "Spain", ("ESP", "🇪🇸") },
-            { "Cape Verde", ("CPV", "🇨🇻") },
-            { "Saudi Arabia", ("KSA", "🇸🇦") },
-            { "Uruguay", ("URU", "🇺🇾") },
-            { "France", ("FRA", "🇫🇷") },
-            { "Senegal", ("SEN", "🇸🇳") },
-            { "Iraq", ("IRQ", "🇮🇶") },
-            { "Norway", ("NOR", "🇳🇴") },
-            { "Argentina", ("ARG", "🇦🇷") },
-            { "Algeria", ("ALG", "🇩🇿") },
-            { "Austria", ("AUT", "🇦🇹") },
-            { "Jordan", ("JOR", "🇯🇴") },
-            { "Portugal", ("POR", "🇵🇹") },
-            { "DR Congo", ("COD", "🇨🇩") },
-            { "Uzbekistan", ("UZB", "🇺🇿") },
-            { "Colombia", ("COL", "🇨🇴") },
-            { "England", ("ENG", "🏴󠁧󠁢󠁥󠁮󠁧󠁿") },
-            { "Croatia", ("CRO", "🇭🇷") },
-            { "Ghana", ("GHA", "🇬🇭") },
-            { "Panama", ("PAN", "🇵🇦") }
+            { "Mexico", ("MEX", "🇲🇽") }, { "South Africa", ("RSA", "🇿🇦") },
+            { "South Korea", ("KOR", "🇰🇷") }, { "Czech Republic", ("CZE", "🇨🇿") },
+            { "Canada", ("CAN", "🇨🇦") }, { "Bosnia and Herzegovina", ("BIH", "🇧🇦") },
+            { "United States", ("USA", "🇺🇸") }, { "Paraguay", ("PAR", "🇵🇾") },
+            { "Qatar", ("QAT", "🇶🇦") }, { "Switzerland", ("SUI", "🇨🇭") },
+            { "Brazil", ("BRA", "🇧🇷") }, { "Morocco", ("MAR", "🇲🇦") },
+            { "Haiti", ("HAI", "🇭🇹") }, { "Scotland", ("SCO", "🏴󠁧󠁢󠁳󠁣󠁴󠁿") },
+            { "Australia", ("AUS", "🇦🇺") }, { "Turkey", ("TUR", "🇹🇷") },
+            { "Germany", ("GER", "🇩🇪") }, { "Curaçao", ("CUW", "🇨🇼") },
+            { "Ivory Coast", ("CIV", "🇨🇮") }, { "Ecuador", ("ECU", "🇪🇨") },
+            { "Netherlands", ("NED", "🇳🇱") }, { "Japan", ("JPN", "🇯🇵") },
+            { "Sweden", ("SWE", "🇸🇪") }, { "Tunisia", ("TUN", "🇹🇳") },
+            { "Belgium", ("BEL", "🇧🇪") }, { "Egypt", ("EGY", "🇪🇬") },
+            { "Iran", ("IRN", "🇮🇷") }, { "New Zealand", ("NZL", "🇳🇿") },
+            { "Spain", ("ESP", "🇪🇸") }, { "Cape Verde", ("CPV", "🇨🇻") },
+            { "Saudi Arabia", ("KSA", "🇸🇦") }, { "Uruguay", ("URU", "🇺🇾") },
+            { "France", ("FRA", "🇫🇷") }, { "Senegal", ("SEN", "🇸🇳") },
+            { "Iraq", ("IRQ", "🇮🇶") }, { "Norway", ("NOR", "🇳🇴") },
+            { "Argentina", ("ARG", "🇦🇷") }, { "Algeria", ("ALG", "🇩🇿") },
+            { "Austria", ("AUT", "🇦🇹") }, { "Jordan", ("JOR", "🇯🇴") },
+            { "Portugal", ("POR", "🇵🇹") }, { "Democratic Republic of the Congo", ("COD", "🇨🇩") },
+            { "Uzbekistan", ("UZB", "🇺🇿") }, { "Colombia", ("COL", "🇨🇴") },
+            { "England", ("ENG", "🏴󠁧󠁢󠁥󠁮󠁧󠁿") }, { "Croatia", ("CRO", "🇭🇷") },
+            { "Ghana", ("GHA", "🇬🇭") }, { "Panama", ("PAN", "🇵🇦") }
         };
 
-        // CORREGIDO: Ahora sí incluimos IConfiguration config en la firma
         public WidgetController(IMemoryCache cache, IWebHostEnvironment env, IConfiguration config)
         {
             _cache = cache;
@@ -105,219 +112,146 @@ namespace NotebookValidator.Web.Controllers
         public async Task<IActionResult> GetWorldCupWidget()
         {
             string apiKey = _config["WidgetSettings:ApiKey"];
-            string apiCacheKey = "LiveWorldCupApiCache_V9";
-            DateTimeOffset now = DateTimeOffset.Now;
+            string apiCacheKey = "LiveWorldCupApiCache_V12";
+            string remoteJsonCacheKey = "RemoteFixtureJsonString_V12";
+            DateTime now = DateTime.Now;
 
-            string jsonPath = Path.Combine(_env.WebRootPath, "data", "partidos.json");
-            if (!System.IO.File.Exists(jsonPath))
-                return Json(new { error = "Archivo partidos.json no encontrado" });
+            string localJsonPath = Path.Combine(_env.WebRootPath, "data", "partidos.json");
+            string jsonContent = string.Empty;
 
-            string jsonContent = await System.IO.File.ReadAllTextAsync(jsonPath);
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, WriteIndented = true };
-            var calendarioRaw = JsonSerializer.Deserialize<List<PartidoLocal>>(jsonContent, options);
-
-            var todosLosPartidos = calendarioRaw
-                .Select(p => new PartidoDisplayModel
-                {
-                    Home = p.Home,
-                    Away = p.Away,
-                    Time = DateTimeOffset.Parse(p.StartTime),
-                    Key = $"{p.Home}_{p.Away}".ToLower().Replace(" ", ""),
-                    GolesH = p.GolesHome,
-                    GolesA = p.GolesAway,
-                    RawRef = p
-                })
-                .OrderBy(p => p.Time)
-                .ToList();
-
-            if (!todosLosPartidos.Any())
-                return Json(new { error = "Fixture vacío" });
-
-            int actualIdx = todosLosPartidos.FindLastIndex(p => now >= p.Time);
-            if (actualIdx == -1) actualIdx = 0;
-
-            if (actualIdx < todosLosPartidos.Count - 1)
+            if (!_cache.TryGetValue(remoteJsonCacheKey, out jsonContent))
             {
-                double minsDesdeInicio = (now - todosLosPartidos[actualIdx].Time).TotalMinutes;
-                if (minsDesdeInicio > 135) actualIdx++;
-            }
-
-            int antIdx = actualIdx - 1;
-            int sigIdx = actualIdx + 1;
-
-            var pAnterior = antIdx >= 0 ? todosLosPartidos[antIdx] : null;
-            var pActual = todosLosPartidos[actualIdx];
-            var pSiguiente = sigIdx < todosLosPartidos.Count ? todosLosPartidos[sigIdx] : null;
-
-            double minsActual = (now - pActual.Time).TotalMinutes;
-            bool necesitaLlamarApi = minsActual >= 5 && minsActual <= 135;
-            JsonElement apiResponseRows = default;
-            bool huboCambiosEnGoles = false;
-
-            if (necesitaLlamarApi)
-            {
-                if (!_cache.TryGetValue(apiCacheKey, out string rawJson))
+                try
                 {
-                    try
+                    using var client = new HttpClient();
+                    client.Timeout = TimeSpan.FromSeconds(5);
+                    jsonContent = await client.GetStringAsync("https://worldcup26.ir/get/games");
+
+                    _cache.Set(remoteJsonCacheKey, jsonContent, TimeSpan.FromMinutes(10));
+
+                    lock (FileLock)
                     {
-                        using var client = new HttpClient();
-                        client.DefaultRequestHeaders.Add("x-rapidapi-host", "v3.football.api-sports.io");
-                        client.DefaultRequestHeaders.Add("x-rapidapi-key", apiKey);
-
-                        string apiDateStr = pActual.Time.ToString("yyyy-MM-dd");
-                        var response = await client.GetAsync($"https://v3.football.api-sports.io/fixtures?league=1&season=2026&date={apiDateStr}");
-                        rawJson = await response.Content.ReadAsStringAsync();
-
-                        _cache.Set(apiCacheKey, rawJson, TimeSpan.FromMinutes(5));
+                        string dir = Path.GetDirectoryName(localJsonPath);
+                        if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                        System.IO.File.WriteAllText(localJsonPath, jsonContent);
                     }
-                    catch { rawJson = null; }
                 }
-
-                if (!string.IsNullOrEmpty(rawJson))
+                catch
                 {
-                    try
-                    {
-                        using var doc = JsonDocument.Parse(rawJson);
-                        if (doc.RootElement.TryGetProperty("response", out var respProp)) apiResponseRows = respProp.Clone();
-                    }
-                    catch { }
+                    if (System.IO.File.Exists(localJsonPath))
+                        jsonContent = await System.IO.File.ReadAllTextAsync(localJsonPath);
                 }
             }
 
-            var responseObj = new
-            {
-                anterior = ConstruirHtmlTarjeta(pAnterior, "ANTERIOR", now, apiResponseRows, ref huboCambiosEnGoles),
-                actual = ConstruirHtmlTarjeta(pActual, "ACTUAL", now, apiResponseRows, ref huboCambiosEnGoles),
-                siguiente = ConstruirHtmlTarjeta(pSiguiente, "SIGUIENTE", now, apiResponseRows, ref huboCambiosEnGoles)
-            };
+            if (string.IsNullOrEmpty(jsonContent))
+                return Json(new { error = "No se pudo obtener el fixture." });
 
-            if (huboCambiosEnGoles)
-            {
-                lock (FileLock)
+            var root = JsonSerializer.Deserialize<RootGamesContainer>(jsonContent);
+            if (root?.Games == null || !root.Games.Any())
+                return Json(new { error = "Formato inválido" });
+
+            // 1. PROCESAR, LIMPIAR Y FORMATEAR CADA PARTIDO INDIVIDUAL
+            var todosLosPartidosMapeados = root.Games.Select(p => {
+                DateTime pTime = DateTime.ParseExact(p.LocalDate, "MM/dd/yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+                double m = (now - pTime).TotalMinutes;
+
+                var elLocal = NormalizarEquipo(p.HomeTeamNameEn, p.HomeTeamLabel);
+                var elVisitante = NormalizarEquipo(p.AwayTeamNameEn, p.AwayTeamLabel);
+
+                string score = $"{p.HomeScore} - {p.AwayScore}";
+                string badge = "";
+                bool isFinished = p.Finished == "TRUE" || p.TimeElapsed == "finished" || m > 135;
+
+                if (isFinished)
                 {
-                    try
-                    {
-                        string updatedJson = JsonSerializer.Serialize(calendarioRaw, options);
-                        System.IO.File.WriteAllText(jsonPath, updatedJson);
-                    }
-                    catch { }
+                    badge = "<span class='wc-fin-badge'>Fin</span>";
                 }
-            }
-
-            return Json(responseObj);
-        }
-
-        private string ConstruirHtmlTarjeta(PartidoDisplayModel p, string bloque, DateTimeOffset now, JsonElement apiResponseRows, ref bool huboCambios)
-        {
-            if (p == null) return "<span class='text-white-50 opacity-25'>--</span>";
-
-            double m = (now - p.Time).TotalMinutes;
-
-            var elLocal = NormalizarEquipo(p.Home);
-            var elVisitante = NormalizarEquipo(p.Away);
-
-            string scoreVisual = (p.GolesH != null && p.GolesA != null) ? $"{p.GolesH} - {p.GolesA}" : "0 - 0";
-
-            if (m < 0)
-            {
-                string horaStr = p.Time.ToLocalTime().ToString("HH:mm");
-                string fechaStr = p.Time.ToLocalTime().ToString("dd/MM");
-                return $"<span class='wc-time-badge-future'>{fechaStr} {horaStr}</span> {elLocal.Flag} <span class='fw-bold text-white-50'>{elLocal.Name}</span> <span class='mx-1 opacity-25 text-white-50'>vs</span> <span class='fw-bold text-white-50'>{elVisitante.Name}</span> {elVisitante.Flag}";
-            }
-
-            if (m >= 0 && m < 5 && bloque == "ACTUAL")
-            {
-                int elapsedSimulado = (int)m == 0 ? 1 : (int)m;
-                return $"<span class='wc-live-pulse-badge'>🔴 {elapsedSimulado}'</span> {elLocal.Flag} <span class='fw-bold'>{elLocal.Name}</span> <span class='wc-score-live-highlight'>0 - 0</span> <span class='fw-bold'>{elVisitante.Name}</span> {elVisitante.Flag}";
-            }
-
-            if (apiResponseRows.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var row in apiResponseRows.EnumerateArray())
+                else if (m >= 0 && m <= 135)
                 {
-                    try
+                    int minReal = m > 90 ? 90 : (int)m == 0 ? 1 : (int)m;
+                    badge = $"<span class='wc-live-pulse-badge'>🔴 {minReal}'</span>";
+                }
+                else
+                {
+                    badge = "<span class='wc-future-badge'>Próx</span>";
+                }
+
+                return new
+                {
+                    ParsedDate = pTime.Date,
+                    TimeStr = pTime.ToString("HH:mm"),
+                    MatchData = new WidgetMatchModel
                     {
-                        string apiHome = row.GetProperty("teams").GetProperty("home").GetProperty("name").GetString().ToLower();
-                        if (apiHome.Contains(p.Home.ToLower()) || p.Home.ToLower().Contains(apiHome))
+                        Id = p.Id,
+                        HomeCode = elLocal.Code,
+                        HomeFlag = elLocal.Flag,
+                        AwayCode = elVisitante.Code,
+                        AwayFlag = elVisitante.Flag,
+                        ScoreVisual = (m < 0 && !isFinished) ? "vs" : score,
+                        StatusBadgeHtml = badge,
+                        HomeScorersList = LimpiarGoleadores(p.HomeScorers),
+                        AwayScorersList = LimpiarGoleadores(p.AwayScorers),
+                        HasDetails = isFinished || (m >= 0)
+                    }
+                };
+            }).ToList();
+
+            // 2. AGRUPACIÓN COMPLEJA E INTELIGENTE: FECHAS ➔ HORAS ➔ PARTIDOS SIMULTÁNEOS
+            var estructuraAgrupada = todosLosPartidosMapeados
+                .GroupBy(p => p.ParsedDate)
+                .OrderBy(g => g.Key)
+                .Select(gDate => new WidgetDateGroup
+                {
+                    DateLabel = gDate.Key.ToString("dddd dd/MM", new System.Globalization.CultureInfo("es-ES")).ToUpper(),
+                    Times = gDate
+                        .GroupBy(t => t.TimeStr)
+                        .OrderBy(tGrp => tGrp.Key)
+                        .Select(gTime => new WidgetTimeGroup
                         {
-                            string shortStatus = row.GetProperty("fixture").GetProperty("status").GetProperty("short").GetString();
-                            var goalsHome = row.GetProperty("goals").GetProperty("home");
-                            var goalsAway = row.GetProperty("goals").GetProperty("away");
+                            TimeLabel = gTime.Key,
+                            Matches = gTime.Select(m => m.MatchData).ToList()
+                        }).ToList()
+                }).ToList();
 
-                            if (goalsHome.ValueKind != JsonValueKind.Null && goalsAway.ValueKind != JsonValueKind.Null)
-                            {
-                                int apiGolesH = goalsHome.GetInt32();
-                                int apiGolesA = goalsAway.GetInt32();
+            // 3. CALCULAR QUÉ ÍNDICE DE FECHA DEBE QUEDAR ACTIVO POR DEFECTO (HOY)
+            int indexFechaActiva = estructuraAgrupada.FindIndex(d => d.DateLabel.Contains(now.ToString("dd/MM")));
+            if (indexFechaActiva == -1) indexFechaActiva = estructuraAgrupada.FindLastIndex(d => now.Date >= DateTime.ParseExact(d.DateLabel.Split(' ')[1], "dd/MM", null).Date);
+            if (indexFechaActiva == -1) indexFechaActiva = 0;
 
-                                if (p.GolesH != apiGolesH || p.GolesA != apiGolesA)
-                                {
-                                    p.RawRef.GolesHome = apiGolesH;
-                                    p.RawRef.GolesAway = apiGolesA;
-                                    huboCambios = true;
-                                    scoreVisual = $"{apiGolesH} - {apiGolesA}";
-                                }
-                            }
-
-                            if (shortStatus == "FT" || shortStatus == "PEN" || shortStatus == "AET")
-                            {
-                                return $"<span class='wc-fin-badge'>Fin</span> {elLocal.Flag} <span class='fw-bold text-white-50'>{elLocal.Name}</span> <span class='wc-score-past-badge'>{scoreVisual}</span> <span class='fw-bold text-white-50'>{elVisitante.Name}</span> {elVisitante.Flag}";
-                            }
-                            else
-                            {
-                                var elapsedProp = row.GetProperty("fixture").GetProperty("status").GetProperty("elapsed");
-                                int minReal = elapsedProp.ValueKind != JsonValueKind.Null ? elapsedProp.GetInt32() : (int)m;
-                                return $"<span class='wc-live-pulse-badge'>🔴 {minReal}'</span> {elLocal.Flag} <span class='fw-bold'>{elLocal.Name}</span> <span class='wc-score-live-highlight'>{scoreVisual}</span> <span class='fw-bold'>{elVisitante.Name}</span> {elVisitante.Flag}";
-                            }
-                        }
-                    }
-                    catch { }
-                }
-            }
-
-            if (m > 135)
+            return Json(new
             {
-                return $"<span class='wc-fin-badge'>Fin</span> {elLocal.Flag} <span class='fw-bold text-white-50'>{elLocal.Name}</span> <span class='wc-score-past-badge'>{scoreVisual}</span> <span class='fw-bold text-white-50'>{elVisitante.Name}</span> {elVisitante.Flag}";
-            }
-            else
-            {
-                int minFallback = m > 90 ? 90 : (int)m;
-                return $"<span class='wc-live-pulse-badge'>🔴 {minFallback}'</span> {elLocal.Flag} <span class='fw-bold'>{elLocal.Name}</span> <span class='wc-score-live-highlight'>{scoreVisual}</span> <span class='fw-bold'>{elVisitante.Name}</span> {elVisitante.Flag}";
-            }
+                dates = estructuraAgrupada,
+                currentDateIndex = indexFechaActiva
+            });
         }
 
-        private (string Name, string Flag) NormalizarEquipo(string nombreOriginal)
+        // LIMPIADOR AVANZADO DE STRINGS DE GOLEADORES DEL REPOSITORIO
+        private List<string> LimpiarGoleadores(string raw)
         {
-            if (DiccionarioFIFA.TryGetValue(nombreOriginal, out var match))
+            var result = new List<string>();
+            if (string.IsNullOrEmpty(raw) || raw.Equals("null", StringComparison.OrdinalIgnoreCase))
+                return result;
+
+            string clean = raw.Replace("{", "").Replace("}", "").Replace("\"", "").Replace("“", "").Replace("”", "");
+            var items = clean.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var item in items)
             {
-                return (match.Code, match.Flag);
+                string trimmed = item.Trim();
+                if (!string.IsNullOrEmpty(trimmed)) result.Add(trimmed);
             }
-            string clean = nombreOriginal.Replace(".", "").Replace(" ", "");
-            string codeFallback = clean.Length > 3 ? clean.Substring(0, 3).ToUpper() : clean.ToUpper();
-            return (codeFallback, "🏳️");
+            return result;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> TestApiSportsConnection()
+        private (string Code, string Flag) NormalizarEquipo(string nombre, string label)
         {
-            // Esto leerá la API Key directamente desde tu appsettings.json para verificar que el flujo esté bien configurado
-            string apiKey = _config["WidgetSettings:ApiKey"];
+            string target = !string.IsNullOrEmpty(nombre) ? nombre : label;
+            if (string.IsNullOrEmpty(target)) return ("--", "🏳️");
 
-            try
-            {
-                using var client = new HttpClient();
-                client.DefaultRequestHeaders.Add("x-rapidapi-host", "v3.football.api-sports.io");
-                client.DefaultRequestHeaders.Add("x-rapidapi-key", apiKey);
+            if (DiccionarioFIFA.TryGetValue(target, out var match)) return (match.Code, match.Flag);
+            if (target.Contains("Winner") || target.Contains("Runner-up") || target.Contains("Match") || target.Contains("3rd")) return (target, "🏆");
 
-                // Consultamos el endpoint oficial de estado de cuenta (siempre responde si la key es válida)
-                var response = await client.GetAsync("https://v3.football.api-sports.io/status");
-                string rawJson = await response.Content.ReadAsStringAsync();
-
-                return Content(rawJson, "application/json");
-            }
-            catch (Exception ex)
-            {
-                return Json(new { error = "Fallo de conexión física", detalle = ex.Message });
-            }
+            string clean = target.Replace(".", "").Replace(" ", "");
+            return (clean.Length > 3 ? clean.Substring(0, 3).ToUpper() : clean.ToUpper(), "🏳️");
         }
     }
 }
