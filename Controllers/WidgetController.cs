@@ -127,7 +127,7 @@ namespace NotebookValidator.Web.Controllers
                     client.Timeout = TimeSpan.FromSeconds(5);
                     jsonContent = await client.GetStringAsync("https://worldcup26.ir/get/games");
 
-                    _cache.Set(remoteJsonCacheKey, jsonContent, TimeSpan.FromMinutes(10));
+                    _cache.Set(remoteJsonCacheKey, jsonContent, TimeSpan.FromMinutes(1));
 
                     lock (FileLock)
                     {
