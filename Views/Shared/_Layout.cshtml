@@ -1424,6 +1424,25 @@
         function renderizarTimelineFluido(dates, activeDateIdx) {
         let html = "";
 
+        // 💡 CALCULAR EL PIVOTE EXACTO A NIVEL GLOBAL (Todo el torneo)
+        let targetPivotId = null;
+        const allMatches = [];
+        // Aplastamos todo el torneo en una sola lista temporal
+        dates.forEach(d => d.times.forEach(t => t.matches.forEach(m => allMatches.push(m))));
+
+        // Buscamos cualquier partido que tenga el punto rojo 🔴 o el símbolo de pausa ⏸️
+        const liveMatch = allMatches.find(m => m.statusBadgeHtml.includes("🔴") || m.statusBadgeHtml.includes("⏸️"));
+        // O el partido más cercano que no haya empezado
+        const futureMatch = allMatches.find(m => m.scoreVisual === "vs" && !m.statusBadgeHtml.includes("🔴") && !m.statusBadgeHtml.includes("⏸️"));
+
+        if (liveMatch) {
+        targetPivotId = liveMatch.id;
+        } else if (futureMatch) {
+        targetPivotId = futureMatch.id;
+        } else if (allMatches.length > 0) {
+        targetPivotId = allMatches[allMatches.length - 1].id;
+        }
+
         dates.forEach((grupoFecha, dateIdx) => {
         const partesFecha = grupoFecha.dateLabel.split(' ');
         const nombreDia = partesFecha[0] || "";
@@ -1444,30 +1463,27 @@
         const triggerClass = tieneDetalles ? "wc-pill-trigger" : "";
         const iconDropdown = tieneDetalles ? `<i class="bi bi-chevron-down ms-1 opacity-50" style="font-size:0.55rem;"></i>` : "";
 
-        // INTERCEPTOR DE ESTADO CROMÁTICO (REMOCIÓN DE TEXTOS RESIDUALES)
         let scoreDisplay = "";
         let stateClass = "";
         let cleanBadge = "";
 
         if (m.scoreVisual === "vs") {
-        // Caso A: Partido Futuro -> Muted, sin badge
         scoreDisplay = `<span class="wc-score-vs-text">vs</span>`;
         stateClass = "pill-future";
         cleanBadge = "";
-        } else if (m.statusBadgeHtml.includes("🔴")) {
-        // Caso B: Partido En Vivo -> Resplandor encendido y mantiene el reloj (🔴 45')
+        } else if (m.statusBadgeHtml.includes("🔴") || m.statusBadgeHtml.includes("⏸️")) {
+        // 💡 Aquí interceptamos tanto el 🔴 (Vivo) como el ⏸️ (Entretiempo)
         scoreDisplay = `<span class="wc-score-live-highlight">${m.scoreVisual}</span>`;
         stateClass = "pill-live";
         cleanBadge = m.statusBadgeHtml;
         } else {
-        // Caso C: Partido Finalizado -> Sólido, removemos etiqueta "Fin" redundante
         scoreDisplay = `<span class="wc-score-finished-badge">${m.scoreVisual}</span>`;
         stateClass = "pill-finished";
         cleanBadge = "";
         }
 
-        // Si el día corresponde a "Hoy", le asignamos un ID de pivote para auto-centrado
-        const pivotAttr = (dateIdx === activeDateIdx) ? 'id="wc-match-active-pivot"' : '';
+        // 💡 AQUÍ ESTABA EL DETALLE: El ID se inyecta SOLO si el partido coincide con el que calculamos arriba
+        const pivotAttr = (m.id === targetPivotId) ? 'id="wc-match-active-pivot"' : '';
 
         html += `
         <div class="position-relative d-inline-block flex-shrink-0" ${pivotAttr}>
@@ -1504,7 +1520,7 @@
         twemoji.parse(viewport, { folder: 'svg', ext: '.svg' });
         }
 
-        // Mostrar botón hoy si el timeline cargó correctamente
+        const btnToday = document.getElementById('wc-btn-today');
         if (btnToday) btnToday.style.display = 'inline-flex';
 
         setTimeout(() => {
