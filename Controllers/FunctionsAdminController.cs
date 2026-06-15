@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace NotebookValidator.Web.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public class FunctionsAdminController : Controller
     {
         private readonly FunctionsService _functionsService;
