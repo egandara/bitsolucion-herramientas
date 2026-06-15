@@ -1105,6 +1105,13 @@
                         </a>
                     </li>
 
+                    <li class="nav-item">
+                        <a class="nav-link @(currentController == "FunctionsAdmin" ? "active" : "")" asp-controller="FunctionsAdmin" asp-action="Index"
+                           data-sidebar-label="Funciones (Maestro)">
+                            <i class="bi bi-braces-asterisk"></i> <span>Funciones (Maestro)</span>
+                        </a>
+                    </li>
+
                     @if (User.IsInRole("Admin") || User.IsInRole("TempCleanerUser"))
                     {
                         <li class="nav-item">
@@ -1135,12 +1142,6 @@
                             <a class="nav-link @(currentController == "ValidationRuleAdmin" ? "active" : "")" asp-controller="ValidationRuleAdmin" asp-action="Index"
                                data-sidebar-label="Reglas Validador">
                                 <i class="bi bi-list-check"></i> <span>Reglas Validador</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "FunctionsAdmin" ? "active" : "")" asp-controller="FunctionsAdmin" asp-action="Index"
-                               data-sidebar-label="Funciones (Maestro)">
-                                <i class="bi bi-braces-asterisk"></i> <span>Funciones (Maestro)</span>
                             </a>
                         </li>
                         <li class="nav-item">
