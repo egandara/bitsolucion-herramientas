@@ -231,7 +231,10 @@ namespace NotebookValidator.Web.Controllers
                 var elLocal = NormalizarEquipo(p.HomeTeamNameEn, p.HomeTeamLabel);
                 var elVisitante = NormalizarEquipo(p.AwayTeamNameEn, p.AwayTeamLabel);
 
-                string score = $"{p.HomeScore} - {p.AwayScore}";
+                string localScoreLimpio = string.Equals(p.HomeScore, "null", StringComparison.OrdinalIgnoreCase) ? "0" : p.HomeScore;
+                string visitaScoreLimpio = string.Equals(p.AwayScore, "null", StringComparison.OrdinalIgnoreCase) ? "0" : p.AwayScore;
+
+                string score = $"{localScoreLimpio} - {visitaScoreLimpio}";
                 string badge = "";
 
                 bool isFinished = p.Finished == "TRUE" || p.TimeElapsed == "finished";
