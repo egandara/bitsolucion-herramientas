@@ -1527,6 +1527,8 @@
         html += `</div>`; // Cierra wc-time-match-segment
         });
         });
+        html += `</div>`; // 💡 ESTA ERA LA LÍNEA QUE FALTABA (Cierra wc-day-group-node)
+        }); // 💡 Y ESTA ERA LA LLAVE QUE FALTABA (Cierra el forEach de dates)
 
         viewport.innerHTML = html;
 
