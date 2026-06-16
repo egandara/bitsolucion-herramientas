@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace NotebookValidator.Web.Controllers
@@ -42,6 +43,10 @@ namespace NotebookValidator.Web.Controllers
             var user = await _userManager.GetUserAsync(User);
             var notebook = await _functionsService.GetMasterNotebookAsync();
 
+            // Decodifica escapes unicode que puedan venir del editor (\u0022 -> ", etc.)
+            if (sourceCode.Contains("\\u"))
+                sourceCode = Regex.Unescape(sourceCode);
+
             var lines = sourceCode.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None)
                                   .Select(l => l + "\n").ToList();
 
@@ -59,6 +64,10 @@ namespace NotebookValidator.Web.Controllers
         {
             var user = await _userManager.GetUserAsync(User);
             var notebook = await _functionsService.GetMasterNotebookAsync();
+
+            // Decodifica escapes unicode que puedan venir del editor (\u0022 -> ", etc.)
+            if (sourceCode.Contains("\\u"))
+                sourceCode = Regex.Unescape(sourceCode);
 
             var codeCells = notebook.Cells.Where(c => c.CellType == "code").ToList();
             if (cellIndex >= 0 && cellIndex < codeCells.Count)
@@ -100,22 +109,45 @@ namespace NotebookValidator.Web.Controllers
             return RedirectToAction("Index");
         }
 
-        // --- NUEVA ACCIÓN: DESCARGAR ARCHIVO MAESTRO ---
         [HttpGet]
         public async Task<IActionResult> DownloadMaster([FromServices] IWebHostEnvironment env)
         {
             var user = await _userManager.GetUserAsync(User);
-            var masterPath = Path.Combine(env.WebRootPath, "standards", "Funciones.ipynb");
 
-            if (!System.IO.File.Exists(masterPath))
+            // Lee el maestro desde disco (ya con escapes decodificados por GetMasterNotebookAsync)
+            var notebook = await _functionsService.GetMasterNotebookAsync();
+
+            if (notebook?.Cells == null || !notebook.Cells.Any())
             {
-                TempData["ErrorMessage"] = "El archivo maestro de funciones aún no está disponible.";
+                TempData["ErrorMessage"] = "El archivo maestro de funciones aún no está disponible o no contiene celdas.";
                 return RedirectToAction("Index");
             }
 
+            var notebookCompleto = new
+            {
+                nbformat = 4,
+                nbformat_minor = 5,
+                metadata = new
+                {
+                    language_info = new { name = "python" }
+                },
+                cells = notebook.Cells
+            };
+
+            // Serializa con caracteres nativos (sin \u escapes) y sin omitir nulos
+            var opcionesJson = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never
+            };
+
+            string jsonFinal = JsonSerializer.Serialize(notebookCompleto, opcionesJson);
+            byte[] fileBytes = System.Text.Encoding.UTF8.GetBytes(jsonFinal);
+
             await _auditService.LogActionAsync(user.Id, "MANTENEDOR FUNCIONES: DESCARGA", JsonSerializer.Serialize(new { Accion = "Descarga del archivo maestro" }), HttpContext.Connection.RemoteIpAddress?.ToString());
 
-            return PhysicalFile(masterPath, "application/octet-stream", "Funciones.ipynb");
+            return File(fileBytes, "application/json", "Funciones.ipynb");
         }
     }
 }

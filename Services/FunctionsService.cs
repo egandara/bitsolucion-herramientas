@@ -4,9 +4,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using System.Text.Encodings.Web;
 
 namespace NotebookValidator.Web.Services
 {
@@ -30,7 +32,31 @@ namespace NotebookValidator.Web.Services
         {
             if (!File.Exists(_masterPath)) return new Notebook { Cells = new List<Cell>() };
             var content = await File.ReadAllTextAsync(_masterPath);
-            return JsonSerializer.Deserialize<Notebook>(content) ?? new Notebook();
+            var notebook = JsonSerializer.Deserialize<Notebook>(content) ?? new Notebook();
+
+            foreach (var cell in notebook.Cells)
+            {
+                cell.Outputs ??= new List<object>();
+                cell.Metadata ??= new Dictionary<string, object>();
+
+                // ✅ Decodifica escapes unicode literales que puedan estar en el source
+                // Ejemplo: \u0022 -> "   |   \u003E -> >   |   \u002B -> +
+                cell.Source = cell.Source.Select(line =>
+                {
+                    try
+                    {
+                        return line.Contains("\\u")
+                            ? Regex.Unescape(line)
+                            : line;
+                    }
+                    catch
+                    {
+                        return line; // Si falla el unescape, devuelve la línea original
+                    }
+                }).ToList();
+            }
+
+            return notebook;
         }
 
         public async Task SaveMasterWithBackupAsync(Notebook notebook, string userId)
@@ -43,8 +69,27 @@ namespace NotebookValidator.Web.Services
                 File.Copy(_masterPath, Path.Combine(_backupPath, fileName));
             }
 
-            // 2. Guardado
-            var json = JsonSerializer.Serialize(notebook, new JsonSerializerOptions { WriteIndented = true });
+            // 2. Objeto con estructura completa válida para Jupyter/Databricks
+            var notebookCompleto = new
+            {
+                nbformat = 4,
+                nbformat_minor = 5,
+                metadata = new
+                {
+                    language_info = new { name = "python" }
+                },
+                cells = notebook.Cells
+            };
+
+            // 3. Guardado con codificación relajada y sin omitir campos nulos
+            var opciones = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                DefaultIgnoreCondition = JsonIgnoreCondition.Never
+            };
+
+            var json = JsonSerializer.Serialize(notebookCompleto, opciones);
             await File.WriteAllTextAsync(_masterPath, json);
         }
 
