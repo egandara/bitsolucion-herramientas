@@ -124,21 +124,22 @@ namespace NotebookValidator.Web.Controllers
         [HttpGet]
         public async Task<IActionResult> GetWorldCupWidget()
         {
-            string remoteJsonCacheKey = "RemoteFixtureJsonString_V12";
-            string remoteStadiumsCacheKey = "RemoteStadiumsJsonString_V1";
-            string localJsonPath = Path.Combine(_env.WebRootPath, "data", "partidos.json");
+            string localGamesPath = Path.Combine(_env.WebRootPath, "data", "partidos.json");
+            string localStadiumsPath = Path.Combine(_env.WebRootPath, "data", "stadiums.json");
+
             string jsonContent = string.Empty;
             string stadiumsJson = string.Empty;
 
-            // 1. OBTENER ESTADIOS (Caché de 24 horas)
-            if (!_cache.TryGetValue(remoteStadiumsCacheKey, out stadiumsJson))
+            // 1. LEER ESTADIOS DEL DISCO (Lectura segura para evitar bloqueos)
+            if (System.IO.File.Exists(localStadiumsPath))
             {
                 try
                 {
-                    using var client = new HttpClient();
-                    client.Timeout = TimeSpan.FromSeconds(5);
-                    stadiumsJson = await client.GetStringAsync("https://worldcup26.ir/get/stadiums");
-                    _cache.Set(remoteStadiumsCacheKey, stadiumsJson, TimeSpan.FromHours(24));
+                    using (var fs = new FileStream(localStadiumsPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    using (var sr = new StreamReader(fs))
+                    {
+                        stadiumsJson = await sr.ReadToEndAsync();
+                    }
                 }
                 catch { }
             }
@@ -157,49 +158,38 @@ namespace NotebookValidator.Web.Controllers
                 catch { }
             }
 
-            // 2. OBTENER PARTIDOS (Caché de 2 minutos)
-            if (!_cache.TryGetValue(remoteJsonCacheKey, out jsonContent))
+            // 2. LEER PARTIDOS DEL DISCO (Carga instantánea)
+            if (System.IO.File.Exists(localGamesPath))
             {
                 try
                 {
-                    using var client = new HttpClient();
-                    client.Timeout = TimeSpan.FromSeconds(5);
-                    jsonContent = await client.GetStringAsync("https://worldcup26.ir/get/games");
-
-                    _cache.Set(remoteJsonCacheKey, jsonContent, TimeSpan.FromMinutes(2));
-
-                    lock (FileLock)
+                    using (var fs = new FileStream(localGamesPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    using (var sr = new StreamReader(fs))
                     {
-                        string dir = Path.GetDirectoryName(localJsonPath);
-                        if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-                        System.IO.File.WriteAllText(localJsonPath, jsonContent);
+                        jsonContent = await sr.ReadToEndAsync();
                     }
                 }
-                catch
-                {
-                    if (System.IO.File.Exists(localJsonPath))
-                        jsonContent = await System.IO.File.ReadAllTextAsync(localJsonPath);
-                }
+                catch { }
             }
 
             if (string.IsNullOrEmpty(jsonContent))
-                return Json(new { error = "No se pudo obtener el fixture." });
+                return Json(new { error = "No se pudo obtener el fixture desde el disco." });
 
             var root = JsonSerializer.Deserialize<RootGamesContainer>(jsonContent);
             if (root?.Games == null || !root.Games.Any())
-                return Json(new { error = "Formato inválido" });
+                return Json(new { error = "Formato inválido en disco." });
 
             DateTime now = ObtenerHoraActualChile();
 
-            // 💡 3. DETECTAR SI HAY PARTIDO EN VIVO PARA AHORRAR RECURSOS DE SCRAPING
+            // 3. SCRAPING Y CÁLCULOS PARA PARTIDOS EN VIVO
             bool hayPartidoEnVivo = root.Games.Any(p => {
                 dictEstadios.TryGetValue(p.StadiumId ?? "", out var estadioLocal);
                 DateTime pTime = CalcularHoraChile(p.LocalDate, estadioLocal);
                 double m = (now - pTime).TotalMinutes;
-                return m >= -5 && m <= 150 && (p.Finished != "TRUE" && p.TimeElapsed != "finished");
+                // Si está entre 5 mins antes y 240 mins después (4 hrs), asumimos que podría haber acción
+                return m >= -5 && m <= 240 && (p.Finished != "TRUE" && p.TimeElapsed != "finished");
             });
 
-            // 💡 4. SCRAPING PEREZOSO: Leer la página de Zafronix (Caché de 1 Minuto)
             string minutoScrapeado = "";
             if (hayPartidoEnVivo)
             {
@@ -209,20 +199,18 @@ namespace NotebookValidator.Web.Controllers
                     try
                     {
                         using var client = new HttpClient();
-                        client.Timeout = TimeSpan.FromSeconds(4); // Rápido para no trabar la app
+                        // Para Zafronix mantenemos 3s. Es solo un extra, si no responde rápido, no bloqueamos la app.
+                        client.Timeout = TimeSpan.FromSeconds(3);
                         client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36");
                         htmlZafronix = await client.GetStringAsync("https://api.zafronix.com/live");
-
                         _cache.Set(cacheKeyLivePage, htmlZafronix, TimeSpan.FromMinutes(1));
                     }
-                    catch { } // Falla silenciosa si Zafronix se cae
+                    catch { }
                 }
 
                 if (!string.IsNullOrEmpty(htmlZafronix))
                 {
-                    // Regex nivel "Hacker": Busca en textos visibles y en variables de JavaScript ocultas
                     var match = Regex.Match(htmlZafronix, @"(?:liveMinute|""liveMinute"")\s*[:=]\s*(\d+)|LIVE\s*(\d+)|""status""\s*:\s*""live"".*?(?:minute|liveMinute)""?\s*:\s*(\d+)", RegexOptions.IgnoreCase);
-
                     if (match.Success)
                     {
                         if (match.Groups[1].Success) minutoScrapeado = match.Groups[1].Value;
@@ -232,8 +220,7 @@ namespace NotebookValidator.Web.Controllers
                 }
             }
 
-
-            // 5. PROCESAR DATOS Y CRUZAR ZONAS HORARIAS
+            // 4. MAPEO CON KILL-SWITCH ABSOLUTO
             var todosLosPartidosMapeados = root.Games.Select(p => {
 
                 dictEstadios.TryGetValue(p.StadiumId ?? "", out var estadioLocal);
@@ -248,14 +235,18 @@ namespace NotebookValidator.Web.Controllers
 
                 bool isFinished = p.Finished == "TRUE" || p.TimeElapsed == "finished";
 
-                // Respaldo: Si pasaron más de 150 min y no dice "live", lo cerramos
-                if (!isFinished && m > 150 && p.TimeElapsed != "live")
+                // 💡 KILL-SWITCH: Si pasaron más de 4 horas (240 mins), el partido terminó por fuerza bruta.
+                if (m > 240)
+                {
+                    isFinished = true;
+                }
+                else if (!isFinished && m > 150 && p.TimeElapsed != "live")
                 {
                     isFinished = true;
                 }
 
-                // El JSON manda: si dice live, es live.
-                bool isLive = p.TimeElapsed == "live" || (m >= 0 && !isFinished);
+                // Aseguramos que isLive se apague si el Kill-Switch se activó
+                bool isLive = !isFinished && (p.TimeElapsed == "live" || m >= 0);
 
                 if (isFinished)
                 {
@@ -266,12 +257,9 @@ namespace NotebookValidator.Web.Controllers
                     string badgeText = "";
                     string badgeIcon = "🔴";
 
-                    // 💡 Prioridad 1: El minuto real Scrapeado de Zafronix
                     if (!string.IsNullOrEmpty(minutoScrapeado) && m >= -2 && m <= 150)
                     {
                         badgeText = minutoScrapeado + "'";
-
-                        // Si se queda pegado en 45 o 46 y el partido real ya va por la mitad, asumimos HT
                         if (minutoScrapeado == "45" || minutoScrapeado == "46" || minutoScrapeado == "47")
                         {
                             int minReal = (int)m;
@@ -282,7 +270,6 @@ namespace NotebookValidator.Web.Controllers
                             }
                         }
                     }
-                    // 💡 Prioridad 2: Si la API manda el minuto exacto, lo respetamos
                     else if (!string.IsNullOrEmpty(p.TimeElapsed) && p.TimeElapsed != "live" && p.TimeElapsed != "notstarted")
                     {
                         badgeText = p.TimeElapsed.Contains("'") ? p.TimeElapsed : p.TimeElapsed + "'";
@@ -292,32 +279,17 @@ namespace NotebookValidator.Web.Controllers
                             badgeIcon = "⏸️";
                         }
                     }
-                    // 💡 Prioridad 3: El cálculo avanzado de fútbol matemático (Nuestro salvavidas)
                     else
                     {
                         int minReal = (int)m;
                         if (minReal <= 0) minReal = 1;
 
-                        if (minReal <= 50)
-                        {
-                            badgeText = minReal + "'"; // Primer tiempo (hasta 50 mins por descuentos)
-                        }
-                        else if (minReal > 50 && minReal <= 70)
-                        {
-                            badgeText = "HT"; // Entretiempo de 20 mins
-                            badgeIcon = "⏸️";
-                        }
-                        else if (minReal > 70 && minReal <= 115)
-                        {
-                            badgeText = (minReal - 25) + "'"; // Segundo tiempo (Ej: min 71 real - 25 = 46' del partido)
-                        }
-                        else
-                        {
-                            badgeText = "90+'"; // Tiempo cumplido
-                        }
+                        if (minReal <= 50) badgeText = minReal + "'";
+                        else if (minReal > 50 && minReal <= 70) { badgeText = "HT"; badgeIcon = "⏸️"; }
+                        else if (minReal > 70 && minReal <= 115) badgeText = (minReal - 25) + "'";
+                        else badgeText = "90+'";
                     }
 
-                    // Inyectar un color ámbar/naranja si están en el entretiempo
                     if (badgeText == "HT")
                     {
                         badge = $"<span class='wc-live-pulse-badge' style='background: rgba(255, 193, 7, 0.15); color: #ffc107; border-color: rgba(255, 193, 7, 0.4);'>{badgeIcon} {badgeText}</span>";
@@ -352,7 +324,6 @@ namespace NotebookValidator.Web.Controllers
                 };
             }).ToList();
 
-            // 6. AGRUPACIÓN Y ORDENAMIENTO
             var estructuraAgrupada = todosLosPartidosMapeados
                 .GroupBy(p => p.ParsedDate)
                 .OrderBy(g => g.Key)
