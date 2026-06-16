@@ -64,6 +64,7 @@ namespace NotebookValidator.Web.Controllers
         public List<string> HomeScorersList { get; set; }
         public List<string> AwayScorersList { get; set; }
         public bool HasDetails { get; set; }
+        public List<DetalleGol> GolesCronologicos { get; set; }
     }
 
     public class WidgetTimeGroup
@@ -319,7 +320,9 @@ namespace NotebookValidator.Web.Controllers
                         StatusBadgeHtml = badge,
                         HomeScorersList = LimpiarGoleadores(p.HomeScorers),
                         AwayScorersList = LimpiarGoleadores(p.AwayScorers),
-                        HasDetails = isFinished || isLive
+                        HasDetails = isFinished || isLive,
+
+                        GolesCronologicos = ProcesarGolesCronologicos(p.HomeScorers, p.AwayScorers)
                     }
                 };
             }).ToList();
@@ -392,6 +395,29 @@ namespace NotebookValidator.Web.Controllers
             catch { return DateTime.Now; }
         }
 
+        private List<DetalleGol> ProcesarGolesCronologicos(string homeScorersRaw, string awayScorersRaw)
+        {
+            var listaGoles = new List<DetalleGol>();
+
+            var homeScorers = LimpiarGoleadores(homeScorersRaw);
+            foreach (var gol in homeScorers)
+            {
+                var match = Regex.Match(gol, @"\d+");
+                int minuto = match.Success ? int.Parse(match.Value) : 999;
+                listaGoles.Add(new DetalleGol { TextoOriginal = gol, Minuto = minuto, EsLocal = true });
+            }
+
+            var awayScorers = LimpiarGoleadores(awayScorersRaw);
+            foreach (var gol in awayScorers)
+            {
+                var match = Regex.Match(gol, @"\d+");
+                int minuto = match.Success ? int.Parse(match.Value) : 999;
+                listaGoles.Add(new DetalleGol { TextoOriginal = gol, Minuto = minuto, EsLocal = false });
+            }
+
+            return listaGoles.OrderBy(g => g.Minuto).ToList();
+        }
+
         private List<string> LimpiarGoleadores(string raw)
         {
             var result = new List<string>();
@@ -419,5 +445,12 @@ namespace NotebookValidator.Web.Controllers
             string clean = target.Replace(".", "").Replace(" ", "");
             return (clean.Length > 3 ? clean.Substring(0, 3).ToUpper() : clean.ToUpper(), "🏳️");
         }
+    }
+    // PEGAR LA CLASE NUEVA AQUÍ ABAJO:
+    public class DetalleGol
+    {
+        public string TextoOriginal { get; set; }
+        public int Minuto { get; set; }
+        public bool EsLocal { get; set; }
     }
 }
