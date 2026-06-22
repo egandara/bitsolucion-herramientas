@@ -27,6 +27,7 @@ namespace NotebookValidator.Web.Controllers
         private readonly ProyectosSearchService _searchService;
         private readonly AuditService _auditService;
         private readonly NotificacionesService _notifService;
+        private readonly Microsoft.AspNetCore.Hosting.IWebHostEnvironment _env;
 
         public ProyectosController(
             ApplicationDbContext context,
@@ -38,7 +39,8 @@ namespace NotebookValidator.Web.Controllers
             JobGenerationService jobGenerationService,
             ProyectosSearchService searchService,
             AuditService auditService,
-            NotificacionesService notifService)
+            NotificacionesService notifService,
+            Microsoft.AspNetCore.Hosting.IWebHostEnvironment env)
         {
             _context = context;
             _driveService = driveService;
@@ -50,6 +52,7 @@ namespace NotebookValidator.Web.Controllers
             _searchService = searchService;
             _auditService = auditService;
             _notifService = notifService;
+            _env = env;
         }
 
         // ==========================================
@@ -159,9 +162,9 @@ namespace NotebookValidator.Web.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(string nombre, string descripcion, int? clienteId, string? repositorioGitHub, string? contraparteCliente,
-            DateTime? fechaInicio, DateTime? fechaFinEstimada, DateTime? fechaPasoProduccion, string notas,
-            List<string> fasesSeleccionadas, List<string> usuariosAsignadosIds,
-            List<SubfaseInputDto> subfases)
+                    DateTime? fechaInicio, DateTime? fechaFinEstimada, DateTime? fechaPasoProduccion, string notas,
+                    List<string> fasesSeleccionadas, List<string> usuariosAsignadosIds,
+                    List<SubfaseInputDto> subfases)
         {
             if (string.IsNullOrWhiteSpace(nombre)) return View();
 
@@ -192,12 +195,25 @@ namespace NotebookValidator.Web.Controllers
                     if (c != null) nombreCliente = c.Nombre;
                 }
 
+                // --- 1. SE CREA LA ESTRUCTURA EN DRIVE ---
                 var driveResult = await _driveService.CreateProjectStructureAsync(
                     $"PRJ_{nuevoProyecto.Id:D3}_{nuevoProyecto.Nombre.Replace(" ", "_")}", nombreCliente);
 
                 nuevoProyecto.DriveFolderId = driveResult.RootFolderId;
                 nuevoProyecto.DriveFolderUrl = driveResult.RootFolderUrl;
                 _context.Entry(nuevoProyecto).State = EntityState.Modified;
+
+                // ====================================================================
+                // NUEVO: SUBIR LA PRESENTACIÓN PPTX EN BLANCO A LA RAÍZ DEL PROYECTO
+                // ====================================================================
+                string localTemplatePath = System.IO.Path.Combine(_env.WebRootPath, "templates", "Planificacion_Template.pptx");
+                string dateStr = DateTime.Now.ToString("yyyyMMdd");
+                string driveFileName = $"Planificacion_{nuevoProyecto.Nombre}_{dateStr}.pptx";
+                string pptxContentType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
+                // Ejecuta la subida del archivo usando el FolderId que devolvió tu método CreateProjectStructureAsync
+                await _driveService.UploadFileToFolderAsync(localTemplatePath, driveFileName, nuevoProyecto.DriveFolderId, pptxContentType);
+                // ====================================================================
 
                 var fasesCreadas = new Dictionary<string, FaseProyecto>();
                 int orden = 1;
