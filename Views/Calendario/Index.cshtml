@@ -1,0 +1,1475 @@
+@{
+    ViewData["Title"] = "Calendario Global de Recursos";
+}
+
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/main.min.css" rel="stylesheet" />
+
+<style>
+    :root {
+        --cal-bg: #0b0d16;
+        --cal-panel: #111424;
+        --cal-card: #171b2e;
+        --cal-border: rgba(255,255,255,0.08);
+        --cal-text: #f5f6fa;
+        --cal-text-dim: rgba(255,255,255,0.55);
+        --cal-cyan: #0dcaf0;
+        --cal-amber: #ffc107;
+        --cal-green: #22c55e;
+        --cal-red: #ef4444;
+    }
+
+    /* ===== Encabezado ===== */
+    .cal-header-title {
+        color: var(--cal-text);
+    }
+
+    .cal-header-sub {
+        color: var(--cal-text-dim);
+    }
+
+    .cal-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .cal-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background-color: var(--cal-card);
+        border: 1px solid var(--cal-border);
+        border-radius: 999px;
+        padding: 4px 12px;
+        font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 0.72rem;
+        color: var(--cal-text);
+        white-space: nowrap;
+        cursor: pointer;
+        user-select: none;
+        transition: opacity 0.15s ease, border-color 0.15s ease;
+    }
+
+        .cal-chip:hover {
+            border-color: var(--cal-cyan);
+        }
+
+        .cal-chip:focus-visible {
+            outline: 2px solid var(--cal-cyan);
+            outline-offset: 1px;
+        }
+
+        /* Estado "apagado": el filtro de ese estado está oculto */
+        .cal-chip.is-off {
+            opacity: 0.35;
+        }
+
+            .cal-chip.is-off .label {
+                text-decoration: line-through;
+            }
+
+        .cal-chip .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .cal-chip.is-pendiente .dot {
+            background-color: var(--cal-cyan);
+        }
+
+        .cal-chip.is-progreso .dot {
+            background-color: var(--cal-amber);
+        }
+
+        .cal-chip.is-terminada .dot {
+            background-color: var(--cal-green);
+        }
+
+    /* ===== Filtros ===== */
+    .cal-filtro {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+        .cal-filtro label {
+            font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+            font-size: 0.72rem;
+            color: var(--cal-text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+        }
+
+    .cal-select {
+        background-color: var(--cal-card);
+        border: 1px solid var(--cal-border);
+        color: var(--cal-text);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 0.78rem;
+        min-width: 200px;
+    }
+
+        .cal-select:focus {
+            outline: none;
+            border-color: var(--cal-cyan);
+        }
+
+        .cal-select option {
+            background-color: var(--cal-panel);
+            color: var(--cal-text);
+        }
+
+    /* ===== Barra de resumen ===== */
+    .cal-resumen-bar {
+        background-color: var(--cal-panel);
+        border: 1px solid var(--cal-border);
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .cal-resumen-label {
+        font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--cal-text-dim);
+        flex-shrink: 0;
+        border-right: 1px solid var(--cal-border);
+        padding-right: 12px;
+    }
+
+        .cal-resumen-label strong {
+            display: block;
+            color: var(--cal-cyan);
+            font-size: 0.85rem;
+            text-transform: none;
+            letter-spacing: normal;
+            margin-top: 2px;
+        }
+
+    .cal-resumen-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        flex: 1;
+    }
+
+    .cal-resumen-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background-color: var(--cal-card);
+        border: 1px solid var(--cal-border);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 0.72rem;
+    }
+
+        .cal-resumen-chip.is-overload {
+            border-color: rgba(239,68,68,0.55);
+            background-color: rgba(239,68,68,0.08);
+        }
+
+        .cal-resumen-chip .ini {
+            background-color: rgba(13,202,240,0.15);
+            color: var(--cal-cyan);
+            font-weight: 700;
+            border-radius: 5px;
+            padding: 2px 6px;
+        }
+
+        .cal-resumen-chip.is-overload .ini {
+            background-color: rgba(239,68,68,0.18);
+            color: var(--cal-red);
+        }
+
+        .cal-resumen-chip .datos {
+            color: var(--cal-text-dim);
+        }
+
+            .cal-resumen-chip .datos .real {
+                color: var(--cal-green);
+            }
+
+            .cal-resumen-chip .datos .alerta {
+                color: var(--cal-red);
+                margin-left: 4px;
+            }
+
+    .cal-resumen-empty {
+        color: var(--cal-text-dim);
+        font-size: 0.78rem;
+        font-style: italic;
+    }
+
+    /* ===== Estados de carga / error ===== */
+    .cal-status, .cal-error {
+        background-color: var(--cal-panel);
+        border: 1px solid var(--cal-border);
+        border-radius: 10px;
+        padding: 40px 20px;
+        text-align: center;
+        color: var(--cal-text-dim);
+    }
+
+    .cal-error {
+        border-color: rgba(239,68,68,0.4);
+    }
+
+        .cal-error .titulo {
+            color: var(--cal-red);
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .cal-error button {
+            margin-top: 14px;
+            background-color: transparent;
+            border: 1px solid var(--cal-cyan);
+            color: var(--cal-cyan);
+            border-radius: 6px;
+            padding: 6px 16px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+            .cal-error button:hover {
+                background-color: var(--cal-cyan);
+                color: #000;
+            }
+
+    .spinner-cal {
+        width: 28px;
+        height: 28px;
+        border: 3px solid var(--cal-border);
+        border-top-color: var(--cal-cyan);
+        border-radius: 50%;
+        margin: 0 auto 12px;
+        animation: cal-spin 0.8s linear infinite;
+    }
+
+    @@keyframes cal-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* ===== Calendario ===== */
+    #calendario-global {
+        background-color: var(--cal-bg);
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        border: 1px solid var(--cal-border);
+    }
+
+    .fc-theme-standard td, .fc-theme-standard th {
+        border-color: var(--cal-border);
+    }
+
+    .fc-col-header-cell {
+        background-color: var(--cal-panel);
+        color: var(--cal-cyan);
+        padding: 10px 0;
+    }
+
+    .fc-daygrid-day-number {
+        color: rgba(255,255,255,0.7);
+        font-family: ui-monospace, monospace;
+        font-weight: 600;
+    }
+
+    /* "Hoy" en cyan, neutral frente a los tres colores de estado. */
+    .fc-day-today {
+        background-color: rgba(13,202,240,0.08) !important;
+    }
+
+    /* Día con sobrecarga: alguien supera su capacidad diaria planificada. */
+    .fc-day.cal-overload,
+    .fc-daygrid-day.cal-overload {
+        background-color: rgba(239,68,68,0.10) !important;
+        box-shadow: inset 3px 0 0 var(--cal-red);
+    }
+
+    .fc .fc-toolbar-title {
+        color: #fff;
+        font-weight: bold;
+        text-transform: capitalize;
+    }
+
+    .fc-button-primary {
+        background-color: #172a45 !important;
+        border-color: var(--cal-cyan) !important;
+    }
+
+        .fc-button-primary:hover {
+            background-color: var(--cal-cyan) !important;
+            color: #000 !important;
+        }
+
+    .fc-button-active {
+        background-color: var(--cal-cyan) !important;
+        color: #000 !important;
+        border-color: var(--cal-cyan) !important;
+        font-weight: bold;
+    }
+
+    .fc-event {
+        cursor: pointer;
+        border-radius: 4px;
+        border: 1px solid rgba(255,255,255,0.2) !important;
+        margin-bottom: 2px;
+    }
+
+    /* Vista Mes: tareas como "list-item" (punto de color + texto). */
+    .fc-dayGridMonth-view .fc-daygrid-event-dot {
+        border-width: 5px !important;
+    }
+
+    .cal-month-evt-text {
+        font-family: ui-monospace, monospace;
+        font-size: 0.68rem;
+        color: var(--cal-text) !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Número de semana: overlay nativo y pequeño de FullCalendar */
+    .fc .fc-daygrid-week-number {
+        background-color: var(--cal-panel) !important;
+        color: var(--cal-cyan) !important;
+        font-family: ui-monospace, monospace;
+        font-size: 0.7rem;
+        border-radius: 0 0 6px 0;
+        padding: 2px 6px !important;
+    }
+
+    .fc .fc-timegrid-axis {
+        background-color: var(--cal-panel) !important;
+    }
+
+    .fc-timegrid-slot {
+        height: 3em !important;
+    }
+
+    /* Sombrear horas FUERA del horario hábil en Semana/Día. */
+    .fc .fc-non-business {
+        background-color: rgba(0,0,0,0.28) !important;
+    }
+
+    /* Línea roja de "ahora" */
+    .fc .fc-timegrid-now-indicator-line {
+        border-color: var(--cal-red);
+    }
+
+    .fc .fc-timegrid-now-indicator-arrow {
+        border-color: var(--cal-red);
+        color: var(--cal-red);
+    }
+
+    /* Ocultar Resúmenes diarios en la vista de Mes (se ven en Semana/Día) */
+    .fc-dayGridMonth-view .evt-resumen {
+        display: none !important;
+    }
+
+    .evt-resumen .fc-event-main {
+        padding: 1px 4px;
+    }
+
+    /* Burbuja Tooltip */
+    .custom-cal-tooltip {
+        --bs-tooltip-bg: var(--cal-panel);
+        --bs-tooltip-color: #ffffff;
+        --bs-tooltip-opacity: 1;
+    }
+
+        .custom-cal-tooltip .tooltip-inner {
+            border: 1px solid var(--cal-cyan);
+            text-align: left;
+            max-width: 260px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .custom-cal-tooltip .tooltip-arrow::before {
+            border-top-color: var(--cal-cyan);
+        }
+
+    /* ===== Modal de detalle de tarea ===== */
+    .cal-modal .modal-content {
+        background-color: var(--cal-panel);
+        color: var(--cal-text);
+        border: 1px solid var(--cal-border);
+        border-radius: 12px;
+    }
+
+    .cal-modal .modal-header,
+    .cal-modal .modal-footer {
+        border-color: var(--cal-border);
+    }
+
+    .cal-modal .modal-title {
+        font-weight: 700;
+    }
+
+    .cal-modal-dl {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 8px 16px;
+        margin: 0;
+        font-size: 0.85rem;
+    }
+
+        .cal-modal-dl > div {
+            display: contents;
+        }
+
+        .cal-modal-dl dt {
+            color: var(--cal-text-dim);
+            font-family: ui-monospace, monospace;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            align-self: center;
+        }
+
+        .cal-modal-dl dd {
+            margin: 0;
+            color: var(--cal-text);
+            word-break: break-word;
+        }
+
+    .cal-modal-badge {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+
+        .cal-modal-badge.bucket-pendiente {
+            background-color: rgba(13,202,240,0.15);
+            color: var(--cal-cyan);
+        }
+
+        .cal-modal-badge.bucket-progreso {
+            background-color: rgba(255,193,7,0.18);
+            color: var(--cal-amber);
+        }
+
+        .cal-modal-badge.bucket-terminada {
+            background-color: rgba(34,197,94,0.18);
+            color: var(--cal-green);
+        }
+
+    /* ===== Toast de feedback ===== */
+    .cal-toast {
+        position: fixed;
+        right: 24px;
+        bottom: 24px;
+        z-index: 1080;
+        background-color: var(--cal-panel);
+        border: 1px solid var(--cal-cyan);
+        color: var(--cal-text);
+        border-radius: 10px;
+        padding: 12px 16px;
+        font-size: 0.85rem;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        max-width: 320px;
+    }
+
+        .cal-toast.is-error {
+            border-color: var(--cal-red);
+        }
+
+        .cal-toast.is-ok {
+            border-color: var(--cal-green);
+        }
+
+    /* ===== Efecto Visual de Duplicación (ALT) ===== */
+    /* Cuando el body tiene esta clase, obligamos a la original a verse semi-transparente como un "fantasma" */
+    body.cal-alt-cloning .fc-event[style*="visibility: hidden"] {
+        visibility: visible !important;
+        opacity: 0.3 !important;
+        filter: grayscale(0.8);
+    }
+
+    /* El clon que está pegado al cursor (el "espejo") recibe un borde llamativo */
+    body.cal-alt-cloning .fc-event-dragging {
+        box-shadow: 0 0 15px var(--cal-cyan) !important;
+        border: 1px dashed var(--cal-cyan) !important;
+        opacity: 0.9 !important;
+    }
+
+    @@media (max-width: 768px) {
+        .cal-resumen-label {
+            border-right: none;
+            border-bottom: 1px solid var(--cal-border);
+            padding-right: 0;
+            padding-bottom: 8px;
+            width: 100%;
+        }
+
+        .cal-select {
+            min-width: 0;
+            flex: 1;
+        }
+    }
+</style>
+
+<div class="container-fluid mt-3">
+    @* Token anti-CSRF para el POST de reprogramación *@
+    @Html.AntiForgeryToken()
+
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+        <div>
+            <h1 class="h3 fw-bold cal-header-title mb-0"><i class="bi bi-calendar-range me-2 text-info"></i>Calendario Global</h1>
+            <p class="cal-header-sub small mt-1 mb-0">Vista panorámica de todas las tareas y recursos asignados en la empresa.</p>
+            <div class="mt-2 text-info opacity-75" style="font-size: 0.75rem;">
+                <i class="bi bi-lightbulb me-1"></i> <strong>Tip:</strong> Mantén presionada la tecla <strong>ALT</strong> mientras arrastras una tarea a otro día para duplicarla.
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-3 align-items-center">
+            <div class="cal-filtro">
+                <label for="cal-filtro-usuario"><i class="bi bi-funnel-fill me-1"></i>Usuario</label>
+                <select id="cal-filtro-usuario" class="cal-select">
+                    <option value="">Todos los usuarios</option>
+                </select>
+            </div>
+            <div class="cal-filtro">
+                <label for="cal-filtro-proyecto"><i class="bi bi-folder2-open me-1"></i>Proyecto</label>
+                <select id="cal-filtro-proyecto" class="cal-select">
+                    <option value="">Todos los proyectos</option>
+                </select>
+            </div>
+            <div class="cal-legend">
+                <span class="cal-chip is-pendiente" data-bucket="pendiente" role="button" tabindex="0" title="Mostrar/ocultar Pendientes"><span class="dot"></span> <span class="label">Pendiente</span></span>
+                <span class="cal-chip is-progreso" data-bucket="progreso" role="button" tabindex="0" title="Mostrar/ocultar En progreso"><span class="dot"></span> <span class="label">En progreso</span></span>
+                <span class="cal-chip is-terminada" data-bucket="terminada" role="button" tabindex="0" title="Mostrar/ocultar Terminados"><span class="dot"></span> <span class="label">Terminado</span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="cal-resumen-bar" id="cal-resumen-bar">
+        <div class="cal-resumen-label">
+            Rango visible
+            <strong id="cal-resumen-rango">—</strong>
+        </div>
+        <div class="cal-resumen-chips" id="cal-resumen-chips">
+            <span class="cal-resumen-empty">Cargando resumen…</span>
+        </div>
+    </div>
+
+    <div id="cal-status" class="cal-status">
+        <div class="spinner-cal"></div>
+        Cargando tareas…
+    </div>
+
+    <div id="cal-error" class="cal-error d-none">
+        <div class="titulo"><i class="bi bi-exclamation-triangle-fill me-1"></i>No se pudo cargar el calendario</div>
+        <div id="cal-error-msg">Ocurrió un error al obtener las tareas.</div>
+        <button id="cal-error-retry"><i class="bi bi-arrow-clockwise me-1"></i>Reintentar</button>
+    </div>
+
+    <div id="calendario-global" class="d-none"></div>
+</div>
+
+@* ===== Modal de detalle de tarea ===== *@
+<div class="modal fade cal-modal" id="cal-modal-evento" tabindex="-1" aria-hidden="true" aria-labelledby="cal-modal-titulo">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cal-modal-titulo">Detalle de tarea</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="cal-modal-dl">
+                    <div><dt>Proyecto</dt><dd id="cal-modal-proyecto">—</dd></div>
+                    <div><dt>Responsable</dt><dd><select id="cal-modal-edit-responsable" class="cal-select w-100" style="padding: 2px 6px;"></select></dd></div>
+                    <div>
+                        <dt>Estado</dt><dd>
+                        <select id="cal-modal-edit-estado" class="cal-select w-100" style="padding: 2px 6px;">
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="En Progreso">En Progreso</option>
+                            <option value="Terminada">Terminada</option>
+                        </select>
+                    </dd>
+                </div>
+                <div><dt>Inicio</dt><dd><input type="datetime-local" id="cal-modal-edit-inicio" class="cal-select w-100" style="padding: 2px 6px;" /></dd></div>
+                <div><dt>Fin</dt><dd><input type="datetime-local" id="cal-modal-edit-fin" class="cal-select w-100" style="padding: 2px 6px;" /></dd></div>
+                <div><dt>Horas plan</dt><dd id="cal-modal-plan">—</dd></div>
+                <div><dt>Horas reales</dt><dd id="cal-modal-real">—</dd></div>
+            </dl>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-outline-danger me-auto" id="cal-modal-btn-eliminar" title="Eliminar tarea">
+                <i class="bi bi-trash3"></i> Eliminar
+            </button>
+            <a id="cal-modal-link" class="btn btn-sm btn-info d-none" href="#"><i class="bi bi-box-arrow-up-right me-1"></i>Ir a la tarea</a>
+            <button type="button" class="btn btn-sm btn-primary" id="cal-modal-btn-guardar">Guardar cambios</button>
+            <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+        </div>
+    </div>
+</div>
+
+<div id="cal-toast" class="cal-toast d-none"></div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@@fullcalendar/core@6.1.10/locales/es.global.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+
+        // ============================================================
+        // CONFIGURACIÓN
+        // ============================================================
+
+        // Horario hábil por cliente/proyecto. La CLAVE es el nombre del
+        // proyecto tal como llega en extendedProps.proyecto.
+        // Edita/añade aquí los horarios reales de cada cliente. Lo no
+        // listado usa __default__. Las vistas Semana/Día solo muestran
+        // esta franja (las horas fuera quedan sombreadas; los eventos que
+        // caigan fuera siguen siendo visibles para no perder nada).
+        var HORARIOS_CLIENTE = {
+        // 'Proyecto Alfa':  { inicio: '09:00', fin: '18:00', dias: [1,2,3,4,5] },
+        // 'Cliente Banco':  { inicio: '08:30', fin: '17:30', dias: [1,2,3,4,5] },
+        __default__: { inicio: '08:00', fin: '18:00', dias: [1, 2, 3, 4, 5] }
+        };
+
+        // Capacidad diaria por persona (horas). Si la suma planificada de
+        // un usuario en un día supera esto, ese día se marca como sobrecarga.
+        var CAPACIDAD_DIARIA_H = 8;
+
+        // Ruta opcional al detalle de la tarea. Si la defines (p.ej.
+        // '/Tareas/Detalle/'), el modal muestra el botón "Ir a la tarea".
+        var RUTA_DETALLE_TAREA = '';
+
+        // Claves de persistencia (localStorage)
+        var LS_VIEW = 'cal_view', LS_USER = 'cal_user', LS_PROY = 'cal_proy', LS_EST = 'cal_estados';
+
+        // ============================================================
+        // REFERENCIAS DEL DOM
+        // ============================================================
+        var calendarEl = document.getElementById('calendario-global');
+        var statusEl = document.getElementById('cal-status');
+        var errorEl = document.getElementById('cal-error');
+        var errorMsgEl = document.getElementById('cal-error-msg');
+        var retryBtn = document.getElementById('cal-error-retry');
+        var resumenRangoEl = document.getElementById('cal-resumen-rango');
+        var resumenChipsEl = document.getElementById('cal-resumen-chips');
+        var filtroUsuario = document.getElementById('cal-filtro-usuario');
+        var filtroProyecto = document.getElementById('cal-filtro-proyecto');
+        var toastEl = document.getElementById('cal-toast');
+
+        var modalEvento = new bootstrap.Modal(document.getElementById('cal-modal-evento'));
+
+        // ============================================================
+        // ESTADO
+        // ============================================================
+        var calendar = null;
+        var todosLosEventos = [];   // universo completo del servidor
+        var eventosTareas = [];     // tareas filtradas (usuario/proyecto/estado)
+        var estadosActivos = new Set(['pendiente', 'progreso', 'terminada']);
+        var cargaPorDia = {};       // 'YYYY-MM-DD' -> { porUsuario, max, maxEmail }
+        var ventanaActual = { min: null, max: null, business: null };
+        var toastTimer = null;
+
+        // ============================================================
+        // HELPERS
+        // ============================================================
+        function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+        }
+
+        function p2(n) { return String(n).padStart(2, '0'); }
+
+        // Parseo SIEMPRE en hora local (evita el off-by-one de new Date('YYYY-MM-DD'),
+        // que JS interpreta como UTC).
+        function parseLocal(s) {
+        if (s instanceof Date) return s;
+        if (!s) return new Date(NaN);
+        var m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(s);
+        if (!m) return new Date(s);
+        return new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0));
+        }
+
+        function fechaISO(d) { return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); }
+        function hhmm(d) { return p2(d.getHours()) + ':' + p2(d.getMinutes()); }
+
+        // Envío de fechas al backend en hora local naïve (consistente con cómo
+        // las almacena/lee el servidor). Si algún día despliegas en otra TZ,
+        // cambia el backend a DateTimeOffset.
+        function toLocalIso(d) {
+        return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) +
+        'T' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ':' + p2(d.getSeconds());
+        }
+
+        function pisoHora(hhmmStr) {
+        var h = parseInt(hhmmStr.substring(0, 2), 10);
+        if (h < 0) h = 0;
+        return p2(h) + ':00:00';
+        }
+
+        function techoHora(hhmmStr) {
+        var parts = hhmmStr.split(':');
+        var h = parseInt(parts[0], 10);
+        var mm = parseInt(parts[1] || '0', 10);
+        if (mm > 0) h += 1;
+        if (h > 24) h = 24;
+        return p2(h) + ':00:00';
+        }
+
+        function formatoFecha(d) {
+        return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+        }
+
+        function fmtFechaHora(d) {
+        if (!d) return '—';
+        return d.toLocaleString('es-ES', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false
+        });
+        }
+
+        function setText(id, valor) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = valor;
+        }
+
+        function estadoBucket(estado) {
+        if (estado === 'Terminada') return 'terminada';
+        if (estado === 'En Progreso') return 'progreso';
+        return 'pendiente';
+        }
+
+        function iconoEstado(estado) {
+        if (estado === 'Terminada') return 'bi-check-circle-fill';
+        if (estado === 'En Progreso') return 'bi-play-circle-fill';
+        return 'bi-hourglass-split';
+        }
+
+        function tokenCSRF() {
+        var el = document.querySelector('input[name="__RequestVerificationToken"]');
+        return el ? el.value : '';
+        }
+
+        function notificar(msg, tipo) {
+        toastEl.textContent = msg;
+        toastEl.className = 'cal-toast ' + (tipo === 'error' ? 'is-error' : 'is-ok');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toastEl.classList.add('d-none'); }, 3200);
+        }
+
+        // ============================================================
+        // ALTURA DISPONIBLE
+        // ============================================================
+        function alturaDisponible() {
+        var top = calendarEl.getBoundingClientRect().top;
+        var disponible = window.innerHeight - top - 32;
+        return Math.max(disponible, 560);
+        }
+
+        // ============================================================
+        // PERSISTENCIA DE FILTROS Y VISTA
+        // ============================================================
+        function guardarFiltros() {
+        try {
+        localStorage.setItem(LS_USER, filtroUsuario.value);
+        localStorage.setItem(LS_PROY, filtroProyecto.value);
+        localStorage.setItem(LS_EST, JSON.stringify(Array.from(estadosActivos)));
+        } catch (e) { /* almacenamiento no disponible: se ignora */ }
+        }
+
+        function restaurarFiltros() {
+        try {
+        var u = localStorage.getItem(LS_USER); if (u != null) filtroUsuario.value = u;
+        var p = localStorage.getItem(LS_PROY); if (p != null) filtroProyecto.value = p;
+        var es = localStorage.getItem(LS_EST);
+        if (es) {
+        var arr = JSON.parse(es);
+        if (Array.isArray(arr) && arr.length) estadosActivos = new Set(arr);
+        }
+        } catch (e) { /* ignore */ }
+
+        document.querySelectorAll('.cal-chip[data-bucket]').forEach(function (ch) {
+        ch.classList.toggle('is-off', !estadosActivos.has(ch.dataset.bucket));
+        });
+        }
+
+        function vistaInicial() {
+        try {
+        var v = localStorage.getItem(LS_VIEW);
+        if (v === 'dayGridMonth' || v === 'timeGridWeek' || v === 'timeGridDay') return v;
+        } catch (e) { /* ignore */ }
+        return 'dayGridMonth';
+        }
+
+        // ============================================================
+        // POBLAR FILTROS
+        // ============================================================
+        function poblarFiltroUsuarios(eventos) {
+        var usuarios = {};
+        eventos.forEach(function (e) {
+        if (e.extendedProps.tipo === 'tarea' && e.extendedProps.email) {
+        usuarios[e.extendedProps.email] = e.extendedProps.iniciales;
+        }
+        });
+        var actual = filtroUsuario.value;
+        var opciones = Object.entries(usuarios).sort(function (a, b) { return a[1].localeCompare(b[1]); });
+        filtroUsuario.innerHTML = '<option value="">Todos los usuarios</option>' +
+        opciones.map(function (par) {
+        return '<option value="' + esc(par[0]) + '">[' + esc(par[1]) + '] ' + esc(par[0]) + '</option>';
+        }).join('');
+        filtroUsuario.value = actual;
+        }
+
+        function poblarFiltroProyectos(eventos) {
+        var set = {};
+        eventos.forEach(function (e) {
+        if (e.extendedProps.tipo === 'tarea' && e.extendedProps.proyecto) {
+        set[e.extendedProps.proyecto] = true;
+        }
+        });
+        var actual = filtroProyecto.value;
+        var nombres = Object.keys(set).sort(function (a, b) { return a.localeCompare(b); });
+        filtroProyecto.innerHTML = '<option value="">Todos los proyectos</option>' +
+        nombres.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
+        filtroProyecto.value = actual;
+        }
+
+        // ============================================================
+        // FILTRADO
+        // ============================================================
+        function recomputarFiltrados() {
+        var usuario = filtroUsuario.value;
+        var proyecto = filtroProyecto.value;
+
+        eventosTareas = todosLosEventos.filter(function (e) {
+        var p = e.extendedProps;
+        if (p.tipo !== 'tarea') return false;
+        if (usuario && p.email !== usuario) return false;
+        if (proyecto && p.proyecto !== proyecto) return false;
+        if (!estadosActivos.has(estadoBucket(p.estado))) return false;
+        return true;
+        });
+
+        var resumenes = todosLosEventos.filter(function (e) {
+        return e.extendedProps.tipo === 'resumen' &&
+        (!usuario || e.extendedProps.email === usuario);
+        });
+
+        return eventosTareas.concat(resumenes);
+        }
+
+        function aplicarFiltro() {
+        var visibles = recomputarFiltrados();
+        recalcularCarga();
+
+        if (calendar) {
+        calendar.removeAllEventSources();
+        calendar.addEventSource(visibles);
+        aplicarVentana();
+        renderResumen(calendar.view.currentStart, calendar.view.currentEnd);
+        calendar.render(); // re-evalúa dayCellClassNames (sobrecarga)
+        }
+        guardarFiltros();
+        }
+
+        // ============================================================
+        // SOBRECARGA POR DÍA
+        // ============================================================
+        function recalcularCarga() {
+        cargaPorDia = {};
+        eventosTareas.forEach(function (e) {
+        var f = parseLocal(e.start);
+        var dia = fechaISO(f);
+        var email = e.extendedProps.email || '—';
+        var h = parseFloat(e.extendedProps.horasEstimadas) || 0;
+
+        if (!cargaPorDia[dia]) cargaPorDia[dia] = { porUsuario: {}, max: 0, maxEmail: null };
+        var c = cargaPorDia[dia];
+        c.porUsuario[email] = (c.porUsuario[email] || 0) + h;
+        if (c.porUsuario[email] > c.max) { c.max = c.porUsuario[email]; c.maxEmail = email; }
+        });
+        }
+
+        // ============================================================
+        // RESUMEN DEL RANGO VISIBLE
+        // ============================================================
+        function renderResumen(start, end) {
+        resumenRangoEl.textContent = formatoFecha(start) + ' – ' + formatoFecha(new Date(end - 1));
+
+        var totales = {};
+        eventosTareas.forEach(function (ev) {
+        var evStart = parseLocal(ev.start);
+        if (evStart >= start && evStart < end) {
+        var ini = ev.extendedProps.iniciales;
+        if (!totales[ini]) totales[ini] = { est: 0, real: 0, sobre: false };
+        totales[ini].est += parseFloat(ev.extendedProps.horasEstimadas) || 0;
+        totales[ini].real += parseFloat(ev.extendedProps.horasReales) || 0;
+        }
+        });
+
+        var entradas = Object.entries(totales).sort(function (a, b) { return b[1].est - a[1].est; });
+
+        if (entradas.length === 0) {
+        resumenChipsEl.innerHTML = '<span class="cal-resumen-empty">Sin tareas asignadas en este rango</span>';
+        return;
+        }
+
+        resumenChipsEl.innerHTML = entradas.map(function (par) {
+        var ini = par[0], t = par[1];
+        var real = t.real > 0 ? ' · <span class="real">Real ' + t.real.toFixed(1) + 'h</span>' : '';
+        return '<span class="cal-resumen-chip"><span class="ini">' + esc(ini) + '</span>' +
+        '<span class="datos">Plan ' + t.est.toFixed(1) + 'h' + real + '</span></span>';
+        }).join('');
+        }
+
+        // ============================================================
+        // VENTANA HORARIA (horario hábil por cliente) — Semana/Día
+        // ============================================================
+        function horarioDe(proyecto) {
+        return HORARIOS_CLIENTE[proyecto] || HORARIOS_CLIENTE.__default__;
+        }
+
+        function calcularVentana() {
+        var minH = null, maxH = null;
+        var businessSet = {};
+
+        // Proyectos actualmente visibles (según filtro)
+        var proyectos = {};
+        eventosTareas.forEach(function (e) { proyectos[e.extendedProps.proyecto] = true; });
+        var nombres = Object.keys(proyectos);
+        if (nombres.length === 0) nombres = ['__default__'];
+
+        nombres.forEach(function (nom) {
+        var h = horarioDe(nom);
+        if (minH === null || h.inicio < minH) minH = h.inicio;
+        if (maxH === null || h.fin > maxH) maxH = h.fin;
+        var key = h.dias.join(',') + '|' + h.inicio + '|' + h.fin;
+        businessSet[key] = { daysOfWeek: h.dias, startTime: h.inicio, endTime: h.fin };
+        });
+
+        if (!minH) minH = HORARIOS_CLIENTE.__default__.inicio;
+        if (!maxH) maxH = HORARIOS_CLIENTE.__default__.fin;
+
+        // Expandir la ventana para no ocultar eventos fuera de horario
+        // (p.ej. una tarea arrastrada a las 07:00 o 20:30).
+        eventosTareas.forEach(function (e) {
+        var s = parseLocal(e.start);
+        var en = e.end ? parseLocal(e.end) : s;
+        var sh = hhmm(s), eh = hhmm(en);
+        if (sh < minH) minH = sh;
+        if (eh > maxH) maxH = eh;
+        });
+
+        var min = pisoHora(minH);
+        var max = techoHora(maxH);
+        if (max <= min) max = '24:00:00';
+
+        return { min: min, max: max, business: Object.keys(businessSet).map(function (k) { return businessSet[k]; }) };
+        }
+
+        function aplicarVentana() {
+        if (!calendar) return;
+        var v = calcularVentana();
+        if (v.min !== ventanaActual.min) {
+        calendar.setOption('slotMinTime', v.min);
+        calendar.setOption('scrollTime', v.min);
+        ventanaActual.min = v.min;
+        }
+        if (v.max !== ventanaActual.max) {
+        calendar.setOption('slotMaxTime', v.max);
+        ventanaActual.max = v.max;
+        }
+        var bizStr = JSON.stringify(v.business);
+        if (bizStr !== ventanaActual.business) {
+        calendar.setOption('businessHours', v.business);
+        ventanaActual.business = bizStr;
+        }
+        }
+
+        // ============================================================
+        // RENDER DE EVENTOS
+        // ============================================================
+        function renderEvento(arg) {
+        var props = arg.event.extendedProps;
+
+        if (arg.view.type === 'dayGridMonth') {
+        return { html: '<span class="cal-month-evt-text">' + esc(arg.event.title) + '</span>' };
+        }
+
+        if (props.tipo === 'resumen') {
+        return {
+        html: '<div class="w-100 text-center text-truncate" style="font-size:0.65rem;font-family:ui-monospace,monospace;padding:2px;">' +
+        '<strong class="text-warning">[' + esc(props.iniciales) + ']</strong> Plan: ' + esc(props.totalEstimado) + 'h</div>'
+        };
+        }
+
+        var clasePorEstado = props.estado === 'En Progreso' ? 'text-dark' : 'text-white';
+        var icono = iconoEstado(props.estado);
+
+        return {
+        html: '<div class="w-100 d-flex flex-column px-1 ' + clasePorEstado + '" style="font-size:0.65rem;font-family:ui-monospace,monospace;line-height:1.2;">' +
+        '<div class="fw-bold text-truncate"><i class="bi ' + icono + ' me-1"></i>' + esc(arg.event.title) + '</div>' +
+        '<div class="text-info opacity-75 mt-1" style="font-size:0.55rem;">' + esc(arg.timeText) + '</div>' + // <--- NUEVA LÍNEA: Muestra la hora
+        '<div class="mt-1"><span class="badge bg-dark border border-secondary text-white" style="font-size:0.5rem;">Plan: ' + esc(props.horasEstimadas) + 'h</span></div>' +
+        '</div>'
+        };
+        }
+
+        // ============================================================
+        // TOOLTIP (hover)
+        // ============================================================
+        function mostrarTooltip(info) {
+        var props = info.event.extendedProps;
+        var html;
+
+        if (props.tipo === 'resumen') {
+        html = '<div class="font-monospace p-1" style="font-size:0.75rem;">' +
+        '<div class="fw-bold text-info border-bottom border-secondary pb-1 mb-1 text-truncate">Resumen Diario</div>' +
+        '<div class="text-white"><i class="bi bi-person me-1"></i>' + esc(props.email) + '</div>' +
+        '<div class="mt-1"><span class="badge bg-secondary">Planificado: ' + esc(props.totalEstimado) + 'h</span>' +
+        (props.totalReal > 0 ? '<span class="badge bg-success ms-1">Real: ' + esc(props.totalReal) + 'h</span>' : '') +
+        '</div></div>';
+        } else {
+        html = '<div class="font-monospace p-1" style="font-size:0.75rem;">' +
+        '<div class="fw-bold text-info border-bottom border-secondary pb-1 mb-1 text-truncate">' + esc(info.event.title) + '</div>' +
+        '<div class="text-white-50"><i class="bi bi-folder2-open me-1"></i>' + esc(props.proyecto) + '</div>' +
+        '<div class="text-white-50"><i class="bi bi-activity me-1"></i>' + esc(props.estado) + '</div>' +
+        '<div class="mt-1"><span class="badge bg-secondary">Plan: ' + esc(props.horasEstimadas) + 'h</span>' +
+        (props.horasReales > 0 ? '<span class="badge bg-success ms-1">Real: ' + esc(props.horasReales) + 'h</span>' : '') +
+        '</div></div>';
+        }
+
+        if (info.el._bsTooltip) {
+        info.el._bsTooltip.dispose();
+        info.el._bsTooltip = null;
+        }
+
+        var tooltip = new bootstrap.Tooltip(info.el, {
+        title: html,
+        html: true,
+        placement: 'top',
+        trigger: 'manual',
+        sanitize: false,
+        customClass: 'custom-cal-tooltip'
+        });
+        tooltip.show();
+        info.el._bsTooltip = tooltip;
+        }
+
+        function ocultarTooltip(info) {
+        if (info.el._bsTooltip) {
+        info.el._bsTooltip.dispose();
+        info.el._bsTooltip = null;
+        }
+        }
+
+        // ============================================================
+        // MODAL DE DETALLE (click)
+        // ============================================================
+        function abrirModal(info) {
+        var p = info.event.extendedProps;
+        var titulo = (info.event.title || '').replace(/^\[[^\]]+\]\s*/, '');
+
+        setText('cal-modal-titulo', titulo || 'Tarea');
+        setText('cal-modal-proyecto', p.proyecto || '—');
+
+        // Asignar el ID al botón guardar
+        document.getElementById('cal-modal-btn-guardar').dataset.id = info.event.id;
+
+        // Clonar la lista de usuarios del filtro superior
+        var userSelect = document.getElementById('cal-modal-edit-responsable');
+        userSelect.innerHTML = document.getElementById('cal-filtro-usuario').innerHTML;
+        userSelect.querySelector('option[value=""]').textContent = "Sin asignar";
+
+        // Llenar los valores
+        userSelect.value = p.email || '';
+        document.getElementById('cal-modal-edit-estado').value = p.estado;
+        document.getElementById('cal-modal-edit-inicio').value = toLocalIso(info.event.start).substring(0, 16);
+        document.getElementById('cal-modal-edit-fin').value = info.event.end ? toLocalIso(info.event.end).substring(0, 16) : '';
+
+        setText('cal-modal-plan', (p.horasEstimadas != null ? p.horasEstimadas + ' h' : '—'));
+        setText('cal-modal-real', (parseFloat(p.horasReales) > 0 ? p.horasReales + ' h' : '—'));
+
+        modalEvento.show();
+        }
+
+        // ============================================================
+        // REPROGRAMACIÓN (drag & drop / resize)
+        // ============================================================
+        function sincronizarEventoLocal(fcEvent) {
+        var obj = todosLosEventos.find(function (e) { return e.id === fcEvent.id; });
+        if (obj) {
+        obj.start = toLocalIso(fcEvent.start);
+        if (fcEvent.end) obj.end = toLocalIso(fcEvent.end);
+        }
+        }
+
+        function onReprogramar(info) {
+        var ev = info.event;
+        if (ev.extendedProps.tipo === 'resumen') { info.revert(); return; }
+
+        // --- NUEVA LÓGICA: FORZAR GRILLA ABSOLUTA DE 5 MINUTOS ---
+        function redondearA5(dateObj) {
+        if (!dateObj) return null;
+        var d = new Date(dateObj.getTime());
+        var m = d.getMinutes();
+        // Redondea al múltiplo de 5 más cercano (ej: 52 -> 50, 57 -> 55)
+        d.setMinutes(Math.round(m / 5) * 5);
+        d.setSeconds(0);
+        d.setMilliseconds(0);
+        return d;
+        }
+
+        // Limpiamos las fechas capturadas por el ratón antes de hacer nada
+        var startFijo = redondearA5(ev.start);
+        var endFijo = ev.end ? redondearA5(ev.end) : null;
+        // ---------------------------------------------------------
+
+        var esClonacion = info.delta && info.jsEvent && (info.jsEvent.altKey || info.jsEvent.ctrlKey);
+
+        if (esClonacion) {
+        info.revert(); // Revierte el movimiento original
+
+        var payloadClon = {
+        id: parseInt(String(ev.id).replace('T_', ''), 10),
+        start: toLocalIso(startFijo) // Usamos la fecha limpia
+        };
+
+        fetch('/Calendario/DuplicarTarea', {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        'RequestVerificationToken': tokenCSRF()
+        },
+        body: JSON.stringify(payloadClon)
+        })
+        .then(function (r) {
+        if (!r.ok) throw new Error('No se pudo duplicar la tarea (' + r.status + ').');
+        return r.json();
+        })
+        .then(function () {
+        cargarCalendario();
+        notificar('Tarea duplicada correctamente.', 'ok');
+        })
+        .catch(function (err) {
+        notificar(err.message || 'Error al duplicar la tarea.', 'error');
+        });
+        return;
+        }
+
+        // Armamos el payload con las fechas matemáticas limpias
+        var payload = {
+        id: parseInt(String(ev.id).replace('T_', ''), 10),
+        start: toLocalIso(startFijo),
+        end: endFijo ? toLocalIso(endFijo) : null
+        };
+
+        fetch('/Calendario/ReprogramarTarea', {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        'RequestVerificationToken': tokenCSRF()
+        },
+        body: JSON.stringify(payload)
+        })
+        .then(function (r) {
+        if (!r.ok) throw new Error('No se pudo guardar el cambio (' + r.status + ').');
+        return r.json();
+        })
+        .then(function () {
+        // --- INICIO RECALCULAR VISUALMENTE ---
+        // 1. Forzamos visualmente que la caja encaje en la línea perfecta
+        ev.setStart(startFijo);
+        if (endFijo) {
+        ev.setEnd(endFijo);
+        }
+
+        // 2. Recalculamos las horas en base a los tiempos ya redondeados
+        if (endFijo) {
+        var diffHoras = (endFijo - startFijo) / 3600000;
+        var horasFormato = diffHoras.toFixed(2);
+        ev.setExtendedProp('horasEstimadas', horasFormato);
+
+        var objLocal = todosLosEventos.find(function (e) { return e.id === ev.id; });
+        if (objLocal && objLocal.extendedProps) {
+        objLocal.extendedProps.horasEstimadas = horasFormato;
+        }
+        }
+        // --- FIN RECALCULAR VISUALMENTE ---
+
+        sincronizarEventoLocal(ev);
+        recalcularCarga();
+        aplicarVentana();
+        renderResumen(calendar.view.currentStart, calendar.view.currentEnd);
+        calendar.render();
+        notificar('Tarea reprogramada correctamente.', 'ok');
+        })
+        .catch(function (err) {
+        info.revert();
+        notificar(err.message || 'Error al reprogramar la tarea.', 'error');
+        });
+        }
+
+        // ============================================================
+        // CONSTRUIR CALENDARIO
+        // ============================================================
+        function construirCalendario(eventos) {
+        calendar = new FullCalendar.Calendar(calendarEl, {
+        locale: 'es',
+        initialView: vistaInicial(),
+        headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        themeSystem: 'standard',
+        events: eventos,
+        height: alturaDisponible(),
+
+        nowIndicator: true,
+
+        // Edición por arrastre
+        editable: true,
+        eventStartEditable: true,
+        eventDurationEditable: true,
+        eventResizableFromStart: true,   // <--- NUEVA: Permite arrastrar el borde superior de la tarea
+        eventDragStart: ocultarTooltip,    // <--- NUEVA: Oculta la burbuja inmediatamente al arrastrar
+        eventResizeStart: ocultarTooltip,  // <--- NUEVA: Oculta la burbuja inmediatamente al redimensionar
+        eventAllow: function (dropInfo, draggedEvent) {
+        return draggedEvent.extendedProps.tipo !== 'resumen';
+        },
+
+        slotEventOverlap: false,
+        dayMaxEvents: true,
+        moreLinkText: function (n) { return '+' + n + ' más'; },
+
+        // Estos valores se sobrescriben dinámicamente por horario hábil:
+        slotMinTime: '08:00:00',
+        slotMaxTime: '18:00:00',
+        scrollTime: '08:00:00',
+        expandRows: true,
+        slotDuration: '00:30:00',
+        snapDuration: '00:05:00',
+        slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+        eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+
+        views: {
+        dayGridMonth: { weekNumbers: true, dayMaxEvents: 4, eventDisplay: 'list-item' },
+        timeGridWeek: { weekNumbers: false, allDaySlot: false },
+        timeGridDay: { weekNumbers: false }
+        },
+        weekNumberCalculation: 'ISO',
+
+        // Marca de sobrecarga en la celda de día
+        dayCellClassNames: function (arg) {
+        var c = cargaPorDia[fechaISO(arg.date)];
+        return (c && c.max > CAPACIDAD_DIARIA_H) ? ['cal-overload'] : [];
+        },
+
+        eventContent: renderEvento,
+
+        datesSet: function (info) {
+        renderResumen(info.view.currentStart, info.view.currentEnd);
+        aplicarVentana();
+        try { localStorage.setItem(LS_VIEW, info.view.type); } catch (e) { /* ignore */ }
+        },
+
+        eventClick: function (info) {
+        info.jsEvent.preventDefault();
+        if (info.event.extendedProps.tipo === 'resumen') return;
+        abrirModal(info);
+        },
+
+        eventDrop: onReprogramar,
+        eventResize: onReprogramar,
+
+        eventMouseEnter: mostrarTooltip,
+        eventMouseLeave: ocultarTooltip
+        });
+
+        calendar.render();
+        aplicarVentana();
+
+        window.addEventListener('resize', function () {
+        calendar.setOption('height', alturaDisponible());
+        });
+        }
+
+        // ============================================================
+        // CARGA / ERROR
+        // ============================================================
+        function mostrarError(mensaje) {
+        statusEl.classList.add('d-none');
+        calendarEl.classList.add('d-none');
+        errorMsgEl.textContent = mensaje;
+        errorEl.classList.remove('d-none');
+        }
+
+        function cargarCalendario() {
+        statusEl.classList.remove('d-none');
+        errorEl.classList.add('d-none');
+        calendarEl.classList.add('d-none');
+
+        fetch('/Calendario/ObtenerTareasGlobales')
+        .then(function (r) {
+        if (!r.ok) { throw new Error('El servidor respondió con un error (' + r.status + ').'); }
+        return r.json();
+        })
+        .then(function (eventos) {
+        // El título de tarea incluye las iniciales del responsable.
+        eventos.forEach(function (e) {
+        if (e.extendedProps.tipo === 'tarea') {
+        e.title = '[' + e.extendedProps.iniciales + '] ' + e.title;
+        }
+        });
+
+        todosLosEventos = eventos;
+
+        poblarFiltroUsuarios(eventos);
+        poblarFiltroProyectos(eventos);
+        restaurarFiltros();
+
+        var visibles = recomputarFiltrados();
+        recalcularCarga();
+
+        // El contenedor debe estar visible ANTES de renderizar:
+        // FullCalendar calcula alturas en el momento del render.
+        statusEl.classList.add('d-none');
+        calendarEl.classList.remove('d-none');
+
+        // Activa o desactiva la clase de clonación en el body según si se presiona ALT
+        function actualizarEstadoClonacion(e) {
+        if (e.altKey || e.ctrlKey) {
+        document.body.classList.add('cal-alt-cloning');
+        } else {
+        document.body.classList.remove('cal-alt-cloning');
+        }
+        }
+        window.addEventListener('keydown', actualizarEstadoClonacion);
+        window.addEventListener('keyup', actualizarEstadoClonacion);
+        window.addEventListener('mousemove', actualizarEstadoClonacion); // Chequeo de seguridad al mover
+
+        construirCalendario(visibles);
+        })
+        .catch(function (err) {
+        mostrarError(err.message || 'No fue posible conectar con el servidor.');
+        });
+        }
+
+        // ============================================================
+        // LISTENERS
+        // ============================================================
+        filtroUsuario.addEventListener('change', aplicarFiltro);
+        filtroProyecto.addEventListener('change', aplicarFiltro);
+
+        document.querySelectorAll('.cal-chip[data-bucket]').forEach(function (ch) {
+        function toggle() {
+        var b = ch.dataset.bucket;
+        if (estadosActivos.has(b)) estadosActivos.delete(b); else estadosActivos.add(b);
+        ch.classList.toggle('is-off', !estadosActivos.has(b));
+        aplicarFiltro();
+        }
+        ch.addEventListener('click', toggle);
+        ch.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+        });
+        });
+
+        retryBtn.addEventListener('click', cargarCalendario);
+
+        document.getElementById('cal-modal-btn-eliminar').addEventListener('click', function() {
+        // Obtenemos el ID del dataset del botón de guardar (que lo asignamos al abrir el modal)
+        var idBruto = document.getElementById('cal-modal-btn-guardar').dataset.id;
+        var numId = parseInt(idBruto.replace('T_', ''), 10);
+
+        if (!confirm('¿Estás seguro de que deseas eliminar esta tarea de forma permanente?')) return;
+
+        var btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>...';
+
+        fetch('/Calendario/EliminarTarea', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': tokenCSRF() },
+        body: JSON.stringify({ id: numId })
+        })
+        .then(function(r) { if(!r.ok) throw new Error('Error al eliminar'); return r.json(); })
+        .then(function() {
+        modalEvento.hide();
+        notificar('Tarea eliminada exitosamente.', 'ok');
+
+        // Eliminamos la tarea del DOM visual
+        var ev = calendar.getEventById(idBruto);
+        if (ev) ev.remove();
+
+        // Limpiamos la tarea de nuestra variable global para que el Rango Superior no la sume
+        todosLosEventos = todosLosEventos.filter(function(e) { return e.id !== idBruto; });
+        eventosTareas = eventosTareas.filter(function(e) { return e.id !== idBruto; });
+
+        recalcularCarga();
+        aplicarVentana();
+        renderResumen(calendar.view.currentStart, calendar.view.currentEnd);
+        })
+        .catch(function(err) { notificar(err.message, 'error'); })
+        .finally(function() {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-trash3"></i> Eliminar';
+        });
+        });
+
+        document.getElementById('cal-modal-btn-guardar').addEventListener('click', function() {
+        var btn = this;
+        var payload = {
+        id: parseInt(btn.dataset.id.replace('T_', ''), 10),
+        emailResponsable: document.getElementById('cal-modal-edit-responsable').value,
+        estado: document.getElementById('cal-modal-edit-estado').value,
+        inicio: document.getElementById('cal-modal-edit-inicio').value,
+        fin: document.getElementById('cal-modal-edit-fin').value || null
+        };
+
+        btn.disabled = true;
+        btn.textContent = 'Guardando...';
+
+        fetch('/Calendario/ActualizarTareaDetalle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': tokenCSRF() },
+        body: JSON.stringify(payload)
+        })
+        .then(function(r) { if (!r.ok) throw new Error('Error al actualizar'); return r.json(); })
+        .then(function() {
+        modalEvento.hide();
+        notificar('Tarea actualizada correctamente.', 'ok');
+        cargarCalendario(); // Recargar los eventos del calendario asegura que los colores de estado y duraciones sean perfectos
+        })
+        .catch(function(err) {
+        notificar(err.message, 'error');
+        })
+        .finally(function() {
+        btn.disabled = false;
+        btn.textContent = 'Guardar cambios';
+        });
+        });
+
+        cargarCalendario();
+        });
+    </script>
+}

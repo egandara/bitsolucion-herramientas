@@ -27,6 +27,7 @@ namespace NotebookValidator.Web.Controllers
         private readonly ProyectosSearchService _searchService;
         private readonly AuditService _auditService;
         private readonly NotificacionesService _notifService;
+        private readonly Microsoft.AspNetCore.Hosting.IWebHostEnvironment _env;
 
         public ProyectosController(
             ApplicationDbContext context,
@@ -38,7 +39,8 @@ namespace NotebookValidator.Web.Controllers
             JobGenerationService jobGenerationService,
             ProyectosSearchService searchService,
             AuditService auditService,
-            NotificacionesService notifService)
+            NotificacionesService notifService,
+            Microsoft.AspNetCore.Hosting.IWebHostEnvironment env)
         {
             _context = context;
             _driveService = driveService;
@@ -50,6 +52,7 @@ namespace NotebookValidator.Web.Controllers
             _searchService = searchService;
             _auditService = auditService;
             _notifService = notifService;
+            _env = env;
         }
 
         // ==========================================
@@ -159,9 +162,9 @@ namespace NotebookValidator.Web.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(string nombre, string descripcion, int? clienteId, string? repositorioGitHub, string? contraparteCliente,
-            DateTime? fechaInicio, DateTime? fechaFinEstimada, DateTime? fechaPasoProduccion, string notas,
-            List<string> fasesSeleccionadas, List<string> usuariosAsignadosIds,
-            List<SubfaseInputDto> subfases)
+                    DateTime? fechaInicio, DateTime? fechaFinEstimada, DateTime? fechaPasoProduccion, string notas,
+                    List<string> fasesSeleccionadas, List<string> usuariosAsignadosIds,
+                    List<SubfaseInputDto> subfases)
         {
             if (string.IsNullOrWhiteSpace(nombre)) return View();
 
@@ -192,12 +195,25 @@ namespace NotebookValidator.Web.Controllers
                     if (c != null) nombreCliente = c.Nombre;
                 }
 
+                // --- 1. SE CREA LA ESTRUCTURA EN DRIVE ---
                 var driveResult = await _driveService.CreateProjectStructureAsync(
                     $"PRJ_{nuevoProyecto.Id:D3}_{nuevoProyecto.Nombre.Replace(" ", "_")}", nombreCliente);
 
                 nuevoProyecto.DriveFolderId = driveResult.RootFolderId;
                 nuevoProyecto.DriveFolderUrl = driveResult.RootFolderUrl;
                 _context.Entry(nuevoProyecto).State = EntityState.Modified;
+
+                // ====================================================================
+                // NUEVO: SUBIR LA PRESENTACIÓN PPTX EN BLANCO A LA RAÍZ DEL PROYECTO
+                // ====================================================================
+                string localTemplatePath = System.IO.Path.Combine(_env.WebRootPath, "templates", "Planificacion_Template.pptx");
+                string dateStr = DateTime.Now.ToString("yyyyMMdd");
+                string driveFileName = $"Planificacion_{nuevoProyecto.Nombre}_{dateStr}.pptx";
+                string pptxContentType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
+                // Ejecuta la subida del archivo usando el FolderId que devolvió tu método CreateProjectStructureAsync
+                await _driveService.UploadFileToFolderAsync(localTemplatePath, driveFileName, nuevoProyecto.DriveFolderId, pptxContentType);
+                // ====================================================================
 
                 var fasesCreadas = new Dictionary<string, FaseProyecto>();
                 int orden = 1;
@@ -298,7 +314,11 @@ namespace NotebookValidator.Web.Controllers
                 .Include(p => p.Cliente)
                 .Include(p => p.Fases.OrderBy(f => f.Orden))
                     .ThenInclude(f => f.SubFases)
-                    .ThenInclude(s => s.Responsable)
+                        .ThenInclude(s => s.Responsable)
+                .Include(p => p.Fases.OrderBy(f => f.Orden))
+                    .ThenInclude(f => f.SubFases)
+                        .ThenInclude(s => s.Tareas) // <-- ESTO ES LO NUEVO
+                            .ThenInclude(t => t.UsuarioAsignado) // <-- ESTO ES LO NUEVO
                 .Include(p => p.UsuariosAsignados).ThenInclude(ua => ua.Usuario)
                 .Include(p => p.Validaciones.OrderByDescending(v => v.FechaValidacion))
                 .Include(p => p.TablasCatalogo).ThenInclude(tc => tc.TablaMaestra)
@@ -1282,6 +1302,65 @@ namespace NotebookValidator.Web.Controllers
             return Json(resultados);
         }
 
+        // ==========================================
+        // MÓDULO DE RECURSOS Y TELEMETRÍA DE TAREAS
+        // ==========================================
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> AddTarea(int subFaseId, string nombre, decimal horasEstimadas, string? usuarioAsignadoId)
+        {
+            if (string.IsNullOrWhiteSpace(nombre)) return Json(new { success = false, message = "Falta el nombre." });
+
+            var tarea = new NotebookValidator.Web.Models.GestorProyectos.TareaProyecto
+            {
+                SubFaseProyectoId = subFaseId,
+                Nombre = nombre.Trim(),
+                HorasEstimadas = horasEstimadas,
+                UsuarioAsignadoId = string.IsNullOrWhiteSpace(usuarioAsignadoId) ? null : usuarioAsignadoId,
+                Estado = "Pendiente",
+                FechaCreacion = DateTime.Now
+            };
+
+            _context.TareasProyecto.Add(tarea);
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, message = "Tarea registrada." });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateTareaStatus(int tareaId, string nuevoEstado)
+        {
+            var tarea = await _context.TareasProyecto.FindAsync(tareaId);
+            if (tarea == null) return Json(new { success = false, message = "Tarea no encontrada." });
+
+            tarea.Estado = nuevoEstado;
+
+            // 🧠 MOTOR EXPERIMENTAL DE TELEMETRÍA 🧠
+            if (nuevoEstado == "En Progreso" && !tarea.FechaInicioReal.HasValue)
+            {
+                // Si la pasa a En Progreso por primera vez, estampa el inicio
+                tarea.FechaInicioReal = DateTime.Now;
+            }
+            else if (nuevoEstado == "Terminada")
+            {
+                // Al terminar, estampa el fin y calcula las horas automáticamente
+                tarea.FechaFinReal = DateTime.Now;
+
+                if (tarea.FechaInicioReal.HasValue)
+                {
+                    var tiempoTranscurrido = tarea.FechaFinReal.Value - tarea.FechaInicioReal.Value;
+                    // Calcula las horas reales (puedes refinar esto a futuro para excluir fines de semana)
+                    tarea.HorasRealesDeducidas = (decimal)Math.Round(tiempoTranscurrido.TotalHours, 2);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
     }
 
     public class AddTablaRequest
@@ -1303,5 +1382,6 @@ namespace NotebookValidator.Web.Controllers
         public DateTime? FechaInicio { get; set; }
         public DateTime? FechaFinEstimada { get; set; }
     }
+
 
 }

@@ -1133,6 +1133,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link @(currentController == "Calendario" ? "active" : "")" asp-controller="Calendario" asp-action="Index"
+                               data-sidebar-label="Calendario Global">
+                                <i class="bi bi-calendar-range"></i> <span>Calendario Global</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link @(currentController == "Admin" ? "active" : "")" asp-controller="Admin" asp-action="Index"
                                data-sidebar-label="Gestionar Usuarios">
                                 <i class="bi bi-people"></i> <span>Gestionar Usuarios</span>
