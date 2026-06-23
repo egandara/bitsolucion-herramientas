@@ -38,5 +38,8 @@ namespace NotebookValidator.Web.Models.GestorProyectos
 
         // Relación para comentarios específicos de la subfase
         public ICollection<ComentarioProyecto> Comentarios { get; set; } = new List<ComentarioProyecto>();
+
+        // NUEVO: Relación con las Tareas específicas
+        public virtual ICollection<TareaProyecto> Tareas { get; set; } = new List<TareaProyecto>();
     }
 }

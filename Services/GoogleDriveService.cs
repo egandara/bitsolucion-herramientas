@@ -216,5 +216,45 @@ namespace NotebookValidator.Web.Services
                 Console.WriteLine($"Error al compartir carpeta de Drive con el correo '{userEmail}': {ex.Message}");
             }
         }
+
+        // ====================================================================
+        // NUEVO: SUBIR UN ARCHIVO LOCAL A UNA CARPETA ESPECÍFICA DE DRIVE
+        // ====================================================================
+        public async Task<string> UploadFileToFolderAsync(string localFilePath, string driveFileName, string parentFolderId, string contentType)
+        {
+            try
+            {
+                var service = await GetDriveServiceAsync();
+
+                if (!File.Exists(localFilePath))
+                    throw new FileNotFoundException($"No se encontró la plantilla local en: {localFilePath}");
+
+                var fileMetadata = new Google.Apis.Drive.v3.Data.File()
+                {
+                    Name = driveFileName,
+                    Parents = new List<string> { parentFolderId }
+                };
+
+                using (var stream = new FileStream(localFilePath, FileMode.Open, FileAccess.Read))
+                {
+                    var request = service.Files.Create(fileMetadata, stream, contentType);
+                    request.Fields = "id";
+
+                    var progress = await request.UploadAsync();
+
+                    if (progress.Status == Google.Apis.Upload.UploadStatus.Failed)
+                    {
+                        throw progress.Exception;
+                    }
+
+                    return request.ResponseBody?.Id;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al subir el archivo {driveFileName} a Drive: {ex.Message}");
+                throw;
+            }
+        }
     }
 }
