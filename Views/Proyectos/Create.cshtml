@@ -124,6 +124,20 @@
         gap: 8px;
         padding-bottom: 4px;
     }
+
+    /* ============================================================
+           BANDEJA DE USUARIOS FLOTANTE (STICKY)
+           ============================================================ */
+    .sticky-tray {
+        position: sticky;
+        top: 20px; /* Distancia desde el borde superior de la pantalla */
+        z-index: 1020; /* Asegura que flote por encima de los inputs y modales */
+        background-color: rgba(33, 37, 41, 0.95) !important; /* Fondo oscuro semi-transparente */
+        backdrop-filter: blur(5px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        border-radius: 8px;
+        transition: box-shadow 0.3s ease;
+    }
 </style>
 
 <div class="container-fluid mt-3" style="max-width: 1500px !important;">
@@ -244,9 +258,10 @@
                         </div>
                     </div>
 
-                    <div id="tray-asignacion" class="bg-dark border border-info border-opacity-25 p-3 mb-3 d-none" style="border-radius: 8px;">
+                    <div id="tray-asignacion" class="border border-info border-opacity-25 p-3 mb-4 d-none sticky-tray">
                         <div class="d-flex align-items-center mb-2">
-                            <i class="bi bi-cursor-fill text-info me-2"></i><span class="text-white small fw-bold me-auto">Bandeja de Asignación Rápida</span>
+                            <i class="bi bi-cursor-fill text-info me-2"></i>
+                            <span class="text-white small fw-bold me-auto">Bandeja de Asignación Rápida (Flotante)</span>
                         </div>
                         <div class="d-flex flex-wrap gap-3 mt-2 px-1 pb-2">
                             @if (usuariosBanco != null)
