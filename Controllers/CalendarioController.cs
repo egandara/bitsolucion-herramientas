@@ -1,0 +1,454 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using NotebookValidator.Web.Data;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace NotebookValidator.Web.Controllers
+{
+    [Authorize(Roles = "Admin")]
+    public class CalendarioController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
+
+        public CalendarioController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        {
+            _context = context;
+            _userManager = userManager;
+        }
+
+        [HttpGet]
+        public IActionResult Index()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<IActionResult> ObtenerTareasGlobales()
+        {
+            try
+            {
+                var tareas = await _context.TareasProyecto
+                    .Include(t => t.SubFase)
+                        .ThenInclude(s => s.Fase)
+                            .ThenInclude(f => f.Proyecto)
+                    .Include(t => t.UsuarioAsignado)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                // Consultamos las subfases que tienen fechas asignadas para pintarlas
+                var subfases = await _context.SubFasesProyecto
+                    .Include(s => s.Fase) // CORREGIDO: Es Fase, no FaseProyecto
+                        .ThenInclude(f => f.Proyecto)
+                    .Include(s => s.Responsable)
+                    .Where(s => s.FechaInicio.HasValue)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                var listaEventos = new List<object>();
+
+                // --- 1. EVENTOS DE FASE (Background) ---
+                var fasesAgrupadas = subfases.GroupBy(s => s.Fase); // CORREGIDO
+                foreach (var g in fasesAgrupadas)
+                {
+                    var fase = g.Key;
+                    if (fase == null) continue;
+
+                    var minStart = g.Min(s => s.FechaInicio);
+                    var maxEnd = g.Max(s => s.FechaFinEstimada ?? s.FechaInicio);
+
+                    listaEventos.Add(new
+                    {
+                        id = "F_" + fase.Id,
+                        title = "Fase: " + fase.NombreFase.Replace("_", " "),
+                        start = minStart?.ToString("yyyy-MM-dd"),
+                        end = maxEnd?.AddDays(1).ToString("yyyy-MM-dd"), // FullCalendar usa el fin como exclusivo
+                        display = "background",
+                        backgroundColor = "rgba(13, 202, 240, 0.08)", // Fondo Cyan ultra suave
+                        extendedProps = new { tipo = "fase", proyecto = fase.Proyecto?.Nombre }
+                    });
+                }
+
+                // --- 2. EVENTOS DE SUBFASE (Todo el día) ---
+                foreach (var sub in subfases)
+                {
+                    string email = sub.Responsable?.Email ?? "Sin_Asignar";
+                    string iniciales = email.Length >= 2 ? email.Substring(0, 2).ToUpper() : "??";
+
+                    listaEventos.Add(new
+                    {
+                        id = "S_" + sub.Id,
+                        title = sub.Nombre,
+                        start = sub.FechaInicio?.ToString("yyyy-MM-dd"),
+                        end = sub.FechaFinEstimada?.AddDays(1).ToString("yyyy-MM-dd"),
+                        allDay = true,
+                        editable = false, // Subfases son estáticas visualmente por ahora
+                        backgroundColor = "transparent", // <--- MEJORA: Fondo transparente
+                        borderColor = "#ffc107",         // <--- MEJORA: Borde sólido amarillo
+                        textColor = "#ffc107",
+                        classNames = new[] { "evt-subfase" },
+                        extendedProps = new
+                        {
+                            tipo = "subfase",
+                            proyecto = sub.Fase?.Proyecto?.Nombre ?? "Desconocido",
+                            iniciales = iniciales,
+                            email = email,
+                            estado = sub.Estado
+                        }
+                    });
+                }
+
+                // --- 3. EVENTOS DE TAREAS ---
+                foreach (var t in tareas)
+                {
+                    string email = t.UsuarioAsignado?.Email ?? "Sin_Asignar";
+                    string iniciales = email.Length >= 2 ? email.Substring(0, 2).ToUpper() : "??";
+                    string nombreTarea = string.IsNullOrWhiteSpace(t.Nombre) ? "Sin Título" : t.Nombre;
+
+                    DateTime start = t.FechaInicioReal ?? t.FechaCreacion;
+                    DateTime end;
+
+                    if (t.Estado == "Terminada" && t.FechaFinReal.HasValue)
+                    {
+                        var duracionReal = (t.FechaFinReal.Value - start).TotalMinutes;
+                        end = duracionReal < 30 ? start.AddMinutes(30) : t.FechaFinReal.Value;
+                    }
+                    else
+                    {
+                        decimal horas = t.HorasEstimadas > 0 ? t.HorasEstimadas : 1m;
+                        end = start.AddHours((double)horas);
+                    }
+
+                    // VALIDACIÓN DE LÍMITES DE SUBFASE
+                    bool fueraDeRango = false;
+                    DateTime? sfInicio = t.SubFase?.FechaInicio;
+                    DateTime? sfFin = t.SubFase?.FechaFinEstimada;
+
+                    if (sfInicio.HasValue && sfFin.HasValue)
+                    {
+                        // Si la tarea empieza antes o termina después de su subfase
+                        if (start < sfInicio.Value || end > sfFin.Value)
+                        {
+                            fueraDeRango = true;
+                        }
+                    }
+
+                    // Si está fuera de rango, forzamos un borde rojo
+                    string colorBorde = fueraDeRango ? "#dc3545" : (t.Estado == "Terminada" ? "#198754" : t.Estado == "En Progreso" ? "#ffc107" : "#0dcaf0");
+
+                    listaEventos.Add(new
+                    {
+                        id = "T_" + t.Id,
+                        title = nombreTarea,
+                        start = start.ToString("yyyy-MM-ddTHH:mm:ss"),
+                        end = end.ToString("yyyy-MM-ddTHH:mm:ss"),
+                        allDay = false,
+                        editable = true,
+                        // Añadimos una clase especial si está fuera de rango
+                        classNames = fueraDeRango ? new[] { "evt-tarea", "tarea-fuera-rango" } : new[] { "evt-tarea" },
+                        backgroundColor = t.Estado == "Terminada" ? "#198754" : t.Estado == "En Progreso" ? "#ffc107" : "#0dcaf0",
+                        borderColor = colorBorde,
+                        textColor = t.Estado == "En Progreso" ? "#000" : "#fff",
+                        extendedProps = new
+                        {
+                            tipo = "tarea",
+                            iniciales = iniciales,
+                            email = email,
+                            proyecto = t.SubFase?.Fase?.Proyecto?.Nombre ?? "Desconocido",
+                            estado = t.Estado,
+                            horasEstimadas = t.HorasEstimadas,
+                            horasReales = t.HorasRealesDeducidas,
+                            subfaseInicio = sfInicio?.ToString("yyyy-MM-ddTHH:mm:ss"),
+                            subfaseFin = sfFin?.ToString("yyyy-MM-ddTHH:mm:ss"),
+                            fueraDeRango = fueraDeRango,
+                            // --- NUEVO: Nombres de fase y subfase ---
+                            fase = t.SubFase?.Fase?.NombreFase?.Replace("_", " ") ?? "—",
+                            subfase = t.SubFase?.Nombre ?? "—"
+                        }
+                    });
+                }
+
+                // --- 4. RESÚMENES DIARIOS ---
+                var resumenes = tareas
+                    .Where(t => t.UsuarioAsignado != null)
+                    .GroupBy(t => new { Email = t.UsuarioAsignado.Email, Fecha = (t.FechaInicioReal ?? t.FechaCreacion).Date })
+                    .Select(g => new
+                    {
+                        Email = g.Key.Email,
+                        Fecha = g.Key.Fecha,
+                        TotalEstimado = g.Sum(x => x.HorasEstimadas),
+                        TotalReal = g.Sum(x => x.HorasRealesDeducidas)
+                    }).ToList();
+
+                foreach (var r in resumenes)
+                {
+                    string iniciales = (r.Email != null && r.Email.Length >= 2) ? r.Email.Substring(0, 2).ToUpper() : "??";
+                    listaEventos.Add(new
+                    {
+                        id = $"R_{iniciales}_{r.Fecha:yyyyMMdd}",
+                        title = $"Resumen {iniciales}",
+                        start = r.Fecha.ToString("yyyy-MM-dd"),
+                        allDay = true,
+                        editable = false,
+                        classNames = new[] { "evt-resumen" },
+                        backgroundColor = "#111424",
+                        borderColor = "#6c757d",
+                        textColor = "#fff",
+                        extendedProps = new { tipo = "resumen", email = r.Email, iniciales = iniciales, totalEstimado = r.TotalEstimado, totalReal = r.TotalReal }
+                    });
+                }
+
+                return Json(listaEventos);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error en CalendarioController: {ex.Message}");
+                return StatusCode(500, new { error = "No se pudieron cargar las tareas del calendario." });
+            }
+        }
+
+        // ===== Reprogramar una tarea (drag & drop / resize desde el calendario) =====
+        // Recibe el id y las nuevas fechas. Mantiene la duración al mover; al
+        // redimensionar ajusta FechaFinReal (si está terminada) u HorasEstimadas
+        // (si está pendiente/en progreso).
+        public class ReprogramarRequest
+        {
+            public int Id { get; set; }
+            public DateTime Start { get; set; }
+            public DateTime? End { get; set; }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ReprogramarTarea([FromBody] ReprogramarRequest req)
+        {
+            if (req == null || req.Id <= 0)
+                return BadRequest(new { error = "Solicitud inválida." });
+
+            var tarea = await _context.TareasProyecto.FindAsync(req.Id);
+            if (tarea == null)
+                return NotFound(new { error = "La tarea no existe o fue eliminada." });
+
+            tarea.FechaInicioReal = req.Start;
+
+            if (req.End.HasValue)
+            {
+                if (tarea.Estado == "Terminada")
+                {
+                    tarea.FechaFinReal = req.End.Value;
+                }
+                else
+                {
+                    var horas = (decimal)(req.End.Value - req.Start).TotalHours;
+                    if (horas > 0)
+                        tarea.HorasEstimadas = Math.Round(horas, 2);
+                }
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return Ok(new { ok = true });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al reprogramar tarea {req.Id}: {ex.Message}");
+                return StatusCode(500, new { error = "No se pudo guardar el cambio." });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DuplicarTarea([FromBody] ReprogramarRequest req)
+        {
+            if (req == null || req.Id <= 0)
+                return BadRequest(new { error = "Solicitud inválida." });
+
+            // Consultamos la tarea de forma desadjuntada (AsNoTracking) para usar la misma instancia como clon
+            var tareaClon = await _context.TareasProyecto
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == req.Id);
+
+            if (tareaClon == null)
+                return NotFound(new { error = "La tarea original no existe o fue eliminada." });
+
+            // Guardamos el punto de inicio previo para calcular la duración exacta del clon
+            DateTime inicioOriginal = tareaClon.FechaInicioReal ?? tareaClon.FechaCreacion;
+
+            // Restablecemos los parámetros necesarios para que EF Core entienda que es un registro nuevo
+            tareaClon.Id = 0;
+            tareaClon.FechaCreacion = DateTime.Now;
+            tareaClon.FechaInicioReal = req.Start;
+
+            // Si estaba terminada y tiene fecha de fin, le asignamos una nueva proporcional a la original
+            if (tareaClon.Estado == "Terminada" && tareaClon.FechaFinReal.HasValue)
+            {
+                var duracionOriginal = tareaClon.FechaFinReal.Value - inicioOriginal;
+                tareaClon.FechaFinReal = req.Start.Add(duracionOriginal);
+            }
+
+            try
+            {
+                await _context.TareasProyecto.AddAsync(tareaClon);
+                await _context.SaveChangesAsync();
+                return Ok(new { ok = true });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al duplicar la tarea {req.Id}: {ex.Message}");
+                return StatusCode(500, new { error = "No se pudo procesar la duplicación de la tarea." });
+            }
+        }
+
+        // Clase para recibir la petición de eliminar
+        public class EliminarTareaRequest
+        {
+            public int Id { get; set; }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EliminarTarea([FromBody] EliminarTareaRequest req)
+        {
+            if (req.Id <= 0) return BadRequest(new { error = "Solicitud inválida." });
+
+            var tarea = await _context.TareasProyecto.FindAsync(req.Id);
+            if (tarea == null) return NotFound(new { error = "La tarea no existe o ya fue eliminada." });
+
+            try
+            {
+                _context.TareasProyecto.Remove(tarea);
+                await _context.SaveChangesAsync();
+                return Ok(new { ok = true });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al eliminar la tarea {req.Id}: {ex.Message}");
+                return StatusCode(500, new { error = "No se pudo eliminar la tarea debido a un error del servidor." });
+            }
+        }
+
+        // Clase para recibir el Payload del modal
+        public class ActualizarTareaRequest
+        {
+            public int Id { get; set; }
+            public string EmailResponsable { get; set; }
+            public string Estado { get; set; }
+            public DateTime Inicio { get; set; }
+            public DateTime? Fin { get; set; }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ActualizarTareaDetalle([FromBody] ActualizarTareaRequest req)
+        {
+            if (req.Id <= 0) return BadRequest(new { error = "Solicitud inválida." });
+
+            var tarea = await _context.TareasProyecto
+                .Include(t => t.UsuarioAsignado)
+                .FirstOrDefaultAsync(t => t.Id == req.Id);
+
+            if (tarea == null) return NotFound(new { error = "La tarea no existe." });
+
+            // Actualizar datos básicos
+            tarea.Estado = req.Estado;
+            tarea.FechaInicioReal = req.Inicio;
+
+            // Lógica de cálculo de finalización y horas
+            if (req.Fin.HasValue)
+            {
+                if (req.Estado == "Terminada")
+                {
+                    tarea.FechaFinReal = req.Fin.Value;
+                }
+
+                var horas = (decimal)(req.Fin.Value - req.Inicio).TotalHours;
+                if (horas > 0)
+                    tarea.HorasEstimadas = Math.Round(horas, 2);
+            }
+
+            // Actualizar el responsable
+            if (!string.IsNullOrEmpty(req.EmailResponsable) && (tarea.UsuarioAsignado == null || tarea.UsuarioAsignado.Email != req.EmailResponsable))
+            {
+                var user = await _userManager.FindByEmailAsync(req.EmailResponsable);
+                if (user != null)
+                    tarea.UsuarioAsignadoId = user.Id;
+            }
+            else if (string.IsNullOrEmpty(req.EmailResponsable))
+            {
+                tarea.UsuarioAsignadoId = null;
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return Ok(new { ok = true });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al actualizar tarea detallada {req.Id}: {ex.Message}");
+                return StatusCode(500, new { error = "No se pudo actualizar la tarea en la base de datos." });
+            }
+        }
+
+        // Clase para recibir el Payload de creación
+        public class CrearTareaRequest
+        {
+            public int SubFaseId { get; set; }
+            public string Nombre { get; set; }
+            public string EmailResponsable { get; set; }
+            public decimal HorasEstimadas { get; set; }
+            public DateTime Inicio { get; set; }
+            public DateTime Fin { get; set; }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CrearTareaGlobal([FromBody] CrearTareaRequest req)
+        {
+            if (req.SubFaseId <= 0 || string.IsNullOrWhiteSpace(req.Nombre))
+                return BadRequest(new { error = "Datos inválidos." });
+
+            var subfase = await _context.SubFasesProyecto.FindAsync(req.SubFaseId);
+            if (subfase == null) return NotFound(new { error = "Subfase no encontrada." });
+
+            // Buscar el ID del usuario en base a su email
+            string userId = null;
+            if (!string.IsNullOrEmpty(req.EmailResponsable))
+            {
+                var user = await _userManager.FindByEmailAsync(req.EmailResponsable);
+                if (user != null) userId = user.Id;
+            }
+
+            var nuevaTarea = new NotebookValidator.Web.Models.GestorProyectos.TareaProyecto
+            {
+                SubFaseProyectoId = req.SubFaseId,
+                Nombre = req.Nombre.Trim(),
+                HorasEstimadas = req.HorasEstimadas,
+                UsuarioAsignadoId = userId,
+                Estado = "Pendiente",
+                FechaCreacion = DateTime.Now,
+                FechaInicioReal = req.Inicio,
+                FechaFinReal = req.Fin
+            };
+
+            try
+            {
+                _context.TareasProyecto.Add(nuevaTarea);
+                await _context.SaveChangesAsync();
+                return Ok(new { ok = true });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al crear tarea global: {ex.Message}");
+                return StatusCode(500, new { error = "No se pudo guardar la tarea." });
+            }
+        }
+    }
+}

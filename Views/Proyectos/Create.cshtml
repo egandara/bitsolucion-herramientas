@@ -592,61 +592,58 @@
         // MOTOR HEURÍSTICO (PEGADO INTELIGENTE)
         // ==========================================
         function procesarPegadoHeuristico() {
-            const texto = document.getElementById('txtPegadoMasivo').value.trim();
-            if (!texto) return;
+                    const texto = document.getElementById('txtPegadoMasivo').value.trim();
+                    if (!texto) return;
 
-            const comboTemp = document.createElement('select');
-            comboTemp.innerHTML = `<option value=""></option>` + usuariosOptions;
-            const usuariosDict = Array.from(comboTemp.options).filter(o => o.value !== "").map(o => ({ id: o.value, emailText: o.text.toLowerCase() }));
-            const filas = texto.split('\n');
-            let agregadas = 0;
-            const regexFecha = /\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})\b/g;
-
-            filas.forEach(fila => {
-                if (!fila.trim()) return;
-                const celdas = fila.split('\t').map(c => c.trim());
-                let nombre = ""; let fecha1 = ""; let fecha2 = ""; let respId = ""; let celdasRestantes = [];
-
-                celdas.forEach(celda => {
-                    let celdaLow = celda.toLowerCase();
-                    if (celdaLow.includes('%') || celdaLow.match(/\b\d+(,\d+)?\s*(días|dias|days|hrs|horas|d|h)\b/)) return;
-
-                    let matchesFecha = celda.match(regexFecha);
-                    if (matchesFecha && matchesFecha.length > 0) {
-                        matchesFecha.forEach(strFecha => {
-                            let isoDate = convertirAFechaISO(strFecha);
-                            if (isoDate) {
-                                // Al pegar desde Excel, asumimos que empieza a la hora de entrada del cliente
-                                let dtLocal = `${isoDate}T${activeSchedule.entradaH.toString().padStart(2,'0')}:${activeSchedule.entradaM.toString().padStart(2,'0')}`;
-                                if (!fecha1) fecha1 = dtLocal;
-                                else if (!fecha2) fecha2 = dtLocal;
+                    // Función auxiliar interna para asegurar que exista en ambos archivos
+                    function parseDate(fechaTexto) {
+                        if (!fechaTexto) return "";
+                        let partes = fechaTexto.split(/[\/\-]/);
+                        if (partes.length === 3) {
+                            if (partes[0].length <= 2 && (partes[2].length === 4 || partes[2].length === 2)) {
+                                let year = partes[2].length === 2 ? "20" + partes[2] : partes[2];
+                                return `${year}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
                             }
-                        });
-                        if (celda.replace(regexFecha, '').trim().length < 3) return;
+                            if (partes[0].length === 4) return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
+                        }
+                        return "";
                     }
 
-                    if (!respId) {
-                        let userMatch = usuariosDict.find(u => (celda.includes('\x40') && celdaLow.includes(u.emailText)) || celdaLow.includes(u.emailText.split('\x40')[0]));
-                        if (userMatch) { respId = userMatch.id; if (celda.includes('\x40')) return; }
-                    }
-                    celdasRestantes.push(celda);
-                });
+                    const filas = texto.split('\n');
+                    let agregadas = 0;
 
-                if (celdasRestantes.length > 0) nombre = celdasRestantes.reduce((a, b) => a.length > b.length ? a : b, "");
-                if (nombre || fecha1) {
-                    inyectarFilaSubfase(nombre, fecha1, fecha2, respId);
-                    agregadas++;
+                    filas.forEach(fila => {
+                        if (!fila.trim()) return;
+
+                        // Corta por Tabulador de Excel (\t) O por barra vertical (|)
+                        const celdas = fila.split(/\t|\|/).map(c => c.trim());
+
+                        let nombre = celdas[0] || "";
+                        let fecha1 = parseDate(celdas[1]);
+                        let fecha2 = parseDate(celdas[2]);
+                        let horasVal = celdas[3] ? celdas[3].replace(',', '.') : "";
+
+                        if (fecha1) {
+                            fecha1 = `${fecha1}T${activeSchedule.entradaH.toString().padStart(2,'0')}:${activeSchedule.entradaM.toString().padStart(2,'0')}`;
+                        }
+                        if (fecha2) {
+                            fecha2 = `${fecha2}T${activeSchedule.salidaNormalH.toString().padStart(2,'0')}:${activeSchedule.salidaNormalM.toString().padStart(2,'0')}`;
+                        }
+
+                        if (nombre) {
+                            inyectarFilaSubfase(nombre, fecha1, fecha2, "", horasVal);
+                            agregadas++;
+                        }
+                    });
+
+                    if (agregadas > 0) {
+                        toastr.success(`¡Se procesaron ${agregadas} filas con éxito!`);
+                        document.getElementById('txtPegadoMasivo').value = '';
+                        bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide();
+                        actualizarTermometro();
+                        if (typeof guardarBorradorSilencioso === "function") guardarBorradorSilencioso();
+                    }
                 }
-            });
-
-            if (agregadas > 0) {
-                toastr.success(`¡Se auto-generaron ${agregadas} subfases con éxito!`);
-                document.getElementById('txtPegadoMasivo').value = '';
-                bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide();
-                actualizarTermometro();
-                guardarBorradorSilencioso();
-            }
-        }
 
         function convertirAFechaISO(fechaTexto) {
             let partes = fechaTexto.split(/[\/\-]/);
