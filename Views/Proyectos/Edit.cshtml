@@ -8,8 +8,8 @@
 
 <style>
     /* ============================================================
-           ESTRUCTURA LATERAL Y PANELES
-           ============================================================ */
+               ESTRUCTURA LATERAL Y PANELES
+               ============================================================ */
     .cal-sidebar-block {
         background-color: #111424 !important;
         border: 1px solid rgba(255, 255, 255, 0.05) !important;
@@ -57,8 +57,8 @@
     }
 
     /* ============================================================
-           GRID EXTENDIDO PARA SUBFASES Y TAREAS (WBS)
-           ============================================================ */
+               GRID EXTENDIDO PARA SUBFASES Y TAREAS (WBS)
+               ============================================================ */
     .subfase-group-wrapper {
         background-color: rgba(255, 255, 255, 0.01);
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -128,8 +128,8 @@
     }
 
     /* ============================================================
-               BANDEJA DE USUARIOS FLOTANTE (STICKY)
-               ============================================================ */
+                   BANDEJA DE USUARIOS FLOTANTE (STICKY)
+                   ============================================================ */
     .sticky-tray {
         position: sticky;
         top: 20px;
@@ -295,7 +295,14 @@
                                                     <select class="form-select text-white border-secondary input-fasepadre" required>
                                                         @foreach (var f in Model.Fases.OrderBy(x => x.Orden))
                                                         {
-                                                            <option value="@f.NombreFase" selected="@(f.Id == fase.Id)">@f.Orden. @f.NombreFase.Replace("_", " ")</option>
+                                                            if (f.Id == fase.Id)
+                                                            {
+                                                                <option value="@f.NombreFase" selected>@f.Orden. @f.NombreFase.Replace("_", " ")</option>
+                                                            }
+                                                            else
+                                                            {
+                                                                <option value="@f.NombreFase">@f.Orden. @f.NombreFase.Replace("_", " ")</option>
+                                                            }
                                                         }
                                                     </select>
                                                 </div>
@@ -312,7 +319,14 @@
                                                             {
                                                                 foreach (var user in usuariosBanco)
                                                                 {
-                                                                    <option value="@user.Id" selected="@(sub.ResponsableId == user.Id)">@user.Email</option>
+                                                                    if (sub.ResponsableId == (string)user.Id)
+                                                                    {
+                                                                        <option value="@user.Id" selected>@user.Email</option>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <option value="@user.Id">@user.Email</option>
+                                                                    }
                                                                 }
                                                             }
                                                         </select>
@@ -354,7 +368,14 @@
                                                                         {
                                                                             foreach (var user in usuariosBanco)
                                                                             {
-                                                                                <option value="@user.Id" selected="@(tarea.UsuarioAsignadoId == user.Id)">@user.Email</option>
+                                                                                if (tarea.UsuarioAsignadoId == (string)user.Id)
+                                                                                {
+                                                                                    <option value="@user.Id" selected>@user.Email</option>
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <option value="@user.Id">@user.Email</option>
+                                                                                }
                                                                             }
                                                                         }
                                                                     </select>
@@ -449,28 +470,28 @@
 
 @section Scripts {
     <script>
-        const clientesHorarios = @Html.Raw(ViewBag.ClientesHorariosJson ?? "[]");
-        let activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
-        document.getElementById('selectClienteId').addEventListener('change', function() {
-            const val = this.value; const match = clientesHorarios.find(c => c.id === val);
-            if(match) activeSchedule = match; else activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
-            document.querySelectorAll('.input-horas').forEach(inp => inp.dispatchEvent(new Event('input')));
-        });
+                const clientesHorarios = @Html.Raw(ViewBag.ClientesHorariosJson ?? "[]");
+                let activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
+                document.getElementById('selectClienteId').addEventListener('change', function() {
+                    const val = this.value; const match = clientesHorarios.find(c => c.id === val);
+                    if(match) activeSchedule = match; else activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
+                    document.querySelectorAll('.input-horas').forEach(inp => inp.dispatchEvent(new Event('input')));
+                });
 
-        document.getElementById('formEditProject').addEventListener('submit', function () {
-            var btn = document.getElementById('btnSubmit'); btn.disabled = true;
-            document.getElementById('spinnerSubmit').classList.remove('d-none'); document.getElementById('iconSubmit').classList.add('d-none');
-        });
+                document.getElementById('formEditProject').addEventListener('submit', function () {
+                    var btn = document.getElementById('btnSubmit'); btn.disabled = true;
+                    document.getElementById('spinnerSubmit').classList.remove('d-none'); document.getElementById('iconSubmit').classList.add('d-none');
+                });
 
-        window.currentDraggedUser = null;
-        const usuariosOptions = `@if (usuariosBanco != null) { foreach (var user in usuariosBanco) {
-        <option value="@user.Id">@user.Email</option>
-    }
+                window.currentDraggedUser = null;
+                const usuariosOptions = `@if (usuariosBanco != null) { foreach (var user in usuariosBanco) {
+                <option value="@user.Id">@user.Email</option>
+        }
 }
 `;
 const fasesOptions = `@if (Model.Fases != null) { foreach (var f in Model.Fases.OrderBy(x => x.Orden)) {
 <option value="@f.NombreFase">@f.Orden. @f.NombreFase.Replace("_", " ")</option>
-    } }
+            } }
 `;
 
 document.addEventListener("DOMContentLoaded", function () {

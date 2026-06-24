@@ -502,6 +502,15 @@ namespace NotebookValidator.Web.Controllers
                             var subfasesAEliminar = fase.SubFases.Where(s => !subfasesEntrantesIds.Contains(s.Id)).ToList();
                             foreach (var sub in subfasesAEliminar)
                             {
+                                // Primero eliminar Comentarios para evitar FK constraint violation
+                                var comentariosSub = await _context.ComentariosProyecto
+                                    .Where(c => c.SubFaseProyectoId == sub.Id)
+                                    .ToListAsync();
+                                if (comentariosSub.Any())
+                                {
+                                    _context.ComentariosProyecto.RemoveRange(comentariosSub);
+                                }
+
                                 if (sub.Tareas != null && sub.Tareas.Any())
                                 {
                                     _context.TareasProyecto.RemoveRange(sub.Tareas);
@@ -623,6 +632,15 @@ namespace NotebookValidator.Web.Controllers
                         {
                             foreach (var sub in fase.SubFases.ToList())
                             {
+                                // Primero eliminar Comentarios para evitar FK constraint violation
+                                var comentariosSub = await _context.ComentariosProyecto
+                                    .Where(c => c.SubFaseProyectoId == sub.Id)
+                                    .ToListAsync();
+                                if (comentariosSub.Any())
+                                {
+                                    _context.ComentariosProyecto.RemoveRange(comentariosSub);
+                                }
+
                                 if (sub.Tareas != null && sub.Tareas.Any()) _context.TareasProyecto.RemoveRange(sub.Tareas);
                                 _context.SubFasesProyecto.Remove(sub);
                             }
