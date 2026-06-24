@@ -49,9 +49,69 @@ namespace NotebookValidator.Web.Controllers
                     .AsNoTracking()
                     .ToListAsync();
 
+                // Consultamos las subfases que tienen fechas asignadas para pintarlas
+                var subfases = await _context.SubFasesProyecto
+                    .Include(s => s.Fase) // CORREGIDO: Es Fase, no FaseProyecto
+                        .ThenInclude(f => f.Proyecto)
+                    .Include(s => s.Responsable)
+                    .Where(s => s.FechaInicio.HasValue)
+                    .AsNoTracking()
+                    .ToListAsync();
+
                 var listaEventos = new List<object>();
 
-                // 1. EVENTOS DE TAREAS (para la grilla de horas y días)
+                // --- 1. EVENTOS DE FASE (Background) ---
+                var fasesAgrupadas = subfases.GroupBy(s => s.Fase); // CORREGIDO
+                foreach (var g in fasesAgrupadas)
+                {
+                    var fase = g.Key;
+                    if (fase == null) continue;
+
+                    var minStart = g.Min(s => s.FechaInicio);
+                    var maxEnd = g.Max(s => s.FechaFinEstimada ?? s.FechaInicio);
+
+                    listaEventos.Add(new
+                    {
+                        id = "F_" + fase.Id,
+                        title = "Fase: " + fase.NombreFase.Replace("_", " "),
+                        start = minStart?.ToString("yyyy-MM-dd"),
+                        end = maxEnd?.AddDays(1).ToString("yyyy-MM-dd"), // FullCalendar usa el fin como exclusivo
+                        display = "background",
+                        backgroundColor = "rgba(13, 202, 240, 0.08)", // Fondo Cyan ultra suave
+                        extendedProps = new { tipo = "fase", proyecto = fase.Proyecto?.Nombre }
+                    });
+                }
+
+                // --- 2. EVENTOS DE SUBFASE (Todo el día) ---
+                foreach (var sub in subfases)
+                {
+                    string email = sub.Responsable?.Email ?? "Sin_Asignar";
+                    string iniciales = email.Length >= 2 ? email.Substring(0, 2).ToUpper() : "??";
+
+                    listaEventos.Add(new
+                    {
+                        id = "S_" + sub.Id,
+                        title = sub.Nombre,
+                        start = sub.FechaInicio?.ToString("yyyy-MM-dd"),
+                        end = sub.FechaFinEstimada?.AddDays(1).ToString("yyyy-MM-dd"),
+                        allDay = true,
+                        editable = false, // Subfases son estáticas visualmente por ahora
+                        backgroundColor = "transparent", // <--- MEJORA: Fondo transparente
+                        borderColor = "#ffc107",         // <--- MEJORA: Borde sólido amarillo
+                        textColor = "#ffc107",
+                        classNames = new[] { "evt-subfase" },
+                        extendedProps = new
+                        {
+                            tipo = "subfase",
+                            proyecto = sub.Fase?.Proyecto?.Nombre ?? "Desconocido",
+                            iniciales = iniciales,
+                            email = email,
+                            estado = sub.Estado
+                        }
+                    });
+                }
+
+                // --- 3. EVENTOS DE TAREAS ---
                 foreach (var t in tareas)
                 {
                     string email = t.UsuarioAsignado?.Email ?? "Sin_Asignar";
@@ -63,18 +123,31 @@ namespace NotebookValidator.Web.Controllers
 
                     if (t.Estado == "Terminada" && t.FechaFinReal.HasValue)
                     {
-                        // FIX VISUAL: si la tarea se terminó en menos de 30 minutos reales,
-                        // le damos un alto mínimo de 30 mins en el calendario para que se
-                        // lea el texto.
                         var duracionReal = (t.FechaFinReal.Value - start).TotalMinutes;
                         end = duracionReal < 30 ? start.AddMinutes(30) : t.FechaFinReal.Value;
                     }
                     else
                     {
-                        // Si está pendiente o en progreso, usa el tiempo estimado.
                         decimal horas = t.HorasEstimadas > 0 ? t.HorasEstimadas : 1m;
                         end = start.AddHours((double)horas);
                     }
+
+                    // VALIDACIÓN DE LÍMITES DE SUBFASE
+                    bool fueraDeRango = false;
+                    DateTime? sfInicio = t.SubFase?.FechaInicio;
+                    DateTime? sfFin = t.SubFase?.FechaFinEstimada;
+
+                    if (sfInicio.HasValue && sfFin.HasValue)
+                    {
+                        // Si la tarea empieza antes o termina después de su subfase
+                        if (start < sfInicio.Value || end > sfFin.Value)
+                        {
+                            fueraDeRango = true;
+                        }
+                    }
+
+                    // Si está fuera de rango, forzamos un borde rojo
+                    string colorBorde = fueraDeRango ? "#dc3545" : (t.Estado == "Terminada" ? "#198754" : t.Estado == "En Progreso" ? "#ffc107" : "#0dcaf0");
 
                     listaEventos.Add(new
                     {
@@ -83,12 +156,11 @@ namespace NotebookValidator.Web.Controllers
                         start = start.ToString("yyyy-MM-ddTHH:mm:ss"),
                         end = end.ToString("yyyy-MM-ddTHH:mm:ss"),
                         allDay = false,
-                        editable = true, // las tareas SÍ se pueden arrastrar/redimensionar
-                        classNames = new[] { "evt-tarea" },
-                        backgroundColor = t.Estado == "Terminada" ? "#198754" :
-                                          t.Estado == "En Progreso" ? "#ffc107" : "#0dcaf0",
-                        borderColor = t.Estado == "Terminada" ? "#198754" :
-                                      t.Estado == "En Progreso" ? "#ffc107" : "#0dcaf0",
+                        editable = true,
+                        // Añadimos una clase especial si está fuera de rango
+                        classNames = fueraDeRango ? new[] { "evt-tarea", "tarea-fuera-rango" } : new[] { "evt-tarea" },
+                        backgroundColor = t.Estado == "Terminada" ? "#198754" : t.Estado == "En Progreso" ? "#ffc107" : "#0dcaf0",
+                        borderColor = colorBorde,
                         textColor = t.Estado == "En Progreso" ? "#000" : "#fff",
                         extendedProps = new
                         {
@@ -98,19 +170,21 @@ namespace NotebookValidator.Web.Controllers
                             proyecto = t.SubFase?.Fase?.Proyecto?.Nombre ?? "Desconocido",
                             estado = t.Estado,
                             horasEstimadas = t.HorasEstimadas,
-                            horasReales = t.HorasRealesDeducidas
+                            horasReales = t.HorasRealesDeducidas,
+                            subfaseInicio = sfInicio?.ToString("yyyy-MM-ddTHH:mm:ss"),
+                            subfaseFin = sfFin?.ToString("yyyy-MM-ddTHH:mm:ss"),
+                            fueraDeRango = fueraDeRango,
+                            // --- NUEVO: Nombres de fase y subfase ---
+                            fase = t.SubFase?.Fase?.NombreFase?.Replace("_", " ") ?? "—",
+                            subfase = t.SubFase?.Nombre ?? "—"
                         }
                     });
                 }
 
-                // 2. EVENTOS DE RESUMEN DIARIO (franja "Todo el día" de Semana/Día)
+                // --- 4. RESÚMENES DIARIOS ---
                 var resumenes = tareas
                     .Where(t => t.UsuarioAsignado != null)
-                    .GroupBy(t => new
-                    {
-                        Email = t.UsuarioAsignado.Email,
-                        Fecha = (t.FechaInicioReal ?? t.FechaCreacion).Date
-                    })
+                    .GroupBy(t => new { Email = t.UsuarioAsignado.Email, Fecha = (t.FechaInicioReal ?? t.FechaCreacion).Date })
                     .Select(g => new
                     {
                         Email = g.Key.Email,
@@ -121,28 +195,19 @@ namespace NotebookValidator.Web.Controllers
 
                 foreach (var r in resumenes)
                 {
-                    string iniciales = (r.Email != null && r.Email.Length >= 2)
-                        ? r.Email.Substring(0, 2).ToUpper() : "??";
-
+                    string iniciales = (r.Email != null && r.Email.Length >= 2) ? r.Email.Substring(0, 2).ToUpper() : "??";
                     listaEventos.Add(new
                     {
                         id = $"R_{iniciales}_{r.Fecha:yyyyMMdd}",
                         title = $"Resumen {iniciales}",
                         start = r.Fecha.ToString("yyyy-MM-dd"),
                         allDay = true,
-                        editable = false, // los resúmenes NO se arrastran
+                        editable = false,
                         classNames = new[] { "evt-resumen" },
                         backgroundColor = "#111424",
                         borderColor = "#6c757d",
                         textColor = "#fff",
-                        extendedProps = new
-                        {
-                            tipo = "resumen",
-                            email = r.Email,
-                            iniciales = iniciales,
-                            totalEstimado = r.TotalEstimado,
-                            totalReal = r.TotalReal
-                        }
+                        extendedProps = new { tipo = "resumen", email = r.Email, iniciales = iniciales, totalEstimado = r.TotalEstimado, totalReal = r.TotalReal }
                     });
                 }
 
@@ -150,8 +215,6 @@ namespace NotebookValidator.Web.Controllers
             }
             catch (Exception ex)
             {
-                // Devolvemos un 500 real para que el JS muestre el aviso de error
-                // y ofrezca "Reintentar" en vez de fallar en silencio.
                 Console.WriteLine($"Error en CalendarioController: {ex.Message}");
                 return StatusCode(500, new { error = "No se pudieron cargar las tareas del calendario." });
             }
@@ -275,6 +338,123 @@ namespace NotebookValidator.Web.Controllers
             {
                 Console.WriteLine($"Error al eliminar la tarea {req.Id}: {ex.Message}");
                 return StatusCode(500, new { error = "No se pudo eliminar la tarea debido a un error del servidor." });
+            }
+        }
+
+        // Clase para recibir el Payload del modal
+        public class ActualizarTareaRequest
+        {
+            public int Id { get; set; }
+            public string EmailResponsable { get; set; }
+            public string Estado { get; set; }
+            public DateTime Inicio { get; set; }
+            public DateTime? Fin { get; set; }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ActualizarTareaDetalle([FromBody] ActualizarTareaRequest req)
+        {
+            if (req.Id <= 0) return BadRequest(new { error = "Solicitud inválida." });
+
+            var tarea = await _context.TareasProyecto
+                .Include(t => t.UsuarioAsignado)
+                .FirstOrDefaultAsync(t => t.Id == req.Id);
+
+            if (tarea == null) return NotFound(new { error = "La tarea no existe." });
+
+            // Actualizar datos básicos
+            tarea.Estado = req.Estado;
+            tarea.FechaInicioReal = req.Inicio;
+
+            // Lógica de cálculo de finalización y horas
+            if (req.Fin.HasValue)
+            {
+                if (req.Estado == "Terminada")
+                {
+                    tarea.FechaFinReal = req.Fin.Value;
+                }
+
+                var horas = (decimal)(req.Fin.Value - req.Inicio).TotalHours;
+                if (horas > 0)
+                    tarea.HorasEstimadas = Math.Round(horas, 2);
+            }
+
+            // Actualizar el responsable
+            if (!string.IsNullOrEmpty(req.EmailResponsable) && (tarea.UsuarioAsignado == null || tarea.UsuarioAsignado.Email != req.EmailResponsable))
+            {
+                var user = await _userManager.FindByEmailAsync(req.EmailResponsable);
+                if (user != null)
+                    tarea.UsuarioAsignadoId = user.Id;
+            }
+            else if (string.IsNullOrEmpty(req.EmailResponsable))
+            {
+                tarea.UsuarioAsignadoId = null;
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return Ok(new { ok = true });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al actualizar tarea detallada {req.Id}: {ex.Message}");
+                return StatusCode(500, new { error = "No se pudo actualizar la tarea en la base de datos." });
+            }
+        }
+
+        // Clase para recibir el Payload de creación
+        public class CrearTareaRequest
+        {
+            public int SubFaseId { get; set; }
+            public string Nombre { get; set; }
+            public string EmailResponsable { get; set; }
+            public decimal HorasEstimadas { get; set; }
+            public DateTime Inicio { get; set; }
+            public DateTime Fin { get; set; }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CrearTareaGlobal([FromBody] CrearTareaRequest req)
+        {
+            if (req.SubFaseId <= 0 || string.IsNullOrWhiteSpace(req.Nombre))
+                return BadRequest(new { error = "Datos inválidos." });
+
+            var subfase = await _context.SubFasesProyecto.FindAsync(req.SubFaseId);
+            if (subfase == null) return NotFound(new { error = "Subfase no encontrada." });
+
+            // Buscar el ID del usuario en base a su email
+            string userId = null;
+            if (!string.IsNullOrEmpty(req.EmailResponsable))
+            {
+                var user = await _userManager.FindByEmailAsync(req.EmailResponsable);
+                if (user != null) userId = user.Id;
+            }
+
+            var nuevaTarea = new NotebookValidator.Web.Models.GestorProyectos.TareaProyecto
+            {
+                SubFaseProyectoId = req.SubFaseId,
+                Nombre = req.Nombre.Trim(),
+                HorasEstimadas = req.HorasEstimadas,
+                UsuarioAsignadoId = userId,
+                Estado = "Pendiente",
+                FechaCreacion = DateTime.Now,
+                FechaInicioReal = req.Inicio,
+                FechaFinReal = req.Fin
+            };
+
+            try
+            {
+                _context.TareasProyecto.Add(nuevaTarea);
+                await _context.SaveChangesAsync();
+                return Ok(new { ok = true });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al crear tarea global: {ex.Message}");
+                return StatusCode(500, new { error = "No se pudo guardar la tarea." });
             }
         }
     }

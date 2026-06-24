@@ -411,7 +411,7 @@
                             <label class="form-label small text-white-50">Nombre de la Tarea <span class="text-danger">*</span></label>
                             <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" id="txtNombreTarea" required>
                         </div>
-                        <div class="row mb-3">
+                        <div class="row mb-3 g-2">
                             <div class="col-6">
                                 <label class="form-label small text-white-50">Horas Estimadas (Plan) <span class="text-danger">*</span></label>
                                 <input type="number" step="0.5" class="form-control form-control-sm bg-dark text-white border-secondary" id="numHorasTarea" required>
@@ -425,6 +425,14 @@
                                         <option value="@usr.UsuarioId">@usr.Usuario.Email</option>
                                     }
                                 </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-white-50">Inicio (Hora)</label>
+                                <input type="datetime-local" class="form-control form-control-sm bg-dark text-white border-secondary" id="dtInicioTarea">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-white-50">Fin Estimado</label>
+                                <input type="datetime-local" class="form-control form-control-sm bg-dark text-white border-secondary" id="dtFinTarea">
                             </div>
                         </div>
                     </div>
@@ -746,23 +754,31 @@
         }
 
         document.getElementById('formNuevaTarea')?.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const btn = this.querySelector('button[type="submit"]');
-            btn.disabled = true; btn.innerHTML = 'Guardando...';
+                    e.preventDefault();
+                    const btn = this.querySelector('button[type="submit"]');
+                    btn.disabled = true; btn.innerHTML = 'Guardando...';
 
-            const formData = new FormData();
-            formData.append('subFaseId', document.getElementById('hdnSubfaseIdTarea').value);
-            formData.append('nombre', document.getElementById('txtNombreTarea').value);
-            formData.append('horasEstimadas', document.getElementById('numHorasTarea').value);
-            formData.append('usuarioAsignadoId', document.getElementById('selUsuarioTarea').value);
-            formData.append('__RequestVerificationToken', $('#antiForgeryForm input[name="__RequestVerificationToken"]').val());
+                    const formData = new FormData();
+                    formData.append('subFaseId', document.getElementById('hdnSubfaseIdTarea').value);
+                    formData.append('nombre', document.getElementById('txtNombreTarea').value);
+                    formData.append('horasEstimadas', document.getElementById('numHorasTarea').value);
+                    formData.append('usuarioAsignadoId', document.getElementById('selUsuarioTarea').value);
 
-            fetch('/Proyectos/AddTarea', { method: 'POST', body: formData })
-                .then(r => r.json()).then(data => {
-                    if (data.success) { toastr.success('Tarea creada'); setTimeout(() => window.location.reload(), 1000); }
-                    else { toastr.error(data.message); btn.disabled = false; btn.innerHTML = 'Guardar Tarea'; }
+                    // --- NUEVOS CAMPOS DE FECHA ---
+                    formData.append('fechaInicio', document.getElementById('dtInicioTarea').value);
+                    formData.append('fechaFin', document.getElementById('dtFinTarea').value);
+                    // ------------------------------
+
+                    formData.append('__RequestVerificationToken', $('#antiForgeryForm input[name="__RequestVerificationToken"]').val());
+
+                    fetch('/Proyectos/AddTarea', { method: 'POST', body: formData })
+                        .then(r => r.json()).then(data => {
+                            if (data.success) { toastr.success('Tarea creada');
+                                setTimeout(() => window.location.reload(), 1000); }
+                            else { toastr.error(data.message);
+                                btn.disabled = false; btn.innerHTML = 'Guardar Tarea'; }
+                        });
                 });
-        });
 
         function updateTareaStatus(tareaId, nuevoEstado) {
             const formData = new FormData();

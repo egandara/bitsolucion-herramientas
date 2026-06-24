@@ -420,59 +420,59 @@
         // ==========================================
         // INYECTAR NUEVA TAREA
         // ==========================================
-        function inyectarFilaSubfase(nombre = "", fechaIni = "", fechaFin = "", responsableVal = "") {
-            const container = document.getElementById('subfases-container');
-            const row = document.createElement('div');
-            row.className = 'row g-2 mb-2 align-items-center subfase-row p-2 bg-dark bg-opacity-50 border border-secondary border-opacity-50';
-            row.style.borderRadius = "6px";
-            row.style.transition = "background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease";
-
-            row.innerHTML = `
-                <input type="hidden" name="Subfases[${subfaseIndex}].Id" value="0" />
-                <div class="col-md-2">
-                    <label class="form-label text-white-50 small mb-1">Fase Principal</label>
-                    <select name="Subfases[${subfaseIndex}].FasePadre" class="form-select form-select-sm bg-dark text-white border-secondary" required>
-                        ${fasesOptions}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label text-white-50 small mb-1">Nombre Subfase</label>
-                    <input type="text" name="Subfases[${subfaseIndex}].Nombre" class="form-control form-control-sm bg-dark text-white border-secondary" value="${nombre}" required />
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label text-white-50 small mb-1">Inicio (Hora)</label>
-                    <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaInicio" class="form-control form-control-sm bg-dark text-white border-secondary input-inicio" value="${fechaIni}" />
-                </div>
-                <div class="col-md-1">
-                    <label class="form-label text-warning small mb-1">Horas <i class="bi bi-clock"></i></label>
-                    <input type="number" step="0.5" class="form-control form-control-sm bg-dark text-warning border-secondary input-horas text-center" min="0.5" placeholder="#" />
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label text-white-50 small mb-1">Fin Estimado</label>
-                    <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaFinEstimada" class="form-control form-control-sm bg-dark text-white border-secondary input-fin" value="${fechaFin}" />
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label text-white-50 small mb-1">Responsable</label>
-                    <div class="d-flex align-items-center gap-1">
-                        <select name="Subfases[${subfaseIndex}].ResponsableId" class="form-select form-select-sm bg-dark text-white border-secondary subfase-user-select" style="flex-grow: 1;">
-                            <option value="">-- Sin asignar --</option>
-                            ${usuariosOptions}
-                        </select>
-                        <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="¡Desliza por aquí para pintar al usuario!" style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;">
-                            <i class="bi bi-brush-fill text-warning opacity-75"></i>
+        function inyectarFilaSubfase(nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
+                    const container = document.getElementById('subfases-container');
+                    const row = document.createElement('div');
+                    row.className = 'row g-2 mb-2 align-items-center subfase-row p-2 bg-dark bg-opacity-50 border border-secondary border-opacity-50';
+                    row.style.borderRadius = "6px";
+                    row.style.transition = "background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease";
+                    row.innerHTML = `
+                        <input type="hidden" name="Subfases[${subfaseIndex}].Id" value="0" />
+                        <div class="col-md-2">
+                            <label class="form-label text-white-50 small mb-1">Fase Principal</label>
+                            <select name="Subfases[${subfaseIndex}].FasePadre" class="form-select form-select-sm bg-dark text-white border-secondary" required>
+                                ${fasesOptions}
+                            </select>
                         </div>
-                    </div>
-                </div>
-                <div class="col-md-1 text-center mt-4">
-                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button>
-                </div>
-            `;
-            container.appendChild(row);
-            if (responsableVal) row.querySelector('.subfase-user-select').value = responsableVal;
+                        <div class="col-md-2">
+                            <label class="form-label text-white-50 small mb-1">Nombre Subfase</label>
+                            <input type="text" name="Subfases[${subfaseIndex}].Nombre" class="form-control form-control-sm bg-dark text-white border-secondary" value="${nombre}" required />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label text-white-50 small mb-1">Inicio (Hora)</label>
+                            <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaInicio" class="form-control form-control-sm bg-dark text-white border-secondary input-inicio" value="${fechaIni}" />
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label text-warning small mb-1">Horas <i class="bi bi-clock"></i></label>
+                            <input type="number" step="0.5" class="form-control form-control-sm bg-dark text-warning border-secondary input-horas text-center" min="0.5" placeholder="#" value="${horasVal}" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label text-white-50 small mb-1">Fin Estimado</label>
+                            <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaFinEstimada" class="form-control form-control-sm bg-dark text-white border-secondary input-fin" value="${fechaFin}" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label text-white-50 small mb-1">Responsable</label>
+                            <div class="d-flex align-items-center gap-1">
+                                <select name="Subfases[${subfaseIndex}].ResponsableId" class="form-select form-select-sm bg-dark text-white border-secondary subfase-user-select" style="flex-grow: 1;">
+                                    <option value="">-- Sin asignar --</option>
+                                    ${usuariosOptions}
+                                </select>
+                                <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="¡Desliza por aquí para pintar al usuario!"
+        style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;">
+                                    <i class="bi bi-brush-fill text-warning opacity-75"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-1 text-center mt-4">
+                            <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button>
+                        </div>
+                    `;
+                    container.appendChild(row);
+                    if (responsableVal) row.querySelector('.subfase-user-select').value = responsableVal;
 
-            bindRowEvents(row);
-            subfaseIndex++;
-        }
+                    bindRowEvents(row);
+                    subfaseIndex++;
+                }
 
         document.getElementById('btnAddSubfase').addEventListener('click', () => inyectarFilaSubfase());
 
@@ -576,56 +576,58 @@
         }
 
         function procesarPegadoHeuristico() {
-            const texto = document.getElementById('txtPegadoMasivo').value.trim();
-            if (!texto) return;
-            const comboTemp = document.createElement('select');
-            comboTemp.innerHTML = `<option value=""></option>` + usuariosOptions;
-            const usuariosDict = Array.from(comboTemp.options).filter(o => o.value !== "").map(o => ({ id: o.value, emailText: o.text.toLowerCase() }));
-            const filas = texto.split('\n');
-            let agregadas = 0;
-            const regexFecha = /\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})\b/g;
+                    const texto = document.getElementById('txtPegadoMasivo').value.trim();
+                    if (!texto) return;
 
-            filas.forEach(fila => {
-                if (!fila.trim()) return;
-                const celdas = fila.split('\t').map(c => c.trim());
-                let nombre = ""; let fecha1 = ""; let fecha2 = ""; let respId = ""; let celdasRestantes = [];
-
-                celdas.forEach(celda => {
-                    let celdaLow = celda.toLowerCase();
-                    if (celdaLow.includes('%') || celdaLow.match(/\b\d+(,\d+)?\s*(días|dias|days|hrs|horas|d|h)\b/)) return;
-
-                    let matchesFecha = celda.match(regexFecha);
-                    if (matchesFecha && matchesFecha.length > 0) {
-                        matchesFecha.forEach(strFecha => {
-                            let parts = strFecha.split(/[\/\-]/);
-                            if(parts.length === 3) {
-                                let y = parts[2].length === 2 ? "20" + parts[2] : parts[2];
-                                let iso = y.length === 4 ? `${y}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}` : `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
-                                let dtLocal = `${iso}T${activeSchedule.entradaH.toString().padStart(2,'0')}:${activeSchedule.entradaM.toString().padStart(2,'0')}`;
-                                if (!fecha1) fecha1 = dtLocal; else if (!fecha2) fecha2 = dtLocal;
+                    // Función auxiliar interna para asegurar que exista en ambos archivos
+                    function parseDate(fechaTexto) {
+                        if (!fechaTexto) return "";
+                        let partes = fechaTexto.split(/[\/\-]/);
+                        if (partes.length === 3) {
+                            if (partes[0].length <= 2 && (partes[2].length === 4 || partes[2].length === 2)) {
+                                let year = partes[2].length === 2 ? "20" + partes[2] : partes[2];
+                                return `${year}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
                             }
-                        });
-                        if (celda.replace(regexFecha, '').trim().length < 3) return;
+                            if (partes[0].length === 4) return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
+                        }
+                        return "";
                     }
 
-                    if (!respId) {
-                        let userMatch = usuariosDict.find(u => (celda.includes('\x40') && celdaLow.includes(u.emailText)) || celdaLow.includes(u.emailText.split('\x40')[0]));
-                        if (userMatch) { respId = userMatch.id; if (celda.includes('\x40')) return; }
+                    const filas = texto.split('\n');
+                    let agregadas = 0;
+
+                    filas.forEach(fila => {
+                        if (!fila.trim()) return;
+
+                        // Corta por Tabulador de Excel (\t) O por barra vertical (|)
+                        const celdas = fila.split(/\t|\|/).map(c => c.trim());
+
+                        let nombre = celdas[0] || "";
+                        let fecha1 = parseDate(celdas[1]);
+                        let fecha2 = parseDate(celdas[2]);
+                        let horasVal = celdas[3] ? celdas[3].replace(',', '.') : "";
+
+                        if (fecha1) {
+                            fecha1 = `${fecha1}T${activeSchedule.entradaH.toString().padStart(2,'0')}:${activeSchedule.entradaM.toString().padStart(2,'0')}`;
+                        }
+                        if (fecha2) {
+                            fecha2 = `${fecha2}T${activeSchedule.salidaNormalH.toString().padStart(2,'0')}:${activeSchedule.salidaNormalM.toString().padStart(2,'0')}`;
+                        }
+
+                        if (nombre) {
+                            inyectarFilaSubfase(nombre, fecha1, fecha2, "", horasVal);
+                            agregadas++;
+                        }
+                    });
+
+                    if (agregadas > 0) {
+                        toastr.success(`¡Se procesaron ${agregadas} filas con éxito!`);
+                        document.getElementById('txtPegadoMasivo').value = '';
+                        bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide();
+                        actualizarTermometro();
+                        if (typeof guardarBorradorSilencioso === "function") guardarBorradorSilencioso();
                     }
-                    celdasRestantes.push(celda);
-                });
-
-                if (celdasRestantes.length > 0) nombre = celdasRestantes.reduce((a, b) => a.length > b.length ? a : b, "");
-                if (nombre || fecha1) { inyectarFilaSubfase(nombre, fecha1, fecha2, respId); agregadas++; }
-            });
-
-            if (agregadas > 0) {
-                toastr.success(`¡Se auto-generaron ${agregadas} subfases!`);
-                document.getElementById('txtPegadoMasivo').value = '';
-                bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide();
-                actualizarTermometro();
-            }
-        }
+                }
 
         document.getElementById('formEditProject').addEventListener('submit', function() {
             var btn = document.getElementById('btnSubmit');

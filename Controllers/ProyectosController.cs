@@ -1309,7 +1309,7 @@ namespace NotebookValidator.Web.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> AddTarea(int subFaseId, string nombre, decimal horasEstimadas, string? usuarioAsignadoId)
+        public async Task<IActionResult> AddTarea(int subFaseId, string nombre, decimal horasEstimadas, string? usuarioAsignadoId, DateTime? fechaInicio, DateTime? fechaFin)
         {
             if (string.IsNullOrWhiteSpace(nombre)) return Json(new { success = false, message = "Falta el nombre." });
 
@@ -1320,7 +1320,9 @@ namespace NotebookValidator.Web.Controllers
                 HorasEstimadas = horasEstimadas,
                 UsuarioAsignadoId = string.IsNullOrWhiteSpace(usuarioAsignadoId) ? null : usuarioAsignadoId,
                 Estado = "Pendiente",
-                FechaCreacion = DateTime.Now
+                FechaCreacion = DateTime.Now,
+                FechaInicioReal = fechaInicio,  // <-- NUEVO
+                FechaFinReal = fechaFin         // <-- NUEVO
             };
 
             _context.TareasProyecto.Add(tarea);
