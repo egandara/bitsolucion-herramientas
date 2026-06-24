@@ -27,3 +27,8 @@ node_modules/
 /credentials.json
 /token.json
 /token_respaldo.json
+
+# Excluir tokens de respaldo de Google y archivos JSON de autenticación
+token_respaldo.json
+**/token_respaldo.json
+.json/Google.Apis.Auth.*

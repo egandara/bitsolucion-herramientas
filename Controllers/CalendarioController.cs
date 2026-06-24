@@ -34,13 +34,6 @@ namespace NotebookValidator.Web.Controllers
         {
             try
             {
-                // NOTA SOBRE ESCALA:
-                // Esta vista es "panorámica/global", por eso carga todas las tareas en
-                // una sola pasada: el front necesita el universo completo para poblar
-                // los filtros (usuario/proyecto), calcular la sobrecarga por día y armar
-                // el resumen del rango. Si en el futuro el volumen crece mucho, la mejora
-                // es exponer un modo paginado por rango (recibiendo ?start=&end= que envía
-                // FullCalendar) PERO manteniendo este endpoint para los filtros globales.
                 var tareas = await _context.TareasProyecto
                     .Include(t => t.SubFase)
                         .ThenInclude(s => s.Fase)
@@ -49,9 +42,8 @@ namespace NotebookValidator.Web.Controllers
                     .AsNoTracking()
                     .ToListAsync();
 
-                // Consultamos las subfases que tienen fechas asignadas para pintarlas
                 var subfases = await _context.SubFasesProyecto
-                    .Include(s => s.Fase) // CORREGIDO: Es Fase, no FaseProyecto
+                    .Include(s => s.Fase)
                         .ThenInclude(f => f.Proyecto)
                     .Include(s => s.Responsable)
                     .Where(s => s.FechaInicio.HasValue)
@@ -61,7 +53,7 @@ namespace NotebookValidator.Web.Controllers
                 var listaEventos = new List<object>();
 
                 // --- 1. EVENTOS DE FASE (Background) ---
-                var fasesAgrupadas = subfases.GroupBy(s => s.Fase); // CORREGIDO
+                var fasesAgrupadas = subfases.GroupBy(s => s.Fase);
                 foreach (var g in fasesAgrupadas)
                 {
                     var fase = g.Key;
@@ -75,14 +67,14 @@ namespace NotebookValidator.Web.Controllers
                         id = "F_" + fase.Id,
                         title = "Fase: " + fase.NombreFase.Replace("_", " "),
                         start = minStart?.ToString("yyyy-MM-dd"),
-                        end = maxEnd?.AddDays(1).ToString("yyyy-MM-dd"), // FullCalendar usa el fin como exclusivo
+                        end = maxEnd?.AddDays(1).ToString("yyyy-MM-dd"),
                         display = "background",
-                        backgroundColor = "rgba(13, 202, 240, 0.08)", // Fondo Cyan ultra suave
+                        backgroundColor = "rgba(13, 202, 240, 0.04)",
                         extendedProps = new { tipo = "fase", proyecto = fase.Proyecto?.Nombre }
                     });
                 }
 
-                // --- 2. EVENTOS DE SUBFASE (Todo el día) ---
+                // --- 2. EVENTOS DE SUBFASE (Todo el día) - ¡MEJORADO SIN LÍNEAS! ---
                 foreach (var sub in subfases)
                 {
                     string email = sub.Responsable?.Email ?? "Sin_Asignar";
@@ -95,9 +87,9 @@ namespace NotebookValidator.Web.Controllers
                         start = sub.FechaInicio?.ToString("yyyy-MM-dd"),
                         end = sub.FechaFinEstimada?.AddDays(1).ToString("yyyy-MM-dd"),
                         allDay = true,
-                        editable = false, // Subfases son estáticas visualmente por ahora
-                        backgroundColor = "transparent", // <--- MEJORA: Fondo transparente
-                        borderColor = "#ffc107",         // <--- MEJORA: Borde sólido amarillo
+                        editable = false,
+                        backgroundColor = "rgba(255, 193, 7, 0.12)", // Barra sólida muy suave
+                        borderColor = "transparent",                 // CERO bordes/líneas
                         textColor = "#ffc107",
                         classNames = new[] { "evt-subfase" },
                         extendedProps = new
@@ -114,17 +106,16 @@ namespace NotebookValidator.Web.Controllers
                 // --- 3. EVENTOS DE TAREAS ---
                 foreach (var t in tareas)
                 {
-                    string email = t.UsuarioAsignado?.Email ?? "Sin_Asignar";
+                    string email = t.UsuarioAsignado?.Email ?? "";
                     string iniciales = email.Length >= 2 ? email.Substring(0, 2).ToUpper() : "??";
                     string nombreTarea = string.IsNullOrWhiteSpace(t.Nombre) ? "Sin Título" : t.Nombre;
 
-                    DateTime start = t.FechaInicioReal ?? t.FechaCreacion;
+                    DateTime start = t.FechaInicioReal ?? new DateTime(t.FechaCreacion.Year, t.FechaCreacion.Month, t.FechaCreacion.Day, 9, 0, 0);
                     DateTime end;
 
                     if (t.Estado == "Terminada" && t.FechaFinReal.HasValue)
                     {
-                        var duracionReal = (t.FechaFinReal.Value - start).TotalMinutes;
-                        end = duracionReal < 30 ? start.AddMinutes(30) : t.FechaFinReal.Value;
+                        end = t.FechaFinReal.Value;
                     }
                     else
                     {
@@ -132,22 +123,21 @@ namespace NotebookValidator.Web.Controllers
                         end = start.AddHours((double)horas);
                     }
 
-                    // VALIDACIÓN DE LÍMITES DE SUBFASE
                     bool fueraDeRango = false;
                     DateTime? sfInicio = t.SubFase?.FechaInicio;
                     DateTime? sfFin = t.SubFase?.FechaFinEstimada;
 
                     if (sfInicio.HasValue && sfFin.HasValue)
                     {
-                        // Si la tarea empieza antes o termina después de su subfase
-                        if (start < sfInicio.Value || end > sfFin.Value)
-                        {
-                            fueraDeRango = true;
-                        }
+                        if (start < sfInicio.Value || end > sfFin.Value) fueraDeRango = true;
                     }
 
-                    // Si está fuera de rango, forzamos un borde rojo
-                    string colorBorde = fueraDeRango ? "#dc3545" : (t.Estado == "Terminada" ? "#198754" : t.Estado == "En Progreso" ? "#ffc107" : "#0dcaf0");
+                    string claseEstado = "evt-pendiente";
+                    if (t.Estado == "En Progreso") claseEstado = "evt-progreso";
+                    if (t.Estado == "Terminada") claseEstado = "evt-terminada";
+
+                    var listaClases = new List<string> { "evt-tarea", claseEstado };
+                    if (fueraDeRango) listaClases.Add("tarea-fuera-rango");
 
                     listaEventos.Add(new
                     {
@@ -157,11 +147,10 @@ namespace NotebookValidator.Web.Controllers
                         end = end.ToString("yyyy-MM-ddTHH:mm:ss"),
                         allDay = false,
                         editable = true,
-                        // Añadimos una clase especial si está fuera de rango
-                        classNames = fueraDeRango ? new[] { "evt-tarea", "tarea-fuera-rango" } : new[] { "evt-tarea" },
-                        backgroundColor = t.Estado == "Terminada" ? "#198754" : t.Estado == "En Progreso" ? "#ffc107" : "#0dcaf0",
-                        borderColor = colorBorde,
-                        textColor = t.Estado == "En Progreso" ? "#000" : "#fff",
+                        classNames = listaClases.ToArray(),
+                        backgroundColor = "transparent",
+                        borderColor = "transparent",
+                        textColor = "#fff",
                         extendedProps = new
                         {
                             tipo = "tarea",
@@ -174,7 +163,6 @@ namespace NotebookValidator.Web.Controllers
                             subfaseInicio = sfInicio?.ToString("yyyy-MM-ddTHH:mm:ss"),
                             subfaseFin = sfFin?.ToString("yyyy-MM-ddTHH:mm:ss"),
                             fueraDeRango = fueraDeRango,
-                            // --- NUEVO: Nombres de fase y subfase ---
                             fase = t.SubFase?.Fase?.NombreFase?.Replace("_", " ") ?? "—",
                             subfase = t.SubFase?.Nombre ?? "—"
                         }
@@ -216,7 +204,7 @@ namespace NotebookValidator.Web.Controllers
             catch (Exception ex)
             {
                 Console.WriteLine($"Error en CalendarioController: {ex.Message}");
-                return StatusCode(500, new { error = "No se pudieron cargar las tareas del calendario." });
+                return StatusCode(500, new { error = "No se pudieron cargar las tareas." });
             }
         }
 

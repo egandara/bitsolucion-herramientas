@@ -18,7 +18,7 @@
         --cal-red: #ef4444;
     }
 
-    /* ===== Encabezado ===== */
+    /* ===== Encabezado y Filtros ===== */
     .cal-header-title {
         color: var(--cal-text);
     }
@@ -60,7 +60,6 @@
             outline-offset: 1px;
         }
 
-        /* Estado "apagado": el filtro de ese estado está oculto */
         .cal-chip.is-off {
             opacity: 0.35;
         }
@@ -88,7 +87,6 @@
             background-color: var(--cal-green);
         }
 
-    /* ===== Filtros ===== */
     .cal-filtro {
         display: inline-flex;
         align-items: center;
@@ -266,7 +264,7 @@
         }
     }
 
-    /* ===== Calendario ===== */
+    /* ===== FullCalendar: Estructura Base y Botonera ===== */
     #calendario-global {
         background-color: var(--cal-bg);
         border-radius: 10px;
@@ -276,31 +274,7 @@
     }
 
     .fc-theme-standard td, .fc-theme-standard th {
-        border-color: var(--cal-border);
-    }
-
-    .fc-col-header-cell {
-        background-color: var(--cal-panel);
-        color: var(--cal-cyan);
-        padding: 10px 0;
-    }
-
-    .fc-daygrid-day-number {
-        color: rgba(255,255,255,0.7);
-        font-family: ui-monospace, monospace;
-        font-weight: 600;
-    }
-
-    /* "Hoy" en cyan, neutral frente a los tres colores de estado. */
-    .fc-day-today {
-        background-color: rgba(13,202,240,0.08) !important;
-    }
-
-    /* Día con sobrecarga: alguien supera su capacidad diaria planificada. */
-    .fc-day.cal-overload,
-    .fc-daygrid-day.cal-overload {
-        background-color: rgba(239,68,68,0.10) !important;
-        box-shadow: inset 3px 0 0 var(--cal-red);
+        border-color: rgba(255, 255, 255, 0.03) !important; /* Líneas de la grilla reducidas */
     }
 
     .fc .fc-toolbar-title {
@@ -329,13 +303,148 @@
     .fc-event {
         cursor: pointer;
         border-radius: 4px;
-        border: 1px solid rgba(255,255,255,0.2) !important;
-        margin-bottom: 2px;
     }
 
-    /* Vista Mes: tareas como "list-item" (punto de color + texto). */
-    .fc-dayGridMonth-view .fc-daygrid-event-dot {
-        border-width: 5px !important;
+    /* ===== FullCalendar: Look Minimalista Avanzado (Estilo Google) ===== */
+
+    /* 1. Eliminación radical de líneas verticales en la grilla mensual */
+    .fc-daygrid-body .fc-scrollgrid-sync-table td {
+        border-left: none !important;
+        border-right: none !important;
+    }
+
+    /* 2. Cabeceras de los días superiores (LUN, MAR, MIÉ...) */
+    .fc .fc-col-header-cell {
+        padding: 12px 0 !important;
+        font-weight: 600 !important;
+        text-transform: uppercase;
+        font-size: 0.72rem !important;
+        letter-spacing: 0.5px;
+        border: none !important;
+        background-color: transparent !important;
+    }
+
+    .fc .fc-col-header-cell-cushion {
+        color: #6a737d !important;
+    }
+
+    /* 3. Estructuración fina de las celdas diarias */
+    .fc .fc-daygrid-day {
+        background-color: rgba(255, 255, 255, 0.005);
+        transition: background-color 0.2s ease;
+    }
+
+        .fc .fc-daygrid-day:hover {
+            background-color: rgba(255, 255, 255, 0.015) !important;
+        }
+
+    .fc .fc-day-other {
+        background-color: rgba(0, 0, 0, 0.25) !important;
+    }
+
+    .fc-day.cal-overload,
+    .fc-daygrid-day.cal-overload {
+        background-color: rgba(239, 68, 68, 0.08) !important;
+        box-shadow: inset 3px 0 0 var(--cal-red) !important;
+    }
+
+    /* 4. Renderizado de los números de los días */
+    .fc .fc-daygrid-day-top {
+        flex-direction: row-reverse !important;
+        padding: 6px 10px 2px 10px !important;
+    }
+
+    .fc .fc-daygrid-day-number {
+        color: #767d85 !important;
+        font-family: ui-monospace, monospace;
+        font-size: 0.82rem !important;
+        font-weight: 600;
+        text-decoration: none !important;
+    }
+
+    /* 5. FIX PERFECCIONADO: Alineación e inscripción del Día Actual (Hoy) */
+    .fc .fc-day-today {
+        background-color: rgba(13, 202, 240, 0.01) !important;
+    }
+
+        .fc .fc-day-today .fc-daygrid-day-number {
+            background-color: #0dcaf0 !important;
+            color: #000000 !important;
+            font-weight: 700 !important;
+            width: 24px !important;
+            height: 24px !important;
+            display: inline-block !important;
+            text-align: center !important;
+            line-height: 24px !important; /* Centrado vertical impecable sin cortes */
+            border-radius: 50% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+    /* Indicador de número de semanas, línea temporal y slots horariales */
+    .fc .fc-timegrid-now-indicator-arrow, .fc-weeknumber {
+        font-size: 0.75rem !important;
+        opacity: 0.6;
+        color: var(--cal-cyan) !important;
+    }
+
+    .fc .fc-daygrid-week-number {
+        background-color: var(--cal-panel) !important;
+        color: var(--cal-cyan) !important;
+        font-family: ui-monospace, monospace;
+        font-size: 0.7rem;
+        border-radius: 0 0 6px 0;
+        padding: 2px 6px !important;
+    }
+
+    .fc .fc-timegrid-axis, .fc .fc-timegrid-slot {
+        background-color: var(--cal-panel) !important;
+    }
+
+    .fc-timegrid-slot {
+        height: 3em !important;
+    }
+
+    .fc .fc-non-business {
+        background-color: rgba(0,0,0,0.28) !important;
+    }
+
+    .fc .fc-timegrid-now-indicator-line {
+        border-color: var(--cal-red);
+    }
+
+    .fc .fc-timegrid-now-indicator-arrow {
+        border-color: var(--cal-red);
+        color: var(--cal-red);
+    }
+
+    /* ===== Diseño de Cápsulas/Píldoras de Eventos (Google Style) ===== */
+    .fc-daygrid-event {
+        border: none !important;
+        border-radius: 5px !important;
+        padding: 4px 8px !important;
+        margin: 2px 6px !important;
+        font-size: 0.75rem !important;
+        font-weight: 500 !important;
+        box-shadow: none !important;
+        background-color: transparent !important;
+    }
+
+        .fc-daygrid-event:hover {
+            filter: brightness(1.12);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3) !important;
+        }
+
+    .fc-daygrid-event-dot {
+        display: none !important; /* Remueve los dots por defecto */
+    }
+
+    .fc-dayGridMonth-view .evt-resumen {
+        display: none !important;
+    }
+
+    .evt-resumen .fc-event-main {
+        padding: 1px 4px;
     }
 
     .cal-month-evt-text {
@@ -347,49 +456,62 @@
         white-space: nowrap;
     }
 
-    /* Número de semana: overlay nativo y pequeño de FullCalendar */
-    .fc .fc-daygrid-week-number {
-        background-color: var(--cal-panel) !important;
-        color: var(--cal-cyan) !important;
-        font-family: ui-monospace, monospace;
-        font-size: 0.7rem;
-        border-radius: 0 0 6px 0;
+    /* Mapeo cromático fluido por estados de tarea */
+    .fc-daygrid-event.evt-pendiente {
+        background-color: rgba(13, 202, 240, 0.09) !important;
+        border-left: 3px solid #0dcaf0 !important;
+    }
+
+        .fc-daygrid-event.evt-pendiente .fc-event-title {
+            color: #0dcaf0 !important;
+        }
+
+    .fc-daygrid-event.evt-progreso {
+        background-color: rgba(255, 193, 7, 0.08) !important;
+        border-left: 3px solid #ffc107 !important;
+    }
+
+        .fc-daygrid-event.evt-progreso .fc-event-title {
+            color: #ffc107 !important;
+        }
+
+    .fc-daygrid-event.evt-terminada {
+        background-color: rgba(255, 255, 255, 0.02) !important;
+        border-left: 3px solid #484f58 !important;
+        opacity: 0.4;
+    }
+
+        .fc-daygrid-event.evt-terminada .fc-event-title {
+            color: #8b949e !important;
+            text-decoration: line-through;
+        }
+
+    /* Subfases extendidas sin bordes de caja toscos */
+    .fc-daygrid-event.evt-subfase {
+        border: none !important;
+        border-radius: 4px !important;
         padding: 2px 6px !important;
+        font-weight: 600 !important;
     }
 
-    .fc .fc-timegrid-axis {
-        background-color: var(--cal-panel) !important;
+    .fc-daygrid-event.tarea-fuera-rango {
+        background-color: rgba(220, 53, 69, 0.09) !important;
+        border-left: 3px solid #dc3545 !important;
     }
 
-    .fc-timegrid-slot {
-        height: 3em !important;
+        .fc-daygrid-event.tarea-fuera-rango .fc-event-title {
+            color: #dc3545 !important;
+        }
+
+    .fc .fc-daygrid-more-link {
+        color: #0dcaf0 !important;
+        font-size: 0.72rem !important;
+        font-weight: 600;
+        margin-left: 8px !important;
+        text-decoration: none !important;
     }
 
-    /* Sombrear horas FUERA del horario hábil en Semana/Día. */
-    .fc .fc-non-business {
-        background-color: rgba(0,0,0,0.28) !important;
-    }
-
-    /* Línea roja de "ahora" */
-    .fc .fc-timegrid-now-indicator-line {
-        border-color: var(--cal-red);
-    }
-
-    .fc .fc-timegrid-now-indicator-arrow {
-        border-color: var(--cal-red);
-        color: var(--cal-red);
-    }
-
-    /* Ocultar Resúmenes diarios en la vista de Mes (se ven en Semana/Día) */
-    .fc-dayGridMonth-view .evt-resumen {
-        display: none !important;
-    }
-
-    .evt-resumen .fc-event-main {
-        padding: 1px 4px;
-    }
-
-    /* Burbuja Tooltip */
+    /* ===== Componentes Adicionales (Tooltips, Modales, Contextual, Clones) ===== */
     .custom-cal-tooltip {
         --bs-tooltip-bg: var(--cal-panel);
         --bs-tooltip-color: #ffffff;
@@ -407,7 +529,6 @@
             border-top-color: var(--cal-cyan);
         }
 
-    /* ===== Modal de detalle de tarea ===== */
     .cal-modal .modal-content {
         background-color: var(--cal-panel);
         color: var(--cal-text);
@@ -474,7 +595,6 @@
             color: var(--cal-green);
         }
 
-    /* ===== Toast de feedback ===== */
     .cal-toast {
         position: fixed;
         right: 24px;
@@ -498,44 +618,23 @@
             border-color: var(--cal-green);
         }
 
-    /* ===== Efecto Visual de Duplicación (ALT) ===== */
-    /* Cuando el body tiene esta clase, obligamos a la original a verse semi-transparente como un "fantasma" */
     body.cal-alt-cloning .fc-event[style*="visibility: hidden"] {
         visibility: visible !important;
         opacity: 0.3 !important;
         filter: grayscale(0.8);
     }
 
-    /* El clon que está pegado al cursor (el "espejo") recibe un borde llamativo */
     body.cal-alt-cloning .fc-event-dragging {
         box-shadow: 0 0 15px var(--cal-cyan) !important;
         border: 1px dashed var(--cal-cyan) !important;
         opacity: 0.9 !important;
     }
 
-    @@media (max-width: 768px) {
-        .cal-resumen-label {
-            border-right: none;
-            border-bottom: 1px solid var(--cal-border);
-            padding-right: 0;
-            padding-bottom: 8px;
-            width: 100%;
-        }
-
-        .cal-select {
-            min-width: 0;
-            flex: 1;
-        }
-    }
-
-    /* ===== MEJORAS UX ===== */
-    /* Limitar altura del carril de subfases "Todo el día" para no empujar la grilla */
     .fc-timeGridWeek-view .fc-daygrid-body {
         max-height: 120px;
         overflow-y: auto;
     }
 
-    /* Menú contextual (Click derecho) */
     .cal-ctx-menu {
         position: absolute;
         z-index: 1080;
@@ -558,6 +657,21 @@
                 background-color: rgba(13, 202, 240, 0.15);
                 color: #0dcaf0 !important;
             }
+
+    @@media (max-width: 768px) {
+        .cal-resumen-label {
+            border-right: none;
+            border-bottom: 1px solid var(--cal-border);
+            padding-right: 0;
+            padding-bottom: 8px;
+            width: 100%;
+        }
+
+        .cal-select {
+            min-width: 0;
+            flex: 1;
+        }
+    }
 </style>
 
 <div class="container-fluid mt-3">
@@ -1152,7 +1266,6 @@
 
         setText('cal-modal-titulo', titulo || 'Tarea');
         setText('cal-modal-proyecto', p.proyecto || '—');
-
         setText('cal-modal-fase', p.fase || '—');
         setText('cal-modal-subfase', p.subfase || '—');
 
@@ -1168,10 +1281,21 @@
         document.getElementById('cal-modal-btn-guardar').dataset.id = info.event.id;
 
         var userSelect = document.getElementById('cal-modal-edit-responsable');
+
+        // CORREGIDO: Si el combo del filtro está vacío o no tiene al usuario, inyectamos las opciones de forma estática desde el backend de usuarios globales
+        if (document.getElementById('cal-filtro-usuario').options.length <= 1) {
+        // Generamos una opción temporal con el email asignado para asegurar su visualización y edición
+        if (p.email) {
+        userSelect.innerHTML = `<option value="">Sin asignar</option><option value="${p.email}" selected>${p.email}</option>`;
+        } else {
+        userSelect.innerHTML = `<option value="">Sin asignar</option>`;
+        }
+        } else {
         userSelect.innerHTML = document.getElementById('cal-filtro-usuario').innerHTML;
         userSelect.querySelector('option[value=""]').textContent = "Sin asignar";
-
         userSelect.value = p.email || '';
+        }
+
         document.getElementById('cal-modal-edit-estado').value = p.estado;
         document.getElementById('cal-modal-edit-inicio').value = toLocalIso(info.event.start).substring(0, 16);
         document.getElementById('cal-modal-edit-fin').value = info.event.end ? toLocalIso(info.event.end).substring(0, 16) : '';
@@ -1346,7 +1470,7 @@
         }
 
         // ============================================================
-        // CONSTRUIR CALENDARIO
+        // CONSTRUIR CALENDARIO (ESTILO GOOGLE COMPLETAMENTE LIMPIO)
         // ============================================================
         function construirCalendario(eventos) {
         calendar = new FullCalendar.Calendar(calendarEl, {
@@ -1392,7 +1516,12 @@
         eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
 
         views: {
-        dayGridMonth: { weekNumbers: true, dayMaxEvents: 4, eventDisplay: 'list-item' },
+        dayGridMonth: {
+        weekNumbers: true,
+        showNonCurrentDates: false,
+        fixedWeekCount: false, // Remueve dinámicamente las semanas completamente vacías
+        eventDisplay: 'block'  // Cambiado a block para renderizar como píldora corrida estilo Google
+        },
         timeGridWeek: { weekNumbers: false, allDaySlot: true },
         timeGridDay: { weekNumbers: false }
         },
@@ -1424,15 +1553,15 @@
         eventMouseLeave: ocultarTooltip,
 
         eventDidMount: function(info) {
+        // 1. Alerta Roja para desfasajes temporales legales
         if (info.event.extendedProps.fueraDeRango) {
         var titleEl = info.el.querySelector('.fc-event-title');
         if (titleEl) {
         titleEl.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger me-1" title="¡Excede límites!"></i>' + titleEl.innerHTML;
         }
-        info.el.style.boxShadow = "0 0 10px rgba(220, 53, 69, 0.9)";
-        info.el.style.borderWidth = "2px";
         }
 
+        // 2. Click derecho contextual
         info.el.addEventListener('contextmenu', function(e) {
         if (info.event.extendedProps.tipo === 'tarea') {
         e.preventDefault();
