@@ -1120,22 +1120,57 @@
 
         var visibles = recomputarFiltrados();
 
+        // === PASO 1: Procesar primero las Subfases estructurales ===
         visibles.forEach(function (ev) {
         var p = ev.extendedProps;
-        // Procesamos únicamente eventos de tipo tarea que contienen horas asignadas
-        if (!p || p.tipo !== 'tarea') return;
+        if (!p || p.tipo !== 'subfase') return;
 
-        var evStart = parseLocal(ev.start);
-        if (evStart >= start && evStart < end) {
         var ini = p.iniciales;
         var email = p.email;
         if (!ini || email === 'Sin_Asignar' || email.trim() === '') return;
 
+        var evStart = parseLocal(ev.start);
+        var evEnd = ev.end ? parseLocal(ev.end) : evStart;
+
+        // Calculamos la intersección exacta de la subfase con el mes/semana en pantalla
+        var overlapStart = new Date(Math.max(evStart, start));
+        var overlapEnd = new Date(Math.min(evEnd, end));
+
+        if (overlapEnd > overlapStart) {
+        var diffHoras = (overlapEnd - overlapStart) / 3600000;
+        if (diffHoras > 0) {
         if (!totales[ini]) {
-        totales[ini] = { est: 0, real: 0, email: email };
+        totales[ini] = { est: 0, real: 0, email: email, subfasesContadas: {} };
+        }
+        totales[ini].est += diffHoras;
+
+        // Registramos que esta subfase ya aportó sus horas globales para este usuario
+        var nomeSubfase = p.subfase || ev.title;
+        totales[ini].subfasesContadas[nomeSubfase] = true;
+        }
+        }
+        });
+
+        // === PASO 2: Procesar las Tareas (Evitando la doble contabilidad) ===
+        visibles.forEach(function (ev) {
+        var p = ev.extendedProps;
+        if (!p || p.tipo !== 'tarea') return;
+
+        var ini = p.iniciales;
+        var email = p.email;
+        if (!ini || email === 'Sin_Asignar' || email.trim() === '') return;
+
+        var evStart = parseLocal(ev.start);
+        if (evStart >= start && evStart < end) {
+        if (!totales[ini]) {
+        totales[ini] = { est: 0, real: 0, email: email, subfasesContadas: {} };
         }
 
+        var nomeSubfase = p.subfase || '—';
+        // Regla de Oro: Si la subfase superior ya sumó sus horas, ignoramos la tarea hija
+        if (!totales[ini].subfasesContadas[nomeSubfase]) {
         totales[ini].est += parseFloat(p.horasEstimadas) || 0;
+        }
         totales[ini].real += parseFloat(p.horasReales) || 0;
         }
         });
@@ -1532,7 +1567,7 @@
         }
 
         // ============================================================
-        // CONSTRUIR CALENDARIO (RESUMEN SEMANAL DE ALTA LEGIBILIDAD)
+        // CONSTRUIR CALENDARIO (CON REGOLARIZACIÓN DE HORAS SUBFASE/TAREA)
         // ============================================================
         function construirCalendario(eventos) {
         calendar = new FullCalendar.Calendar(calendarEl, {
@@ -1614,7 +1649,7 @@
         eventMouseEnter: mostrarTooltip,
         eventMouseLeave: ocultarTooltip,
 
-        // --- BURBUJA SEMANAL MINIMALISTA CON ALTO CONTRASTE ---
+        // --- BURBUJA SEMANAL INTEGRADA CON LA REGLA DE SUBFASES ---
         weekNumberDidMount: function(info) {
         var weekStart = info.date;
         var weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -1622,23 +1657,53 @@
         var visibles = recomputarFiltrados();
         var cargaSemanal = {};
 
+        // 1. Pasada de Subfases semanales
         visibles.forEach(function(ev) {
         var p = ev.extendedProps;
-        if (!p || p.tipo !== 'tarea') return; // Sumamos únicamente horas de tareas
+        if (!p || p.tipo !== 'subfase') return;
 
-        var evStart = parseLocal(ev.start);
-        if (evStart >= weekStart && evStart < weekEnd) {
         var ini = p.iniciales;
         if (!ini || p.email === 'Sin_Asignar') return;
 
+        var evStart = parseLocal(ev.start);
+        var evEnd = ev.end ? parseLocal(ev.end) : evStart;
+
+        var overlapStart = new Date(Math.max(evStart, weekStart));
+        var overlapEnd = new Date(Math.min(evEnd, weekEnd));
+
+        if (overlapEnd > overlapStart) {
+        var diffHoras = (overlapEnd - overlapStart) / 3600000;
+        if (diffHoras > 0) {
         if (!cargaSemanal[ini]) {
-        cargaSemanal[ini] = { est: 0 };
+        cargaSemanal[ini] = { est: 0, subfasesContadas: {} };
         }
-        cargaSemanal[ini].est += parseFloat(p.horasEstimadas) || 0;
+        cargaSemanal[ini].est += diffHoras;
+        var nomeSubfase = p.subfase || ev.title;
+        cargaSemanal[ini].subfasesContadas[nomeSubfase] = true;
+        }
         }
         });
 
-        // Contenedor con color de texto blanco forzado para evitar herencias oscuras
+        // 2. Pasada de Tareas semanales (Filtrando duplicados de subfase)
+        visibles.forEach(function(ev) {
+        var p = ev.extendedProps;
+        if (!p || p.tipo !== 'tarea') return;
+
+        var ini = p.iniciales;
+        if (!ini || p.email === 'Sin_Asignar') return;
+
+        var evStart = parseLocal(ev.start);
+        if (evStart >= weekStart && evStart < weekEnd) {
+        if (!cargaSemanal[ini]) {
+        cargaSemanal[ini] = { est: 0, subfasesContadas: {} };
+        }
+        var nomeSubfase = p.subfase || '—';
+        if (!cargaSemanal[ini].subfasesContadas[nomeSubfase]) {
+        cargaSemanal[ini].est += parseFloat(p.horasEstimadas) || 0;
+        }
+        }
+        });
+
         var html = '<div class="font-monospace p-1" style="font-size:0.75rem; min-width:150px; line-height:1.5; color:#ffffff !important;">' +
         '<div class="fw-bold text-info border-bottom border-secondary pb-1 mb-2"><i class="bi bi-calendar3 me-1"></i>Semana ' + info.num + '</div>';
 
@@ -1646,7 +1711,6 @@
         if (keys.length === 0) {
         html += '<div style="color: rgba(255,255,255,0.4); font-style: italic; padding: 2px 0;">0.0 h asignadas</div>';
         } else {
-        // Ordenamos de mayor a menor carga horaria
         keys.sort(function(a, b) { return cargaSemanal[b].est - cargaSemanal[a].est; });
         keys.forEach(function(ini) {
         var c = cargaSemanal[ini];
