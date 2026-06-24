@@ -31,15 +31,23 @@ namespace NotebookValidator.Web.Models.GestorProyectos
         public string? DriveSubFolderId { get; set; } // Para adjuntar documentos específicos
 
         // =========================================================
-        // NUEVAS COLUMNAS: FECHAS DE LA SUBFASE
+        // FECHAS Y TIEMPOS DE LA SUBFASE (WBS)
         // =========================================================
         public DateTime? FechaInicio { get; set; }
         public DateTime? FechaFinEstimada { get; set; }
 
+        // ¡NUEVO! Guardamos la estimación de horas directamente en la BD
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal HorasEstimadas { get; set; }
+
+        // ¡NUEVO! Para cuando necesites contrastar el plan vs la realidad
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal HorasReales { get; set; }
+
         // Relación para comentarios específicos de la subfase
         public ICollection<ComentarioProyecto> Comentarios { get; set; } = new List<ComentarioProyecto>();
 
-        // NUEVO: Relación con las Tareas específicas
+        // Relación con las Tareas específicas
         public virtual ICollection<TareaProyecto> Tareas { get; set; } = new List<TareaProyecto>();
     }
 }

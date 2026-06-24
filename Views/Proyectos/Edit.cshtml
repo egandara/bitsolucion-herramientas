@@ -7,9 +7,6 @@
 }
 
 <style>
-    /* ============================================================
-               ESTRUCTURA LATERAL Y PANELES
-               ============================================================ */
     .cal-sidebar-block {
         background-color: #111424 !important;
         border: 1px solid rgba(255, 255, 255, 0.05) !important;
@@ -56,9 +53,6 @@
         font-family: ui-monospace, monospace;
     }
 
-    /* ============================================================
-               GRID EXTENDIDO PARA SUBFASES Y TAREAS (WBS)
-               ============================================================ */
     .subfase-group-wrapper {
         background-color: rgba(255, 255, 255, 0.01);
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -127,9 +121,6 @@
         padding-bottom: 4px;
     }
 
-    /* ============================================================
-                   BANDEJA DE USUARIOS FLOTANTE (STICKY)
-                   ============================================================ */
     .sticky-tray {
         position: sticky;
         top: 20px;
@@ -201,42 +192,17 @@
 
             <div class="col-lg-4 col-xl-3">
                 <div class="cal-sidebar-block mb-3">
-                    <div class="cal-sidebar-title">
-                        <span><i class="bi bi-calendar3 me-1"></i>2. Cronograma</span>
-                        <button type="button" class="btn btn-outline-info btn-auto-calcular" onclick="sincronizarFechas()" title="Calcular por subfases">
-                            <i class="bi bi-magic me-1"></i>Auto
-                        </button>
-                    </div>
-                    <div class="form-group-stacked">
-                        <label>Fecha de Inicio</label>
-                        <input type="date" name="fechaInicio" id="gFechaInicio" class="form-control bg-dark text-white border-secondary" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" />
-                    </div>
-                    <div class="form-group-stacked mt-3">
-                        <label>Fin Estimado (Cierre)</label>
-                        <input type="date" name="fechaFinEstimada" id="gFechaFin" class="form-control bg-dark text-white border-secondary" value="@Model.FechaFinEstimada?.ToString("yyyy-MM-dd")" />
-                    </div>
-                    <div class="form-group-stacked mt-3">
-                        <label>Paso a Producción</label>
-                        <input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" value="@Model.FechaPasoProduccion?.ToString("yyyy-MM-dd")" />
-                    </div>
-                    <div class="form-group-stacked mt-3">
-                        <label>Notas</label>
-                        <textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="2">@Model.Notas</textarea>
-                    </div>
+                    <div class="cal-sidebar-title"><span><i class="bi bi-calendar3 me-1"></i>2. Cronograma</span><button type="button" class="btn btn-outline-info btn-auto-calcular" onclick="sincronizarFechas()"><i class="bi bi-magic"></i> Auto</button></div>
+                    <div class="form-group-stacked"><label>Fecha de Inicio</label><input type="date" id="gFechaInicio" name="fechaInicio" class="form-control bg-dark text-white border-secondary" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" /></div>
+                    <div class="form-group-stacked mt-3"><label>Fin Estimado</label><input type="date" id="gFechaFin" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" value="@Model.FechaFinEstimada?.ToString("yyyy-MM-dd")" /></div>
+                    <div class="form-group-stacked mt-3"><label>Paso a Producción</label><input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" value="@Model.FechaPasoProduccion?.ToString("yyyy-MM-dd")" /></div>
+                    <div class="form-group-stacked mt-3"><label>Notas</label><textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="2">@Model.Notas</textarea></div>
                 </div>
 
                 <div class="cal-sidebar-block mb-0">
-                    <div class="cal-sidebar-title">
-                        <span><i class="bi bi-shield-check me-1"></i>3. Calidad QA</span>
-                    </div>
-                    <div class="form-group-stacked">
-                        <label>Máximo Warnings Perm.</label>
-                        <input type="number" name="maxWarningsPermitidos" class="form-control bg-dark text-white border-secondary font-monospace text-center" min="0" value="@Model.MaxWarningsPermitidos" required />
-                    </div>
-                    <div class="form-group-stacked mt-3">
-                        <label>Máximo Infos Perm.</label>
-                        <input type="number" name="maxInfosPermitidos" class="form-control bg-dark text-white border-secondary font-monospace text-center" min="0" value="@Model.MaxInfosPermitidos" required />
-                    </div>
+                    <div class="cal-sidebar-title"><span><i class="bi bi-shield-check me-1"></i>3. Calidad QA</span></div>
+                    <div class="form-group-stacked"><label>Max Warnings</label><input type="number" name="maxWarningsPermitidos" class="form-control bg-dark text-white border-secondary text-center" min="0" value="@Model.MaxWarningsPermitidos" required /></div>
+                    <div class="form-group-stacked mt-3"><label>Max Infos</label><input type="number" name="maxInfosPermitidos" class="form-control bg-dark text-white border-secondary text-center" min="0" value="@Model.MaxInfosPermitidos" required /></div>
                 </div>
             </div>
         </div>
@@ -247,23 +213,14 @@
                     <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
                         <div><h5 class="fw-bold text-light mb-0" style="font-size: 1rem;"><i class="bi bi-diagram-3-fill me-2"></i>4. Estructura WBS (Subfases y Tareas)</h5></div>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalDomino">
-                                <i class="bi bi-calendar-range"></i> Dominó
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-success shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalPegadoInteligente">
-                                <i class="bi bi-magic me-1"></i> Pegar Excel/Project
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-info" id="btnAddSubfase">
-                                <i class="bi bi-plus-lg"></i> Añadir Subfase
-                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalDomino"><i class="bi bi-calendar-range"></i> Dominó</button>
+                            <button type="button" class="btn btn-sm btn-outline-success shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalPegadoInteligente"><i class="bi bi-magic me-1"></i> Pegar Excel</button>
+                            <button type="button" class="btn btn-sm btn-outline-info" id="btnAddSubfase"><i class="bi bi-plus-lg"></i> Añadir Subfase</button>
                         </div>
                     </div>
 
                     <div id="tray-asignacion" class="border border-info border-opacity-25 p-3 mb-4 d-none sticky-tray">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="bi bi-cursor-fill text-info me-2"></i>
-                            <span class="text-white small fw-bold me-auto">Bandeja de Asignación Rápida (Flotante)</span>
-                        </div>
+                        <div class="d-flex align-items-center mb-2"><i class="bi bi-cursor-fill text-info me-2"></i><span class="text-white small fw-bold me-auto">Bandeja de Asignación</span></div>
                         <div class="d-flex flex-wrap gap-3 mt-2 px-1 pb-2">
                             @if (usuariosBanco != null)
                             {
@@ -295,20 +252,13 @@
                                                     <select class="form-select text-white border-secondary input-fasepadre" required>
                                                         @foreach (var f in Model.Fases.OrderBy(x => x.Orden))
                                                         {
-                                                            if (f.Id == fase.Id)
-                                                            {
-                                                                <option value="@f.NombreFase" selected>@f.Orden. @f.NombreFase.Replace("_", " ")</option>
-                                                            }
-                                                            else
-                                                            {
-                                                                <option value="@f.NombreFase">@f.Orden. @f.NombreFase.Replace("_", " ")</option>
-                                                            }
+                                                            <option value="@f.NombreFase" selected="@(f.Id == fase.Id)">@f.Orden. @f.NombreFase.Replace("_", " ")</option>
                                                         }
                                                     </select>
                                                 </div>
                                                 <div class="form-group-grid"><label class="text-warning">Nombre Subfase</label><input type="text" class="form-control text-white border-secondary input-nombre" value="@sub.Nombre" required /></div>
                                                 <div class="form-group-grid"><label>Inicio (Hora)</label><input type="datetime-local" class="form-control text-white border-secondary input-inicio" value="@(sub.FechaInicio?.ToString("yyyy-MM-ddTHH:mm"))" /></div>
-                                                <div class="form-group-grid"><label class="text-warning">Horas</label><input type="number" step="0.5" class="form-control text-warning border-secondary input-horas" min="0.5" /></div>
+                                                <div class="form-group-grid"><label class="text-warning">Horas</label><input type="number" step="0.5" class="form-control text-warning border-secondary input-horas" min="0.5" value="@sub.HorasEstimadas.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" /></div>
                                                 <div class="form-group-grid"><label>Fin Estimado</label><input type="datetime-local" class="form-control text-white border-secondary input-fin" value="@(sub.FechaFinEstimada?.ToString("yyyy-MM-ddTHH:mm"))" /></div>
                                                 <div class="form-group-grid">
                                                     <label>Responsable</label>
@@ -319,14 +269,7 @@
                                                             {
                                                                 foreach (var user in usuariosBanco)
                                                                 {
-                                                                    if (sub.ResponsableId == (string)user.Id)
-                                                                    {
-                                                                        <option value="@user.Id" selected>@user.Email</option>
-                                                                    }
-                                                                    else
-                                                                    {
-                                                                        <option value="@user.Id">@user.Email</option>
-                                                                    }
+                                                                    <option value="@user.Id" selected="@(sub.ResponsableId == user.Id)">@user.Email</option>
                                                                 }
                                                             }
                                                         </select>
@@ -349,15 +292,15 @@
                                                             </div>
                                                             <div class="form-group-grid">
                                                                 <label>Inicio (Hora)</label>
-                                                                <input type="datetime-local" class="form-control text-white border-secondary input-inicio" value="@(tarea.FechaInicioReal?.ToString("yyyy-MM-ddTHH:mm"))" />
+                                                                <input type="datetime-local" class="form-control text-white border-secondary input-inicio" value="@(tarea.FechaInicioPlanificada?.ToString("yyyy-MM-ddTHH:mm"))" />
                                                             </div>
                                                             <div class="form-group-grid">
                                                                 <label class="text-info">Horas</label>
-                                                                <input type="number" step="0.5" class="form-control text-info border-secondary input-horas" min="0.5" value="@tarea.HorasEstimadas.ToString().Replace(',', '.')" />
+                                                                <input type="number" step="0.5" class="form-control text-info border-secondary input-horas" min="0.5" value="@tarea.HorasEstimadas.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" />
                                                             </div>
                                                             <div class="form-group-grid">
                                                                 <label>Fin Estimado</label>
-                                                                <input type="datetime-local" class="form-control text-white border-secondary input-fin" value="@(tarea.FechaFinReal?.ToString("yyyy-MM-ddTHH:mm"))" />
+                                                                <input type="datetime-local" class="form-control text-white border-secondary input-fin" value="@(tarea.FechaFinPlanificada?.ToString("yyyy-MM-ddTHH:mm"))" />
                                                             </div>
                                                             <div class="form-group-grid">
                                                                 <label>Responsable</label>
@@ -368,14 +311,7 @@
                                                                         {
                                                                             foreach (var user in usuariosBanco)
                                                                             {
-                                                                                if (tarea.UsuarioAsignadoId == (string)user.Id)
-                                                                                {
-                                                                                    <option value="@user.Id" selected>@user.Email</option>
-                                                                                }
-                                                                                else
-                                                                                {
-                                                                                    <option value="@user.Id">@user.Email</option>
-                                                                                }
+                                                                                <option value="@user.Id" selected="@(tarea.UsuarioAsignadoId == user.Id)">@user.Email</option>
                                                                             }
                                                                         }
                                                                     </select>
@@ -427,72 +363,62 @@
     </form>
 </div>
 
-<div class="modal fade" id="modalDomino" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #ffc107;">
-            <div class="modal-header border-secondary p-3">
-                <h6 class="modal-title fw-bold text-warning"><i class="bi bi-calendar-range me-2"></i>Desplazar Fechas</h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-3" style="background-color: #07091e;">
-                <label class="text-white-50 small mb-2 d-block">¿Desplazar todas las tareas por días?</label>
-                <div class="input-group input-group-sm mb-2">
-                    <input type="number" id="inputDominoDias" class="form-control bg-dark text-white border-warning text-center" placeholder="Ej: 7 o -3" />
-                    <span class="input-group-text bg-secondary border-warning text-white">días</span>
-                </div>
-            </div>
-            <div class="modal-footer border-secondary p-2">
-                <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="ejecutarEfectoDomino()">Aplicar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="modalPegadoInteligente" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #198754;">
-            <div class="modal-header border-secondary">
-                <h5 class="modal-title fw-bold text-success">Importación Inteligente</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body px-4 py-4" style="background-color: #07091e;">
-                <p class="text-white-50 small mb-2"><i class="bi bi-info-circle text-info me-1"></i> Tip: Si las celdas comienzan con un espacio o tabulación, serán consideradas Tareas bajo la última Subfase.</p>
-                <textarea id="txtPegadoMasivo" class="form-control form-control-sm bg-dark text-white font-monospace border-success" rows="8" placeholder="Pega tus filas de Excel o Project aquí..."></textarea>
-            </div>
-            <div class="modal-footer border-secondary">
-                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success fw-bold" onclick="procesarPegadoHeuristico()">Procesar Filas</button>
-            </div>
-        </div>
-    </div>
-</div>
+<div class="modal fade" id="modalDomino" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #ffc107;"><div class="modal-header border-secondary p-3"><h6 class="modal-title fw-bold text-warning"><i class="bi bi-calendar-range me-2"></i>Desplazar Fechas</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-3" style="background-color: #07091e;"><label class="text-white-50 small mb-2 d-block">¿Desplazar todas las tareas por días?</label><div class="input-group input-group-sm mb-2"><input type="number" id="inputDominoDias" class="form-control bg-dark text-white border-warning text-center" placeholder="Ej: 7 o -3" /><span class="input-group-text bg-secondary border-warning text-white">días</span></div></div><div class="modal-footer border-secondary p-2"><button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-sm btn-warning fw-bold" onclick="ejecutarEfectoDomino()">Aplicar</button></div></div></div></div>
+<div class="modal fade" id="modalPegadoInteligente" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #198754;"><div class="modal-header border-secondary"><h5 class="modal-title fw-bold text-success">Importación Inteligente</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body px-4 py-4" style="background-color: #07091e;"><p class="text-white-50 small mb-2"><i class="bi bi-info-circle text-info me-1"></i> Tip: Si las celdas comienzan con un espacio o tabulación, serán consideradas Tareas bajo la última Subfase.</p><textarea id="txtPegadoMasivo" class="form-control form-control-sm bg-dark text-white font-monospace border-success" rows="8" placeholder="Pega tus filas aquí..."></textarea></div><div class="modal-footer border-secondary"><button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-success fw-bold" onclick="procesarPegadoHeuristico()">Procesar Filas</button></div></div></div></div>
 
 @section Scripts {
     <script>
-                const clientesHorarios = @Html.Raw(ViewBag.ClientesHorariosJson ?? "[]");
-                let activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
-                document.getElementById('selectClienteId').addEventListener('change', function() {
-                    const val = this.value; const match = clientesHorarios.find(c => c.id === val);
-                    if(match) activeSchedule = match; else activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
-                    document.querySelectorAll('.input-horas').forEach(inp => inp.dispatchEvent(new Event('input')));
-                });
+        const clientesHorarios = @Html.Raw(ViewBag.ClientesHorariosJson ?? "[]");
+        let activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
+        document.getElementById('selectClienteId').addEventListener('change', function() {
+            const val = this.value; const match = clientesHorarios.find(c => c.id === val);
+            if(match) activeSchedule = match; else activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
+            document.querySelectorAll('.input-horas').forEach(inp => inp.dispatchEvent(new Event('input')));
+        });
 
-                document.getElementById('formEditProject').addEventListener('submit', function () {
-                    var btn = document.getElementById('btnSubmit'); btn.disabled = true;
-                    document.getElementById('spinnerSubmit').classList.remove('d-none'); document.getElementById('iconSubmit').classList.add('d-none');
-                });
+        // ── INTERCEPTOR DE FORMULARIO PARA DECIMALES DE C# ──
+        document.getElementById('formEditProject').addEventListener('submit', function () {
+            document.querySelectorAll('.input-horas').forEach(inp => {
+                if(inp.name && inp.value) {
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden'; hidden.name = inp.name; hidden.value = inp.value.replace('.', ',');
+                    inp.removeAttribute('name'); inp.parentNode.appendChild(hidden);
+                }
+            });
 
-                window.currentDraggedUser = null;
-                const usuariosOptions = `@if (usuariosBanco != null) { foreach (var user in usuariosBanco) {
-                <option value="@user.Id">@user.Email</option>
-        }
+            var btn = document.getElementById('btnSubmit'); btn.disabled = true;
+            document.getElementById('spinnerSubmit').classList.remove('d-none'); document.getElementById('iconSubmit').classList.add('d-none');
+            localStorage.removeItem(DRAFT_KEY);
+        });
+
+        window.currentDraggedUser = null;
+        const usuariosOptions = `@if (usuariosBanco != null) { foreach (var user in usuariosBanco) {
+        <option value="@user.Id">@user.Email</option>
+    }
 }
 `;
 const fasesOptions = `@if (Model.Fases != null) { foreach (var f in Model.Fases.OrderBy(x => x.Orden)) {
 <option value="@f.NombreFase">@f.Orden. @f.NombreFase.Replace("_", " ")</option>
-            } }
+    } }
 `;
+
+// ── CALCULAR HORAS FALTANTES PARA SUBFASES ──
+function calcularHorasDesdeFechas(startStr, endStr) {
+    if (!startStr || !endStr) return "";
+    let dStart = new Date(startStr); let dEnd = new Date(endStr);
+    if (dStart >= dEnd) return 0;
+    let totalHoras = 0; let curr = new Date(dStart);
+    while (curr < dEnd) {
+        let dayOfWeek = curr.getDay();
+        if (dayOfWeek === 0 || dayOfWeek === 6) { curr.setDate(curr.getDate() + 1); curr.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; }
+        let exitH = (dayOfWeek === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH;
+        let exitM = (dayOfWeek === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
+        let endOfDay = new Date(curr); endOfDay.setHours(exitH, exitM, 0, 0);
+        if (dEnd <= endOfDay) { totalHoras += (dEnd - curr) / 3600000; break; }
+        else { totalHoras += (endOfDay - curr) / 3600000; curr.setDate(curr.getDate() + 1); curr.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); }
+    }
+    return totalHoras.toFixed(1).replace('.0', '');
+}
 
 document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll('.draggable-user').forEach(pill => {
@@ -500,7 +426,12 @@ document.addEventListener("DOMContentLoaded", function () {
         pill.addEventListener('dragend', function(e) { window.currentDraggedUser = null; this.style.opacity = '1'; });
     });
     document.querySelectorAll('.subfase-group-wrapper').forEach(wrapper => {
-        const sfRow = wrapper.querySelector('.subfase-row-container'); if(sfRow) bindRowEvents(sfRow);
+        const sfRow = wrapper.querySelector('.subfase-row-container');
+        if(sfRow) {
+            bindRowEvents(sfRow);
+            let iIni = sfRow.querySelector('.input-inicio'); let iFin = sfRow.querySelector('.input-fin'); let iHrs = sfRow.querySelector('.input-horas');
+            if (iIni && iFin && iHrs && !iHrs.value) iHrs.value = calcularHorasDesdeFechas(iIni.value, iFin.value);
+        }
         wrapper.querySelectorAll('.tarea-row-container').forEach(tRow => bindRowEvents(tRow));
     });
     document.getElementById('selectClienteId').dispatchEvent(new Event('change'));
@@ -561,14 +492,15 @@ function reindexAll() {
             const inpNom = sfRow.querySelector('.input-nombre'); if(inpNom) inpNom.name = `Subfases[${sIdx}].Nombre`;
             const inpIni = sfRow.querySelector('.input-inicio'); if(inpIni) inpIni.name = `Subfases[${sIdx}].FechaInicio`;
             const inpFin = sfRow.querySelector('.input-fin'); if(inpFin) inpFin.name = `Subfases[${sIdx}].FechaFinEstimada`;
+            const inpHrs = sfRow.querySelector('.input-horas'); if(inpHrs) inpHrs.name = `Subfases[${sIdx}].HorasEstimadas`;
             const selRes = sfRow.querySelector('.user-select'); if(selRes) selRes.name = `Subfases[${sIdx}].ResponsableId`;
         }
         const tRows = wrapper.querySelectorAll('.tarea-row-container');
         tRows.forEach((tRow, tIdx) => {
             const tId = tRow.querySelector('.input-tarea-id'); if(tId) tId.name = `Subfases[${sIdx}].Tareas[${tIdx}].Id`;
             const tNom = tRow.querySelector('.input-nombre'); if(tNom) tNom.name = `Subfases[${sIdx}].Tareas[${tIdx}].Nombre`;
-            const tIni = tRow.querySelector('.input-inicio'); if(tIni) tIni.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaInicioReal`;
-            const tFin = tRow.querySelector('.input-fin'); if(tFin) tFin.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaFinReal`;
+            const tIni = tRow.querySelector('.input-inicio'); if(tIni) tIni.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaInicioPlanificada`;
+            const tFin = tRow.querySelector('.input-fin'); if(tFin) tFin.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaFinPlanificada`;
             const tHrs = tRow.querySelector('.input-horas'); if(tHrs) tHrs.name = `Subfases[${sIdx}].Tareas[${tIdx}].HorasEstimadas`;
             const tRes = tRow.querySelector('.user-select'); if(tRes) tRes.name = `Subfases[${sIdx}].Tareas[${tIdx}].UsuarioAsignadoId`;
         });
@@ -579,9 +511,9 @@ document.getElementById('btnAddSubfase').addEventListener('click', () => inyecta
 document.getElementById('wbs-container').addEventListener('click', function(e) {
     if (e.target.closest('.btn-add-tarea')) { inyectarFilaTarea(e.target.closest('.subfase-group-wrapper')); }
     const btnRemoveSf = e.target.closest('.btn-remove-subfase');
-    if (btnRemoveSf) { btnRemoveSf.closest('.subfase-group-wrapper').remove(); reindexAll(); actualizarTermometro(); if(document.querySelectorAll('.subfase-group-wrapper').length===0) document.getElementById('tray-asignacion').classList.add('d-none'); }
+    if (btnRemoveSf) { btnRemoveSf.closest('.subfase-group-wrapper').remove(); reindexAll(); actualizarTermometro(); guardarBorradorSilencioso(); if(document.querySelectorAll('.subfase-group-wrapper').length===0) document.getElementById('tray-asignacion').classList.add('d-none'); }
     const btnRemoveT = e.target.closest('.btn-remove-tarea');
-    if (btnRemoveT) { btnRemoveT.closest('.tarea-row-container').remove(); reindexAll(); actualizarTermometro(); }
+    if (btnRemoveT) { btnRemoveT.closest('.tarea-row-container').remove(); reindexAll(); actualizarTermometro(); guardarBorradorSilencioso(); }
 });
 
 // ── UTILIDADES (Fechas, Pincel y Pegado) ──
@@ -603,6 +535,7 @@ function bindRowEvents(row) {
             if (hoursRemaining <= hoursRemainingToday) { date.setTime(date.getTime() + (hoursRemaining * 60 * 60 * 1000)); hoursRemaining = 0; } else { hoursRemaining -= hoursRemainingToday; date.setDate(date.getDate() + 1); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); }
         }
         inpFin.value = formatDatetimeLocal(date); inpFin.style.backgroundColor = 'rgba(255, 193, 7, 0.2)'; setTimeout(() => inpFin.style.backgroundColor = '', 400);
+        guardarBorradorSilencioso();
     }
     inpInicio.addEventListener('change', calcularFin); inpHoras.addEventListener('input', calcularFin);
     if (paintZone && selectResp) {

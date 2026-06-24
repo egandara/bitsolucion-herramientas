@@ -502,7 +502,7 @@ namespace NotebookValidator.Web.Controllers
                             var subfasesAEliminar = fase.SubFases.Where(s => !subfasesEntrantesIds.Contains(s.Id)).ToList();
                             foreach (var sub in subfasesAEliminar)
                             {
-                                // Primero eliminar Comentarios para evitar FK constraint violation
+                                // Eliminar comentarios asociados para evitar errores de Foreign Key (si los hay)
                                 var comentariosSub = await _context.ComentariosProyecto
                                     .Where(c => c.SubFaseProyectoId == sub.Id)
                                     .ToListAsync();
@@ -525,7 +525,7 @@ namespace NotebookValidator.Web.Controllers
                     {
                         if (string.IsNullOrWhiteSpace(subForm.Nombre)) continue;
 
-                        // Buscamos de forma segura la subfase existente
+                        // Buscar subfase existente
                         var subDb = proyectoDb.Fases
                             .Where(f => f.SubFases != null)
                             .SelectMany(f => f.SubFases)
@@ -536,13 +536,14 @@ namespace NotebookValidator.Web.Controllers
 
                         if (subDb != null)
                         {
-                            // Actualizar Subfase de forma manual (Evitamos la excepción de SetValues)
+                            // Actualizar propiedades de la Subfase (incluyendo Horas)
                             subDb.Nombre = subForm.Nombre;
                             subDb.ResponsableId = string.IsNullOrWhiteSpace(subForm.ResponsableId) ? null : subForm.ResponsableId;
                             subDb.FechaInicio = subForm.FechaInicio;
                             subDb.FechaFinEstimada = subForm.FechaFinEstimada;
+                            subDb.HorasEstimadas = subForm.HorasEstimadas;
 
-                            // Si el usuario movió la subfase a otra fase
+                            // Cambiar de fase si es necesario
                             if (subDb.FaseProyectoId != faseTarget.Id)
                             {
                                 var oldFase = proyectoDb.Fases.FirstOrDefault(f => f.Id == subDb.FaseProyectoId);
@@ -562,6 +563,7 @@ namespace NotebookValidator.Web.Controllers
                                 ResponsableId = string.IsNullOrWhiteSpace(subForm.ResponsableId) ? null : subForm.ResponsableId,
                                 FechaInicio = subForm.FechaInicio,
                                 FechaFinEstimada = subForm.FechaFinEstimada,
+                                HorasEstimadas = subForm.HorasEstimadas,
                                 Tareas = new List<TareaProyecto>()
                             };
                             _context.SubFasesProyecto.Add(subDb);
@@ -575,11 +577,11 @@ namespace NotebookValidator.Web.Controllers
                         {
                             var tareasEntrantesIds = subForm.Tareas.Where(t => t.Id > 0).Select(t => t.Id).ToList();
 
-                            // Borrar tareas eliminadas
+                            // Borrar tareas eliminadas en la vista
                             var tareasAEliminar = subDb.Tareas.Where(t => !tareasEntrantesIds.Contains(t.Id) && t.Id != 0).ToList();
                             foreach (var tDel in tareasAEliminar) _context.TareasProyecto.Remove(tDel);
 
-                            // Actualizar o insertar tareas
+                            // Agregar o actualizar tareas
                             foreach (var tareaForm in subForm.Tareas)
                             {
                                 if (string.IsNullOrWhiteSpace(tareaForm.Nombre)) continue;
@@ -587,21 +589,19 @@ namespace NotebookValidator.Web.Controllers
                                 var tareaDb = subDb.Tareas.FirstOrDefault(t => t.Id == tareaForm.Id && tareaForm.Id != 0);
                                 if (tareaDb != null)
                                 {
-                                    // Actualizar de forma manual
                                     tareaDb.Nombre = tareaForm.Nombre;
-                                    tareaDb.FechaInicioReal = tareaForm.FechaInicioReal;
-                                    tareaDb.FechaFinReal = tareaForm.FechaFinReal;
+                                    tareaDb.FechaInicioPlanificada = tareaForm.FechaInicioPlanificada;
+                                    tareaDb.FechaFinPlanificada = tareaForm.FechaFinPlanificada;
                                     tareaDb.HorasEstimadas = tareaForm.HorasEstimadas;
                                     tareaDb.UsuarioAsignadoId = string.IsNullOrWhiteSpace(tareaForm.UsuarioAsignadoId) ? null : tareaForm.UsuarioAsignadoId;
                                 }
                                 else
                                 {
-                                    // Nueva
                                     var nuevaTarea = new TareaProyecto
                                     {
                                         Nombre = tareaForm.Nombre,
-                                        FechaInicioReal = tareaForm.FechaInicioReal,
-                                        FechaFinReal = tareaForm.FechaFinReal,
+                                        FechaInicioPlanificada = tareaForm.FechaInicioPlanificada,
+                                        FechaFinPlanificada = tareaForm.FechaFinPlanificada,
                                         HorasEstimadas = tareaForm.HorasEstimadas,
                                         UsuarioAsignadoId = string.IsNullOrWhiteSpace(tareaForm.UsuarioAsignadoId) ? null : tareaForm.UsuarioAsignadoId,
                                         Estado = "Pendiente",
@@ -614,7 +614,7 @@ namespace NotebookValidator.Web.Controllers
                         }
                         else
                         {
-                            // Si eliminaron todas las tareas en la interfaz
+                            // Si borraron todas las tareas de una subfase existente
                             if (subDb.Tareas.Any())
                             {
                                 _context.TareasProyecto.RemoveRange(subDb.Tareas);
@@ -632,14 +632,10 @@ namespace NotebookValidator.Web.Controllers
                         {
                             foreach (var sub in fase.SubFases.ToList())
                             {
-                                // Primero eliminar Comentarios para evitar FK constraint violation
                                 var comentariosSub = await _context.ComentariosProyecto
                                     .Where(c => c.SubFaseProyectoId == sub.Id)
                                     .ToListAsync();
-                                if (comentariosSub.Any())
-                                {
-                                    _context.ComentariosProyecto.RemoveRange(comentariosSub);
-                                }
+                                if (comentariosSub.Any()) _context.ComentariosProyecto.RemoveRange(comentariosSub);
 
                                 if (sub.Tareas != null && sub.Tareas.Any()) _context.TareasProyecto.RemoveRange(sub.Tareas);
                                 _context.SubFasesProyecto.Remove(sub);
@@ -648,7 +644,7 @@ namespace NotebookValidator.Web.Controllers
                     }
                 }
 
-                // 4. SINCRONIZADOR DE EQUIPO GLOBAL (Corrección de 500 Error PK)
+                // 4. SINCRONIZADOR DE EQUIPO GLOBAL (Asignación Automática a Drive)
                 if (usuariosAsignadosIds == null) usuariosAsignadosIds = new List<string>();
 
                 if (subfases != null)
@@ -694,16 +690,8 @@ namespace NotebookValidator.Web.Controllers
             catch (Exception ex)
             {
                 var fullError = ex.Message;
-                if (ex.InnerException != null)
-                    fullError += " | INNER: " + ex.InnerException.Message;
-
-                // Devolver el error como JSON para verlo en el browser
-                return StatusCode(500, new
-                {
-                    error = fullError,
-                    stackTrace = ex.StackTrace,
-                    innerStack = ex.InnerException?.StackTrace
-                });
+                if (ex.InnerException != null) fullError += " | INNER: " + ex.InnerException.Message;
+                return StatusCode(500, new { error = fullError, stackTrace = ex.StackTrace, innerStack = ex.InnerException?.StackTrace });
             }
         }
 
@@ -1500,18 +1488,17 @@ namespace NotebookValidator.Web.Controllers
         public string? ResponsableId { get; set; }
         public DateTime? FechaInicio { get; set; }
         public DateTime? FechaFinEstimada { get; set; }
+        public decimal HorasEstimadas { get; set; }
 
-        // ¡NUEVO! Lista de tareas anidadas
         public List<TareaInputDto>? Tareas { get; set; }
     }
 
-    // ¡NUEVO! DTO para mapear las tareas que vienen de la vista
     public class TareaInputDto
     {
         public int Id { get; set; }
         public string Nombre { get; set; } = string.Empty;
-        public DateTime? FechaInicioReal { get; set; }
-        public DateTime? FechaFinReal { get; set; }
+        public DateTime? FechaInicioPlanificada { get; set; }
+        public DateTime? FechaFinPlanificada { get; set; }
         public decimal HorasEstimadas { get; set; }
         public string? UsuarioAsignadoId { get; set; }
     }
