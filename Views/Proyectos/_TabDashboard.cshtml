@@ -245,46 +245,88 @@
                                                     bool isProgress = subfase.Estado == "En Progreso";
                                                     string taskClass = isCompleted ? "completed" : (isProgress ? "in-progress" : "");
 
-                                                    <div class="task-item p-2 rounded d-flex justify-content-between align-items-center flex-wrap gap-2 @taskClass">
+                                                    <div class="task-item p-2 rounded d-flex flex-column gap-2 @taskClass">
 
-                                                        <div class="d-flex align-items-center gap-3 flex-grow-1">
-                                                            <input type="checkbox" class="custom-task-check" id="chk_sub_@subfase.Id" @(isCompleted ? "checked" : "") onchange="toggleSubTask(@subfase.Id, this)" @(faseBloqueada ? "disabled" : "") title="Marcar como completada">
-
-                                                            <label for="chk_sub_@subfase.Id" class="mb-0 text-white task-text @(isCompleted ? "text-decoration-line-through opacity-50" : "")" id="lbl_sub_@subfase.Id" style="font-size: 0.85rem; cursor: pointer;">
-                                                                @subfase.Nombre
-                                                            </label>
-                                                        </div>
-
-                                                        <div class="d-flex align-items-center gap-4">
-                                                            @* Fechas MS Project Style (AHORA CON HORAS) *@
-                                                            <div class="text-white-50 font-monospace d-none d-sm-block text-end" style="font-size: 0.65rem; line-height: 1.2;">
-                                                                @if (subfase.FechaInicio.HasValue || subfase.FechaFinEstimada.HasValue)
-                                                                {
-                                                                    <div class="text-info"><i class="bi bi-play-fill"></i> @(subfase.FechaInicio?.ToString("dd MMM, HH:mm") ?? "-")</div>
-                                                                    <div class="text-warning"><i class="bi bi-stop-fill"></i> @(subfase.FechaFinEstimada?.ToString("dd MMM, HH:mm") ?? "-")</div>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <span class="opacity-50"><i class="bi bi-calendar-x me-1"></i>Sin fechas programadas</span>
-                                                                }
+                                                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                                            <div class="d-flex align-items-center gap-3 flex-grow-1">
+                                                                <input type="checkbox" class="custom-task-check" id="chk_sub_@subfase.Id" @(isCompleted ? "checked" : "") onchange="toggleSubTask(@subfase.Id, this)" @(faseBloqueada ? "disabled" : "") title="Marcar como completada">
+                                                                <label for="chk_sub_@subfase.Id" class="mb-0 text-white task-text @(isCompleted ? "text-decoration-line-through opacity-50" : "")" id="lbl_sub_@subfase.Id" style="font-size: 0.85rem; cursor: pointer;">
+                                                                    @subfase.Nombre
+                                                                </label>
                                                             </div>
 
-                                                            @* Asignación de Recursos *@
-                                                            <div style="min-width: 90px; text-align: right;">
-                                                                @if (subfase.Responsable != null && !string.IsNullOrEmpty(subfase.Responsable.Email))
-                                                                {
-                                                                    var respInitials = subfase.Responsable.Email.Substring(0, 2).ToUpper();
-                                                                    <span class="badge bg-dark border border-secondary text-info font-monospace d-inline-flex align-items-center px-2 py-1" style="font-size: 0.65rem;" title="@subfase.Responsable.Email">
-                                                                        <span class="rounded-circle bg-info text-dark d-inline-flex align-items-center justify-content-center me-2 fw-bold" style="width: 16px; height: 16px; font-size: 0.5rem;">@respInitials</span>
-                                                                        @@@subfase.Responsable.Email.Split('@')[0]
-                                                                    </span>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <span class="badge bg-dark border border-secondary text-white-50 font-monospace" style="font-size: 0.65rem;"><i class="bi bi-person-x me-1"></i>Sin Asignar</span>
-                                                                }
+                                                            <div class="d-flex align-items-center gap-4">
+                                                                <div class="text-white-50 font-monospace d-none d-sm-block text-end" style="font-size: 0.65rem; line-height: 1.2;">
+                                                                    @if (subfase.FechaInicio.HasValue || subfase.FechaFinEstimada.HasValue)
+                                                                    {
+                                                                        <div class="text-info"><i class="bi bi-play-fill"></i> @(subfase.FechaInicio?.ToString("dd MMM, HH:mm") ?? "-")</div>
+                                                                        <div class="text-warning"><i class="bi bi-stop-fill"></i> @(subfase.FechaFinEstimada?.ToString("dd MMM, HH:mm") ?? "-")</div>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span class="opacity-50"><i class="bi bi-calendar-x me-1"></i>Sin fechas programadas</span>
+                                                                    }
+                                                                </div>
                                                             </div>
                                                         </div>
+
+                                                        <div class="ms-4 ps-3 border-start border-secondary border-opacity-50 mt-1">
+                                                            @if (subfase.Tareas != null && subfase.Tareas.Any())
+                                                            {
+                                                                @if (subfase.Tareas != null && subfase.Tareas.Any())
+                                                                {
+                                                                    foreach (var t in subfase.Tareas)
+                                                                    {
+                                                                        // Lógica de colores dinámicos
+                                                                        string colorBorde = t.Estado == "Terminada" ? "border-success bg-success bg-opacity-10" :
+                                                                                            t.Estado == "En Progreso" ? "border-warning bg-warning bg-opacity-10" :
+                                                                                            "border-info bg-info bg-opacity-10"; // Celeste para Pendiente
+
+                                                                        string colorTexto = t.Estado == "Terminada" ? "text-success text-decoration-line-through opacity-75" : "text-white";
+
+                                                                        <div class="d-flex justify-content-between align-items-center p-2 rounded mb-1 border @colorBorde" style="gap: 10px;">
+                                                                            <div class="d-flex flex-column flex-grow-1" style="min-width: 0;">
+                                                                                <span class="@colorTexto font-monospace text-truncate" style="font-size: 0.75rem;" title="@t.Nombre">@t.Nombre</span>
+
+                                                                                <div class="d-flex align-items-center gap-2 mt-1">
+                                                                                    <span class="badge bg-secondary text-white-50" style="font-size: 0.55rem;">Plan: @t.HorasEstimadas h</span>
+
+                                                                                    @if (t.HorasRealesDeducidas > 0)
+                                                                                    {
+                                                                                        <span class="badge bg-success text-white" style="font-size: 0.55rem;" title="Telemetría">Real: @t.HorasRealesDeducidas h</span>
+                                                                                    }
+
+                                                                                    @if (t.UsuarioAsignado != null && !string.IsNullOrEmpty(t.UsuarioAsignado.Email))
+                                                                                    {
+                                                                                        var iniciales = t.UsuarioAsignado.Email.Substring(0, 2).ToUpper();
+                                                                                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
+                                                                                             style="width: 18px; height: 18px; font-size: 0.5rem; background: linear-gradient(135deg, #172a45, #0dcaf0);"
+                                                                                             title="@t.UsuarioAsignado.Email">
+                                                                                            @iniciales
+                                                                                        </div>
+                                                                                    }
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <div class="flex-shrink-0">
+                                                                                <select class="form-select form-select-sm bg-dark text-white border-secondary" style="font-size:0.7rem; padding: 2px 20px 2px 8px; width: 105px;" onchange="updateTareaStatus(@t.Id, this.value)">
+                                                                                    <option value="Pendiente" selected="@(t.Estado == "Pendiente")">Pendiente</option>
+                                                                                    <option value="En Progreso" selected="@(t.Estado == "En Progreso")">En Progreso</option>
+                                                                                    <option value="Terminada" selected="@(t.Estado == "Terminada")">Terminada</option>
+                                                                                </select>
+                                                                            </div>
+                                                                        </div>
+                                                                    }
+                                                                }
+                                                            }
+                                                            @if (User.IsInRole("Admin"))
+                                                            {
+                                                                <button type="button" class="btn btn-sm btn-outline-info border-0 py-0 px-2 mt-1 font-monospace" style="font-size: 0.7rem;" onclick="abrirModalTarea(@subfase.Id, '@subfase.Nombre')">
+                                                                    <i class="bi bi-plus-lg me-1"></i>Añadir tarea a esta subfase
+                                                                </button>
+                                                            }
+                                                        </div>
+
                                                     </div>
                                                 }
                                             </div>

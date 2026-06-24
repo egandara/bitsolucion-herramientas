@@ -314,7 +314,11 @@ namespace NotebookValidator.Web.Controllers
                 .Include(p => p.Cliente)
                 .Include(p => p.Fases.OrderBy(f => f.Orden))
                     .ThenInclude(f => f.SubFases)
-                    .ThenInclude(s => s.Responsable)
+                        .ThenInclude(s => s.Responsable)
+                .Include(p => p.Fases.OrderBy(f => f.Orden))
+                    .ThenInclude(f => f.SubFases)
+                        .ThenInclude(s => s.Tareas) // <-- ESTO ES LO NUEVO
+                            .ThenInclude(t => t.UsuarioAsignado) // <-- ESTO ES LO NUEVO
                 .Include(p => p.UsuariosAsignados).ThenInclude(ua => ua.Usuario)
                 .Include(p => p.Validaciones.OrderByDescending(v => v.FechaValidacion))
                 .Include(p => p.TablasCatalogo).ThenInclude(tc => tc.TablaMaestra)
@@ -1298,6 +1302,65 @@ namespace NotebookValidator.Web.Controllers
             return Json(resultados);
         }
 
+        // ==========================================
+        // MÓDULO DE RECURSOS Y TELEMETRÍA DE TAREAS
+        // ==========================================
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> AddTarea(int subFaseId, string nombre, decimal horasEstimadas, string? usuarioAsignadoId)
+        {
+            if (string.IsNullOrWhiteSpace(nombre)) return Json(new { success = false, message = "Falta el nombre." });
+
+            var tarea = new NotebookValidator.Web.Models.GestorProyectos.TareaProyecto
+            {
+                SubFaseProyectoId = subFaseId,
+                Nombre = nombre.Trim(),
+                HorasEstimadas = horasEstimadas,
+                UsuarioAsignadoId = string.IsNullOrWhiteSpace(usuarioAsignadoId) ? null : usuarioAsignadoId,
+                Estado = "Pendiente",
+                FechaCreacion = DateTime.Now
+            };
+
+            _context.TareasProyecto.Add(tarea);
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, message = "Tarea registrada." });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateTareaStatus(int tareaId, string nuevoEstado)
+        {
+            var tarea = await _context.TareasProyecto.FindAsync(tareaId);
+            if (tarea == null) return Json(new { success = false, message = "Tarea no encontrada." });
+
+            tarea.Estado = nuevoEstado;
+
+            // 🧠 MOTOR EXPERIMENTAL DE TELEMETRÍA 🧠
+            if (nuevoEstado == "En Progreso" && !tarea.FechaInicioReal.HasValue)
+            {
+                // Si la pasa a En Progreso por primera vez, estampa el inicio
+                tarea.FechaInicioReal = DateTime.Now;
+            }
+            else if (nuevoEstado == "Terminada")
+            {
+                // Al terminar, estampa el fin y calcula las horas automáticamente
+                tarea.FechaFinReal = DateTime.Now;
+
+                if (tarea.FechaInicioReal.HasValue)
+                {
+                    var tiempoTranscurrido = tarea.FechaFinReal.Value - tarea.FechaInicioReal.Value;
+                    // Calcula las horas reales (puedes refinar esto a futuro para excluir fines de semana)
+                    tarea.HorasRealesDeducidas = (decimal)Math.Round(tiempoTranscurrido.TotalHours, 2);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
     }
 
     public class AddTablaRequest
@@ -1319,5 +1382,6 @@ namespace NotebookValidator.Web.Controllers
         public DateTime? FechaInicio { get; set; }
         public DateTime? FechaFinEstimada { get; set; }
     }
+
 
 }

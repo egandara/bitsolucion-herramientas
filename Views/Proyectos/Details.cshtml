@@ -397,6 +397,45 @@
         <partial name="_TabCronograma" model="Model" />
     </div>
 
+    <div class="modal fade" id="modalNuevaTarea" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title font-monospace text-info"><i class="bi bi-clipboard-plus me-2"></i>Nueva Tarea para: <span id="lblSubfaseTarea"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="formNuevaTarea">
+                    <div class="modal-body">
+                        <input type="hidden" id="hdnSubfaseIdTarea" />
+                        <div class="mb-3">
+                            <label class="form-label small text-white-50">Nombre de la Tarea <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" id="txtNombreTarea" required>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="form-label small text-white-50">Horas Estimadas (Plan) <span class="text-danger">*</span></label>
+                                <input type="number" step="0.5" class="form-control form-control-sm bg-dark text-white border-secondary" id="numHorasTarea" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-white-50">Asignar Developer</label>
+                                <select class="form-select form-select-sm bg-dark text-white border-secondary" id="selUsuarioTarea">
+                                    <option value="">-- Sin Asignar --</option>
+                                    @foreach (var usr in Model.UsuariosAsignados)
+                                    {
+                                        <option value="@usr.UsuarioId">@usr.Usuario.Email</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-secondary">
+                        <button type="submit" class="btn btn-info btn-sm fw-bold">Guardar Tarea</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 @* ⑥ Modales (fuera del container principal) *@
@@ -692,5 +731,57 @@
                 }
             });
         });
+
+        // ==========================================
+        // TELEMETRÍA DE RECURSOS
+        // ==========================================
+        let modalTarea;
+        function abrirModalTarea(subfaseId, subfaseNombre) {
+            document.getElementById('hdnSubfaseIdTarea').value = subfaseId;
+            document.getElementById('lblSubfaseTarea').innerText = subfaseNombre;
+            document.getElementById('txtNombreTarea').value = '';
+            document.getElementById('numHorasTarea').value = '';
+            modalTarea = new bootstrap.Modal(document.getElementById('modalNuevaTarea'));
+            modalTarea.show();
+        }
+
+        document.getElementById('formNuevaTarea')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = this.querySelector('button[type="submit"]');
+            btn.disabled = true; btn.innerHTML = 'Guardando...';
+
+            const formData = new FormData();
+            formData.append('subFaseId', document.getElementById('hdnSubfaseIdTarea').value);
+            formData.append('nombre', document.getElementById('txtNombreTarea').value);
+            formData.append('horasEstimadas', document.getElementById('numHorasTarea').value);
+            formData.append('usuarioAsignadoId', document.getElementById('selUsuarioTarea').value);
+            formData.append('__RequestVerificationToken', $('#antiForgeryForm input[name="__RequestVerificationToken"]').val());
+
+            fetch('/Proyectos/AddTarea', { method: 'POST', body: formData })
+                .then(r => r.json()).then(data => {
+                    if (data.success) { toastr.success('Tarea creada'); setTimeout(() => window.location.reload(), 1000); }
+                    else { toastr.error(data.message); btn.disabled = false; btn.innerHTML = 'Guardar Tarea'; }
+                });
+        });
+
+        function updateTareaStatus(tareaId, nuevoEstado) {
+            const formData = new FormData();
+            formData.append('tareaId', tareaId);
+            formData.append('nuevoEstado', nuevoEstado);
+            formData.append('__RequestVerificationToken', $('#antiForgeryForm input[name="__RequestVerificationToken"]').val());
+
+            toastr.info('Actualizando estado...', '', {timeOut: 1000});
+            fetch('/Proyectos/UpdateTareaStatus', { method: 'POST', body: formData })
+                .then(r => r.json()).then(data => {
+                    if (data.success) {
+                        if (nuevoEstado === "Terminada") {
+                            toastr.success('¡Tarea completada! Horas calculadas y registradas.');
+                            setTimeout(() => window.location.reload(), 1500); // Recarga para mostrar las horas calculadas
+                        } else {
+                            toastr.success('Estado actualizado');
+                        }
+                    } else toastr.error(data.message);
+                });
+        }
     </script>
 }

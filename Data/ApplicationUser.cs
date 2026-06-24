@@ -13,5 +13,7 @@ namespace NotebookValidator.Web.Data
         public DateTime? LastLoginDate { get; set; }
         public DateTime? LastPasswordChangedDate { get; set; }
         public bool IsActive { get; set; } = true;
+        // NUEVO: Capacidad de horas semanales para planeación
+        public int HorasSemanalesContratadas { get; set; } = 45;
     }
 }

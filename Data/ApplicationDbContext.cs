@@ -36,6 +36,7 @@ namespace NotebookValidator.Web.Data
         public DbSet<NotebookValidator.Web.Models.NotificacionProyecto> Notificaciones { get; set; }
 
         public DbSet<SubFaseProyecto> SubFasesProyecto { get; set; }
+        public DbSet<TareaProyecto> TareasProyecto { get; set; }
 
         // =========================================================
         // CONFIGURACIÓN AVANZADA DE MODELOS (Fluent API)
