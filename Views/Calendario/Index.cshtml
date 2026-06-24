@@ -1117,27 +1117,55 @@
         function renderResumen(start, end) {
         resumenRangoEl.textContent = formatoFecha(start) + ' – ' + formatoFecha(new Date(end - 1));
         var totales = {};
-        eventosTareas.forEach(function (ev) {
+
+        // Obtenemos el universo completo de eventos actualmente visibles (tareas + subfases)
+        var visibles = recomputarFiltrados();
+
+        visibles.forEach(function (ev) {
+        var p = ev.extendedProps;
+        if (!p || (p.tipo !== 'tarea' && p.tipo !== 'subfase')) return;
+
         var evStart = parseLocal(ev.start);
+        // Validamos que el evento pertenezca al rango del mes/semana que se está mirando
         if (evStart >= start && evStart < end) {
-        var ini = ev.extendedProps.iniciales;
-        if (!totales[ini]) totales[ini] = { est: 0, real: 0, sobre: false };
-        totales[ini].est += parseFloat(ev.extendedProps.horasEstimadas) || 0;
-        totales[ini].real += parseFloat(ev.extendedProps.horasReales) || 0;
+        var ini = p.iniciales;
+        var email = p.email;
+        if (!ini || email === 'Sin_Asignar' || email.trim() === '') return;
+
+        if (!totales[ini]) {
+        totales[ini] = { est: 0, real: 0, tieneSubfases: false, email: email };
+        }
+
+        if (p.tipo === 'tarea') {
+        totales[ini].est += parseFloat(p.horasEstimadas) || 0;
+        totales[ini].real += parseFloat(p.horasReales) || 0;
+        } else if (p.tipo === 'subfase') {
+        totales[ini].tieneSubfases = true;
+        }
         }
         });
 
         var entradas = Object.entries(totales).sort(function (a, b) { return b[1].est - a[1].est; });
         if (entradas.length === 0) {
-        resumenChipsEl.innerHTML = '<span class="cal-resumen-empty">Sin tareas asignadas en este rango</span>';
+        resumenChipsEl.innerHTML = '<span class="cal-resumen-empty">Sin asignaciones en este rango</span>';
         return;
         }
 
         resumenChipsEl.innerHTML = entradas.map(function (par) {
         var ini = par[0], t = par[1];
+        var textoHoras = '';
+
+        if (t.est > 0) {
         var real = t.real > 0 ? ' · <span class="real">Real ' + t.real.toFixed(1) + 'h</span>' : '';
-        return '<span class="cal-resumen-chip"><span class="ini">' + esc(ini) + '</span>' +
-        '<span class="datos">Plan ' + t.est.toFixed(1) + 'h' + real + '</span></span>';
+        textoHoras = 'Plan ' + t.est.toFixed(1) + 'h' + real;
+        } else if (t.tieneSubfases) {
+        textoHoras = '<span class="text-warning" style="font-size:0.65rem;"><i class="bi bi-diagram-2 me-1"></i>Subfases Activas</span>';
+        } else {
+        textoHoras = 'Plan 0.0h';
+        }
+
+        return '<span class="cal-resumen-chip" title="' + esc(t.email) + '"><span class="ini">' + esc(ini) + '</span>' +
+        '<span class="datos">' + textoHoras + '</span></span>';
         }).join('');
         }
 
@@ -1519,7 +1547,7 @@
         }
 
         // ============================================================
-        // CONSTRUIR CALENDARIO (ESTILO GOOGLE COMPLETAMENTE LIMPIO)
+        // CONSTRUIR CALENDARIO (CON BURBUJA DE CARGA SEMANAL)
         // ============================================================
         function construirCalendario(eventos) {
         calendar = new FullCalendar.Calendar(calendarEl, {
@@ -1568,8 +1596,8 @@
         dayGridMonth: {
         weekNumbers: true,
         showNonCurrentDates: false,
-        fixedWeekCount: false, // Remueve dinámicamente las semanas completamente vacías
-        eventDisplay: 'block'  // Cambiado a block para renderizar como píldora corrida estilo Google
+        fixedWeekCount: false,
+        eventDisplay: 'block'
         },
         timeGridWeek: { weekNumbers: false, allDaySlot: true },
         timeGridDay: { weekNumbers: false }
@@ -1601,8 +1629,72 @@
         eventMouseEnter: mostrarTooltip,
         eventMouseLeave: ocultarTooltip,
 
+        // --- NUEVO: BURBUJA DE ASIGNACIÓN AL HOVER DE LA SEMANA ---
+        weekNumberDidMount: function(info) {
+        var weekStart = info.date;
+        var weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+        var visibles = recomputarFiltrados();
+        var cargaSemanal = {};
+
+        visibles.forEach(function(ev) {
+        var p = ev.extendedProps;
+        if (!p || (p.tipo !== 'tarea' && p.tipo !== 'subfase')) return;
+
+        var evStart = parseLocal(ev.start);
+        if (evStart >= weekStart && evStart < weekEnd) {
+        var ini = p.iniciales;
+        if (!ini || p.email === 'Sin_Asignar') return;
+
+        if (!cargaSemanal[ini]) {
+        cargaSemanal[ini] = { est: 0, subfases: new Set() };
+        }
+        if (p.tipo === 'tarea') {
+        cargaSemanal[ini].est += parseFloat(p.horasEstimadas) || 0;
+        } else if (p.tipo === 'subfase') {
+        cargaSemanal[ini].subfases.add(ev.title);
+        }
+        }
+        });
+
+        var html = '<div class="font-monospace p-1" style="font-size:0.72rem; min-width:180px; line-height:1.4;">' +
+        '<div class="fw-bold text-info border-bottom border-secondary pb-1 mb-1"><i class="bi bi-calendar3 me-1"></i>Resumen Semana ' + info.num + '</div>';
+
+        var keys = Object.keys(cargaSemanal);
+        if (keys.length === 0) {
+        html += '<div class="text-white-50 italic py-1">Sin asignaciones asignadas</div>';
+        } else {
+        keys.forEach(function(ini) {
+        var c = cargaSemanal[ini];
+        var detalleCarga = c.est > 0 ? c.est.toFixed(1) + ' h' : 'Subfase';
+
+        html += `<div class="d-flex justify-content-between my-1">` +
+        `<span class="text-info fw-bold">[${esc(ini)}]</span>` +
+        `<span class="text-white fw-semibold">${detalleCarga}</span>` +
+        `</div>`;
+
+        if (c.subfases.size > 0) {
+        c.subfases.forEach(function(sf) {
+        html += `<div class="text-muted ps-2 text-truncate" style="font-size:0.6rem; max-width:170px;" title="${esc(sf)}">• ${esc(sf)}</div>`;
+        });
+        }
+        });
+        }
+        html += '</div>';
+
+        // Inyectamos el Tooltip de Bootstrap nativo sobre la celda SmXX
+        new bootstrap.Tooltip(info.el, {
+        title: html,
+        html: true,
+        placement: 'right',
+        trigger: 'hover',
+        container: 'body',
+        sanitize: false,
+        customClass: 'custom-cal-tooltip'
+        });
+        },
+
         eventDidMount: function(info) {
-        // 1. Alerta Roja para desfasajes temporales legales
         if (info.event.extendedProps.fueraDeRango) {
         var titleEl = info.el.querySelector('.fc-event-title');
         if (titleEl) {
@@ -1610,7 +1702,6 @@
         }
         }
 
-        // 2. Click derecho contextual
         info.el.addEventListener('contextmenu', function(e) {
         if (info.event.extendedProps.tipo === 'tarea') {
         e.preventDefault();
