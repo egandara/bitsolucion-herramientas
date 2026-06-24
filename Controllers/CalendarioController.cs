@@ -39,7 +39,6 @@ namespace NotebookValidator.Web.Controllers
                         .ThenInclude(s => s.Fase)
                             .ThenInclude(f => f.Proyecto)
                     .Include(t => t.UsuarioAsignado)
-                    .AsNoTracking()
                     .ToListAsync();
 
                 var subfases = await _context.SubFasesProyecto
@@ -47,8 +46,75 @@ namespace NotebookValidator.Web.Controllers
                         .ThenInclude(f => f.Proyecto)
                     .Include(s => s.Responsable)
                     .Where(s => s.FechaInicio.HasValue)
-                    .AsNoTracking()
                     .ToListAsync();
+
+                // === DETECTOR Y MOTOR DE EFECTO DOMINÓ (SÁBADOS Y DOMINGOS) ===
+                var tareasPorUsuario = tareas
+                    .Where(t => t.UsuarioAsignado != null)
+                    .GroupBy(t => t.UsuarioAsignadoId);
+
+                foreach (var grupo in tareasPorUsuario)
+                {
+                    // Ordenamos las tareas cronológicamente para aplicar el empuje secuencial
+                    var listaTareas = grupo.OrderBy(t => t.FechaInicioReal ?? t.FechaCreacion).ToList();
+                    DateTime proximaDisponibilidad = DateTime.MinValue;
+
+                    foreach (var t in listaTareas)
+                    {
+                        DateTime inicioProyectado = t.FechaInicioReal ?? t.FechaCreacion;
+
+                        // 1. Si la tarea inicia originalmente un fin de semana, saltar al lunes a las 09:00 AM
+                        if (inicioProyectado.DayOfWeek == DayOfWeek.Saturday)
+                            inicioProyectado = inicioProyectado.AddDays(2).Date.AddHours(9);
+                        else if (inicioProyectado.DayOfWeek == DayOfWeek.Sunday)
+                            inicioProyectado = inicioProyectado.AddDays(1).Date.AddHours(9);
+
+                        // 2. EFECTO DOMINÓ: Si se solapa con el fin de la tarea anterior, la empujamos
+                        if (inicioProyectado < proximaDisponibilidad)
+                        {
+                            inicioProyectado = proximaDisponibilidad;
+                        }
+
+                        // 3. Re-verificar que tras el empuje no haya quedado atrapada en un fin de semana
+                        while (inicioProyectado.DayOfWeek == DayOfWeek.Saturday || inicioProyectado.DayOfWeek == DayOfWeek.Sunday)
+                        {
+                            if (inicioProyectado.DayOfWeek == DayOfWeek.Saturday)
+                                inicioProyectado = inicioProyectado.AddDays(2).Date.AddHours(9);
+                            else if (inicioProyectado.DayOfWeek == DayOfWeek.Sunday)
+                                inicioProyectado = inicioProyectado.AddDays(1).Date.AddHours(9);
+                        }
+
+                        // Asignamos las nuevas fechas corregidas al objeto
+                        t.FechaInicioReal = inicioProyectado;
+
+                        decimal horas = t.HorasEstimadas > 0 ? t.HorasEstimadas : 1m;
+                        DateTime finProyectado = inicioProyectado.AddHours((double)horas);
+
+                        // Si el término toca el fin de semana, lo movemos al lunes
+                        if (finProyectado.DayOfWeek == DayOfWeek.Saturday)
+                            finProyectado = finProyectado.AddDays(2);
+                        else if (finProyectado.DayOfWeek == DayOfWeek.Sunday)
+                            finProyectado = finProyectado.AddDays(1);
+
+                        if (t.Estado == "Terminada" && t.FechaFinReal.HasValue)
+                            t.FechaFinReal = finProyectado;
+
+                        // La próxima tarea de este usuario no puede empezar antes de que termine esta
+                        proximaDisponibilidad = finProyectado;
+                    }
+                }
+
+                // Ajustar también tareas huérfanas fuera de fin de semana
+                foreach (var t in tareas.Where(t => t.UsuarioAsignado == null))
+                {
+                    DateTime start = t.FechaInicioReal ?? t.FechaCreacion;
+                    if (start.DayOfWeek == DayOfWeek.Saturday) start = start.AddDays(2).Date.AddHours(9);
+                    if (start.DayOfWeek == DayOfWeek.Sunday) start = start.AddDays(1).Date.AddHours(9);
+                    t.FechaInicioReal = start;
+                }
+
+                // Guardar auto-correcciones en la base de datos de forma transparente
+                await _context.SaveChangesAsync();
 
                 var listaEventos = new List<object>();
 
@@ -74,13 +140,11 @@ namespace NotebookValidator.Web.Controllers
                     });
                 }
 
-                // --- 2. EVENTOS DE SUBFASE (Todo el día) ---
+                // --- 2. EVENTOS DE SUBFASE ---
                 foreach (var sub in subfases)
                 {
                     string email = sub.Responsable?.Email ?? "Sin_Asignar";
                     string iniciales = email.Length >= 2 ? email.Substring(0, 2).ToUpper() : "??";
-
-                    // Forzamos formato con hora completa para que FullCalendar y el modal sepan el tiempo exacto
                     string startStr = sub.FechaInicio?.ToString("yyyy-MM-ddTHH:mm:ss");
                     string endStr = sub.FechaFinEstimada?.ToString("yyyy-MM-ddTHH:mm:ss");
 
@@ -90,7 +154,7 @@ namespace NotebookValidator.Web.Controllers
                         title = sub.Nombre,
                         start = startStr,
                         end = endStr,
-                        allDay = false, // Permitimos que lea las horas en lugar de asumir todo el día
+                        allDay = false,
                         editable = false,
                         backgroundColor = "rgba(255, 193, 7, 0.12)",
                         borderColor = "transparent",
@@ -103,7 +167,6 @@ namespace NotebookValidator.Web.Controllers
                             iniciales = iniciales,
                             email = email,
                             estado = sub.Estado,
-                            // --- SOLUCIÓN: Mapeamos los límites reales de la subfase para el Modal ---
                             subfaseInicio = startStr,
                             subfaseFin = endStr,
                             fase = sub.Fase?.NombreFase?.Replace("_", " ") ?? "—",

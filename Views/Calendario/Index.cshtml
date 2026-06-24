@@ -1114,13 +1114,45 @@
         });
         }
 
+        // ============================================================
+        // CALCULAR HORAS LABORALES REALES (MÁXIMO 8H DIARIAS - LUN A VIE)
+        // ============================================================
+        function calcularHorasLaboralesEnRango(fIni, fFin, rIni, rFin) {
+        var s = new Date(Math.max(parseLocal(fIni), parseLocal(rIni)));
+        var e = new Date(Math.min(parseLocal(fFin), parseLocal(rFin)));
+        if (s >= e) return 0;
+
+        var totalHoras = 0;
+        var curr = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+        var endDay = new Date(e.getFullYear(), e.getMonth(), e.getDate());
+
+        // Iteramos día por día sobre la intersección real
+        while (curr <= endDay) {
+        var dayOfWeek = curr.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Excluir Sábado (6) y Domingo (0)
+        // Establecemos la ventana de jornada estándar (09:00 a 17:00 = 8 horas laborables)
+        var dtStart = new Date(curr.getFullYear(), curr.getMonth(), curr.getDate(), 9, 0, 0);
+        var dtEnd = new Date(curr.getFullYear(), curr.getMonth(), curr.getDate(), 17, 0, 0);
+
+        var exactStart = new Date(Math.max(s, dtStart));
+        var exactEnd = new Date(Math.min(e, dtEnd));
+
+        if (exactEnd > exactStart) {
+        totalHoras += (exactEnd - exactStart) / 3600000;
+        }
+        }
+        curr.setDate(curr.getDate() + 1);
+        }
+        return totalHoras;
+        }
+
         function renderResumen(start, end) {
         resumenRangoEl.textContent = formatoFecha(start) + ' – ' + formatoFecha(new Date(end - 1));
         var totales = {};
 
         var visibles = recomputarFiltrados();
 
-        // === PASO 1: Procesar primero las Subfases estructurales ===
+        // PASO 1: Computar Subfases aplicando el filtro de horas laborables estrictas
         visibles.forEach(function (ev) {
         var p = ev.extendedProps;
         if (!p || p.tipo !== 'subfase') return;
@@ -1129,29 +1161,20 @@
         var email = p.email;
         if (!ini || email === 'Sin_Asignar' || email.trim() === '') return;
 
-        var evStart = parseLocal(ev.start);
-        var evEnd = ev.end ? parseLocal(ev.end) : evStart;
+        var diffHoras = calcularHorasLaboralesEnRango(ev.start, ev.end, start, end);
 
-        // Calculamos la intersección exacta de la subfase con el mes/semana en pantalla
-        var overlapStart = new Date(Math.max(evStart, start));
-        var overlapEnd = new Date(Math.min(evEnd, end));
-
-        if (overlapEnd > overlapStart) {
-        var diffHoras = (overlapEnd - overlapStart) / 3600000;
         if (diffHoras > 0) {
         if (!totales[ini]) {
         totales[ini] = { est: 0, real: 0, email: email, subfasesContadas: {} };
         }
         totales[ini].est += diffHoras;
 
-        // Registramos que esta subfase ya aportó sus horas globales para este usuario
         var nomeSubfase = p.subfase || ev.title;
         totales[ini].subfasesContadas[nomeSubfase] = true;
         }
-        }
         });
 
-        // === PASO 2: Procesar las Tareas (Evitando la doble contabilidad) ===
+        // PASO 2: Computar Tareas hijas evitando duplicar si su subfase ya aportó el tiempo
         visibles.forEach(function (ev) {
         var p = ev.extendedProps;
         if (!p || p.tipo !== 'tarea') return;
@@ -1167,7 +1190,6 @@
         }
 
         var nomeSubfase = p.subfase || '—';
-        // Regla de Oro: Si la subfase superior ya sumó sus horas, ignoramos la tarea hija
         if (!totales[ini].subfasesContadas[nomeSubfase]) {
         totales[ini].est += parseFloat(p.horasEstimadas) || 0;
         }
@@ -1567,7 +1589,7 @@
         }
 
         // ============================================================
-        // CONSTRUIR CALENDARIO (CON REGOLARIZACIÓN DE HORAS SUBFASE/TAREA)
+        // CONSTRUIR CALENDARIO (CON REGULARIZACIÓN DE HORAS SEMANALES)
         // ============================================================
         function construirCalendario(eventos) {
         calendar = new FullCalendar.Calendar(calendarEl, {
@@ -1649,7 +1671,7 @@
         eventMouseEnter: mostrarTooltip,
         eventMouseLeave: ocultarTooltip,
 
-        // --- BURBUJA SEMANAL INTEGRADA CON LA REGLA DE SUBFASES ---
+        // --- BURBUJA SEMANAL INTEGRADA CON MÁXIMO 8H LABORALES ---
         weekNumberDidMount: function(info) {
         var weekStart = info.date;
         var weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -1657,7 +1679,7 @@
         var visibles = recomputarFiltrados();
         var cargaSemanal = {};
 
-        // 1. Pasada de Subfases semanales
+        // 1. Pasada de Subfases estructurales
         visibles.forEach(function(ev) {
         var p = ev.extendedProps;
         if (!p || p.tipo !== 'subfase') return;
@@ -1665,14 +1687,8 @@
         var ini = p.iniciales;
         if (!ini || p.email === 'Sin_Asignar') return;
 
-        var evStart = parseLocal(ev.start);
-        var evEnd = ev.end ? parseLocal(ev.end) : evStart;
+        var diffHoras = calcularHorasLaboralesEnRango(ev.start, ev.end, weekStart, weekEnd);
 
-        var overlapStart = new Date(Math.max(evStart, weekStart));
-        var overlapEnd = new Date(Math.min(evEnd, weekEnd));
-
-        if (overlapEnd > overlapStart) {
-        var diffHoras = (overlapEnd - overlapStart) / 3600000;
         if (diffHoras > 0) {
         if (!cargaSemanal[ini]) {
         cargaSemanal[ini] = { est: 0, subfasesContadas: {} };
@@ -1681,10 +1697,9 @@
         var nomeSubfase = p.subfase || ev.title;
         cargaSemanal[ini].subfasesContadas[nomeSubfase] = true;
         }
-        }
         });
 
-        // 2. Pasada de Tareas semanales (Filtrando duplicados de subfase)
+        // 2. Pasada de Tareas operativas (Filtrando duplicidad)
         visibles.forEach(function(ev) {
         var p = ev.extendedProps;
         if (!p || p.tipo !== 'tarea') return;
