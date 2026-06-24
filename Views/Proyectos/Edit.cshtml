@@ -6,7 +6,113 @@
     int subIndex = 0;
 }
 
-<div class="container-fluid dashboard-xl-container mt-3" style="max-width: 1000px !important;">
+<style>
+    /* ============================================================
+           ESTRUCTURA DE DOS COLUMNAS (SIDEBAR)
+           ============================================================ */
+    .cal-sidebar-block {
+        background-color: #111424 !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        border-radius: 10px;
+        padding: 18px !important;
+        margin-bottom: 16px;
+    }
+
+    .cal-sidebar-title {
+        font-size: 0.8rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #0dcaf0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding-bottom: 8px;
+        margin-bottom: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .form-group-stacked {
+        margin-bottom: 12px;
+    }
+
+        .form-group-stacked:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-group-stacked label {
+            font-size: 0.72rem !important;
+            color: rgba(255, 255, 255, 0.4) !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px !important;
+            font-weight: bold;
+        }
+
+    .btn-auto-calcular {
+        font-size: 0.65rem !important;
+        padding: 2px 8px !important;
+        border-radius: 6px !important;
+        font-family: ui-monospace, monospace;
+    }
+
+    /* ============================================================
+           OPTIMIZACIÓN DE ESPACIO PARA FILAS DE SUBFASES (GRID)
+           ============================================================ */
+    .subfase-row-container {
+        display: grid !important;
+        grid-template-columns: 1.2fr 3fr 1.6fr 0.7fr 1.6fr 2.5fr auto !important;
+        gap: 12px !important;
+        align-items: end !important;
+        background-color: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 14px 16px !important;
+        margin-bottom: 12px;
+        transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .subfase-form-group {
+        display: flex;
+        flex-direction: column;
+        width: 100% !important;
+    }
+
+        .subfase-form-group label {
+            font-size: 0.7rem !important;
+            color: rgba(255, 255, 255, 0.4) !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px !important;
+            white-space: nowrap;
+        }
+
+    .subfase-row-container .form-control,
+    .subfase-row-container .form-select {
+        width: 100% !important;
+        padding: 6px 10px !important;
+        font-size: 0.8rem !important;
+        background-color: #171b2e !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
+        color: #f5f6fa !important;
+        border-radius: 6px !important;
+        text-overflow: ellipsis;
+    }
+
+    .subfase-input-horas {
+        text-align: center;
+    }
+
+    .subfase-actions-group {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding-bottom: 4px;
+    }
+</style>
+
+<div class="container-fluid mt-3" style="max-width: 1500px !important;">
     <div class="d-flex align-items-center mb-4">
         <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm me-3"><i class="bi bi-arrow-left"></i> Volver</a>
         <div>
@@ -15,222 +121,235 @@
         </div>
     </div>
 
-    <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-        <form asp-action="Edit" method="post" id="formEditProject">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="id" value="@Model.Id" />
+    <form asp-action="Edit" method="post" id="formEditProject">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" value="@Model.Id" />
 
-            <h5 class="fw-bold text-warning mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-info-square me-2"></i>1. Metadatos Generales</h5>
-            <div class="row g-3 mb-4">
-                <div class="col-md-6">
-                    <label class="form-label text-white small fw-bold">Empresa / Cliente</label>
-                    <select name="clienteId" id="selectClienteId" class="form-select bg-dark text-white border-secondary" asp-items="ViewBag.Clientes">
-                        <option value="">-- Interno / Sin Cliente --</option>
-                    </select>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label text-white small fw-bold">Estado del Proyecto</label>
-                    <select name="estado" class="form-select bg-dark text-white border-secondary">
-                        <!option value="Activo" @(Model.Estado == "Activo" ? "selected" : "")>Activo</!option>
-                        <!option value="Pausado" @(Model.Estado == "Pausado" ? "selected" : "")>Pausado</!option>
-                        <!option value="Finalizado" @(Model.Estado == "Finalizado" ? "selected" : "")>Finalizado</!option>
-                    </select>
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label text-white small fw-bold">Repositorio GitHub</label>
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-github"></i></span>
-                            <input type="text" name="repositorioGitHub" class="form-control bg-dark text-white border-secondary font-monospace" value="@Model.RepositorioGitHub" />
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label text-white small fw-bold">Contraparte del Cliente</label>
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-person-badge"></i></span>
-                            <input type="text" name="contraparteCliente" class="form-control bg-dark text-white border-secondary" value="@Model.ContraparteCliente" />
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-12">
-                    <label class="form-label text-white small fw-bold">Descripción</label>
-                    <textarea name="descripcion" class="form-control bg-dark text-white border-secondary" rows="2">@Model.Descripcion</textarea>
-                </div>
-            </div>
+        <div class="row g-4">
+            <div class="col-lg-8 col-xl-9">
 
-            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
-                <h5 class="fw-bold text-info mb-0" style="font-size: 1rem;"><i class="bi bi-calendar-event me-2"></i>2. Cronograma y Notas</h5>
-                <button type="button" class="btn btn-sm btn-outline-info shadow-sm" onclick="sincronizarFechas()" title="Auto-calcular fechas maestras según tareas">
-                    <i class="bi bi-magic me-1"></i> Auto-Calcular Fechas
-                </button>
-            </div>
-            <div class="row g-3 mb-4">
-                <div class="col-md-4">
-                    <label class="form-label text-white small fw-bold">Fecha de Inicio</label>
-                    <input type="date" id="gFechaInicio" name="fechaInicio" class="form-control bg-dark text-white border-secondary" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label text-white small fw-bold">Fin Estimado (Cierre)</label>
-                    <input type="date" id="gFechaFin" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" value="@Model.FechaFinEstimada?.ToString("yyyy-MM-dd")" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label text-white small fw-bold">Paso a Producción</label>
-                    <input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" value="@Model.FechaPasoProduccion?.ToString("yyyy-MM-dd")" />
-                </div>
-                <div class="col-md-12">
-                    <label class="form-label text-white small fw-bold">Notas o Reprogramaciones</label>
-                    <textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="2">@Model.Notas</textarea>
-                </div>
-            </div>
-
-            <h5 class="fw-bold text-danger mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;">
-                <i class="bi bi-sliders me-2"></i>3. Configuración de Umbrales de Calidad (Gobernanza)
-            </h5>
-            <div class="row g-3 mb-4">
-                <div class="col-md-6">
-                    <label class="form-label text-white small fw-bold">Máximo Warnings</label>
-                    <input type="number" name="maxWarningsPermitidos" class="form-control bg-dark text-white border-secondary font-monospace" min="0" value="@Model.MaxWarningsPermitidos" required />
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label text-white small fw-bold">Máximo Infos</label>
-                    <input type="number" name="maxInfosPermitidos" class="form-control bg-dark text-white border-secondary font-monospace" min="0" value="@Model.MaxInfosPermitidos" required />
-                </div>
-            </div>
-
-            <!-- ========================================== -->
-            <!-- CABECERA TAREAS: Efecto Dominó y Pincel    -->
-            <!-- ========================================== -->
-            <div class="d-flex justify-content-between align-items-center mb-3 mt-4 border-bottom border-secondary pb-2">
-                <div>
-                    <h5 class="fw-bold text-light mb-0" style="font-size: 1rem;"><i class="bi bi-diagram-2-fill me-2"></i>4. Subfases Específicas</h5>
-                </div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalDomino">
-                        <i class="bi bi-calendar-range"></i> Dominó
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-success shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalPegadoInteligente">
-                        <i class="bi bi-magic me-1"></i> Pegar Excel/Project
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-info" id="btnAddSubfase">
-                        <i class="bi bi-plus-lg"></i> Añadir Manual
-                    </button>
-                </div>
-            </div>
-
-            <div id="tray-asignacion" class="bg-dark border border-info border-opacity-25 p-3 mb-3" style="border-radius: 8px;">
-                <div class="d-flex align-items-center mb-2">
-                    <i class="bi bi-cursor-fill text-info me-2"></i>
-                    <span class="text-white small fw-bold me-auto">Bandeja de Asignación Rápida</span>
-                </div>
-                <div class="d-flex flex-wrap gap-3 mt-2 px-1 pb-2">
-                    @if (usuariosBanco != null)
-                    {
-                        foreach (var user in usuariosBanco)
-                        {
-                            <div class="badge bg-secondary border border-secondary text-white draggable-user shadow-sm position-relative"
-                                 draggable="true" data-uid="@user.Id" style="cursor: grab; font-size: 0.75rem; padding: 6px 12px; user-select: none;">
-                                <i class="bi bi-grip-vertical me-1 opacity-50"></i>@user.Email.Split('@')[0]
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-dark border border-secondary task-counter d-none" id="counter_@user.Id" style="font-size: 0.6rem; z-index: 5;">0</span>
+                <div class="card p-4 border-0 mb-4" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <h5 class="fw-bold text-warning mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-info-square me-2"></i>1. Metadatos Generales</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-white small fw-bold">Repositorio GitHub</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-github"></i></span>
+                                <input type="text" name="repositorioGitHub" class="form-control bg-dark text-white border-secondary font-monospace" value="@Model.RepositorioGitHub" />
                             </div>
-                        }
-                    }
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-white small fw-bold">Contraparte del Cliente</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-person-badge"></i></span>
+                                <input type="text" name="contraparteCliente" class="form-control bg-dark text-white border-secondary" value="@Model.ContraparteCliente" />
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label text-white small fw-bold">Descripción</label>
+                            <textarea name="descripcion" class="form-control bg-dark text-white border-secondary" rows="2">@Model.Descripcion</textarea>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div id="subfases-container" class="mb-2 d-flex flex-column gap-2">
-                @if (Model.Fases != null)
-                {
-                    foreach (var fase in Model.Fases.OrderBy(f => f.Orden))
-                    {
-                        if (fase.SubFases != null)
-                        {
-                            foreach (var sub in fase.SubFases)
+                <div class="card p-4 border-0 mb-4" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
+                        <div>
+                            <h5 class="fw-bold text-light mb-0" style="font-size: 1rem;"><i class="bi bi-diagram-2-fill me-2"></i>2. Subfases Específicas</h5>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalDomino">
+                                <i class="bi bi-calendar-range"></i> Dominó
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalPegadoInteligente">
+                                <i class="bi bi-magic me-1"></i> Pegar Excel
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-info" id="btnAddSubfase">
+                                <i class="bi bi-plus-lg"></i> Añadir Manual
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="tray-asignacion" class="bg-dark border border-info border-opacity-25 p-3 mb-3" style="border-radius: 8px;">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-cursor-fill text-info me-2"></i>
+                            <span class="text-white small fw-bold me-auto">Bandeja de Asignación Rápida</span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-3 mt-2 px-1 pb-2">
+                            @if (usuariosBanco != null)
                             {
-                                <div class="row g-2 align-items-center subfase-row p-2 bg-dark bg-opacity-50 border border-secondary border-opacity-50" style="border-radius: 6px;">
-                                    <input type="hidden" name="Subfases[@subIndex].Id" value="@sub.Id" />
-                                    <div class="col-md-2">
-                                        <label class="form-label text-white-50 small mb-1">Fase Principal</label>
-                                        <select name="Subfases[@subIndex].FasePadre" class="form-select form-select-sm bg-dark text-white border-secondary" required>
-                                            @foreach (var f in Model.Fases.OrderBy(x => x.Orden))
-                                            {
-                                                <!option value="@f.NombreFase" @(f.Id == fase.Id ? "selected" : "")>@f.Orden. @f.NombreFase.Replace("_", " ")</!option>
-                                            }
-                                        </select>
+                                foreach (var user in usuariosBanco)
+                                {
+                                    <div class="badge bg-secondary border border-secondary text-white draggable-user shadow-sm position-relative"
+                                         draggable="true" data-uid="@user.Id" style="cursor: grab; font-size: 0.75rem; padding: 6px 12px; user-select: none;">
+                                        <i class="bi bi-grip-vertical me-1 opacity-50"></i>@user.Email.Split('@')[0]
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-dark border border-secondary task-counter d-none" id="counter_@user.Id" style="font-size: 0.6rem; z-index: 5;">0</span>
                                     </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label text-white-50 small mb-1">Nombre Subfase</label>
-                                        <input type="text" name="Subfases[@subIndex].Nombre" class="form-control form-control-sm bg-dark text-white border-secondary" value="@sub.Nombre" required />
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label text-white-50 small mb-1">Inicio (Hora)</label>
-                                        <input type="datetime-local" name="Subfases[@subIndex].FechaInicio" class="form-control form-control-sm bg-dark text-white border-secondary input-inicio" value="@(sub.FechaInicio?.ToString("yyyy-MM-ddTHH:mm"))" />
-                                    </div>
-                                    <div class="col-md-1">
-                                        <label class="form-label text-warning small mb-1">Horas <i class="bi bi-clock"></i></label>
-                                        <input type="number" step="0.5" class="form-control form-control-sm bg-dark text-warning border-secondary input-horas text-center" min="0.5" placeholder="#" />
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label text-white-50 small mb-1">Fin Estimado</label>
-                                        <input type="datetime-local" name="Subfases[@subIndex].FechaFinEstimada" class="form-control form-control-sm bg-dark text-white border-secondary input-fin" value="@(sub.FechaFinEstimada?.ToString("yyyy-MM-ddTHH:mm"))" />
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label text-white-50 small mb-1">Responsable</label>
-                                        <div class="d-flex align-items-center gap-1">
-                                            <select name="Subfases[@subIndex].ResponsableId" class="form-select form-select-sm bg-dark text-white border-secondary subfase-user-select" style="flex-grow: 1;">
-                                                <option value="">-- Sin asignar --</option>
-                                                @if (usuariosBanco != null)
-                                                {
-                                                    foreach (var user in usuariosBanco)
+                                }
+                            }
+                        </div>
+                    </div>
+
+                    <div id="subfases-container" class="mb-2 d-flex flex-column">
+                        @if (Model.Fases != null)
+                        {
+                            foreach (var fase in Model.Fases.OrderBy(f => f.Orden))
+                            {
+                                if (fase.SubFases != null)
+                                {
+                                    foreach (var sub in fase.SubFases)
+                                    {
+                                        <div class="subfase-row-container subfase-row">
+                                            <input type="hidden" name="Subfases[@subIndex].Id" value="@sub.Id" />
+
+                                            <div class="subfase-form-group">
+                                                <label>Fase Principal</label>
+                                                <select name="Subfases[@subIndex].FasePadre" class="form-select text-white border-secondary" required>
+                                                    @foreach (var f in Model.Fases.OrderBy(x => x.Orden))
                                                     {
-                                                        <!option value="@user.Id" @(sub.ResponsableId == user.Id ? "selected" : "")>@user.Email</!option>
+                                                        <!option value="@f.NombreFase" @(f.Id == fase.Id ? "selected" : "")>@f.Orden. @f.NombreFase.Replace("_", " ")</!option>
                                                     }
-                                                }
-                                            </select>
-                                            <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="¡Desliza por aquí para pintar al usuario!" style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;">
-                                                <i class="bi bi-brush-fill text-warning opacity-75"></i>
+                                                </select>
+                                            </div>
+                                            <div class="subfase-form-group">
+                                                <label>Nombre Subfase</label>
+                                                <input type="text" name="Subfases[@subIndex].Nombre" class="form-control text-white border-secondary" value="@sub.Nombre" required />
+                                            </div>
+                                            <div class="subfase-form-group">
+                                                <label>Inicio (Hora)</label>
+                                                <input type="datetime-local" name="Subfases[@subIndex].FechaInicio" class="form-control text-white border-secondary input-inicio" value="@(sub.FechaInicio?.ToString("yyyy-MM-ddTHH:mm"))" />
+                                            </div>
+                                            <div class="subfase-form-group">
+                                                <label class="text-warning">Horas</label>
+                                                <input type="number" step="0.5" class="form-control text-warning border-secondary input-horas subfase-input-horas" min="0.5" placeholder="#" />
+                                            </div>
+                                            <div class="subfase-form-group">
+                                                <label>Fin Estimado</label>
+                                                <input type="datetime-local" name="Subfases[@subIndex].FechaFinEstimada" class="form-control text-white border-secondary input-fin" value="@(sub.FechaFinEstimada?.ToString("yyyy-MM-ddTHH:mm"))" />
+                                            </div>
+                                            <div class="subfase-form-group">
+                                                <label>Responsable</label>
+                                                <div class="d-flex align-items-center gap-1 w-100">
+                                                    <select name="Subfases[@subIndex].ResponsableId" class="form-select text-white border-secondary subfase-user-select" style="flex-grow: 1;">
+                                                        <option value="">-- Sin asignar --</option>
+                                                        @if (usuariosBanco != null)
+                                                        {
+                                                            foreach (var user in usuariosBanco)
+                                                            {
+                                                                <!option value="@user.Id" @(sub.ResponsableId == user.Id ? "selected" : "")>@user.Email</!option>
+                                                            }
+                                                        }
+                                                    </select>
+                                                    <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="¡Desliza por aquí para pintar al usuario!" style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;">
+                                                        <i class="bi bi-brush-fill text-warning opacity-75"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="subfase-actions-group">
+                                                <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div class="col-md-1 text-center mt-4">
-                                        <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button>
-                                    </div>
-                                </div>
-                                subIndex++;
+                                        subIndex++;
+                                    }
+                                }
                             }
                         }
-                    }
-                }
+                    </div>
+                </div>
+
+                <div class="card p-4 border-0 mb-4" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>3. Actualizar Equipo Global</h5>
+                    <div class="bg-dark border border-secondary p-3" style="border-radius: 6px; max-height: 200px; overflow-y: auto;">
+                        @if (usuariosBanco != null)
+                        {
+                            foreach (var user in usuariosBanco)
+                            {
+                                bool isChecked = asignadosActuales.Contains((string)user.Id);
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input" type="checkbox" name="usuariosAsignadosIds" value="@user.Id" id="user_@user.Id" @(isChecked ? "checked" : "")>
+                                    <label class="form-check-label text-white small" for="user_@user.Id">@user.Email</label>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+
             </div>
 
-            <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2 mt-4" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>5. Actualizar Equipo Global</h5>
-            <div class="bg-dark border border-secondary p-3 mb-4" style="border-radius: 6px; max-height: 200px; overflow-y: auto;">
-                @if (usuariosBanco != null)
-                {
-                    foreach (var user in usuariosBanco)
-                    {
-                        bool isChecked = asignadosActuales.Contains((string)user.Id);
-                        <div class="form-check mb-1">
-                            <input class="form-check-input" type="checkbox" name="usuariosAsignadosIds" value="@user.Id" id="user_@user.Id" @(isChecked ? "checked" : "")>
-                            <label class="form-check-label text-white small" for="user_@user.Id">@user.Email</label>
-                        </div>
-                    }
-                }
-            </div>
+            <div class="col-lg-4 col-xl-3">
+                <div class="cal-sidebar-block">
+                    <div class="cal-sidebar-title">
+                        <span><i class="bi bi-gear me-1"></i>Configuración</span>
+                    </div>
+                    <div class="form-group-stacked">
+                        <label>Empresa / Cliente</label>
+                        <select name="clienteId" id="selectClienteId" class="form-select bg-dark text-white border-secondary" asp-items="ViewBag.Clientes">
+                            <option value="">-- Interno / Sin Cliente --</option>
+                        </select>
+                    </div>
+                    <div class="form-group-stacked mt-3">
+                        <label>Estado del Proyecto</label>
+                        <select name="estado" class="form-select bg-dark text-white border-secondary">
+                            <!option value="Activo" @(Model.Estado == "Activo" ? "selected" : "")>Activo</!option>
+                            <!option value="Pausado" @(Model.Estado == "Pausado" ? "selected" : "")>Pausado</!option>
+                            <!option value="Finalizado" @(Model.Estado == "Finalizado" ? "selected" : "")>Finalizado</!option>
+                        </select>
+                    </div>
+                </div>
 
-            <div class="text-end border-top border-secondary border-opacity-25 pt-3 mt-2">
-                <button type="button" class="btn btn-outline-danger shadow-sm" onclick="eliminarProyecto(@Model.Id)">
-                    <i class="bi bi-trash3-fill me-2"></i>Eliminar Proyecto
-                </button>
-                <button type="submit" class="btn btn-warning px-5 py-2 fw-bold" id="btnSubmit">
-                    <span id="spinnerSubmit" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
-                    <i class="bi bi-save me-1" id="iconSubmit"></i> Guardar Cambios
-                </button>
+                <div class="cal-sidebar-block">
+                    <div class="cal-sidebar-title">
+                        <span><i class="bi bi-calendar3 me-1"></i>Cronograma</span>
+                        <button type="button" class="btn btn-outline-info btn-auto-calcular" onclick="sincronizarFechas()" title="Calcular por subfases">
+                            <i class="bi bi-magic me-1"></i>Auto
+                        </button>
+                    </div>
+                    <div class="form-group-stacked">
+                        <label>Fecha de Inicio</label>
+                        <input type="date" id="gFechaInicio" name="fechaInicio" class="form-control bg-dark text-white border-secondary" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="form-group-stacked mt-3">
+                        <label>Fin Estimado (Cierre)</label>
+                        <input type="date" id="gFechaFin" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" value="@Model.FechaFinEstimada?.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="form-group-stacked mt-3">
+                        <label>Paso a Producción</label>
+                        <input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" value="@Model.FechaPasoProduccion?.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="form-group-stacked mt-3">
+                        <label>Notas o Reprogramaciones</label>
+                        <textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="3" style="resize:none;">@Model.Notas</textarea>
+                    </div>
+                </div>
+
+                <div class="cal-sidebar-block">
+                    <div class="cal-sidebar-title">
+                        <span><i class="bi bi-shield-check me-1"></i>Calidad QA</span>
+                    </div>
+                    <div class="form-group-stacked">
+                        <label>Máximo Warnings</label>
+                        <input type="number" name="maxWarningsPermitidos" class="form-control bg-dark text-white border-secondary font-monospace text-center" min="0" value="@Model.MaxWarningsPermitidos" required />
+                    </div>
+                    <div class="form-group-stacked mt-3">
+                        <label>Máximo Infos</label>
+                        <input type="number" name="maxInfosPermitidos" class="form-control bg-dark text-white border-secondary font-monospace text-center" min="0" value="@Model.MaxInfosPermitidos" required />
+                    </div>
+                </div>
+
+                <div class="cal-sidebar-block" style="background-color: transparent !important; border: none !important; padding: 0 !important;">
+                    <button type="submit" class="btn btn-warning w-100 py-3 fw-bold shadow mb-3" id="btnSubmit" style="border-radius: 10px; font-size: 1.1rem;">
+                        <span id="spinnerSubmit" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
+                        <i class="bi bi-save me-1" id="iconSubmit"></i> Guardar Cambios
+                    </button>
+                    <button type="button" class="btn btn-outline-danger w-100 shadow-sm" onclick="eliminarProyecto(@Model.Id)" style="border-radius: 8px;">
+                        <i class="bi bi-trash3-fill me-2"></i>Eliminar Proyecto
+                    </button>
+                </div>
             </div>
-        </form>
-    </div>
+        </div>
+    </form>
 </div>
 
-<!-- MODAL EFECTO DOMINÓ -->
 <div class="modal fade" id="modalDomino" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #ffc107;">
@@ -253,7 +372,6 @@
     </div>
 </div>
 
-<!-- MODAL PEGADO INTELIGENTE -->
 <div class="modal fade" id="modalPegadoInteligente" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #198754;">
@@ -274,10 +392,8 @@
 
 @section Scripts {
     <script>
-        // ── MOTOR DE HORARIOS DINÁMICOS ──
         const clientesHorarios = @Html.Raw(ViewBag.ClientesHorariosJson ?? "[]");
         let activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
-
         document.getElementById('selectClienteId').addEventListener('change', function() {
             const val = this.value;
             const match = clientesHorarios.find(c => c.id === val);
@@ -286,7 +402,6 @@
             document.querySelectorAll('.input-horas').forEach(inp => inp.dispatchEvent(new Event('input')));
         });
 
-        // ── INICIALIZACIÓN DRAG & DROP ──
         let subfaseIndex = @subIndex;
         window.currentDraggedUser = null;
 
@@ -310,7 +425,6 @@
         `;
 
         document.addEventListener("DOMContentLoaded", function () {
-            // Inicializar las fichas arrastrables
             document.querySelectorAll('.draggable-user').forEach(pill => {
                 pill.addEventListener('dragstart', function(e) {
                     window.currentDraggedUser = this.getAttribute('data-uid');
@@ -324,10 +438,7 @@
                 });
             });
 
-            // Enlazar eventos a las filas que ya vinieron desde la Base de Datos
             document.querySelectorAll('.subfase-row').forEach(row => bindRowEvents(row));
-
-            // Cargar horario del cliente seleccionado y actualizar burbujas
             document.getElementById('selectClienteId').dispatchEvent(new Event('change'));
             actualizarTermometro();
         });
@@ -361,9 +472,9 @@
                     }
                     let exitH = (dayOfWeek === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH;
                     let exitM = (dayOfWeek === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
-                    let endOfDay = new Date(date); endOfDay.setHours(exitH, exitM, 0, 0);
+                    let endOfDay = new Date(date);
+                    endOfDay.setHours(exitH, exitM, 0, 0);
                     let startOfDay = new Date(date); startOfDay.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
-
                     if (date < startOfDay) date = new Date(startOfDay);
                     if (date >= endOfDay) {
                         date.setDate(date.getDate() + 1);
@@ -390,7 +501,6 @@
             inpHoras.addEventListener('input', calcularFin);
             selectResp.addEventListener('change', actualizarTermometro);
 
-            // Eventos Modo Pincel
             paintZone.addEventListener('dragenter', function(e) {
                 e.preventDefault();
                 if (window.currentDraggedUser && selectResp.value !== window.currentDraggedUser) {
@@ -417,65 +527,61 @@
             });
         }
 
-        // ==========================================
-        // INYECTAR NUEVA TAREA
-        // ==========================================
         function inyectarFilaSubfase(nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
-                    const container = document.getElementById('subfases-container');
-                    const row = document.createElement('div');
-                    row.className = 'row g-2 mb-2 align-items-center subfase-row p-2 bg-dark bg-opacity-50 border border-secondary border-opacity-50';
-                    row.style.borderRadius = "6px";
-                    row.style.transition = "background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease";
-                    row.innerHTML = `
-                        <input type="hidden" name="Subfases[${subfaseIndex}].Id" value="0" />
-                        <div class="col-md-2">
-                            <label class="form-label text-white-50 small mb-1">Fase Principal</label>
-                            <select name="Subfases[${subfaseIndex}].FasePadre" class="form-select form-select-sm bg-dark text-white border-secondary" required>
-                                ${fasesOptions}
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label text-white-50 small mb-1">Nombre Subfase</label>
-                            <input type="text" name="Subfases[${subfaseIndex}].Nombre" class="form-control form-control-sm bg-dark text-white border-secondary" value="${nombre}" required />
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label text-white-50 small mb-1">Inicio (Hora)</label>
-                            <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaInicio" class="form-control form-control-sm bg-dark text-white border-secondary input-inicio" value="${fechaIni}" />
-                        </div>
-                        <div class="col-md-1">
-                            <label class="form-label text-warning small mb-1">Horas <i class="bi bi-clock"></i></label>
-                            <input type="number" step="0.5" class="form-control form-control-sm bg-dark text-warning border-secondary input-horas text-center" min="0.5" placeholder="#" value="${horasVal}" />
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label text-white-50 small mb-1">Fin Estimado</label>
-                            <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaFinEstimada" class="form-control form-control-sm bg-dark text-white border-secondary input-fin" value="${fechaFin}" />
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label text-white-50 small mb-1">Responsable</label>
-                            <div class="d-flex align-items-center gap-1">
-                                <select name="Subfases[${subfaseIndex}].ResponsableId" class="form-select form-select-sm bg-dark text-white border-secondary subfase-user-select" style="flex-grow: 1;">
-                                    <option value="">-- Sin asignar --</option>
-                                    ${usuariosOptions}
-                                </select>
-                                <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="¡Desliza por aquí para pintar al usuario!"
-        style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;">
-                                    <i class="bi bi-brush-fill text-warning opacity-75"></i>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-1 text-center mt-4">
-                            <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button>
-                        </div>
-                    `;
-                    container.appendChild(row);
-                    if (responsableVal) row.querySelector('.subfase-user-select').value = responsableVal;
+            const container = document.getElementById('subfases-container');
+            const row = document.createElement('div');
 
-                    bindRowEvents(row);
-                    subfaseIndex++;
-                }
+            // USAMOS LA NUEVA CLASE GRID
+            row.className = 'subfase-row-container subfase-row';
+
+            row.innerHTML = `
+                <input type="hidden" name="Subfases[${subfaseIndex}].Id" value="0" />
+                <div class="subfase-form-group">
+                    <label>Fase Principal</label>
+                    <select name="Subfases[${subfaseIndex}].FasePadre" class="form-select text-white border-secondary" required>
+                        ${fasesOptions}
+                    </select>
+                </div>
+                <div class="subfase-form-group">
+                    <label>Nombre Subfase</label>
+                    <input type="text" name="Subfases[${subfaseIndex}].Nombre" class="form-control text-white border-secondary" value="${nombre}" required />
+                </div>
+                <div class="subfase-form-group">
+                    <label>Inicio (Hora)</label>
+                    <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaInicio" class="form-control text-white border-secondary input-inicio" value="${fechaIni}" />
+                </div>
+                <div class="subfase-form-group">
+                    <label class="text-warning">Horas</label>
+                    <input type="number" step="0.5" class="form-control text-warning border-secondary input-horas subfase-input-horas" min="0.5" value="${horasVal}" />
+                </div>
+                <div class="subfase-form-group">
+                    <label>Fin Estimado</label>
+                    <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaFinEstimada" class="form-control text-white border-secondary input-fin" value="${fechaFin}" />
+                </div>
+                <div class="subfase-form-group">
+                    <label>Responsable</label>
+                    <div class="d-flex align-items-center gap-1 w-100">
+                        <select name="Subfases[${subfaseIndex}].ResponsableId" class="form-select text-white border-secondary subfase-user-select" style="flex-grow: 1;">
+                            <option value="">-- Sin asignar --</option>
+                            ${usuariosOptions}
+                        </select>
+                        <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="¡Desliza por aquí para pintar al usuario!" style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;">
+                            <i class="bi bi-brush-fill text-warning opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="subfase-actions-group">
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button>
+                </div>
+            `;
+            container.appendChild(row);
+            if (responsableVal) row.querySelector('.subfase-user-select').value = responsableVal;
+
+            bindRowEvents(row);
+            subfaseIndex++;
+        }
 
         document.getElementById('btnAddSubfase').addEventListener('click', () => inyectarFilaSubfase());
-
         document.getElementById('subfases-container').addEventListener('click', function(e) {
             const btnRemove = e.target.closest('.btn-remove-subfase');
             if (btnRemove) {
@@ -498,9 +604,6 @@
             subfaseIndex = rows.length;
         }
 
-        // ==========================================
-        // FUNCIONALIDADES ADICIONALES (Dominó, Termómetro, Fechas)
-        // ==========================================
         function ejecutarEfectoDomino() {
             const dias = parseInt(document.getElementById('inputDominoDias').value, 10);
             if (isNaN(dias) || dias === 0) return;
@@ -535,7 +638,6 @@
 
             let conteo = {};
             document.querySelectorAll('.subfase-user-select').forEach(sel => { if (sel.value) conteo[sel.value] = (conteo[sel.value] || 0) + 1; });
-
             for (let uid in conteo) {
                 let total = conteo[uid];
                 let badge = document.getElementById('counter_' + uid);
@@ -555,19 +657,16 @@
             const rows = document.querySelectorAll('.subfase-row');
             if (rows.length === 0) return;
             let minDate = null; let maxDate = null;
-
             rows.forEach(row => {
                 const startInput = row.querySelector('.input-inicio').value;
                 const endInput = row.querySelector('.input-fin').value;
                 if (startInput) { let d = new Date(startInput); if (!minDate || d < minDate) minDate = d; }
                 if (endInput) { let d = new Date(endInput); if (!maxDate || d > maxDate) maxDate = d; }
             });
-
             const gStart = document.getElementById('gFechaInicio');
             const gEnd = document.getElementById('gFechaFin');
             if (minDate) gStart.value = minDate.toISOString().split('T')[0];
             if (maxDate) gEnd.value = maxDate.toISOString().split('T')[0];
-
             [gStart, gEnd].forEach(el => {
                 const oldBg = el.style.backgroundColor;
                 el.style.backgroundColor = 'rgba(13, 202, 240, 0.4)';
@@ -576,58 +675,48 @@
         }
 
         function procesarPegadoHeuristico() {
-                    const texto = document.getElementById('txtPegadoMasivo').value.trim();
-                    if (!texto) return;
+            const texto = document.getElementById('txtPegadoMasivo').value.trim();
+            if (!texto) return;
 
-                    // Función auxiliar interna para asegurar que exista en ambos archivos
-                    function parseDate(fechaTexto) {
-                        if (!fechaTexto) return "";
-                        let partes = fechaTexto.split(/[\/\-]/);
-                        if (partes.length === 3) {
-                            if (partes[0].length <= 2 && (partes[2].length === 4 || partes[2].length === 2)) {
-                                let year = partes[2].length === 2 ? "20" + partes[2] : partes[2];
-                                return `${year}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
-                            }
-                            if (partes[0].length === 4) return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
-                        }
-                        return "";
+            function parseDate(fechaTexto) {
+                if (!fechaTexto) return "";
+                let partes = fechaTexto.split(/[\/\-]/);
+                if (partes.length === 3) {
+                    if (partes[0].length <= 2 && (partes[2].length === 4 || partes[2].length === 2)) {
+                        let year = partes[2].length === 2 ? "20" + partes[2] : partes[2];
+                        return `${year}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
                     }
-
-                    const filas = texto.split('\n');
-                    let agregadas = 0;
-
-                    filas.forEach(fila => {
-                        if (!fila.trim()) return;
-
-                        // Corta por Tabulador de Excel (\t) O por barra vertical (|)
-                        const celdas = fila.split(/\t|\|/).map(c => c.trim());
-
-                        let nombre = celdas[0] || "";
-                        let fecha1 = parseDate(celdas[1]);
-                        let fecha2 = parseDate(celdas[2]);
-                        let horasVal = celdas[3] ? celdas[3].replace(',', '.') : "";
-
-                        if (fecha1) {
-                            fecha1 = `${fecha1}T${activeSchedule.entradaH.toString().padStart(2,'0')}:${activeSchedule.entradaM.toString().padStart(2,'0')}`;
-                        }
-                        if (fecha2) {
-                            fecha2 = `${fecha2}T${activeSchedule.salidaNormalH.toString().padStart(2,'0')}:${activeSchedule.salidaNormalM.toString().padStart(2,'0')}`;
-                        }
-
-                        if (nombre) {
-                            inyectarFilaSubfase(nombre, fecha1, fecha2, "", horasVal);
-                            agregadas++;
-                        }
-                    });
-
-                    if (agregadas > 0) {
-                        toastr.success(`¡Se procesaron ${agregadas} filas con éxito!`);
-                        document.getElementById('txtPegadoMasivo').value = '';
-                        bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide();
-                        actualizarTermometro();
-                        if (typeof guardarBorradorSilencioso === "function") guardarBorradorSilencioso();
-                    }
+                    if (partes[0].length === 4) return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
                 }
+                return "";
+            }
+
+            const filas = texto.split('\n');
+            let agregadas = 0;
+
+            filas.forEach(fila => {
+                if (!fila.trim()) return;
+                const celdas = fila.split(/\t|\|/).map(c => c.trim());
+                let nombre = celdas[0] || "";
+                let fecha1 = parseDate(celdas[1]);
+                let fecha2 = parseDate(celdas[2]);
+                let horasVal = celdas[3] ? celdas[3].replace(',', '.') : "";
+
+                if (fecha1) fecha1 = `${fecha1}T${activeSchedule.entradaH.toString().padStart(2,'0')}:${activeSchedule.entradaM.toString().padStart(2,'0')}`;
+                if (fecha2) fecha2 = `${fecha2}T${activeSchedule.salidaNormalH.toString().padStart(2,'0')}:${activeSchedule.salidaNormalM.toString().padStart(2,'0')}`;
+
+                if (nombre) {
+                    inyectarFilaSubfase(nombre, fecha1, fecha2, "", horasVal);
+                    agregadas++;
+                }
+            });
+            if (agregadas > 0) {
+                toastr.success(`¡Se procesaron ${agregadas} filas con éxito!`);
+                document.getElementById('txtPegadoMasivo').value = '';
+                bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide();
+                actualizarTermometro();
+            }
+        }
 
         document.getElementById('formEditProject').addEventListener('submit', function() {
             var btn = document.getElementById('btnSubmit');

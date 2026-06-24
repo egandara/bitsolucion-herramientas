@@ -4,7 +4,114 @@
     var usuariosBanco = ViewBag.UsuariosBanco as IEnumerable<dynamic>;
 }
 
-<div class="container-fluid dashboard-xl-container mt-3" style="max-width: 1000px !important;">
+<style>
+    /* ============================================================
+           ESTRUCTURA DE DOS COLUMNAS (SIDEBAR)
+           ============================================================ */
+    .cal-sidebar-block {
+        background-color: #111424 !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        border-radius: 10px;
+        padding: 18px !important;
+        margin-bottom: 16px;
+    }
+
+    .cal-sidebar-title {
+        font-size: 0.8rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #0dcaf0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding-bottom: 8px;
+        margin-bottom: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .form-group-stacked {
+        margin-bottom: 12px;
+    }
+
+        .form-group-stacked:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-group-stacked label {
+            font-size: 0.72rem !important;
+            color: rgba(255, 255, 255, 0.4) !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px !important;
+            font-weight: bold;
+        }
+
+    .btn-auto-calcular {
+        font-size: 0.65rem !important;
+        padding: 2px 8px !important;
+        border-radius: 6px !important;
+        font-family: ui-monospace, monospace;
+    }
+
+    /* ============================================================
+           OPTIMIZACIÓN DE ESPACIO PARA FILAS DE SUBFASES (GRID)
+           ============================================================ */
+    .subfase-row-container {
+        display: grid !important;
+        /* Columnas: Fase | Nombre | Inicio | Horas | Fin | Responsable | Acciones */
+        grid-template-columns: 1.2fr 3fr 1.6fr 0.7fr 1.6fr 2.5fr auto !important;
+        gap: 12px !important;
+        align-items: end !important;
+        background-color: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 14px 16px !important;
+        margin-bottom: 12px;
+        transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .subfase-form-group {
+        display: flex;
+        flex-direction: column;
+        width: 100% !important;
+    }
+
+        .subfase-form-group label {
+            font-size: 0.7rem !important;
+            color: rgba(255, 255, 255, 0.4) !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px !important;
+            white-space: nowrap;
+        }
+
+    .subfase-row-container .form-control,
+    .subfase-row-container .form-select {
+        width: 100% !important;
+        padding: 6px 10px !important;
+        font-size: 0.8rem !important;
+        background-color: #171b2e !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
+        color: #f5f6fa !important;
+        border-radius: 6px !important;
+        text-overflow: ellipsis;
+    }
+
+    .subfase-input-horas {
+        text-align: center;
+    }
+
+    .subfase-actions-group {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding-bottom: 4px;
+    }
+</style>
+
+<div class="container-fluid mt-3" style="max-width: 1500px !important;">
     <div class="d-flex align-items-center mb-4">
         <a asp-action="Index" class="btn btn-outline-secondary btn-sm me-3"><i class="bi bi-arrow-left"></i> Volver</a>
         <div>
@@ -13,139 +120,154 @@
         </div>
     </div>
 
-    <div class="card p-4 border-0" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-        <form asp-action="Create" method="post" id="formCreateProject">
-            @Html.AntiForgeryToken()
-            <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+    <form asp-action="Create" method="post" id="formCreateProject">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
 
-            <div id="draftAlert" class="alert alert-warning d-none align-items-center mb-4 shadow-sm" style="background-color: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.4); color: #ffc107;">
-                <i class="bi bi-life-preserver me-3 fs-3"></i>
-                <div class="flex-grow-1">
-                    <strong class="text-white">Borrador de seguridad encontrado</strong><br />
-                    <span class="small text-white-50">Se detectaron datos no guardados de tu última sesión (incluyendo subtareas).</span>
-                </div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-warning fw-bold text-dark" onclick="restaurarBorrador()">Recuperar Todo</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="descartarBorrador()">Descartar</button>
-                </div>
+        <div id="draftAlert" class="alert alert-warning d-none align-items-center mb-4 shadow-sm" style="background-color: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.4); color: #ffc107;">
+            <i class="bi bi-life-preserver me-3 fs-3"></i>
+            <div class="flex-grow-1">
+                <strong class="text-white">Borrador de seguridad encontrado</strong><br />
+                <span class="small text-white-50">Se detectaron datos no guardados de tu última sesión.</span>
             </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-warning fw-bold text-dark" onclick="restaurarBorrador()">Recuperar Todo</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="descartarBorrador()">Descartar</button>
+            </div>
+        </div>
 
-            <h5 class="fw-bold text-warning mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-info-square me-2"></i>1. Información General</h5>
-            <div class="row g-3 mb-4">
-                <div class="col-md-8">
-                    <label class="form-label text-white small fw-bold">Nombre del Proyecto <span class="text-danger">*</span></label>
-                    <input type="text" name="nombre" class="form-control bg-dark text-white border-secondary" placeholder="Ej: Migración Base Normativa" required />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label text-white small fw-bold">Empresa / Cliente</label>
-                    <select name="clienteId" id="selectClienteId" class="form-select bg-dark text-white border-secondary" asp-items="ViewBag.Clientes">
-                        <option value="">-- Interno / Estándar --</option>
-                    </select>
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label text-white small fw-bold">Repositorio GitHub</label>
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-github"></i></span>
-                            <input type="text" name="repositorioGitHub" class="form-control bg-dark text-white border-secondary font-monospace" placeholder="Ej: bitsolucion/repo-pipeline" />
+        <div class="row g-4">
+            <div class="col-lg-8 col-xl-9">
+
+                <div class="card p-4 border-0 mb-4" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <h5 class="fw-bold text-warning mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-info-square me-2"></i>1. Información General</h5>
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label text-white small fw-bold">Nombre del Proyecto <span class="text-danger">*</span></label>
+                            <input type="text" name="nombre" class="form-control bg-dark text-white border-secondary" placeholder="Ej: Migración Base Normativa" required />
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label text-white small fw-bold">Contraparte del Cliente</label>
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-person-badge"></i></span>
-                            <input type="text" name="contraparteCliente" class="form-control bg-dark text-white border-secondary" placeholder="Ej: Juan Pérez (Líder QA)" />
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-12">
-                    <label class="form-label text-white small fw-bold">Descripción Corta</label>
-                    <textarea name="descripcion" class="form-control bg-dark text-white border-secondary" rows="2"></textarea>
-                </div>
-            </div>
-
-            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
-                <h5 class="fw-bold text-info mb-0" style="font-size: 1rem;"><i class="bi bi-calendar-event me-2"></i>2. Cronograma y Notas</h5>
-                <button type="button" class="btn btn-sm btn-outline-info shadow-sm" onclick="sincronizarFechas()" title="Auto-calcular fechas maestras según tareas">
-                    <i class="bi bi-magic me-1"></i> Auto-Calcular Fechas
-                </button>
-            </div>
-            <div class="row g-3 mb-4">
-                <div class="col-md-4">
-                    <label class="form-label text-white small fw-bold">Fecha de Inicio</label>
-                    <input type="date" name="fechaInicio" class="form-control bg-dark text-white border-secondary" id="gFechaInicio" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label text-white small fw-bold">Fin Estimado (Cierre)</label>
-                    <input type="date" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" id="gFechaFin" />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label text-white small fw-bold">Paso a Producción</label>
-                    <input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" />
-                </div>
-            </div>
-
-            <div class="d-flex justify-content-between align-items-center mb-3 mt-4 border-bottom border-secondary pb-2">
-                <div>
-                    <h5 class="fw-bold text-light mb-0" style="font-size: 1rem;"><i class="bi bi-list-task me-2"></i>3. Subfases y Entregables (Opcional)</h5>
-                </div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalDomino">
-                        <i class="bi bi-calendar-range"></i> Dominó
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-success shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalPegadoInteligente">
-                        <i class="bi bi-magic me-1"></i> Pegar Excel/Project
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-info" id="btnAddSubfase">
-                        <i class="bi bi-plus-lg"></i> Añadir Manual
-                    </button>
-                </div>
-            </div>
-
-            <div id="tray-asignacion" class="bg-dark border border-info border-opacity-25 p-3 mb-3 d-none" style="border-radius: 8px;">
-                <div class="d-flex align-items-center mb-2">
-                    <i class="bi bi-cursor-fill text-info me-2"></i>
-                    <span class="text-white small fw-bold me-auto">Bandeja de Asignación Rápida</span>
-                </div>
-                <div class="d-flex flex-wrap gap-3 mt-2 px-1 pb-2">
-                    @if (usuariosBanco != null)
-                    {
-                        foreach (var user in usuariosBanco)
-                        {
-                            <div class="badge bg-secondary border border-secondary text-white draggable-user shadow-sm position-relative"
-                                 draggable="true" data-uid="@user.Id" style="cursor: grab; font-size: 0.75rem; padding: 6px 12px; user-select: none;">
-                                <i class="bi bi-grip-vertical me-1 opacity-50"></i>@user.Email.Split('@')[0]
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-dark border border-secondary task-counter d-none" id="counter_@user.Id" style="font-size: 0.6rem; z-index: 5;">0</span>
+                        <div class="col-md-6">
+                            <label class="form-label text-white small fw-bold">Repositorio GitHub</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-github"></i></span>
+                                <input type="text" name="repositorioGitHub" class="form-control bg-dark text-white border-secondary font-monospace" placeholder="Ej: bitsolucion/repo-pipeline" />
                             </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-white small fw-bold">Contraparte del Cliente</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-person-badge"></i></span>
+                                <input type="text" name="contraparteCliente" class="form-control bg-dark text-white border-secondary" placeholder="Ej: Juan Pérez (Líder QA)" />
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label text-white small fw-bold">Descripción Corta</label>
+                            <textarea name="descripcion" class="form-control bg-dark text-white border-secondary" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card p-4 border-0 mb-4" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
+                        <div>
+                            <h5 class="fw-bold text-light mb-0" style="font-size: 1rem;"><i class="bi bi-list-task me-2"></i>2. Subfases y Entregables</h5>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalDomino">
+                                <i class="bi bi-calendar-range"></i> Dominó
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalPegadoInteligente">
+                                <i class="bi bi-magic me-1"></i> Pegar Excel
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-info" id="btnAddSubfase">
+                                <i class="bi bi-plus-lg"></i> Añadir Manual
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="tray-asignacion" class="bg-dark border border-info border-opacity-25 p-3 mb-3 d-none" style="border-radius: 8px;">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-cursor-fill text-info me-2"></i>
+                            <span class="text-white small fw-bold me-auto">Bandeja de Asignación Rápida</span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-3 mt-2 px-1 pb-2">
+                            @if (usuariosBanco != null)
+                            {
+                                foreach (var user in usuariosBanco)
+                                {
+                                    <div class="badge bg-secondary border border-secondary text-white draggable-user shadow-sm position-relative"
+                                         draggable="true" data-uid="@user.Id" style="cursor: grab; font-size: 0.75rem; padding: 6px 12px; user-select: none;">
+                                        <i class="bi bi-grip-vertical me-1 opacity-50"></i>@user.Email.Split('@')[0]
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-dark border border-secondary task-counter d-none" id="counter_@user.Id" style="font-size: 0.6rem; z-index: 5;">0</span>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+
+                    <div id="subfases-container" class="mb-2 d-flex flex-column"></div>
+                </div>
+
+                <div class="card p-4 border-0 mb-4" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>3. Asignación de Equipo Global</h5>
+                    <div class="bg-dark border border-secondary p-3" style="border-radius: 6px; max-height: 200px; overflow-y: auto;">
+                        @if (usuariosBanco != null)
+                        {
+                            foreach (var user in usuariosBanco)
+                            {
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input" type="checkbox" name="usuariosAsignadosIds" value="@user.Id" id="user_@user.Id">
+                                    <label class="form-check-label text-white small" for="user_@user.Id">@user.Email</label>
+                                </div>
+                            }
                         }
-                    }
+                    </div>
                 </div>
             </div>
 
-            <div id="subfases-container" class="mb-4 d-flex flex-column gap-2"></div>
+            <div class="col-lg-4 col-xl-3">
+                <div class="cal-sidebar-block">
+                    <div class="cal-sidebar-title">
+                        <span><i class="bi bi-building me-1"></i>Cliente</span>
+                    </div>
+                    <div class="form-group-stacked">
+                        <label>Empresa asignada</label>
+                        <select name="clienteId" id="selectClienteId" class="form-select bg-dark text-white border-secondary" asp-items="ViewBag.Clientes">
+                            <option value="">-- Interno / Estándar --</option>
+                        </select>
+                    </div>
+                </div>
 
-            <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>4. Asignación de Equipo (Global)</h5>
-            <div class="bg-dark border border-secondary p-3 mb-4" style="border-radius: 6px; max-height: 200px; overflow-y: auto;">
-                @if (usuariosBanco != null)
-                {
-                    foreach (var user in usuariosBanco)
-                    {
-                        <div class="form-check mb-1">
-                            <input class="form-check-input" type="checkbox" name="usuariosAsignadosIds" value="@user.Id" id="user_@user.Id">
-                            <label class="form-check-label text-white small" for="user_@user.Id">@user.Email</label>
-                        </div>
-                    }
-                }
-            </div>
+                <div class="cal-sidebar-block">
+                    <div class="cal-sidebar-title">
+                        <span><i class="bi bi-calendar3 me-1"></i>Cronograma</span>
+                        <button type="button" class="btn btn-outline-info btn-auto-calcular" onclick="sincronizarFechas()" title="Calcular por subfases">
+                            <i class="bi bi-magic me-1"></i>Auto
+                        </button>
+                    </div>
+                    <div class="form-group-stacked">
+                        <label>Fecha de Inicio</label>
+                        <input type="date" name="fechaInicio" id="gFechaInicio" class="form-control bg-dark text-white border-secondary" />
+                    </div>
+                    <div class="form-group-stacked mt-3">
+                        <label>Fin Estimado</label>
+                        <input type="date" name="fechaFinEstimada" id="gFechaFin" class="form-control bg-dark text-white border-secondary" />
+                    </div>
+                    <div class="form-group-stacked mt-3">
+                        <label>Paso a Producción</label>
+                        <input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" />
+                    </div>
+                </div>
 
-            <div class="text-end border-top border-secondary border-opacity-25 pt-3 mt-2">
-                <button type="submit" class="btn btn-warning px-5 py-2 fw-bold" id="btnSubmit">
-                    <span id="spinnerSubmit" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
-                    <i class="bi bi-rocket-takeoff me-1" id="iconSubmit"></i> Orquestar y Crear
-                </button>
+                <div class="cal-sidebar-block" style="background-color: transparent !important; border: none !important; padding: 0 !important;">
+                    <button type="submit" class="btn btn-warning w-100 py-3 fw-bold shadow" id="btnSubmit" style="border-radius: 10px; font-size: 1.1rem;">
+                        <span id="spinnerSubmit" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
+                        <i class="bi bi-rocket-takeoff me-1" id="iconSubmit"></i> Orquestar
+                    </button>
+                </div>
             </div>
-        </form>
-    </div>
+        </div>
+    </form>
 </div>
 
 <div class="modal fade" id="modalDomino" tabindex="-1" aria-hidden="true">
@@ -153,7 +275,7 @@
         <div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #ffc107;">
             <div class="modal-header border-secondary p-3">
                 <h6 class="modal-title fw-bold text-warning"><i class="bi bi-calendar-range me-2"></i>Desplazar Fechas</h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-3" style="background-color: #07091e;">
                 <label class="text-white-50 small mb-2 d-block">¿Desplazar todas las tareas por días?</label>
@@ -175,7 +297,7 @@
         <div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #198754;">
             <div class="modal-header border-secondary">
                 <h5 class="modal-title fw-bold text-success">Importación Inteligente</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body px-4 py-4" style="background-color: #07091e;">
                 <textarea id="txtPegadoMasivo" class="form-control form-control-sm bg-dark text-white font-monospace border-success" rows="8" placeholder="Pega tus filas de Excel o Project aquí (Usa Ctrl+V)..."></textarea>
@@ -190,22 +312,13 @@
 
 @section Scripts {
     <script>
-        // ── MOTOR DE HORARIOS DINÁMICOS ──
-        // Recibimos los horarios desde el Controller
         const clientesHorarios = @Html.Raw(ViewBag.ClientesHorariosJson ?? "[]");
-
-        // Horario por defecto (Si no hay cliente o es proyecto interno)
         let activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
-
         document.getElementById('selectClienteId').addEventListener('change', function() {
             const val = this.value;
             const match = clientesHorarios.find(c => c.id === val);
-            if(match) {
-                activeSchedule = match;
-            } else {
-                activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
-            }
-            // Recalcular todas las tareas existentes con el nuevo horario
+            if(match) activeSchedule = match;
+            else activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
             document.querySelectorAll('.input-horas').forEach(inp => inp.dispatchEvent(new Event('input')));
         });
 
@@ -244,57 +357,53 @@
             });
         });
 
-        // ==========================================
-        // INYECCIÓN DE FILA (Con DateTime y Horas)
-        // ==========================================
         function inyectarFilaSubfase(nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
             const container = document.getElementById('subfases-container');
             const row = document.createElement('div');
 
-            row.className = 'row g-2 mb-1 align-items-center subfase-row p-2 bg-dark bg-opacity-50 border border-secondary border-opacity-50';
-            row.style.borderRadius = "6px";
-            row.style.transition = "background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease";
+            // USAMOS LA NUEVA CLASE GRID
+            row.className = 'subfase-row-container subfase-row';
 
-            // Se cambia type="date" a type="datetime-local" y Días a Horas
             row.innerHTML = `
-                <div class="col-md-2">
-                    <label class="form-label text-white-50 small mb-1">Fase Principal</label>
-                    <select name="Subfases[${subfaseIndex}].FasePadre" class="form-select form-select-sm bg-dark text-white border-secondary" required>
+                <div class="subfase-form-group">
+                    <label>Fase Principal</label>
+                    <select name="Subfases[${subfaseIndex}].FasePadre" class="form-select text-white border-secondary" required>
                         <option value="2_Desarrollo_Notebooks" selected>2. Desarrollo</option>
                         <option value="1_Diseño_Arquitectura">1. Diseño</option>
                         <option value="3_Pruebas_Certificacion">3. Pruebas QA</option>
                         <option value="4_Paso_A_Produccion">4. Producción</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label text-white-50 small mb-1">Nombre Subfase</label>
-                    <input type="text" name="Subfases[${subfaseIndex}].Nombre" class="form-control form-control-sm bg-dark text-white border-secondary" value="${nombre}" required />
+                <div class="subfase-form-group">
+                    <label>Nombre Subfase</label>
+                    <input type="text" name="Subfases[${subfaseIndex}].Nombre" class="form-control text-white border-secondary" value="${nombre}" required />
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label text-white-50 small mb-1">Inicio (Hora)</label>
-                    <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaInicio" class="form-control form-control-sm bg-dark text-white border-secondary input-inicio" value="${fechaIni}" />
+                <div class="subfase-form-group">
+                    <label>Inicio (Hora)</label>
+                    <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaInicio" class="form-control text-white border-secondary input-inicio" value="${fechaIni}" />
                 </div>
-                <div class="col-md-1">
-                    <label class="form-label text-warning small mb-1" title="Horas de esfuerzo">Horas <i class="bi bi-clock"></i></label>
-                    <input type="number" step="0.5" class="form-control form-control-sm bg-dark text-warning border-secondary input-horas text-center" min="0.5" placeholder="#" value="${horasVal}" />
+                <div class="subfase-form-group">
+                    <label class="text-warning">Horas</label>
+                    <input type="number" step="0.5" class="form-control text-warning border-secondary input-horas subfase-input-horas" min="0.5" value="${horasVal}" />
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label text-white-50 small mb-1">Fin Estimado</label>
-                    <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaFinEstimada" class="form-control form-control-sm bg-dark text-white border-secondary input-fin" value="${fechaFin}" />
+                <div class="subfase-form-group">
+                    <label>Fin Estimado</label>
+                    <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaFinEstimada" class="form-control text-white border-secondary input-fin" value="${fechaFin}" />
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label text-white-50 small mb-1">Responsable</label>
-                    <div class="d-flex align-items-center gap-1">
-                        <select name="Subfases[${subfaseIndex}].ResponsableId" class="form-select form-select-sm bg-dark text-white border-secondary subfase-user-select" style="flex-grow: 1;">
+                <div class="subfase-form-group">
+                    <label>Responsable</label>
+                    <div class="d-flex align-items-center gap-1 w-100">
+                        <select name="Subfases[${subfaseIndex}].ResponsableId" class="form-select text-white border-secondary subfase-user-select" style="flex-grow: 1;">
                             <option value="">-- Sin asignar --</option>
                             ${usuariosOptions}
                         </select>
-                        <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="¡Desliza por aquí para pintar al usuario!" style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;">
+                        <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="¡Desliza por aquí para pintar al usuario!"
+                             style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;">
                             <i class="bi bi-brush-fill text-warning opacity-75"></i>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-1 text-center mt-4">
+                <div class="subfase-actions-group">
                     <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button>
                 </div>
             `;
@@ -302,72 +411,53 @@
 
             if (responsableVal) row.querySelector('.subfase-user-select').value = responsableVal;
 
-            // --- EL CEREBRO: CÁLCULO DE HORAS LABORALES DINÁMICO ---
             const inpInicio = row.querySelector('.input-inicio');
             const inpHoras = row.querySelector('.input-horas');
             const inpFin = row.querySelector('.input-fin');
 
             function formatDatetimeLocal(d) {
-                // Formatear Date a YYYY-MM-DDThh:mm (Requerido por datetime-local)
                 let tzoffset = (new Date()).getTimezoneOffset() * 60000;
                 return (new Date(d - tzoffset)).toISOString().slice(0, 16);
             }
 
             function calcularFin() {
                 if (!inpInicio.value || !inpHoras.value) return;
-
                 let date = new Date(inpInicio.value);
                 let hoursRemaining = parseFloat(inpHoras.value);
                 if(isNaN(hoursRemaining) || hoursRemaining <= 0) return;
 
-                let safety = 0; // Evitar loops infinitos
+                let safety = 0;
                 while (hoursRemaining > 0 && safety < 100) {
                     safety++;
                     let dayOfWeek = date.getDay();
-
-                    // Si cae en fin de semana, saltar al Lunes a la hora de entrada
                     if (dayOfWeek === 0 || dayOfWeek === 6) {
                         date.setDate(date.getDate() + (dayOfWeek === 6 ? 2 : 1));
                         date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
                         continue;
                     }
-
-                    // Definir topes según el día
                     let exitH = (dayOfWeek === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH;
                     let exitM = (dayOfWeek === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
-
                     let endOfDay = new Date(date);
                     endOfDay.setHours(exitH, exitM, 0, 0);
-
                     let startOfDay = new Date(date);
                     startOfDay.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
-
-                    // Si empezó antes de la hora, moverlo a la entrada
                     if (date < startOfDay) date = new Date(startOfDay);
-
-                    // Si ya pasó la salida, saltar al día siguiente
                     if (date >= endOfDay) {
                         date.setDate(date.getDate() + 1);
                         date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
                         continue;
                     }
-
-                    // ¿Cuántas horas le quedan al día de hoy?
                     let msRemainingToday = endOfDay - date;
                     let hoursRemainingToday = msRemainingToday / (1000 * 60 * 60);
-
                     if (hoursRemaining <= hoursRemainingToday) {
-                        // Terminamos hoy
                         date.setTime(date.getTime() + (hoursRemaining * 60 * 60 * 1000));
                         hoursRemaining = 0;
                     } else {
-                        // Consumimos el resto del día y saltamos a mañana
                         hoursRemaining -= hoursRemainingToday;
                         date.setDate(date.getDate() + 1);
                         date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
                     }
                 }
-
                 inpFin.value = formatDatetimeLocal(date);
                 inpFin.style.backgroundColor = 'rgba(255, 193, 7, 0.2)';
                 setTimeout(() => inpFin.style.backgroundColor = '', 400);
@@ -377,7 +467,6 @@
             inpInicio.addEventListener('change', calcularFin);
             inpHoras.addEventListener('input', calcularFin);
 
-            // MODO PINCEL (Simplificado para el código)
             const paintZone = row.querySelector('.paint-zone');
             paintZone.addEventListener('dragenter', function(e) {
                 e.preventDefault();
@@ -403,13 +492,11 @@
                     actualizarTermometro();
                 }
             });
-
             document.getElementById('tray-asignacion').classList.remove('d-none');
             subfaseIndex++;
         }
 
         document.getElementById('btnAddSubfase').addEventListener('click', () => inyectarFilaSubfase());
-
         document.getElementById('subfases-container').addEventListener('click', function (e) {
             const btnRemove = e.target.closest('.btn-remove-subfase');
             if (btnRemove) {
@@ -433,51 +520,35 @@
             subfaseIndex = rows.length;
         }
 
-        // ==========================================
-        // EFECTO DOMINÓ (DESPLAZAR FECHAS MASIVAMENTE)
-        // ==========================================
         function ejecutarEfectoDomino() {
             const dias = parseInt(document.getElementById('inputDominoDias').value, 10);
             if (isNaN(dias) || dias === 0) return;
-
             document.querySelectorAll('.subfase-row').forEach(row => {
                 const iInicio = row.querySelector('.input-inicio');
                 const iFin = row.querySelector('.input-fin');
-
                 function formatLocal(d) {
                     let tzoffset = (new Date()).getTimezoneOffset() * 60000;
                     return (new Date(d - tzoffset)).toISOString().slice(0, 16);
                 }
-
                 if (iInicio.value) {
-                    let d = new Date(iInicio.value);
-                    d.setDate(d.getDate() + dias);
-                    iInicio.value = formatLocal(d);
+                    let d = new Date(iInicio.value); d.setDate(d.getDate() + dias); iInicio.value = formatLocal(d);
                 }
                 if (iFin.value) {
-                    let d = new Date(iFin.value);
-                    d.setDate(d.getDate() + dias);
-                    iFin.value = formatLocal(d);
+                    let d = new Date(iFin.value); d.setDate(d.getDate() + dias); iFin.value = formatLocal(d);
                 }
                 row.style.boxShadow = 'inset 0 0 15px rgba(255,193,7,0.3)';
                 setTimeout(() => row.style.boxShadow = '', 400);
             });
-
             sincronizarFechas();
             bootstrap.Modal.getInstance(document.getElementById('modalDomino')).hide();
             toastr.success(`Todas las fechas desplazadas ${dias} días.`);
         }
 
-        // ==========================================
-        // TERMÓMETRO ANTI-BURNOUT
-        // ==========================================
         function actualizarTermometro() {
             document.querySelectorAll('.task-counter').forEach(b => { b.textContent = '0'; b.classList.add('d-none'); });
             document.querySelectorAll('.draggable-user').forEach(p => { p.classList.remove('border-warning', 'border-danger'); p.classList.add('border-secondary'); });
-
             let conteo = {};
             document.querySelectorAll('.subfase-user-select').forEach(sel => { if (sel.value) conteo[sel.value] = (conteo[sel.value] || 0) + 1; });
-
             for (let uid in conteo) {
                 let total = conteo[uid];
                 let badge = document.getElementById('counter_' + uid);
@@ -493,28 +564,20 @@
             }
         }
 
-        // ==========================================
-        // AUTO-CÁLCULO MAGNÉTICO (FECHAS MAESTRAS)
-        // ==========================================
         function sincronizarFechas() {
             const rows = document.querySelectorAll('.subfase-row');
             if (rows.length === 0) return;
-
             let minDate = null; let maxDate = null;
-
             rows.forEach(row => {
                 const startInput = row.querySelector('.input-inicio').value;
                 const endInput = row.querySelector('.input-fin').value;
                 if (startInput) { let d = new Date(startInput); if (!minDate || d < minDate) minDate = d; }
                 if (endInput) { let d = new Date(endInput); if (!maxDate || d > maxDate) maxDate = d; }
             });
-
             const gStart = document.getElementById('gFechaInicio');
             const gEnd = document.getElementById('gFechaFin');
-            // Fechas maestras siguen siendo solo 'date' (YYYY-MM-DD)
             if (minDate) gStart.value = minDate.toISOString().split('T')[0];
             if (maxDate) gEnd.value = maxDate.toISOString().split('T')[0];
-
             [gStart, gEnd].forEach(el => {
                 const oldBg = el.style.backgroundColor;
                 el.style.backgroundColor = 'rgba(13, 202, 240, 0.4)';
@@ -523,11 +586,7 @@
             guardarBorradorSilencioso();
         }
 
-        // ==========================================
-        // ESCUDO ANTI-DESASTRES (LOCALSTORAGE)
-        // ==========================================
         const DRAFT_KEY = 'ProyectoDraftBackupV2';
-
         function guardarBorradorSilencioso() {
             const form = document.getElementById('formCreateProject');
             const draft = {
@@ -535,13 +594,12 @@
                 clienteId: form.querySelector('select[name="clienteId"]').value,
                 subfases: []
             };
-
             document.querySelectorAll('.subfase-row').forEach(row => {
                 draft.subfases.push({
                     nombre: row.querySelector('input[name$=".Nombre"]').value,
                     fInicio: row.querySelector('.input-inicio').value,
                     fFin: row.querySelector('.input-fin').value,
-                    horas: row.querySelector('.input-horas').value, // Guardamos las horas
+                    horas: row.querySelector('.input-horas').value,
                     resp: row.querySelector('.subfase-user-select').value
                 });
             });
@@ -552,14 +610,12 @@
             const saved = localStorage.getItem(DRAFT_KEY);
             if (!saved) return;
             const draft = JSON.parse(saved);
-
             if(draft.nombre) document.querySelector('input[name="nombre"]').value = draft.nombre;
             if(draft.clienteId) {
                 const sel = document.querySelector('select[name="clienteId"]');
                 sel.value = draft.clienteId;
-                sel.dispatchEvent(new Event('change')); // Cargar horario del cliente restaurado
+                sel.dispatchEvent(new Event('change'));
             }
-
             if (draft.subfases && draft.subfases.length > 0) {
                 document.getElementById('subfases-container').innerHTML = '';
                 subfaseIndex = 0;
@@ -584,77 +640,47 @@
             }
             document.getElementById('formCreateProject').addEventListener('input', guardarBorradorSilencioso);
             document.getElementById('subfases-container').addEventListener('DOMSubtreeModified', guardarBorradorSilencioso);
-            // Simular click en el select de cliente para cargar horario base
             document.getElementById('selectClienteId').dispatchEvent(new Event('change'));
         });
 
-        // ==========================================
-        // MOTOR HEURÍSTICO (PEGADO INTELIGENTE)
-        // ==========================================
         function procesarPegadoHeuristico() {
-                    const texto = document.getElementById('txtPegadoMasivo').value.trim();
-                    if (!texto) return;
-
-                    // Función auxiliar interna para asegurar que exista en ambos archivos
-                    function parseDate(fechaTexto) {
-                        if (!fechaTexto) return "";
-                        let partes = fechaTexto.split(/[\/\-]/);
-                        if (partes.length === 3) {
-                            if (partes[0].length <= 2 && (partes[2].length === 4 || partes[2].length === 2)) {
-                                let year = partes[2].length === 2 ? "20" + partes[2] : partes[2];
-                                return `${year}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
-                            }
-                            if (partes[0].length === 4) return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
-                        }
-                        return "";
+            const texto = document.getElementById('txtPegadoMasivo').value.trim();
+            if (!texto) return;
+            function parseDate(fechaTexto) {
+                if (!fechaTexto) return "";
+                let partes = fechaTexto.split(/[\/\-]/);
+                if (partes.length === 3) {
+                    if (partes[0].length <= 2 && (partes[2].length === 4 || partes[2].length === 2)) {
+                        let year = partes[2].length === 2 ? "20" + partes[2] : partes[2];
+                        return `${year}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
                     }
-
-                    const filas = texto.split('\n');
-                    let agregadas = 0;
-
-                    filas.forEach(fila => {
-                        if (!fila.trim()) return;
-
-                        // Corta por Tabulador de Excel (\t) O por barra vertical (|)
-                        const celdas = fila.split(/\t|\|/).map(c => c.trim());
-
-                        let nombre = celdas[0] || "";
-                        let fecha1 = parseDate(celdas[1]);
-                        let fecha2 = parseDate(celdas[2]);
-                        let horasVal = celdas[3] ? celdas[3].replace(',', '.') : "";
-
-                        if (fecha1) {
-                            fecha1 = `${fecha1}T${activeSchedule.entradaH.toString().padStart(2,'0')}:${activeSchedule.entradaM.toString().padStart(2,'0')}`;
-                        }
-                        if (fecha2) {
-                            fecha2 = `${fecha2}T${activeSchedule.salidaNormalH.toString().padStart(2,'0')}:${activeSchedule.salidaNormalM.toString().padStart(2,'0')}`;
-                        }
-
-                        if (nombre) {
-                            inyectarFilaSubfase(nombre, fecha1, fecha2, "", horasVal);
-                            agregadas++;
-                        }
-                    });
-
-                    if (agregadas > 0) {
-                        toastr.success(`¡Se procesaron ${agregadas} filas con éxito!`);
-                        document.getElementById('txtPegadoMasivo').value = '';
-                        bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide();
-                        actualizarTermometro();
-                        if (typeof guardarBorradorSilencioso === "function") guardarBorradorSilencioso();
-                    }
+                    if (partes[0].length === 4) return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
                 }
-
-        function convertirAFechaISO(fechaTexto) {
-            let partes = fechaTexto.split(/[\/\-]/);
-            if (partes.length === 3) {
-                if (partes[0].length <= 2 && (partes[2].length === 4 || partes[2].length === 2)) {
-                    let year = partes[2].length === 2 ? "20" + partes[2] : partes[2];
-                    return `${year}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
-                }
-                if (partes[0].length === 4) return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
+                return "";
             }
-            return null;
+            const filas = texto.split('\n');
+            let agregadas = 0;
+            filas.forEach(fila => {
+                if (!fila.trim()) return;
+                const celdas = fila.split(/\t|\|/).map(c => c.trim());
+                let nombre = celdas[0] || "";
+                let fecha1 = parseDate(celdas[1]);
+                let fecha2 = parseDate(celdas[2]);
+                let horasVal = celdas[3] ? celdas[3].replace(',', '.') : "";
+                if (fecha1) fecha1 = `${fecha1}T${activeSchedule.entradaH.toString().padStart(2,'0')}:${activeSchedule.entradaM.toString().padStart(2,'0')}`;
+                if (fecha2) fecha2 = `${fecha2}T${activeSchedule.salidaNormalH.toString().padStart(2,'0')}:${activeSchedule.salidaNormalM.toString().padStart(2,'0')}`;
+                if (nombre) {
+                    inyectarFilaSubfase(nombre, fecha1, fecha2, "", horasVal);
+                    agregadas++;
+                }
+            });
+            if (agregadas > 0) {
+                toastr.success(`¡Se procesaron ${agregadas} filas con éxito!`);
+                document.getElementById('txtPegadoMasivo').value = '';
+                bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide();
+                actualizarTermometro();
+                if (typeof guardarBorradorSilencioso === "function") guardarBorradorSilencioso();
+            }
         }
     </script>
 }
