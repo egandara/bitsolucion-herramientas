@@ -460,211 +460,217 @@ namespace NotebookValidator.Web.Controllers
         public async Task<IActionResult> Edit(int id, string descripcion, int? clienteId, string estado, string? repositorioGitHub,
                     string? contraparteCliente, DateTime? fechaInicio, DateTime? fechaFinEstimada, DateTime? fechaPasoProduccion,
                     string notas, int maxWarningsPermitidos, int maxInfosPermitidos, List<string> usuariosAsignadosIds,
-                    List<SubfaseInputDto> subfases) // <-- Aquí llegan con sus tareas anidadas
+                    List<SubfaseInputDto> subfases)
         {
-            // 1. Cargamos el proyecto original con TODO su árbol (Fases -> Subfases -> Tareas)
-            var proyectoDb = await _context.Proyectos
-                .Include(p => p.UsuariosAsignados)
-                .Include(p => p.Fases)
-                    .ThenInclude(f => f.SubFases)
-                        .ThenInclude(s => s.Tareas) // VITAL para guardar
-                .FirstOrDefaultAsync(p => p.Id == id);
-
-            if (proyectoDb == null) return NotFound();
-
-            // 2. Actualizar Datos Generales
-            proyectoDb.Descripcion = descripcion?.Trim() ?? string.Empty;
-            proyectoDb.ClienteId = clienteId;
-            proyectoDb.Estado = estado;
-            proyectoDb.RepositorioGitHub = repositorioGitHub?.Trim();
-            proyectoDb.ContraparteCliente = contraparteCliente?.Trim();
-            proyectoDb.FechaInicio = fechaInicio;
-            proyectoDb.FechaFinEstimada = fechaFinEstimada;
-            proyectoDb.FechaPasoProduccion = fechaPasoProduccion;
-            proyectoDb.Notas = notas?.Trim() ?? string.Empty;
-            proyectoDb.MaxWarningsPermitidos = maxWarningsPermitidos;
-            proyectoDb.MaxInfosPermitidos = maxInfosPermitidos;
-
-            // 3. SINCRONIZADOR INTEGRADO DE SUBFASES Y TAREAS (WBS)
-            if (proyectoDb.Fases != null)
+            try
             {
-                var subfasesEntrantesIds = subfases?.Where(s => s.Id > 0).Select(s => s.Id).ToList() ?? new List<int>();
+                // 1. Cargamos el proyecto original con TODO su árbol (Fases -> Subfases -> Tareas)
+                var proyectoDb = await _context.Proyectos
+                    .Include(p => p.UsuariosAsignados)
+                    .Include(p => p.Fases)
+                        .ThenInclude(f => f.SubFases)
+                            .ThenInclude(s => s.Tareas)
+                    .FirstOrDefaultAsync(p => p.Id == id);
 
-                // A) Eliminar subfases que el usuario borró en la vista
-                foreach (var fase in proyectoDb.Fases)
-                {
-                    if (fase.SubFases != null)
-                    {
-                        var subfasesAEliminar = fase.SubFases.Where(s => !subfasesEntrantesIds.Contains(s.Id)).ToList();
-                        foreach (var sub in subfasesAEliminar)
-                        {
-                            // Si borras la subfase, las tareas hijas se eliminan solas por FK Cascade (si está configurado)
-                            // o puedes forzarlo:
-                            if (sub.Tareas != null) _context.TareasProyecto.RemoveRange(sub.Tareas);
-                            _context.SubFasesProyecto.Remove(sub);
-                        }
-                    }
-                }
+                if (proyectoDb == null) return NotFound();
 
-                // B) Agregar o Actualizar Subfases
+                // 2. Actualizar Datos Generales
+                proyectoDb.Descripcion = descripcion?.Trim() ?? string.Empty;
+                proyectoDb.ClienteId = clienteId;
+                proyectoDb.Estado = estado;
+                proyectoDb.RepositorioGitHub = repositorioGitHub?.Trim();
+                proyectoDb.ContraparteCliente = contraparteCliente?.Trim();
+                proyectoDb.FechaInicio = fechaInicio;
+                proyectoDb.FechaFinEstimada = fechaFinEstimada;
+                proyectoDb.FechaPasoProduccion = fechaPasoProduccion;
+                proyectoDb.Notas = notas?.Trim() ?? string.Empty;
+                proyectoDb.MaxWarningsPermitidos = maxWarningsPermitidos;
+                proyectoDb.MaxInfosPermitidos = maxInfosPermitidos;
+
+                // 3. SINCRONIZADOR BLINDADO DE WBS (SUBFASES Y TAREAS)
                 if (subfases != null)
                 {
-                    foreach (var subDto in subfases)
+                    var subfasesEntrantesIds = subfases.Where(s => s.Id > 0).Select(s => s.Id).ToList();
+
+                    // A) Eliminar subfases que el usuario borró en la interfaz
+                    foreach (var fase in proyectoDb.Fases)
                     {
-                        if (string.IsNullOrWhiteSpace(subDto.Nombre)) continue;
-
-                        var fasePadre = proyectoDb.Fases.FirstOrDefault(f => f.NombreFase == subDto.FasePadre);
-                        if (fasePadre != null)
+                        if (fase.SubFases != null)
                         {
-                            SubFaseProyecto subfaseTarget = null;
-
-                            if (subDto.Id > 0)
+                            var subfasesAEliminar = fase.SubFases.Where(s => !subfasesEntrantesIds.Contains(s.Id)).ToList();
+                            foreach (var sub in subfasesAEliminar)
                             {
-                                // Actualizar subfase existente
-                                subfaseTarget = fasePadre.SubFases?.FirstOrDefault(s => s.Id == subDto.Id);
-                                if (subfaseTarget != null)
-                                {
-                                    subfaseTarget.Nombre = subDto.Nombre;
-                                    subfaseTarget.ResponsableId = string.IsNullOrWhiteSpace(subDto.ResponsableId) ? null : subDto.ResponsableId;
-                                    subfaseTarget.FechaInicio = subDto.FechaInicio;
-                                    subfaseTarget.FechaFinEstimada = subDto.FechaFinEstimada;
-                                }
+                                if (sub.Tareas != null) _context.TareasProyecto.RemoveRange(sub.Tareas);
+                                _context.SubFasesProyecto.Remove(sub);
+                            }
+                        }
+                    }
+
+                    // B) Agregar o Actualizar Subfases y Tareas
+                    foreach (var subForm in subfases)
+                    {
+                        if (string.IsNullOrWhiteSpace(subForm.Nombre)) continue;
+
+                        var subDb = proyectoDb.Fases.SelectMany(f => f.SubFases).FirstOrDefault(s => s.Id == subForm.Id && subForm.Id != 0);
+                        var faseTarget = proyectoDb.Fases.FirstOrDefault(f => f.NombreFase == subForm.FasePadre) ?? proyectoDb.Fases.First();
+
+                        if (subDb != null)
+                        {
+                            // Actualizar Subfase
+                            _context.Entry(subDb).CurrentValues.SetValues(subForm);
+
+                            // Mover de fase si el usuario cambió el dropdown
+                            if (subDb.FaseProyectoId != faseTarget.Id)
+                            {
+                                var oldFase = proyectoDb.Fases.FirstOrDefault(f => f.Id == subDb.FaseProyectoId);
+                                if (oldFase != null) oldFase.SubFases.Remove(subDb);
+                                faseTarget.SubFases.Add(subDb);
+                                subDb.FaseProyectoId = faseTarget.Id;
+                            }
+                        }
+                        else
+                        {
+                            // Crear nueva Subfase
+                            subDb = new SubFaseProyecto
+                            {
+                                FaseProyectoId = faseTarget.Id,
+                                Nombre = subForm.Nombre,
+                                Estado = "Pendiente",
+                                ResponsableId = string.IsNullOrWhiteSpace(subForm.ResponsableId) ? null : subForm.ResponsableId,
+                                FechaInicio = subForm.FechaInicio,
+                                FechaFinEstimada = subForm.FechaFinEstimada,
+                                Tareas = new List<TareaProyecto>()
+                            };
+                            _context.SubFasesProyecto.Add(subDb);
+                            faseTarget.SubFases.Add(subDb);
+                        }
+
+                        // --- Sincronizar Tareas Hijas ---
+                        if (subForm.Tareas != null)
+                        {
+                            var tareasEntrantesIds = subForm.Tareas.Where(t => t.Id > 0).Select(t => t.Id).ToList();
+
+                            // Borrar tareas eliminadas
+                            if (subDb.Tareas != null)
+                            {
+                                var tareasAEliminar = subDb.Tareas.Where(t => !tareasEntrantesIds.Contains(t.Id) && t.Id != 0).ToList();
+                                foreach (var tDel in tareasAEliminar) _context.TareasProyecto.Remove(tDel);
                             }
                             else
                             {
-                                // Agregar nueva subfase
-                                subfaseTarget = new SubFaseProyecto
-                                {
-                                    FaseProyectoId = fasePadre.Id,
-                                    Nombre = subDto.Nombre,
-                                    Estado = "Pendiente",
-                                    ResponsableId = string.IsNullOrWhiteSpace(subDto.ResponsableId) ? null : subDto.ResponsableId,
-                                    FechaInicio = subDto.FechaInicio,
-                                    FechaFinEstimada = subDto.FechaFinEstimada,
-                                    Tareas = new List<TareaProyecto>()
-                                };
-                                _context.SubFasesProyecto.Add(subfaseTarget);
-                                fasePadre.SubFases.Add(subfaseTarget); // Importante agregarla a la colección local
+                                subDb.Tareas = new List<TareaProyecto>();
                             }
 
-                            // --- PROCESAR TAREAS HIJAS DE ESTA SUBFASE ---
-                            if (subfaseTarget != null)
+                            // Actualizar o insertar tareas
+                            foreach (var tareaForm in subForm.Tareas)
                             {
-                                var tareasEntrantesIds = subDto.Tareas?.Where(t => t.Id > 0).Select(t => t.Id).ToList() ?? new List<int>();
+                                if (string.IsNullOrWhiteSpace(tareaForm.Nombre)) continue;
 
-                                // Eliminar tareas quitadas
-                                if (subfaseTarget.Tareas != null)
+                                var tareaDb = subDb.Tareas.FirstOrDefault(t => t.Id == tareaForm.Id && tareaForm.Id != 0);
+                                if (tareaDb != null)
                                 {
-                                    var tareasAEliminar = subfaseTarget.Tareas.Where(t => !tareasEntrantesIds.Contains(t.Id) && t.Id != 0).ToList();
-                                    foreach (var tDel in tareasAEliminar)
-                                    {
-                                        _context.TareasProyecto.Remove(tDel);
-                                    }
+                                    // Actualizar
+                                    tareaDb.Nombre = tareaForm.Nombre;
+                                    tareaDb.FechaInicioReal = tareaForm.FechaInicioReal;
+                                    tareaDb.FechaFinReal = tareaForm.FechaFinReal;
+                                    tareaDb.HorasEstimadas = tareaForm.HorasEstimadas;
+                                    tareaDb.UsuarioAsignadoId = string.IsNullOrWhiteSpace(tareaForm.UsuarioAsignadoId) ? null : tareaForm.UsuarioAsignadoId;
                                 }
-
-                                // Agregar/Actualizar tareas
-                                if (subDto.Tareas != null)
+                                else
                                 {
-                                    foreach (var tareaDto in subDto.Tareas)
+                                    // Nueva
+                                    var nuevaTarea = new TareaProyecto
                                     {
-                                        if (string.IsNullOrWhiteSpace(tareaDto.Nombre)) continue;
-
-                                        if (tareaDto.Id > 0 && subfaseTarget.Tareas != null)
-                                        {
-                                            var tareaExistente = subfaseTarget.Tareas.FirstOrDefault(t => t.Id == tareaDto.Id);
-                                            if (tareaExistente != null)
-                                            {
-                                                tareaExistente.Nombre = tareaDto.Nombre;
-                                                tareaExistente.FechaInicioReal = tareaDto.FechaInicioReal;
-                                                tareaExistente.FechaFinReal = tareaDto.FechaFinReal;
-                                                tareaExistente.HorasEstimadas = tareaDto.HorasEstimadas;
-                                                tareaExistente.UsuarioAsignadoId = string.IsNullOrWhiteSpace(tareaDto.UsuarioAsignadoId) ? null : tareaDto.UsuarioAsignadoId;
-                                            }
-                                        }
-                                        else
-                                        {
-                                            var nuevaTarea = new TareaProyecto
-                                            {
-                                                Nombre = tareaDto.Nombre,
-                                                FechaInicioReal = tareaDto.FechaInicioReal,
-                                                FechaFinReal = tareaDto.FechaFinReal,
-                                                HorasEstimadas = tareaDto.HorasEstimadas,
-                                                UsuarioAsignadoId = string.IsNullOrWhiteSpace(tareaDto.UsuarioAsignadoId) ? null : tareaDto.UsuarioAsignadoId,
-                                                Estado = "Pendiente",
-                                                FechaCreacion = DateTime.Now
-                                            };
-
-                                            // Si la subfase es nueva y aún no tiene ID, EF lo enlazará automáticamente 
-                                            // por estar en la colección. Si ya tiene ID, se lo asignamos directo.
-                                            if (subfaseTarget.Id > 0) nuevaTarea.SubFaseProyectoId = subfaseTarget.Id;
-
-                                            if (subfaseTarget.Tareas == null) subfaseTarget.Tareas = new List<TareaProyecto>();
-                                            subfaseTarget.Tareas.Add(nuevaTarea);
-                                        }
-                                    }
+                                        Nombre = tareaForm.Nombre,
+                                        FechaInicioReal = tareaForm.FechaInicioReal,
+                                        FechaFinReal = tareaForm.FechaFinReal,
+                                        HorasEstimadas = tareaForm.HorasEstimadas,
+                                        UsuarioAsignadoId = string.IsNullOrWhiteSpace(tareaForm.UsuarioAsignadoId) ? null : tareaForm.UsuarioAsignadoId,
+                                        Estado = "Pendiente",
+                                        FechaCreacion = DateTime.Now
+                                    };
+                                    if (subDb.Id > 0) nuevaTarea.SubFaseProyectoId = subDb.Id;
+                                    subDb.Tareas.Add(nuevaTarea);
                                 }
+                            }
+                        }
+                        else
+                        {
+                            // Si eliminaron todas las tareas en la interfaz
+                            if (subDb.Tareas != null && subDb.Tareas.Any())
+                            {
+                                foreach (var tDel in subDb.Tareas.ToList()) _context.TareasProyecto.Remove(tDel);
                             }
                         }
                     }
                 }
-            }
+                else
+                {
+                    // Si borraron TODAS las subfases del proyecto
+                    foreach (var fase in proyectoDb.Fases)
+                    {
+                        if (fase.SubFases != null)
+                        {
+                            foreach (var sub in fase.SubFases.ToList())
+                            {
+                                if (sub.Tareas != null) _context.TareasProyecto.RemoveRange(sub.Tareas);
+                                _context.SubFasesProyecto.Remove(sub);
+                            }
+                        }
+                    }
+                }
 
-            // 4. Reasignar Equipo Global (Tu lógica habitual)
-            _context.ProyectosUsuarios.RemoveRange(proyectoDb.UsuariosAsignados.Where(u => u.RolEnProyecto == "Developer"));
+                // 4. SINCRONIZADOR DE EQUIPO GLOBAL (Corrección de 500 Error PK)
+                if (usuariosAsignadosIds == null) usuariosAsignadosIds = new List<string>();
 
-            if (usuariosAsignadosIds == null) usuariosAsignadosIds = new List<string>();
+                // Auto-agregar a los responsables de subfases y tareas
+                if (subfases != null)
+                {
+                    usuariosAsignadosIds.AddRange(subfases.Where(s => !string.IsNullOrWhiteSpace(s.ResponsableId)).Select(s => s.ResponsableId!));
+                    var respTareas = subfases.Where(s => s.Tareas != null).SelectMany(s => s.Tareas).Where(t => !string.IsNullOrWhiteSpace(t.UsuarioAsignadoId)).Select(t => t.UsuarioAsignadoId!).ToList();
+                    usuariosAsignadosIds.AddRange(respTareas);
+                }
 
-            // Extraer responsables de subfases
-            if (subfases != null && subfases.Any())
-            {
-                var responsablesExtras = subfases
-                    .Where(s => !string.IsNullOrWhiteSpace(s.ResponsableId))
-                    .Select(s => s.ResponsableId!)
-                    .ToList();
+                usuariosAsignadosIds = usuariosAsignadosIds.Distinct().ToList();
 
-                // ¡NUEVO! Extraer también responsables de TAREAS para darlos de alta en el proyecto
-                var responsablesTareas = subfases
-                    .Where(s => s.Tareas != null)
-                    .SelectMany(s => s.Tareas)
-                    .Where(t => !string.IsNullOrWhiteSpace(t.UsuarioAsignadoId))
-                    .Select(t => t.UsuarioAsignadoId!)
-                    .ToList();
+                var adminIds = proyectoDb.UsuariosAsignados.Where(u => u.RolEnProyecto == "Admin").Select(u => u.UsuarioId).ToList();
+                var devActuales = proyectoDb.UsuariosAsignados.Where(u => u.RolEnProyecto == "Developer").ToList();
 
-                usuariosAsignadosIds.AddRange(responsablesExtras);
-                usuariosAsignadosIds.AddRange(responsablesTareas);
-            }
+                // Eliminamos SOLO a los que ya no están en la lista (Evita choque de Primary Keys)
+                var devsParaEliminar = devActuales.Where(u => !usuariosAsignadosIds.Contains(u.UsuarioId)).ToList();
+                _context.ProyectosUsuarios.RemoveRange(devsParaEliminar);
 
-            usuariosAsignadosIds = usuariosAsignadosIds.Distinct().ToList();
-
-            if (usuariosAsignadosIds != null)
-            {
+                // Agregamos SOLO a los verdaderamente nuevos
                 foreach (var uId in usuariosAsignadosIds)
                 {
-                    if (!proyectoDb.UsuariosAsignados.Any(u => u.UsuarioId == uId && u.RolEnProyecto == "Admin"))
+                    if (!adminIds.Contains(uId) && !devActuales.Any(u => u.UsuarioId == uId))
                     {
-                        bool esNuevo = !proyectoDb.UsuariosAsignados.Any(u => u.UsuarioId == uId);
                         _context.ProyectosUsuarios.Add(new ProyectoUsuario { ProyectoId = proyectoDb.Id, UsuarioId = uId, RolEnProyecto = "Developer", FechaAsignacion = DateTime.Now });
 
-                        if (esNuevo && !string.IsNullOrEmpty(proyectoDb.DriveFolderId))
+                        if (!string.IsNullOrEmpty(proyectoDb.DriveFolderId))
                         {
                             var devUser = await _userManager.FindByIdAsync(uId);
-                            if (devUser?.Email != null)
-                                await _driveService.ShareFolderWithUserAsync(proyectoDb.DriveFolderId, devUser.Email, "writer");
+                            if (devUser?.Email != null) await _driveService.ShareFolderWithUserAsync(proyectoDb.DriveFolderId, devUser.Email, "writer");
                         }
                     }
                 }
+
+                await _context.SaveChangesAsync();
+
+                await _auditService.LogActionAsync(
+                    User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "",
+                    "GESTOR: PROYECTO EDITADO (WBS)",
+                    JsonSerializer.Serialize(new { ProyectoId = proyectoDb.Id, Nombre = proyectoDb.Nombre, Estado = estado }),
+                    HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    proyectoDb.Id.ToString());
+
+                return RedirectToAction(nameof(Details), new { id = proyectoDb.Id });
             }
-
-            await _context.SaveChangesAsync();
-
-            await _auditService.LogActionAsync(
-                User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "",
-                "GESTOR: PROYECTO EDITADO (WBS)",
-                JsonSerializer.Serialize(new { ProyectoId = proyectoDb.Id, Nombre = proyectoDb.Nombre, Estado = estado }),
-                HttpContext.Connection.RemoteIpAddress?.ToString(),
-                proyectoDb.Id.ToString());
-
-            return RedirectToAction(nameof(Details), new { id = proyectoDb.Id });
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\n--- ERROR CRÍTICO AL GUARDAR WBS ---\n{ex.Message}\n{ex.InnerException?.Message}\n----------------------------------\n");
+                throw;
+            }
         }
 
         // ==========================================
