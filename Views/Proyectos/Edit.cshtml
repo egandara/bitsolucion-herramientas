@@ -53,32 +53,49 @@
         font-size: 0.65rem !important;
         padding: 2px 8px !important;
         border-radius: 6px !important;
-        font-family: ui-monospace, monospace;
     }
 
     /* ============================================================
-           GRID EXTENDIDO PARA SUBFASES (100% ANCHO)
+           GRID EXTENDIDO PARA SUBFASES Y TAREAS (WBS)
            ============================================================ */
+    .subfase-group-wrapper {
+        background-color: rgba(255, 255, 255, 0.01);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
     .subfase-row-container {
         display: grid !important;
         grid-template-columns: 1.5fr 3.5fr 1.5fr 0.8fr 1.5fr 2.5fr auto !important;
         gap: 12px !important;
         align-items: end !important;
-        background-color: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 8px;
-        padding: 14px 16px !important;
-        margin-bottom: 12px;
-        transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        margin-bottom: 8px;
     }
 
-    .subfase-form-group {
+    /* Tareas anidadas (Sin columna de fase, indentadas y con fondo slate) */
+    .tarea-row-container {
+        display: grid !important;
+        grid-template-columns: 3.5fr 1.5fr 0.8fr 1.5fr 2.5fr auto !important;
+        gap: 12px !important;
+        align-items: end !important;
+        background-color: rgba(13, 202, 240, 0.03);
+        border-left: 3px solid #0dcaf0;
+        border-radius: 6px;
+        padding: 10px 14px !important;
+        margin-bottom: 8px;
+        margin-left: 40px; /* Indentación visual */
+    }
+
+    .form-group-grid {
         display: flex;
         flex-direction: column;
         width: 100% !important;
     }
 
-        .subfase-form-group label {
+        .form-group-grid label {
             font-size: 0.7rem !important;
             color: rgba(255, 255, 255, 0.4) !important;
             text-transform: uppercase;
@@ -87,23 +104,22 @@
             white-space: nowrap;
         }
 
-    .subfase-row-container .form-control,
-    .subfase-row-container .form-select {
-        width: 100% !important;
-        padding: 6px 10px !important;
-        font-size: 0.8rem !important;
-        background-color: #171b2e !important;
-        border: 1px solid rgba(255,255,255,0.08) !important;
-        color: #f5f6fa !important;
-        border-radius: 6px !important;
-        text-overflow: ellipsis;
-    }
+        .form-group-grid .form-control, .form-group-grid .form-select {
+            width: 100% !important;
+            padding: 6px 10px !important;
+            font-size: 0.8rem !important;
+            background-color: #171b2e !important;
+            border: 1px solid rgba(255,255,255,0.08) !important;
+            color: #f5f6fa !important;
+            border-radius: 6px !important;
+            text-overflow: ellipsis;
+        }
 
-    .subfase-input-horas {
+    .input-horas {
         text-align: center;
     }
 
-    .subfase-actions-group {
+    .actions-group {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -117,7 +133,7 @@
         <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-sm me-3"><i class="bi bi-arrow-left"></i> Volver</a>
         <div>
             <h1 class="h4 fw-bold mb-0 text-white" style="font-family: 'Poppins', sans-serif;">Editar Proyecto: @Model.Nombre</h1>
-            <p class="mb-0 small text-white-50">Actualiza el cronograma, subfases, horas estimadas y equipo.</p>
+            <p class="mb-0 small text-white-50">Actualiza el cronograma, subfases, tareas, horas estimadas y equipo.</p>
         </div>
     </div>
 
@@ -125,17 +141,26 @@
         @Html.AntiForgeryToken()
         <input type="hidden" name="id" value="@Model.Id" />
 
-        <div class="row g-4 mb-4">
+        <div id="draftAlert" class="alert alert-warning d-none align-items-center mb-4 shadow-sm" style="background-color: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.4); color: #ffc107;">
+            <i class="bi bi-life-preserver me-3 fs-3"></i>
+            <div class="flex-grow-1">
+                <strong class="text-white">Borrador de edición encontrado</strong><br />
+                <span class="small text-white-50">Se detectaron cambios en la estructura de trabajo no guardados de tu última sesión.</span>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-warning fw-bold text-dark" onclick="restaurarBorrador()">Recuperar Cambios</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="descartarBorrador()">Descartar</button>
+            </div>
+        </div>
 
+        <div class="row g-4 mb-4">
             <div class="col-lg-8 col-xl-9">
                 <div class="card p-4 border-0 h-100" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-                    <h5 class="fw-bold text-warning mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-info-square me-2"></i>1. Información General y Configuración</h5>
+                    <h5 class="fw-bold text-warning mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-info-square me-2"></i>1. Información General</h5>
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label text-white small fw-bold">Empresa / Cliente</label>
-                            <select name="clienteId" id="selectClienteId" class="form-select bg-dark text-white border-secondary" asp-items="ViewBag.Clientes">
-                                <option value="">-- Interno / Sin Cliente --</option>
-                            </select>
+                            <select name="clienteId" id="selectClienteId" class="form-select bg-dark text-white border-secondary" asp-items="ViewBag.Clientes"><option value="">-- Interno / Sin Cliente --</option></select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-white small fw-bold">Estado del Proyecto</label>
@@ -147,102 +172,56 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-white small fw-bold">Repositorio GitHub</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-github"></i></span>
-                                <input type="text" name="repositorioGitHub" class="form-control bg-dark text-white border-secondary font-monospace" value="@Model.RepositorioGitHub" />
-                            </div>
+                            <div class="input-group input-group-sm"><span class="input-group-text bg-secondary text-white"><i class="bi bi-github"></i></span><input type="text" name="repositorioGitHub" class="form-control bg-dark text-white border-secondary" value="@Model.RepositorioGitHub" /></div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label text-white small fw-bold">Contraparte del Cliente</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-secondary border-secondary text-white"><i class="bi bi-person-badge"></i></span>
-                                <input type="text" name="contraparteCliente" class="form-control bg-dark text-white border-secondary" value="@Model.ContraparteCliente" />
-                            </div>
+                            <div class="input-group input-group-sm"><span class="input-group-text bg-secondary text-white"><i class="bi bi-person-badge"></i></span><input type="text" name="contraparteCliente" class="form-control bg-dark text-white border-secondary" value="@Model.ContraparteCliente" /></div>
                         </div>
                         <div class="col-md-12">
-                            <label class="form-label text-white small fw-bold">Descripción Corta</label>
-                            <textarea name="descripcion" class="form-control bg-dark text-white border-secondary" rows="2">@Model.Descripcion</textarea>
+                            <label class="form-label text-white small fw-bold">Descripción</label><textarea name="descripcion" class="form-control bg-dark text-white border-secondary" rows="2">@Model.Descripcion</textarea>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div class="col-lg-4 col-xl-3">
-
                 <div class="cal-sidebar-block mb-3">
-                    <div class="cal-sidebar-title">
-                        <span><i class="bi bi-calendar3 me-1"></i>2. Cronograma</span>
-                        <button type="button" class="btn btn-outline-info btn-auto-calcular" onclick="sincronizarFechas()" title="Calcular por subfases">
-                            <i class="bi bi-magic me-1"></i>Auto
-                        </button>
-                    </div>
-                    <div class="form-group-stacked">
-                        <label>Fecha de Inicio</label>
-                        <input type="date" id="gFechaInicio" name="fechaInicio" class="form-control bg-dark text-white border-secondary" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" />
-                    </div>
-                    <div class="form-group-stacked mt-3">
-                        <label>Fin Estimado (Cierre)</label>
-                        <input type="date" id="gFechaFin" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" value="@Model.FechaFinEstimada?.ToString("yyyy-MM-dd")" />
-                    </div>
-                    <div class="form-group-stacked mt-3">
-                        <label>Paso a Producción</label>
-                        <input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" value="@Model.FechaPasoProduccion?.ToString("yyyy-MM-dd")" />
-                    </div>
-                    <div class="form-group-stacked mt-3">
-                        <label>Notas o Reprogramaciones</label>
-                        <textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="2" style="resize:none;">@Model.Notas</textarea>
-                    </div>
+                    <div class="cal-sidebar-title"><span><i class="bi bi-calendar3 me-1"></i>2. Cronograma</span><button type="button" class="btn btn-outline-info btn-auto-calcular" onclick="sincronizarFechas()"><i class="bi bi-magic"></i> Auto</button></div>
+                    <div class="form-group-stacked"><label>Fecha de Inicio</label><input type="date" id="gFechaInicio" name="fechaInicio" class="form-control bg-dark text-white border-secondary" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" /></div>
+                    <div class="form-group-stacked mt-3"><label>Fin Estimado</label><input type="date" id="gFechaFin" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" value="@Model.FechaFinEstimada?.ToString("yyyy-MM-dd")" /></div>
+                    <div class="form-group-stacked mt-3"><label>Paso a Producción</label><input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" value="@Model.FechaPasoProduccion?.ToString("yyyy-MM-dd")" /></div>
+                    <div class="form-group-stacked mt-3"><label>Notas</label><textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="2">@Model.Notas</textarea></div>
                 </div>
 
                 <div class="cal-sidebar-block mb-0">
-                    <div class="cal-sidebar-title">
-                        <span><i class="bi bi-shield-check me-1"></i>3. Calidad QA</span>
-                    </div>
-                    <div class="form-group-stacked">
-                        <label>Máximo Warnings Perm.</label>
-                        <input type="number" name="maxWarningsPermitidos" class="form-control bg-dark text-white border-secondary font-monospace text-center" min="0" value="@Model.MaxWarningsPermitidos" required />
-                    </div>
-                    <div class="form-group-stacked mt-3">
-                        <label>Máximo Infos Perm.</label>
-                        <input type="number" name="maxInfosPermitidos" class="form-control bg-dark text-white border-secondary font-monospace text-center" min="0" value="@Model.MaxInfosPermitidos" required />
-                    </div>
+                    <div class="cal-sidebar-title"><span><i class="bi bi-shield-check me-1"></i>3. Calidad QA</span></div>
+                    <div class="form-group-stacked"><label>Max Warnings</label><input type="number" name="maxWarningsPermitidos" class="form-control bg-dark text-white border-secondary text-center" min="0" value="@Model.MaxWarningsPermitidos" required /></div>
+                    <div class="form-group-stacked mt-3"><label>Max Infos</label><input type="number" name="maxInfosPermitidos" class="form-control bg-dark text-white border-secondary text-center" min="0" value="@Model.MaxInfosPermitidos" required /></div>
                 </div>
             </div>
         </div>
 
         <div class="row">
             <div class="col-12">
-
                 <div class="card p-4 border-0 mb-4" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
                     <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
-                        <div>
-                            <h5 class="fw-bold text-light mb-0" style="font-size: 1rem;"><i class="bi bi-diagram-3-fill me-2"></i>4. Subfases Específicas</h5>
-                        </div>
+                        <div><h5 class="fw-bold text-light mb-0" style="font-size: 1rem;"><i class="bi bi-diagram-3-fill me-2"></i>4. Estructura WBS (Subfases y Tareas)</h5></div>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalDomino">
-                                <i class="bi bi-calendar-range"></i> Dominó
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-success shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalPegadoInteligente">
-                                <i class="bi bi-magic me-1"></i> Pegar Excel
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-info" id="btnAddSubfase">
-                                <i class="bi bi-plus-lg"></i> Añadir Manual
-                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalDomino"><i class="bi bi-calendar-range"></i> Dominó</button>
+                            <button type="button" class="btn btn-sm btn-outline-success shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalPegadoInteligente"><i class="bi bi-magic me-1"></i> Pegar Excel/Project</button>
+                            <button type="button" class="btn btn-sm btn-outline-info" id="btnAddSubfase"><i class="bi bi-plus-lg"></i> Añadir Subfase</button>
                         </div>
                     </div>
 
-                    <div id="tray-asignacion" class="bg-dark border border-info border-opacity-25 p-3 mb-3" style="border-radius: 8px;">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="bi bi-cursor-fill text-info me-2"></i>
-                            <span class="text-white small fw-bold me-auto">Bandeja de Asignación Rápida</span>
-                        </div>
+                    <div id="tray-asignacion" class="bg-dark border border-info border-opacity-25 p-3 mb-3 d-none" style="border-radius: 8px;">
+                        <div class="d-flex align-items-center mb-2"><i class="bi bi-cursor-fill text-info me-2"></i><span class="text-white small fw-bold me-auto">Bandeja de Asignación Rápida</span></div>
                         <div class="d-flex flex-wrap gap-3 mt-2 px-1 pb-2">
                             @if (usuariosBanco != null)
                             {
                                 foreach (var user in usuariosBanco)
                                 {
-                                    <div class="badge bg-secondary border border-secondary text-white draggable-user shadow-sm position-relative"
-                                         draggable="true" data-uid="@user.Id" style="cursor: grab; font-size: 0.75rem; padding: 6px 12px; user-select: none;">
+                                    <div class="badge bg-secondary border border-secondary text-white draggable-user shadow-sm position-relative" draggable="true" data-uid="@user.Id" style="cursor: grab; font-size: 0.75rem; padding: 6px 12px; user-select: none;">
                                         <i class="bi bi-grip-vertical me-1 opacity-50"></i>@user.Email.Split('@')[0]
                                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-dark border border-secondary task-counter d-none" id="counter_@user.Id" style="font-size: 0.6rem; z-index: 5;">0</span>
                                     </div>
@@ -251,7 +230,7 @@
                         </div>
                     </div>
 
-                    <div id="subfases-container" class="mb-2 d-flex flex-column">
+                    <div id="wbs-container" class="mb-2 d-flex flex-column">
                         @if (Model.Fases != null)
                         {
                             foreach (var fase in Model.Fases.OrderBy(f => f.Orden))
@@ -260,55 +239,87 @@
                                 {
                                     foreach (var sub in fase.SubFases)
                                     {
-                                        <div class="subfase-row-container subfase-row">
-                                            <input type="hidden" name="Subfases[@subIndex].Id" value="@sub.Id" />
-
-                                            <div class="subfase-form-group">
-                                                <label>Fase Principal</label>
-                                                <select name="Subfases[@subIndex].FasePadre" class="form-select text-white border-secondary" required>
-                                                    @foreach (var f in Model.Fases.OrderBy(x => x.Orden))
-                                                    {
-                                                        <!option value="@f.NombreFase" @(f.Id == fase.Id ? "selected" : "")>@f.Orden. @f.NombreFase.Replace("_", " ")</!option>
-                                                    }
-                                                </select>
-                                            </div>
-                                            <div class="subfase-form-group">
-                                                <label>Nombre Subfase</label>
-                                                <input type="text" name="Subfases[@subIndex].Nombre" class="form-control text-white border-secondary" value="@sub.Nombre" required />
-                                            </div>
-                                            <div class="subfase-form-group">
-                                                <label>Inicio (Hora)</label>
-                                                <input type="datetime-local" name="Subfases[@subIndex].FechaInicio" class="form-control text-white border-secondary input-inicio" value="@(sub.FechaInicio?.ToString("yyyy-MM-ddTHH:mm"))" />
-                                            </div>
-                                            <div class="subfase-form-group">
-                                                <label class="text-warning">Horas</label>
-                                                <input type="number" step="0.5" class="form-control text-warning border-secondary input-horas subfase-input-horas" min="0.5" placeholder="#" />
-                                            </div>
-                                            <div class="subfase-form-group">
-                                                <label>Fin Estimado</label>
-                                                <input type="datetime-local" name="Subfases[@subIndex].FechaFinEstimada" class="form-control text-white border-secondary input-fin" value="@(sub.FechaFinEstimada?.ToString("yyyy-MM-ddTHH:mm"))" />
-                                            </div>
-                                            <div class="subfase-form-group">
-                                                <label>Responsable</label>
-                                                <div class="d-flex align-items-center gap-1 w-100">
-                                                    <select name="Subfases[@subIndex].ResponsableId" class="form-select text-white border-secondary subfase-user-select" style="flex-grow: 1;">
-                                                        <option value="">-- Sin asignar --</option>
-                                                        @if (usuariosBanco != null)
+                                        <div class="subfase-group-wrapper" data-sf-id="@sub.Id">
+                                            <div class="subfase-row-container row-data-entity">
+                                                <input type="hidden" class="input-sf-id" value="@sub.Id" />
+                                                <div class="form-group-grid">
+                                                    <label class="text-warning">Fase Principal</label>
+                                                    <select class="form-select text-white border-secondary input-fasepadre" required>
+                                                        @foreach (var f in Model.Fases.OrderBy(x => x.Orden))
                                                         {
-                                                            foreach (var user in usuariosBanco)
-                                                            {
-                                                                <!option value="@user.Id" @(sub.ResponsableId == user.Id ? "selected" : "")>@user.Email</!option>
-                                                            }
+                                                            <!option value="@f.NombreFase" @(f.Id == fase.Id ? "selected" : "")>@f.Orden. @f.NombreFase.Replace("_", " ")</!option>
                                                         }
                                                     </select>
-                                                    <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="¡Desliza por aquí para pintar al usuario!" style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;">
-                                                        <i class="bi bi-brush-fill text-warning opacity-75"></i>
+                                                </div>
+                                                <div class="form-group-grid"><label class="text-warning">Nombre Subfase</label><input type="text" class="form-control text-white border-secondary input-nombre" value="@sub.Nombre" required /></div>
+                                                <div class="form-group-grid"><label>Inicio (Hora)</label><input type="datetime-local" class="form-control text-white border-secondary input-inicio" value="@(sub.FechaInicio?.ToString("yyyy-MM-ddTHH:mm"))" /></div>
+                                                <div class="form-group-grid"><label class="text-warning">Horas</label><input type="number" step="0.5" class="form-control text-warning border-secondary input-horas" min="0.5" /></div>
+                                                <div class="form-group-grid"><label>Fin Estimado</label><input type="datetime-local" class="form-control text-white border-secondary input-fin" value="@(sub.FechaFinEstimada?.ToString("yyyy-MM-ddTHH:mm"))" /></div>
+                                                <div class="form-group-grid">
+                                                    <label>Responsable</label>
+                                                    <div class="d-flex align-items-center gap-1 w-100">
+                                                        <select class="form-select text-white border-secondary user-select" style="flex-grow: 1;">
+                                                            <option value="">-- Sin asignar --</option>
+                                                            @if (usuariosBanco != null)
+                                                            {
+                                                                foreach (var user in usuariosBanco)
+                                                                {
+                                                                    <!option value="@user.Id" @(sub.ResponsableId == user.Id ? "selected" : "")>@user.Email</!option>
+                                                                }
+                                                            }
+                                                        </select>
+                                                        <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="Desliza para pintar" style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;"><i class="bi bi-brush-fill text-warning opacity-75"></i></div>
                                                     </div>
                                                 </div>
+                                                <div class="actions-group"><button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button></div>
                                             </div>
-                                            <div class="subfase-actions-group">
-                                                <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button>
+
+                                            <div class="tareas-container">
+                                                @if (sub.Tareas != null && sub.Tareas.Any())
+                                                {
+                                                    foreach (var tarea in sub.Tareas)
+                                                    {
+                                                        <div class="tarea-row-container row-data-entity">
+                                                            <div class="form-group-grid">
+                                                                <label class="text-info"><i class="bi bi-check2-square me-1"></i>Nombre de la Tarea</label>
+                                                                <input type="text" class="form-control text-white border-info input-nombre" value="@tarea.Nombre" required />
+                                                            </div>
+                                                            <div class="form-group-grid">
+                                                                <label>Inicio (Hora)</label>
+                                                                <input type="datetime-local" class="form-control text-white border-secondary input-inicio" value="@(tarea.FechaInicioReal?.ToString("yyyy-MM-ddTHH:mm"))" />
+                                                            </div>
+                                                            <div class="form-group-grid">
+                                                                <label class="text-info">Horas</label>
+                                                                <input type="number" step="0.5" class="form-control text-info border-secondary input-horas" min="0.5" value="@tarea.HorasEstimadas.ToString().Replace(',', '.')" />
+                                                            </div>
+                                                            <div class="form-group-grid">
+                                                                <label>Fin Estimado</label>
+                                                                <input type="datetime-local" class="form-control text-white border-secondary input-fin" value="@(tarea.FechaFinReal?.ToString("yyyy-MM-ddTHH:mm"))" />
+                                                            </div>
+                                                            <div class="form-group-grid">
+                                                                <label>Responsable</label>
+                                                                <div class="d-flex align-items-center gap-1 w-100">
+                                                                    <select class="form-select text-white border-secondary user-select" style="flex-grow: 1;">
+                                                                        <option value="">-- Sin asignar --</option>
+                                                                        @if (usuariosBanco != null)
+                                                                        {
+                                                                            foreach (var user in usuariosBanco)
+                                                                            {
+                                                                                <!option value="@user.Id" @(tarea.UsuarioAsignadoId == user.Id ? "selected" : "")>@user.Email</!option>
+                                                                            }
+                                                                        }
+                                                                    </select>
+                                                                    <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="Desliza para pintar" style="min-width: 32px; height: 32px; border: 2px dashed rgba(13, 202, 240, 0.4); cursor: crosshair;"><i class="bi bi-brush-fill text-info opacity-75"></i></div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="actions-group">
+                                                                <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-tarea"><i class="bi bi-x-circle"></i></button>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                }
                                             </div>
+                                            <div class="ms-4 mt-2"><button type="button" class="btn btn-sm btn-link text-info text-decoration-none p-0 btn-add-tarea" style="font-size: 0.75rem;"><i class="bi bi-arrow-return-right me-1"></i>Añadir Tarea</button></div>
                                         </div>
                                         subIndex++;
                                     }
@@ -336,75 +347,40 @@
                 </div>
 
                 <div class="text-end mb-5 d-flex justify-content-end gap-3">
-                    <button type="button" class="btn btn-outline-danger shadow-sm px-4 py-2" onclick="eliminarProyecto(@Model.Id)" style="border-radius: 8px;">
-                        <i class="bi bi-trash3-fill me-2"></i>Eliminar Proyecto
-                    </button>
+                    <button type="button" class="btn btn-outline-danger shadow-sm px-4 py-2" onclick="eliminarProyecto(@Model.Id)" style="border-radius: 8px;"><i class="bi bi-trash3-fill me-2"></i>Eliminar Proyecto</button>
                     <button type="submit" class="btn btn-warning px-5 py-2 fw-bold shadow" id="btnSubmit" style="border-radius: 8px; font-size: 1.05rem;">
-                        <span id="spinnerSubmit" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
-                        <i class="bi bi-save me-1" id="iconSubmit"></i> Guardar Cambios
+                        <span id="spinnerSubmit" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span><i class="bi bi-save me-1" id="iconSubmit"></i> Guardar Cambios
                     </button>
                 </div>
-
             </div>
         </div>
     </form>
 </div>
 
-<div class="modal fade" id="modalDomino" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #ffc107;">
-            <div class="modal-header border-secondary p-3">
-                <h6 class="modal-title fw-bold text-warning"><i class="bi bi-calendar-range me-2"></i>Desplazar Fechas</h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-3" style="background-color: #07091e;">
-                <label class="text-white-50 small mb-2 d-block">¿Desplazar todas las tareas por días?</label>
-                <div class="input-group input-group-sm mb-2">
-                    <input type="number" id="inputDominoDias" class="form-control bg-dark text-white border-warning text-center" placeholder="Ej: 7 o -3" />
-                    <span class="input-group-text bg-secondary border-warning text-white">días</span>
-                </div>
-            </div>
-            <div class="modal-footer border-secondary p-2">
-                <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="ejecutarEfectoDomino()">Aplicar</button>
-            </div>
-        </div>
-    </div>
-</div>
+<div class="modal fade" id="modalDomino" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #ffc107;"><div class="modal-header border-secondary p-3"><h6 class="modal-title fw-bold text-warning"><i class="bi bi-calendar-range me-2"></i>Desplazar Fechas</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-3" style="background-color: #07091e;"><label class="text-white-50 small mb-2 d-block">¿Desplazar todas las tareas por días?</label><div class="input-group input-group-sm mb-2"><input type="number" id="inputDominoDias" class="form-control bg-dark text-white border-warning text-center" placeholder="Ej: 7 o -3" /><span class="input-group-text bg-secondary border-warning text-white">días</span></div></div><div class="modal-footer border-secondary p-2"><button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-sm btn-warning fw-bold" onclick="ejecutarEfectoDomino()">Aplicar</button></div></div></div></div>
 
-<div class="modal fade" id="modalPegadoInteligente" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #198754;">
-            <div class="modal-header border-secondary">
-                <h5 class="modal-title fw-bold text-success">Importación Inteligente</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body px-4 py-4" style="background-color: #07091e;">
-                <textarea id="txtPegadoMasivo" class="form-control form-control-sm bg-dark text-white font-monospace border-success" rows="8" placeholder="Pega tus filas de Excel o Project aquí (Usa Ctrl+V)..."></textarea>
-            </div>
-            <div class="modal-footer border-secondary">
-                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success fw-bold" onclick="procesarPegadoHeuristico()">Procesar Filas</button>
-            </div>
-        </div>
-    </div>
-</div>
+<div class="modal fade" id="modalPegadoInteligente" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #198754;"><div class="modal-header border-secondary"><h5 class="modal-title fw-bold text-success">Importación desde MS Project / Excel</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body px-4 py-4" style="background-color: #07091e;"><p class="text-white-50 small mb-2"><i class="bi bi-info-circle text-info me-1"></i> Tip: Si las celdas comienzan con un espacio o tabulación, el sistema las reconocerá automáticamente como <strong>Tareas</strong> y las anidará bajo la subfase superior.</p><textarea id="txtPegadoMasivo" class="form-control form-control-sm bg-dark text-white font-monospace border-success" rows="8" placeholder="Pega tus filas aquí (Usa Ctrl+V)..."></textarea></div><div class="modal-footer border-secondary"><button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-success fw-bold" onclick="procesarPegadoHeuristico()">Procesar Filas</button></div></div></div></div>
 
 @section Scripts {
     <script>
+        // HORARIOS DINÁMICOS
         const clientesHorarios = @Html.Raw(ViewBag.ClientesHorariosJson ?? "[]");
         let activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
         document.getElementById('selectClienteId').addEventListener('change', function() {
-            const val = this.value;
-            const match = clientesHorarios.find(c => c.id === val);
-            if(match) activeSchedule = match;
-            else activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
+            const val = this.value; const match = clientesHorarios.find(c => c.id === val);
+            if(match) activeSchedule = match; else activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
             document.querySelectorAll('.input-horas').forEach(inp => inp.dispatchEvent(new Event('input')));
         });
 
-        let subfaseIndex = @subIndex;
-        window.currentDraggedUser = null;
+        // ENVÍO DE FORMULARIO
+        document.getElementById('formEditProject').addEventListener('submit', function () {
+            var btn = document.getElementById('btnSubmit'); btn.disabled = true;
+            document.getElementById('spinnerSubmit').classList.remove('d-none'); document.getElementById('iconSubmit').classList.add('d-none');
+            localStorage.removeItem(DRAFT_KEY);
+        });
 
+        // DRAG & DROP (Módulo Pincel Responsable)
+        window.currentDraggedUser = null;
         const usuariosOptions = `
             @if (usuariosBanco != null)
             {
@@ -427,208 +403,211 @@
         document.addEventListener("DOMContentLoaded", function () {
             document.querySelectorAll('.draggable-user').forEach(pill => {
                 pill.addEventListener('dragstart', function(e) {
-                    window.currentDraggedUser = this.getAttribute('data-uid');
-                    e.dataTransfer.setData('text/plain', window.currentDraggedUser);
-                    e.dataTransfer.effectAllowed = 'copy';
-                    this.style.opacity = '0.5';
+                    window.currentDraggedUser = this.getAttribute('data-uid'); e.dataTransfer.setData('text/plain', window.currentDraggedUser);
+                    e.dataTransfer.effectAllowed = 'copy'; this.style.opacity = '0.5';
                 });
-                pill.addEventListener('dragend', function(e) {
-                    window.currentDraggedUser = null;
-                    this.style.opacity = '1';
-                });
+                pill.addEventListener('dragend', function(e) { window.currentDraggedUser = null; this.style.opacity = '1'; });
             });
 
-            document.querySelectorAll('.subfase-row').forEach(row => bindRowEvents(row));
+            // Bindear eventos a filas renderizadas desde el backend
+            document.querySelectorAll('.subfase-group-wrapper').forEach(wrapper => {
+                const sfRow = wrapper.querySelector('.subfase-row-container'); if(sfRow) bindRowEvents(sfRow);
+                wrapper.querySelectorAll('.tarea-row-container').forEach(tRow => bindRowEvents(tRow));
+            });
+
             document.getElementById('selectClienteId').dispatchEvent(new Event('change'));
-            actualizarTermometro();
+            reindexAll(); actualizarTermometro();
+            if(document.querySelectorAll('.subfase-group-wrapper').length > 0) document.getElementById('tray-asignacion').classList.remove('d-none');
         });
 
+        // ── MOTOR WBS: INYECTAR SUBFASES Y TAREAS ──
+        function inyectarFilaSubfase(nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
+            const container = document.getElementById('wbs-container');
+            const wrapper = document.createElement('div'); wrapper.className = 'subfase-group-wrapper';
+
+            wrapper.innerHTML = `
+                <div class="subfase-row-container row-data-entity">
+                    <input type="hidden" class="input-sf-id" value="0" />
+                    <div class="form-group-grid"><label class="text-warning">Fase Principal</label><select class="form-select text-white border-secondary input-fasepadre" required>${fasesOptions}</select></div>
+                    <div class="form-group-grid"><label class="text-warning">Nombre Subfase</label><input type="text" class="form-control text-white border-secondary input-nombre" value="${nombre}" required /></div>
+                    <div class="form-group-grid"><label>Inicio (Hora)</label><input type="datetime-local" class="form-control text-white border-secondary input-inicio" value="${fechaIni}" /></div>
+                    <div class="form-group-grid"><label class="text-warning">Horas</label><input type="number" step="0.5" class="form-control text-warning border-secondary input-horas" min="0.5" value="${horasVal}" /></div>
+                    <div class="form-group-grid"><label>Fin Estimado</label><input type="datetime-local" class="form-control text-white border-secondary input-fin" value="${fechaFin}" /></div>
+                    <div class="form-group-grid"><label>Responsable</label><div class="d-flex align-items-center gap-1 w-100"><select class="form-select text-white border-secondary user-select" style="flex-grow: 1;"><option value="">-- Sin asignar --</option>${usuariosOptions}</select><div class="paint-zone rounded d-flex align-items-center justify-content-center" title="Desliza para pintar" style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;"><i class="bi bi-brush-fill text-warning opacity-75"></i></div></div></div>
+                    <div class="actions-group"><button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button></div>
+                </div>
+                <div class="tareas-container"></div>
+                <div class="ms-4 mt-2"><button type="button" class="btn btn-sm btn-link text-info text-decoration-none p-0 btn-add-tarea" style="font-size: 0.75rem;"><i class="bi bi-arrow-return-right me-1"></i>Añadir Tarea</button></div>
+            `;
+            container.appendChild(wrapper);
+            if (responsableVal) wrapper.querySelector('.user-select').value = responsableVal;
+
+            bindRowEvents(wrapper.querySelector('.subfase-row-container'));
+            reindexAll(); document.getElementById('tray-asignacion').classList.remove('d-none');
+            return wrapper;
+        }
+
+        function inyectarFilaTarea(wrapperGroup, nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
+            const container = wrapperGroup.querySelector('.tareas-container');
+            const row = document.createElement('div'); row.className = 'tarea-row-container row-data-entity';
+
+            row.innerHTML = `
+                <div class="form-group-grid"><label class="text-info"><i class="bi bi-check2-square me-1"></i>Nombre de la Tarea</label><input type="text" class="form-control text-white border-info input-nombre" value="${nombre}" required /></div>
+                <div class="form-group-grid"><label>Inicio (Hora)</label><input type="datetime-local" class="form-control text-white border-secondary input-inicio" value="${fechaIni}" /></div>
+                <div class="form-group-grid"><label class="text-info">Horas</label><input type="number" step="0.5" class="form-control text-info border-secondary input-horas" min="0.5" value="${horasVal}" /></div>
+                <div class="form-group-grid"><label>Fin Estimado</label><input type="datetime-local" class="form-control text-white border-secondary input-fin" value="${fechaFin}" /></div>
+                <div class="form-group-grid"><label>Responsable</label><div class="d-flex align-items-center gap-1 w-100"><select class="form-select text-white border-secondary user-select" style="flex-grow: 1;"><option value="">-- Sin asignar --</option>${usuariosOptions}</select><div class="paint-zone rounded d-flex align-items-center justify-content-center" title="Desliza para pintar" style="min-width: 32px; height: 32px; border: 2px dashed rgba(13, 202, 240, 0.4); cursor: crosshair;"><i class="bi bi-brush-fill text-info opacity-75"></i></div></div></div>
+                <div class="actions-group"><button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-tarea"><i class="bi bi-x-circle"></i></button></div>
+            `;
+            container.appendChild(row);
+            if (responsableVal) row.querySelector('.user-select').value = responsableVal;
+            bindRowEvents(row); reindexAll();
+        }
+
+        // ── RE-INDEXACIÓN MAESTRA DE FORMULARIO ──
+        function reindexAll() {
+            const wrappers = document.querySelectorAll('.subfase-group-wrapper');
+            wrappers.forEach((wrapper, sIdx) => {
+                const sfRow = wrapper.querySelector('.subfase-row-container');
+                if (sfRow) {
+                    const inpId = sfRow.querySelector('.input-sf-id'); if(inpId) inpId.name = `Subfases[${sIdx}].Id`;
+                    const selFase = sfRow.querySelector('.input-fasepadre'); if(selFase) selFase.name = `Subfases[${sIdx}].FasePadre`;
+                    const inpNom = sfRow.querySelector('.input-nombre'); if(inpNom) inpNom.name = `Subfases[${sIdx}].Nombre`;
+                    const inpIni = sfRow.querySelector('.input-inicio'); if(inpIni) inpIni.name = `Subfases[${sIdx}].FechaInicio`;
+                    const inpFin = sfRow.querySelector('.input-fin'); if(inpFin) inpFin.name = `Subfases[${sIdx}].FechaFinEstimada`;
+                    const selRes = sfRow.querySelector('.user-select'); if(selRes) selRes.name = `Subfases[${sIdx}].ResponsableId`;
+                }
+
+                const tRows = wrapper.querySelectorAll('.tarea-row-container');
+                tRows.forEach((tRow, tIdx) => {
+                    const tNom = tRow.querySelector('.input-nombre'); if(tNom) tNom.name = `Subfases[${sIdx}].Tareas[${tIdx}].Nombre`;
+                    const tIni = tRow.querySelector('.input-inicio'); if(tIni) tIni.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaInicioReal`;
+                    const tFin = tRow.querySelector('.input-fin'); if(tFin) tFin.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaFinReal`;
+                    const tHrs = tRow.querySelector('.input-horas'); if(tHrs) tHrs.name = `Subfases[${sIdx}].Tareas[${tIdx}].HorasEstimadas`;
+                    const tRes = tRow.querySelector('.user-select'); if(tRes) tRes.name = `Subfases[${sIdx}].Tareas[${tIdx}].UsuarioAsignadoId`;
+                });
+            });
+        }
+
+        // DELEGACIÓN DE EVENTOS DE CLICS (Añadir/Eliminar)
+        document.getElementById('btnAddSubfase').addEventListener('click', () => inyectarFilaSubfase());
+
+        document.getElementById('wbs-container').addEventListener('click', function(e) {
+            if (e.target.closest('.btn-add-tarea')) {
+                const wrapper = e.target.closest('.subfase-group-wrapper'); inyectarFilaTarea(wrapper);
+            }
+            const btnRemoveSf = e.target.closest('.btn-remove-subfase');
+            if (btnRemoveSf) {
+                btnRemoveSf.closest('.subfase-group-wrapper').remove(); reindexAll(); actualizarTermometro(); guardarBorradorSilencioso();
+                if (document.querySelectorAll('.subfase-group-wrapper').length === 0) document.getElementById('tray-asignacion').classList.add('d-none');
+            }
+            const btnRemoveT = e.target.closest('.btn-remove-tarea');
+            if (btnRemoveT) {
+                btnRemoveT.closest('.tarea-row-container').remove(); reindexAll(); actualizarTermometro(); guardarBorradorSilencioso();
+            }
+        });
+
+        // ── LOGICA COMPARTIDA (Pincel, Fechas, Horarios) ──
         function bindRowEvents(row) {
             const inpInicio = row.querySelector('.input-inicio');
             const inpHoras = row.querySelector('.input-horas');
             const inpFin = row.querySelector('.input-fin');
-            const selectResp = row.querySelector('.subfase-user-select');
+            const selectResp = row.querySelector('.user-select');
             const paintZone = row.querySelector('.paint-zone');
 
-            function formatDatetimeLocal(d) {
-                let tzoffset = (new Date()).getTimezoneOffset() * 60000;
-                return (new Date(d - tzoffset)).toISOString().slice(0, 16);
-            }
+            function formatDatetimeLocal(d) { let tzoffset = (new Date()).getTimezoneOffset() * 60000; return (new Date(d - tzoffset)).toISOString().slice(0, 16); }
 
             function calcularFin() {
                 if (!inpInicio.value || !inpHoras.value) return;
-                let date = new Date(inpInicio.value);
-                let hoursRemaining = parseFloat(inpHoras.value);
-                if(isNaN(hoursRemaining) || hoursRemaining <= 0) return;
+                let date = new Date(inpInicio.value); let hoursRemaining = parseFloat(inpHoras.value); if(isNaN(hoursRemaining) || hoursRemaining <= 0) return;
 
                 let safety = 0;
                 while (hoursRemaining > 0 && safety < 100) {
-                    safety++;
-                    let dayOfWeek = date.getDay();
-                    if (dayOfWeek === 0 || dayOfWeek === 6) {
-                        date.setDate(date.getDate() + (dayOfWeek === 6 ? 2 : 1));
-                        date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
-                        continue;
-                    }
+                    safety++; let dayOfWeek = date.getDay();
+                    if (dayOfWeek === 0 || dayOfWeek === 6) { date.setDate(date.getDate() + (dayOfWeek === 6 ? 2 : 1)); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; }
                     let exitH = (dayOfWeek === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH;
                     let exitM = (dayOfWeek === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
-                    let endOfDay = new Date(date);
-                    endOfDay.setHours(exitH, exitM, 0, 0);
+                    let endOfDay = new Date(date); endOfDay.setHours(exitH, exitM, 0, 0);
                     let startOfDay = new Date(date); startOfDay.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
                     if (date < startOfDay) date = new Date(startOfDay);
-                    if (date >= endOfDay) {
-                        date.setDate(date.getDate() + 1);
-                        date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
-                        continue;
-                    }
+                    if (date >= endOfDay) { date.setDate(date.getDate() + 1); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; }
 
-                    let hoursRemainingToday = (endOfDay - date) / (1000 * 60 * 60);
-                    if (hoursRemaining <= hoursRemainingToday) {
-                        date.setTime(date.getTime() + (hoursRemaining * 60 * 60 * 1000));
-                        hoursRemaining = 0;
-                    } else {
-                        hoursRemaining -= hoursRemainingToday;
-                        date.setDate(date.getDate() + 1);
-                        date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
-                    }
+                    let msRemainingToday = endOfDay - date; let hoursRemainingToday = msRemainingToday / (1000 * 60 * 60);
+                    if (hoursRemaining <= hoursRemainingToday) { date.setTime(date.getTime() + (hoursRemaining * 60 * 60 * 1000)); hoursRemaining = 0; }
+                    else { hoursRemaining -= hoursRemainingToday; date.setDate(date.getDate() + 1); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); }
                 }
                 inpFin.value = formatDatetimeLocal(date);
-                inpFin.style.backgroundColor = 'rgba(255, 193, 7, 0.2)';
-                setTimeout(() => inpFin.style.backgroundColor = '', 400);
+                inpFin.style.backgroundColor = 'rgba(255, 193, 7, 0.2)'; setTimeout(() => inpFin.style.backgroundColor = '', 400);
+                guardarBorradorSilencioso();
             }
 
-            inpInicio.addEventListener('change', calcularFin);
-            inpHoras.addEventListener('input', calcularFin);
-            selectResp.addEventListener('change', actualizarTermometro);
+            inpInicio.addEventListener('change', calcularFin); inpHoras.addEventListener('input', calcularFin);
 
-            paintZone.addEventListener('dragenter', function(e) {
-                e.preventDefault();
-                if (window.currentDraggedUser && selectResp.value !== window.currentDraggedUser) {
-                    selectResp.value = window.currentDraggedUser;
-                    row.style.boxShadow = 'inset 0 0 20px rgba(25, 135, 84, 0.3)';
-                    row.style.borderColor = '#198754';
-                    setTimeout(() => { row.style.boxShadow = ''; row.style.borderColor = ''; }, 500);
-                    const globalCb = document.getElementById('user_' + window.currentDraggedUser);
-                    if (globalCb) globalCb.checked = true;
-                    actualizarTermometro();
-                }
-            });
-            paintZone.addEventListener('dragover', e => e.preventDefault());
-            row.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
-            row.addEventListener('drop', function(e) {
-                e.preventDefault();
-                const uid = e.dataTransfer.getData('text/plain');
-                if (uid) {
-                    selectResp.value = uid;
-                    const globalCb = document.getElementById('user_' + uid);
-                    if (globalCb) globalCb.checked = true;
-                    actualizarTermometro();
-                }
-            });
-        }
-
-        function inyectarFilaSubfase(nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
-            const container = document.getElementById('subfases-container');
-            const row = document.createElement('div');
-
-            row.className = 'subfase-row-container subfase-row';
-
-            row.innerHTML = `
-                <input type="hidden" name="Subfases[${subfaseIndex}].Id" value="0" />
-                <div class="subfase-form-group">
-                    <label>Fase Principal</label>
-                    <select name="Subfases[${subfaseIndex}].FasePadre" class="form-select text-white border-secondary" required>
-                        ${fasesOptions}
-                    </select>
-                </div>
-                <div class="subfase-form-group">
-                    <label>Nombre Subfase</label>
-                    <input type="text" name="Subfases[${subfaseIndex}].Nombre" class="form-control text-white border-secondary" value="${nombre}" required />
-                </div>
-                <div class="subfase-form-group">
-                    <label>Inicio (Hora)</label>
-                    <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaInicio" class="form-control text-white border-secondary input-inicio" value="${fechaIni}" />
-                </div>
-                <div class="subfase-form-group">
-                    <label class="text-warning">Horas</label>
-                    <input type="number" step="0.5" class="form-control text-warning border-secondary input-horas subfase-input-horas" min="0.5" value="${horasVal}" />
-                </div>
-                <div class="subfase-form-group">
-                    <label>Fin Estimado</label>
-                    <input type="datetime-local" name="Subfases[${subfaseIndex}].FechaFinEstimada" class="form-control text-white border-secondary input-fin" value="${fechaFin}" />
-                </div>
-                <div class="subfase-form-group">
-                    <label>Responsable</label>
-                    <div class="d-flex align-items-center gap-1 w-100">
-                        <select name="Subfases[${subfaseIndex}].ResponsableId" class="form-select text-white border-secondary subfase-user-select" style="flex-grow: 1;">
-                            <option value="">-- Sin asignar --</option>
-                            ${usuariosOptions}
-                        </select>
-                        <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="¡Desliza por aquí para pintar al usuario!" style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;">
-                            <i class="bi bi-brush-fill text-warning opacity-75"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="subfase-actions-group">
-                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button>
-                </div>
-            `;
-            container.appendChild(row);
-            if (responsableVal) row.querySelector('.subfase-user-select').value = responsableVal;
-
-            bindRowEvents(row);
-            subfaseIndex++;
-        }
-
-        document.getElementById('btnAddSubfase').addEventListener('click', () => inyectarFilaSubfase());
-        document.getElementById('subfases-container').addEventListener('click', function(e) {
-            const btnRemove = e.target.closest('.btn-remove-subfase');
-            if (btnRemove) {
-                btnRemove.closest('.subfase-row').remove();
-                reindexSubfases();
-                actualizarTermometro();
+            // Modo Pincel Drag & Drop
+            if (paintZone && selectResp) {
+                paintZone.addEventListener('dragenter', function(e) {
+                    e.preventDefault();
+                    if (window.currentDraggedUser && selectResp.value !== window.currentDraggedUser) {
+                        selectResp.value = window.currentDraggedUser; row.style.boxShadow = 'inset 0 0 20px rgba(25, 135, 84, 0.3)';
+                        setTimeout(() => { row.style.boxShadow = ''; }, 500);
+                        const globalCb = document.getElementById('user_' + window.currentDraggedUser); if (globalCb) globalCb.checked = true; actualizarTermometro();
+                    }
+                });
+                paintZone.addEventListener('dragover', e => e.preventDefault());
+                row.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+                row.addEventListener('drop', function(e) {
+                    e.preventDefault(); const uid = e.dataTransfer.getData('text/plain');
+                    if (uid) { selectResp.value = uid; const globalCb = document.getElementById('user_' + uid); if (globalCb) globalCb.checked = true; actualizarTermometro(); }
+                });
             }
-        });
+        }
 
-        function reindexSubfases() {
-            const rows = document.querySelectorAll('.subfase-row');
-            rows.forEach((row, index) => {
-                row.querySelector('input[type="hidden"]').name = `Subfases[${index}].Id`;
-                row.querySelector('select[name$=".FasePadre"]').name = `Subfases[${index}].FasePadre`;
-                row.querySelector('input[name$=".Nombre"]').name = `Subfases[${index}].Nombre`;
-                row.querySelector('select[name$=".ResponsableId"]').name = `Subfases[${index}].ResponsableId`;
-                row.querySelector('input[name$=".FechaInicio"]').name = `Subfases[${index}].FechaInicio`;
-                row.querySelector('input[name$=".FechaFinEstimada"]').name = `Subfases[${index}].FechaFinEstimada`;
+        // ── PEGADO HEURÍSTICO AVANZADO ──
+        function procesarPegadoHeuristico() {
+            const texto = document.getElementById('txtPegadoMasivo').value; if (!texto.trim()) return;
+
+            function parseDate(fechaTexto) {
+                if (!fechaTexto) return ""; let partes = fechaTexto.split(/[\/\-]/);
+                if (partes.length === 3) {
+                    if (partes[0].length <= 2 && (partes[2].length === 4 || partes[2].length === 2)) { let year = partes[2].length === 2 ? "20" + partes[2] : partes[2]; return `${year}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`; }
+                    if (partes[0].length === 4) return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
+                } return "";
+            }
+
+            const filas = texto.split('\n'); let agregadasSub = 0; let agregadasTar = 0; let currentWrapper = null;
+
+            filas.forEach(fila => {
+                if (!fila.trim()) return;
+                const esTarea = fila.startsWith(' ') || fila.startsWith('\t');
+                const celdas = fila.split(/\t|\|/).map(c => c.trim());
+                let nombre = celdas[0] || ""; let fecha1 = parseDate(celdas[1]); let fecha2 = parseDate(celdas[2]); let horasVal = celdas[3] ? celdas[3].replace(',', '.') : "";
+
+                if (fecha1) fecha1 = `${fecha1}T${activeSchedule.entradaH.toString().padStart(2,'0')}:${activeSchedule.entradaM.toString().padStart(2,'0')}`;
+                if (fecha2) fecha2 = `${fecha2}T${activeSchedule.salidaNormalH.toString().padStart(2,'0')}:${activeSchedule.salidaNormalM.toString().padStart(2,'0')}`;
+
+                if (nombre) {
+                    if (esTarea && currentWrapper) { inyectarFilaTarea(currentWrapper, nombre, fecha1, fecha2, "", horasVal); agregadasTar++; }
+                    else { currentWrapper = inyectarFilaSubfase(nombre, fecha1, fecha2, "", horasVal); agregadasSub++; }
+                }
             });
-            subfaseIndex = rows.length;
+
+            if (agregadasSub > 0 || agregadasTar > 0) {
+                toastr.success(`¡Se procesaron ${agregadasSub} Subfases y ${agregadasTar} Tareas con éxito!`);
+                document.getElementById('txtPegadoMasivo').value = ''; bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide();
+                actualizarTermometro(); guardarBorradorSilencioso();
+            }
         }
 
         function ejecutarEfectoDomino() {
-            const dias = parseInt(document.getElementById('inputDominoDias').value, 10);
-            if (isNaN(dias) || dias === 0) return;
-
-            document.querySelectorAll('.subfase-row').forEach(row => {
-                const iInicio = row.querySelector('.input-inicio');
-                const iFin = row.querySelector('.input-fin');
-
-                function formatLocal(d) {
-                    let tzoffset = (new Date()).getTimezoneOffset() * 60000;
-                    return (new Date(d - tzoffset)).toISOString().slice(0, 16);
-                }
-
-                if (iInicio.value) {
-                    let d = new Date(iInicio.value); d.setDate(d.getDate() + dias); iInicio.value = formatLocal(d);
-                }
-                if (iFin.value) {
-                    let d = new Date(iFin.value); d.setDate(d.getDate() + dias); iFin.value = formatLocal(d);
-                }
-                row.style.boxShadow = 'inset 0 0 15px rgba(255,193,7,0.3)';
-                setTimeout(() => row.style.boxShadow = '', 400);
+            const dias = parseInt(document.getElementById('inputDominoDias').value, 10); if (isNaN(dias) || dias === 0) return;
+            document.querySelectorAll('.row-data-entity').forEach(row => {
+                const iInicio = row.querySelector('.input-inicio'); const iFin = row.querySelector('.input-fin');
+                function formatLocal(d) { let tzoffset = (new Date()).getTimezoneOffset() * 60000; return (new Date(d - tzoffset)).toISOString().slice(0, 16); }
+                if (iInicio && iInicio.value) { let d = new Date(iInicio.value); d.setDate(d.getDate() + dias); iInicio.value = formatLocal(d); }
+                if (iFin && iFin.value) { let d = new Date(iFin.value); d.setDate(d.getDate() + dias); iFin.value = formatLocal(d); }
+                row.style.boxShadow = 'inset 0 0 15px rgba(255,193,7,0.3)'; setTimeout(() => row.style.boxShadow = '', 400);
             });
-
-            sincronizarFechas();
-            bootstrap.Modal.getInstance(document.getElementById('modalDomino')).hide();
-            toastr.success(`Fechas desplazadas ${dias} días.`);
+            sincronizarFechas(); bootstrap.Modal.getInstance(document.getElementById('modalDomino')).hide(); toastr.success(`Fechas desplazadas ${dias} días.`);
         }
 
         function actualizarTermometro() {
@@ -636,102 +615,76 @@
             document.querySelectorAll('.draggable-user').forEach(p => { p.classList.remove('border-warning', 'border-danger'); p.classList.add('border-secondary'); });
 
             let conteo = {};
-            document.querySelectorAll('.subfase-user-select').forEach(sel => { if (sel.value) conteo[sel.value] = (conteo[sel.value] || 0) + 1; });
+            document.querySelectorAll('.user-select').forEach(sel => { if (sel.value) conteo[sel.value] = (conteo[sel.value] || 0) + 1; });
             for (let uid in conteo) {
-                let total = conteo[uid];
-                let badge = document.getElementById('counter_' + uid);
-                let pill = document.querySelector(`.draggable-user[data-uid="${uid}"]`);
+                let total = conteo[uid]; let badge = document.getElementById('counter_' + uid); let pill = document.querySelector(`.draggable-user[data-uid="${uid}"]`);
                 if (badge && pill) {
-                    badge.textContent = total;
-                    badge.classList.remove('d-none', 'bg-dark');
-                    pill.classList.remove('border-secondary');
-                    if (total >= 5) { badge.classList.add('bg-danger'); pill.classList.add('border-danger'); }
-                    else if (total >= 3) { badge.classList.add('bg-warning'); pill.classList.add('border-warning'); }
-                    else { badge.classList.add('bg-info'); pill.classList.add('border-info'); }
+                    badge.textContent = total; badge.classList.remove('d-none', 'bg-dark'); pill.classList.remove('border-secondary');
+                    if (total >= 5) { badge.classList.add('bg-danger'); pill.classList.add('border-danger'); } else if (total >= 3) { badge.classList.add('bg-warning'); pill.classList.add('border-warning'); } else { badge.classList.add('bg-info'); pill.classList.add('border-info'); }
                 }
             }
         }
 
         function sincronizarFechas() {
-            const rows = document.querySelectorAll('.subfase-row');
-            if (rows.length === 0) return;
+            const rows = document.querySelectorAll('.row-data-entity'); if (rows.length === 0) return;
             let minDate = null; let maxDate = null;
             rows.forEach(row => {
-                const startInput = row.querySelector('.input-inicio').value;
-                const endInput = row.querySelector('.input-fin').value;
-                if (startInput) { let d = new Date(startInput); if (!minDate || d < minDate) minDate = d; }
-                if (endInput) { let d = new Date(endInput); if (!maxDate || d > maxDate) maxDate = d; }
+                const startInput = row.querySelector('.input-inicio'); const endInput = row.querySelector('.input-fin');
+                if (startInput && startInput.value) { let d = new Date(startInput.value); if (!minDate || d < minDate) minDate = d; }
+                if (endInput && endInput.value) { let d = new Date(endInput.value); if (!maxDate || d > maxDate) maxDate = d; }
             });
-            const gStart = document.getElementById('gFechaInicio');
-            const gEnd = document.getElementById('gFechaFin');
-            if (minDate) gStart.value = minDate.toISOString().split('T')[0];
-            if (maxDate) gEnd.value = maxDate.toISOString().split('T')[0];
-            [gStart, gEnd].forEach(el => {
-                const oldBg = el.style.backgroundColor;
-                el.style.backgroundColor = 'rgba(13, 202, 240, 0.4)';
-                setTimeout(() => el.style.backgroundColor = oldBg, 500);
-            });
+            const gStart = document.getElementById('gFechaInicio'); const gEnd = document.getElementById('gFechaFin');
+            if (minDate) gStart.value = minDate.toISOString().split('T')[0]; if (maxDate) gEnd.value = maxDate.toISOString().split('T')[0];
+            [gStart, gEnd].forEach(el => { const oldBg = el.style.backgroundColor; el.style.backgroundColor = 'rgba(13, 202, 240, 0.4)'; setTimeout(() => el.style.backgroundColor = oldBg, 500); });
         }
 
-        function procesarPegadoHeuristico() {
-            const texto = document.getElementById('txtPegadoMasivo').value.trim();
-            if (!texto) return;
-
-            function parseDate(fechaTexto) {
-                if (!fechaTexto) return "";
-                let partes = fechaTexto.split(/[\/\-]/);
-                if (partes.length === 3) {
-                    if (partes[0].length <= 2 && (partes[2].length === 4 || partes[2].length === 2)) {
-                        let year = partes[2].length === 2 ? "20" + partes[2] : partes[2];
-                        return `${year}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
-                    }
-                    if (partes[0].length === 4) return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
-                }
-                return "";
-            }
-
-            const filas = texto.split('\n');
-            let agregadas = 0;
-
-            filas.forEach(fila => {
-                if (!fila.trim()) return;
-                const celdas = fila.split(/\t|\|/).map(c => c.trim());
-                let nombre = celdas[0] || "";
-                let fecha1 = parseDate(celdas[1]);
-                let fecha2 = parseDate(celdas[2]);
-                let horasVal = celdas[3] ? celdas[3].replace(',', '.') : "";
-
-                if (fecha1) fecha1 = `${fecha1}T${activeSchedule.entradaH.toString().padStart(2,'0')}:${activeSchedule.entradaM.toString().padStart(2,'0')}`;
-                if (fecha2) fecha2 = `${fecha2}T${activeSchedule.salidaNormalH.toString().padStart(2,'0')}:${activeSchedule.salidaNormalM.toString().padStart(2,'0')}`;
-
-                if (nombre) {
-                    inyectarFilaSubfase(nombre, fecha1, fecha2, "", horasVal);
-                    agregadas++;
-                }
+        const DRAFT_KEY = 'ProyectoEditDraftWBS_@Model.Id';
+        function guardarBorradorSilencioso() {
+            const draft = { wrappers: [] };
+            document.querySelectorAll('.subfase-group-wrapper').forEach(wrap => {
+                const sfRow = wrap.querySelector('.subfase-row-container');
+                const sfData = {
+                    nombre: sfRow.querySelector('.input-nombre').value, fInicio: sfRow.querySelector('.input-inicio').value, fFin: sfRow.querySelector('.input-fin').value,
+                    horas: sfRow.querySelector('.input-horas').value, resp: sfRow.querySelector('.user-select').value, tareas: []
+                };
+                wrap.querySelectorAll('.tarea-row-container').forEach(tRow => {
+                    sfData.tareas.push({
+                        nombre: tRow.querySelector('.input-nombre').value, fInicio: tRow.querySelector('.input-inicio').value, fFin: tRow.querySelector('.input-fin').value,
+                        horas: tRow.querySelector('.input-horas').value, resp: tRow.querySelector('.user-select').value
+                    });
+                });
+                draft.wrappers.push(sfData);
             });
-            if (agregadas > 0) {
-                toastr.success(`¡Se procesaron ${agregadas} filas con éxito!`);
-                document.getElementById('txtPegadoMasivo').value = '';
-                bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide();
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        }
+
+        function restaurarBorrador() {
+            const saved = localStorage.getItem(DRAFT_KEY); if (!saved) return; const draft = JSON.parse(saved);
+            if (draft.wrappers && draft.wrappers.length > 0) {
+                document.getElementById('wbs-container').innerHTML = '';
+                draft.wrappers.forEach(sf => {
+                    const w = inyectarFilaSubfase(sf.nombre, sf.fInicio, sf.fFin, sf.resp, sf.horas);
+                    if(sf.tareas) sf.tareas.forEach(t => inyectarFilaTarea(w, t.nombre, t.fInicio, t.fFin, t.resp, t.horas));
+                });
                 actualizarTermometro();
             }
+            document.getElementById('draftAlert').classList.add('d-none');
         }
 
-        document.getElementById('formEditProject').addEventListener('submit', function() {
-            var btn = document.getElementById('btnSubmit');
-            btn.disabled = true;
-            document.getElementById('spinnerSubmit').classList.remove('d-none');
-            document.getElementById('iconSubmit').classList.add('d-none');
+        function descartarBorrador() { localStorage.removeItem(DRAFT_KEY); document.getElementById('draftAlert').classList.add('d-none'); }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem(DRAFT_KEY);
+            if (saved) { const draft = JSON.parse(saved); if (draft.wrappers && draft.wrappers.length > 0) document.getElementById('draftAlert').classList.remove('d-none'); }
+            document.getElementById('formEditProject').addEventListener('input', guardarBorradorSilencioso);
+            document.getElementById('wbs-container').addEventListener('DOMSubtreeModified', guardarBorradorSilencioso);
         });
 
         function eliminarProyecto(id) {
             if (confirm("⚠️ ¡ATENCIÓN! ¿Estás completamente seguro de que deseas ELIMINAR este proyecto?\n\nEsta acción borrará todas sus fases, tareas y bitácoras de forma IRREVERSIBLE.")) {
                 const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
                 fetch(`/Proyectos/Delete/${id}`, { method: 'POST', headers: { 'RequestVerificationToken': token, 'Content-Type': 'application/json' } })
-                .then(r => r.json()).then(data => {
-                    if (data.success) { toastr.success(data.message, "Eliminado"); setTimeout(() => window.location.href = '/Proyectos/Index', 1500); }
-                    else toastr.error(data.message, "Error");
-                }).catch(() => toastr.error("Error de conexión.", "Fallo Crítico"));
+                .then(r => r.json()).then(data => { if (data.success) { toastr.success(data.message, "Eliminado"); setTimeout(() => window.location.href = '/Proyectos/Index', 1500); } else toastr.error(data.message, "Error"); }).catch(() => toastr.error("Error de conexión.", "Fallo Crítico"));
             }
         }
     </script>

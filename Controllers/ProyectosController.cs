@@ -423,11 +423,16 @@ namespace NotebookValidator.Web.Controllers
             var proyecto = await _context.Proyectos
                 .Include(p => p.UsuariosAsignados)
                 .Include(p => p.Fases.OrderBy(f => f.Orden))
-                    .ThenInclude(f => f.SubFases) // <-- Traemos Fases y Subfases para mostrarlas en la vista Edit
+                    .ThenInclude(f => f.SubFases)
+                        .ThenInclude(s => s.Tareas) // <-- ¡VITAL!: Cargamos las tareas de cada subfase
+                            .ThenInclude(t => t.UsuarioAsignado) // Cargamos el ejecutor de la tarea
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(p => p.Id == id);
 
-            if (proyecto == null) return NotFound();
+            if (proyecto == null)
+            {
+                return NotFound();
+            }
 
             ViewBag.Clientes = new SelectList(await _context.Clientes.Where(c => c.Activo).OrderBy(c => c.Nombre).ToListAsync(), "Id", "Nombre", proyecto.ClienteId);
             ViewBag.UsuariosBanco = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.Email).ToListAsync();
