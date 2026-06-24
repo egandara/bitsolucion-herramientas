@@ -487,6 +487,8 @@ namespace NotebookValidator.Web.Controllers
                 proyectoDb.MaxWarningsPermitidos = maxWarningsPermitidos;
                 proyectoDb.MaxInfosPermitidos = maxInfosPermitidos;
 
+                if (proyectoDb.Fases == null) proyectoDb.Fases = new List<FaseProyecto>();
+
                 // 3. SINCRONIZADOR BLINDADO DE WBS (SUBFASES Y TAREAS)
                 if (subfases != null)
                 {
@@ -500,7 +502,10 @@ namespace NotebookValidator.Web.Controllers
                             var subfasesAEliminar = fase.SubFases.Where(s => !subfasesEntrantesIds.Contains(s.Id)).ToList();
                             foreach (var sub in subfasesAEliminar)
                             {
-                                if (sub.Tareas != null) _context.TareasProyecto.RemoveRange(sub.Tareas);
+                                if (sub.Tareas != null && sub.Tareas.Any())
+                                {
+                                    _context.TareasProyecto.RemoveRange(sub.Tareas);
+                                }
                                 _context.SubFasesProyecto.Remove(sub);
                             }
                         }
@@ -511,19 +516,28 @@ namespace NotebookValidator.Web.Controllers
                     {
                         if (string.IsNullOrWhiteSpace(subForm.Nombre)) continue;
 
-                        var subDb = proyectoDb.Fases.SelectMany(f => f.SubFases).FirstOrDefault(s => s.Id == subForm.Id && subForm.Id != 0);
+                        // Buscamos de forma segura la subfase existente
+                        var subDb = proyectoDb.Fases
+                            .Where(f => f.SubFases != null)
+                            .SelectMany(f => f.SubFases)
+                            .FirstOrDefault(s => s.Id == subForm.Id && subForm.Id != 0);
+
                         var faseTarget = proyectoDb.Fases.FirstOrDefault(f => f.NombreFase == subForm.FasePadre) ?? proyectoDb.Fases.First();
+                        if (faseTarget.SubFases == null) faseTarget.SubFases = new List<SubFaseProyecto>();
 
                         if (subDb != null)
                         {
-                            // Actualizar Subfase
-                            _context.Entry(subDb).CurrentValues.SetValues(subForm);
+                            // Actualizar Subfase de forma manual (Evitamos la excepción de SetValues)
+                            subDb.Nombre = subForm.Nombre;
+                            subDb.ResponsableId = string.IsNullOrWhiteSpace(subForm.ResponsableId) ? null : subForm.ResponsableId;
+                            subDb.FechaInicio = subForm.FechaInicio;
+                            subDb.FechaFinEstimada = subForm.FechaFinEstimada;
 
-                            // Mover de fase si el usuario cambió el dropdown
+                            // Si el usuario movió la subfase a otra fase
                             if (subDb.FaseProyectoId != faseTarget.Id)
                             {
                                 var oldFase = proyectoDb.Fases.FirstOrDefault(f => f.Id == subDb.FaseProyectoId);
-                                if (oldFase != null) oldFase.SubFases.Remove(subDb);
+                                if (oldFase != null && oldFase.SubFases != null) oldFase.SubFases.Remove(subDb);
                                 faseTarget.SubFases.Add(subDb);
                                 subDb.FaseProyectoId = faseTarget.Id;
                             }
@@ -546,20 +560,15 @@ namespace NotebookValidator.Web.Controllers
                         }
 
                         // --- Sincronizar Tareas Hijas ---
+                        if (subDb.Tareas == null) subDb.Tareas = new List<TareaProyecto>();
+
                         if (subForm.Tareas != null)
                         {
                             var tareasEntrantesIds = subForm.Tareas.Where(t => t.Id > 0).Select(t => t.Id).ToList();
 
                             // Borrar tareas eliminadas
-                            if (subDb.Tareas != null)
-                            {
-                                var tareasAEliminar = subDb.Tareas.Where(t => !tareasEntrantesIds.Contains(t.Id) && t.Id != 0).ToList();
-                                foreach (var tDel in tareasAEliminar) _context.TareasProyecto.Remove(tDel);
-                            }
-                            else
-                            {
-                                subDb.Tareas = new List<TareaProyecto>();
-                            }
+                            var tareasAEliminar = subDb.Tareas.Where(t => !tareasEntrantesIds.Contains(t.Id) && t.Id != 0).ToList();
+                            foreach (var tDel in tareasAEliminar) _context.TareasProyecto.Remove(tDel);
 
                             // Actualizar o insertar tareas
                             foreach (var tareaForm in subForm.Tareas)
@@ -569,7 +578,7 @@ namespace NotebookValidator.Web.Controllers
                                 var tareaDb = subDb.Tareas.FirstOrDefault(t => t.Id == tareaForm.Id && tareaForm.Id != 0);
                                 if (tareaDb != null)
                                 {
-                                    // Actualizar
+                                    // Actualizar de forma manual
                                     tareaDb.Nombre = tareaForm.Nombre;
                                     tareaDb.FechaInicioReal = tareaForm.FechaInicioReal;
                                     tareaDb.FechaFinReal = tareaForm.FechaFinReal;
@@ -597,9 +606,10 @@ namespace NotebookValidator.Web.Controllers
                         else
                         {
                             // Si eliminaron todas las tareas en la interfaz
-                            if (subDb.Tareas != null && subDb.Tareas.Any())
+                            if (subDb.Tareas.Any())
                             {
-                                foreach (var tDel in subDb.Tareas.ToList()) _context.TareasProyecto.Remove(tDel);
+                                _context.TareasProyecto.RemoveRange(subDb.Tareas);
+                                subDb.Tareas.Clear();
                             }
                         }
                     }
@@ -613,7 +623,7 @@ namespace NotebookValidator.Web.Controllers
                         {
                             foreach (var sub in fase.SubFases.ToList())
                             {
-                                if (sub.Tareas != null) _context.TareasProyecto.RemoveRange(sub.Tareas);
+                                if (sub.Tareas != null && sub.Tareas.Any()) _context.TareasProyecto.RemoveRange(sub.Tareas);
                                 _context.SubFasesProyecto.Remove(sub);
                             }
                         }
@@ -623,7 +633,6 @@ namespace NotebookValidator.Web.Controllers
                 // 4. SINCRONIZADOR DE EQUIPO GLOBAL (Corrección de 500 Error PK)
                 if (usuariosAsignadosIds == null) usuariosAsignadosIds = new List<string>();
 
-                // Auto-agregar a los responsables de subfases y tareas
                 if (subfases != null)
                 {
                     usuariosAsignadosIds.AddRange(subfases.Where(s => !string.IsNullOrWhiteSpace(s.ResponsableId)).Select(s => s.ResponsableId!));
@@ -636,11 +645,9 @@ namespace NotebookValidator.Web.Controllers
                 var adminIds = proyectoDb.UsuariosAsignados.Where(u => u.RolEnProyecto == "Admin").Select(u => u.UsuarioId).ToList();
                 var devActuales = proyectoDb.UsuariosAsignados.Where(u => u.RolEnProyecto == "Developer").ToList();
 
-                // Eliminamos SOLO a los que ya no están en la lista (Evita choque de Primary Keys)
                 var devsParaEliminar = devActuales.Where(u => !usuariosAsignadosIds.Contains(u.UsuarioId)).ToList();
                 _context.ProyectosUsuarios.RemoveRange(devsParaEliminar);
 
-                // Agregamos SOLO a los verdaderamente nuevos
                 foreach (var uId in usuariosAsignadosIds)
                 {
                     if (!adminIds.Contains(uId) && !devActuales.Any(u => u.UsuarioId == uId))
@@ -668,6 +675,7 @@ namespace NotebookValidator.Web.Controllers
             }
             catch (Exception ex)
             {
+                // En caso de falla, imprimimos el error en consola para que puedas verlo, y volvemos a cargar la vista
                 Console.WriteLine($"\n--- ERROR CRÍTICO AL GUARDAR WBS ---\n{ex.Message}\n{ex.InnerException?.Message}\n----------------------------------\n");
                 throw;
             }
