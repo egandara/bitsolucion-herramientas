@@ -8,124 +8,32 @@
 
 <style>
     /* ============================================================
-           ESTRUCTURA LATERAL Y PANELES
-           ============================================================ */
+       ESTRUCTURA LATERAL Y PANELES
+       ============================================================ */
     .cal-sidebar-block {
-        background-color: #111424 !important;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important;
-        border-radius: 10px;
-        padding: 18px !important;
-        margin-bottom: 16px;
+        background-color: #111424 !important; border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        border-radius: 10px; padding: 18px !important; margin-bottom: 16px;
     }
-
     .cal-sidebar-title {
-        font-size: 0.8rem !important;
-        font-weight: 700 !important;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #0dcaf0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        padding-bottom: 8px;
-        margin-bottom: 14px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        font-size: 0.8rem !important; font-weight: 700 !important; text-transform: uppercase; letter-spacing: 0.05em; color: #0dcaf0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 8px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center;
     }
-
-    .form-group-stacked {
-        margin-bottom: 12px;
-    }
-
-        .form-group-stacked:last-child {
-            margin-bottom: 0;
-        }
-
-        .form-group-stacked label {
-            font-size: 0.72rem !important;
-            color: rgba(255, 255, 255, 0.4) !important;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px !important;
-            font-weight: bold;
-        }
-
-    .btn-auto-calcular {
-        font-size: 0.65rem !important;
-        padding: 2px 8px !important;
-        border-radius: 6px !important;
-    }
+    .form-group-stacked { margin-bottom: 12px; }
+    .form-group-stacked:last-child { margin-bottom: 0; }
+    .form-group-stacked label { font-size: 0.72rem !important; color: rgba(255, 255, 255, 0.4) !important; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px !important; font-weight: bold; }
+    .btn-auto-calcular { font-size: 0.65rem !important; padding: 2px 8px !important; border-radius: 6px !important; font-family: ui-monospace, monospace; }
 
     /* ============================================================
-           GRID EXTENDIDO PARA SUBFASES Y TAREAS (WBS)
-           ============================================================ */
-    .subfase-group-wrapper {
-        background-color: rgba(255, 255, 255, 0.01);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 10px;
-        padding: 14px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-
-    .subfase-row-container {
-        display: grid !important;
-        grid-template-columns: 1.5fr 3.5fr 1.5fr 0.8fr 1.5fr 2.5fr auto !important;
-        gap: 12px !important;
-        align-items: end !important;
-        margin-bottom: 8px;
-    }
-
-    /* Tareas anidadas (Sin columna de fase, indentadas y con fondo slate) */
-    .tarea-row-container {
-        display: grid !important;
-        grid-template-columns: 3.5fr 1.5fr 0.8fr 1.5fr 2.5fr auto !important;
-        gap: 12px !important;
-        align-items: end !important;
-        background-color: rgba(13, 202, 240, 0.03);
-        border-left: 3px solid #0dcaf0;
-        border-radius: 6px;
-        padding: 10px 14px !important;
-        margin-bottom: 8px;
-        margin-left: 40px; /* Indentación visual */
-    }
-
-    .form-group-grid {
-        display: flex;
-        flex-direction: column;
-        width: 100% !important;
-    }
-
-        .form-group-grid label {
-            font-size: 0.7rem !important;
-            color: rgba(255, 255, 255, 0.4) !important;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 6px !important;
-            white-space: nowrap;
-        }
-
-        .form-group-grid .form-control, .form-group-grid .form-select {
-            width: 100% !important;
-            padding: 6px 10px !important;
-            font-size: 0.8rem !important;
-            background-color: #171b2e !important;
-            border: 1px solid rgba(255,255,255,0.08) !important;
-            color: #f5f6fa !important;
-            border-radius: 6px !important;
-            text-overflow: ellipsis;
-        }
-
-    .input-horas {
-        text-align: center;
-    }
-
-    .actions-group {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding-bottom: 4px;
-    }
+       GRID EXTENDIDO PARA SUBFASES Y TAREAS (WBS)
+       ============================================================ */
+    .subfase-group-wrapper { background-color: rgba(255, 255, 255, 0.01); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    .subfase-row-container { display: grid !important; grid-template-columns: 1.5fr 3.5fr 1.5fr 0.8fr 1.5fr 2.5fr auto !important; gap: 12px !important; align-items: end !important; margin-bottom: 8px; }
+    .tarea-row-container { display: grid !important; grid-template-columns: 3.5fr 1.5fr 0.8fr 1.5fr 2.5fr auto !important; gap: 12px !important; align-items: end !important; background-color: rgba(13, 202, 240, 0.03); border-left: 3px solid #0dcaf0; border-radius: 6px; padding: 10px 14px !important; margin-bottom: 8px; margin-left: 40px; }
+    .form-group-grid { display: flex; flex-direction: column; width: 100% !important; }
+    .form-group-grid label { font-size: 0.7rem !important; color: rgba(255, 255, 255, 0.4) !important; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px !important; white-space: nowrap; }
+    .form-group-grid .form-control, .form-group-grid .form-select { width: 100% !important; padding: 6px 10px !important; font-size: 0.8rem !important; background-color: #171b2e !important; border: 1px solid rgba(255,255,255,0.08) !important; color: #f5f6fa !important; border-radius: 6px !important; text-overflow: ellipsis; }
+    .input-horas { text-align: center; }
+    .actions-group { display: flex; align-items: center; justify-content: center; gap: 8px; padding-bottom: 4px; }
 </style>
 
 <div class="container-fluid mt-3" style="max-width: 1500px !important;">
@@ -209,24 +117,20 @@
                         <div><h5 class="fw-bold text-light mb-0" style="font-size: 1rem;"><i class="bi bi-diagram-3-fill me-2"></i>4. Estructura WBS (Subfases y Tareas)</h5></div>
                         <div class="d-flex gap-2">
                             <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalDomino"><i class="bi bi-calendar-range"></i> Dominó</button>
-                            <button type="button" class="btn btn-sm btn-outline-success shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalPegadoInteligente"><i class="bi bi-magic me-1"></i> Pegar Excel/Project</button>
+                            <button type="button" class="btn btn-sm btn-outline-success shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalPegadoInteligente"><i class="bi bi-magic me-1"></i> Pegar Excel</button>
                             <button type="button" class="btn btn-sm btn-outline-info" id="btnAddSubfase"><i class="bi bi-plus-lg"></i> Añadir Subfase</button>
                         </div>
                     </div>
 
                     <div id="tray-asignacion" class="bg-dark border border-info border-opacity-25 p-3 mb-3 d-none" style="border-radius: 8px;">
-                        <div class="d-flex align-items-center mb-2"><i class="bi bi-cursor-fill text-info me-2"></i><span class="text-white small fw-bold me-auto">Bandeja de Asignación Rápida</span></div>
+                        <div class="d-flex align-items-center mb-2"><i class="bi bi-cursor-fill text-info me-2"></i><span class="text-white small fw-bold me-auto">Bandeja de Asignación</span></div>
                         <div class="d-flex flex-wrap gap-3 mt-2 px-1 pb-2">
-                            @if (usuariosBanco != null)
-                            {
-                                foreach (var user in usuariosBanco)
-                                {
-                                    <div class="badge bg-secondary border border-secondary text-white draggable-user shadow-sm position-relative" draggable="true" data-uid="@user.Id" style="cursor: grab; font-size: 0.75rem; padding: 6px 12px; user-select: none;">
-                                        <i class="bi bi-grip-vertical me-1 opacity-50"></i>@user.Email.Split('@')[0]
-                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-dark border border-secondary task-counter d-none" id="counter_@user.Id" style="font-size: 0.6rem; z-index: 5;">0</span>
-                                    </div>
-                                }
-                            }
+                            @if (usuariosBanco != null) { foreach (var user in usuariosBanco) {
+                                <div class="badge bg-secondary border border-secondary text-white draggable-user shadow-sm position-relative" draggable="true" data-uid="@user.Id" style="cursor: grab; font-size: 0.75rem; padding: 6px 12px; user-select: none;">
+                                    <i class="bi bi-grip-vertical me-1 opacity-50"></i>@user.Email.Split('@')[0]
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-dark border border-secondary task-counter d-none" id="counter_@user.Id" style="font-size: 0.6rem; z-index: 5;">0</span>
+                                </div>
+                            } }
                         </div>
                     </div>
 
@@ -245,8 +149,7 @@
                                                 <div class="form-group-grid">
                                                     <label class="text-warning">Fase Principal</label>
                                                     <select class="form-select text-white border-secondary input-fasepadre" required>
-                                                        @foreach (var f in Model.Fases.OrderBy(x => x.Orden))
-                                                        {
+                                                        @foreach (var f in Model.Fases.OrderBy(x => x.Orden)) {
                                                             <!option value="@f.NombreFase" @(f.Id == fase.Id ? "selected" : "")>@f.Orden. @f.NombreFase.Replace("_", " ")</!option>
                                                         }
                                                     </select>
@@ -260,26 +163,21 @@
                                                     <div class="d-flex align-items-center gap-1 w-100">
                                                         <select class="form-select text-white border-secondary user-select" style="flex-grow: 1;">
                                                             <option value="">-- Sin asignar --</option>
-                                                            @if (usuariosBanco != null)
-                                                            {
-                                                                foreach (var user in usuariosBanco)
-                                                                {
-                                                                    <!option value="@user.Id" @(sub.ResponsableId == user.Id ? "selected" : "")>@user.Email</!option>
-                                                                }
-                                                            }
+                                                            @if (usuariosBanco != null) { foreach (var user in usuariosBanco) { <!option value="@user.Id" @(sub.ResponsableId == user.Id ? "selected" : "")>@user.Email</!option> } }
                                                         </select>
                                                         <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="Desliza para pintar" style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;"><i class="bi bi-brush-fill text-warning opacity-75"></i></div>
                                                     </div>
                                                 </div>
                                                 <div class="actions-group"><button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button></div>
                                             </div>
-
+                                            
                                             <div class="tareas-container">
                                                 @if (sub.Tareas != null && sub.Tareas.Any())
                                                 {
                                                     foreach (var tarea in sub.Tareas)
                                                     {
                                                         <div class="tarea-row-container row-data-entity">
+                                                            <input type="hidden" class="input-tarea-id" value="@tarea.Id" />
                                                             <div class="form-group-grid">
                                                                 <label class="text-info"><i class="bi bi-check2-square me-1"></i>Nombre de la Tarea</label>
                                                                 <input type="text" class="form-control text-white border-info input-nombre" value="@tarea.Nombre" required />
@@ -301,13 +199,7 @@
                                                                 <div class="d-flex align-items-center gap-1 w-100">
                                                                     <select class="form-select text-white border-secondary user-select" style="flex-grow: 1;">
                                                                         <option value="">-- Sin asignar --</option>
-                                                                        @if (usuariosBanco != null)
-                                                                        {
-                                                                            foreach (var user in usuariosBanco)
-                                                                            {
-                                                                                <!option value="@user.Id" @(tarea.UsuarioAsignadoId == user.Id ? "selected" : "")>@user.Email</!option>
-                                                                            }
-                                                                        }
+                                                                        @if (usuariosBanco != null) { foreach (var user in usuariosBanco) { <!option value="@user.Id" @(tarea.UsuarioAsignadoId == user.Id ? "selected" : "")>@user.Email</!option> } }
                                                                     </select>
                                                                     <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="Desliza para pintar" style="min-width: 32px; height: 32px; border: 2px dashed rgba(13, 202, 240, 0.4); cursor: crosshair;"><i class="bi bi-brush-fill text-info opacity-75"></i></div>
                                                                 </div>
@@ -332,17 +224,12 @@
                 <div class="card p-4 border-0 mb-4" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
                     <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>5. Actualizar Equipo Global</h5>
                     <div class="bg-dark border border-secondary p-3" style="border-radius: 6px; max-height: 200px; overflow-y: auto;">
-                        @if (usuariosBanco != null)
-                        {
-                            foreach (var user in usuariosBanco)
-                            {
-                                bool isChecked = asignadosActuales.Contains((string)user.Id);
-                                <div class="form-check mb-1">
-                                    <input class="form-check-input" type="checkbox" name="usuariosAsignadosIds" value="@user.Id" id="user_@user.Id" @(isChecked ? "checked" : "")>
-                                    <label class="form-check-label text-white small" for="user_@user.Id">@user.Email</label>
-                                </div>
-                            }
-                        }
+                        @if (usuariosBanco != null) { foreach (var user in usuariosBanco) { bool isChecked = asignadosActuales.Contains((string)user.Id);
+                            <div class="form-check mb-1">
+                                <input class="form-check-input" type="checkbox" name="usuariosAsignadosIds" value="@user.Id" id="user_@user.Id" @(isChecked ? "checked" : "")>
+                                <label class="form-check-label text-white small" for="user_@user.Id">@user.Email</label>
+                            </div>
+                        } }
                     </div>
                 </div>
 
@@ -358,73 +245,32 @@
 </div>
 
 <div class="modal fade" id="modalDomino" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #ffc107;"><div class="modal-header border-secondary p-3"><h6 class="modal-title fw-bold text-warning"><i class="bi bi-calendar-range me-2"></i>Desplazar Fechas</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-3" style="background-color: #07091e;"><label class="text-white-50 small mb-2 d-block">¿Desplazar todas las tareas por días?</label><div class="input-group input-group-sm mb-2"><input type="number" id="inputDominoDias" class="form-control bg-dark text-white border-warning text-center" placeholder="Ej: 7 o -3" /><span class="input-group-text bg-secondary border-warning text-white">días</span></div></div><div class="modal-footer border-secondary p-2"><button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-sm btn-warning fw-bold" onclick="ejecutarEfectoDomino()">Aplicar</button></div></div></div></div>
-
-<div class="modal fade" id="modalPegadoInteligente" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #198754;"><div class="modal-header border-secondary"><h5 class="modal-title fw-bold text-success">Importación desde MS Project / Excel</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body px-4 py-4" style="background-color: #07091e;"><p class="text-white-50 small mb-2"><i class="bi bi-info-circle text-info me-1"></i> Tip: Si las celdas comienzan con un espacio o tabulación, el sistema las reconocerá automáticamente como <strong>Tareas</strong> y las anidará bajo la subfase superior.</p><textarea id="txtPegadoMasivo" class="form-control form-control-sm bg-dark text-white font-monospace border-success" rows="8" placeholder="Pega tus filas aquí (Usa Ctrl+V)..."></textarea></div><div class="modal-footer border-secondary"><button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-success fw-bold" onclick="procesarPegadoHeuristico()">Procesar Filas</button></div></div></div></div>
+<div class="modal fade" id="modalPegadoInteligente" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #198754;"><div class="modal-header border-secondary"><h5 class="modal-title fw-bold text-success">Importación Inteligente</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body px-4 py-4" style="background-color: #07091e;"><p class="text-white-50 small mb-2"><i class="bi bi-info-circle text-info me-1"></i> Tip: Si las celdas comienzan con un espacio o tabulación, serán consideradas Tareas bajo la última Subfase.</p><textarea id="txtPegadoMasivo" class="form-control form-control-sm bg-dark text-white font-monospace border-success" rows="8" placeholder="Pega tus filas de Excel o Project aquí..."></textarea></div><div class="modal-footer border-secondary"><button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-success fw-bold" onclick="procesarPegadoHeuristico()">Procesar Filas</button></div></div></div></div>
 
 @section Scripts {
     <script>
-        // HORARIOS DINÁMICOS
         const clientesHorarios = @Html.Raw(ViewBag.ClientesHorariosJson ?? "[]");
         let activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
-        document.getElementById('selectClienteId').addEventListener('change', function() {
-            const val = this.value; const match = clientesHorarios.find(c => c.id === val);
-            if(match) activeSchedule = match; else activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
-            document.querySelectorAll('.input-horas').forEach(inp => inp.dispatchEvent(new Event('input')));
-        });
+        document.getElementById('selectClienteId').addEventListener('change', function() { const val = this.value; const match = clientesHorarios.find(c => c.id === val); if(match) activeSchedule = match; else activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 }; document.querySelectorAll('.input-horas').forEach(inp => inp.dispatchEvent(new Event('input'))); });
 
-        // ENVÍO DE FORMULARIO
-        document.getElementById('formEditProject').addEventListener('submit', function () {
-            var btn = document.getElementById('btnSubmit'); btn.disabled = true;
-            document.getElementById('spinnerSubmit').classList.remove('d-none'); document.getElementById('iconSubmit').classList.add('d-none');
-            localStorage.removeItem(DRAFT_KEY);
-        });
+        document.getElementById('formEditProject').addEventListener('submit', function () { var btn = document.getElementById('btnSubmit'); btn.disabled = true; document.getElementById('spinnerSubmit').classList.remove('d-none'); document.getElementById('iconSubmit').classList.add('d-none'); });
 
-        // DRAG & DROP (Módulo Pincel Responsable)
         window.currentDraggedUser = null;
-        const usuariosOptions = `
-            @if (usuariosBanco != null)
-            {
-                foreach (var user in usuariosBanco)
-                {
-                    <option value="@user.Id">@user.Email</option>
-                }
-            }
-        `;
-        const fasesOptions = `
-            @if (Model.Fases != null)
-            {
-                foreach (var f in Model.Fases.OrderBy(x => x.Orden))
-                {
-                    <option value="@f.NombreFase">@f.Orden. @f.NombreFase.Replace("_", " ")</option>
-                }
-            }
-        `;
+        const usuariosOptions = `@if (usuariosBanco != null) { foreach (var user in usuariosBanco) { <option value="@user.Id">@user.Email</option> } }`;
+        const fasesOptions = `@if (Model.Fases != null) { foreach (var f in Model.Fases.OrderBy(x => x.Orden)) { <option value="@f.NombreFase">@f.Orden. @f.NombreFase.Replace("_", " ")</option> } }`;
 
         document.addEventListener("DOMContentLoaded", function () {
-            document.querySelectorAll('.draggable-user').forEach(pill => {
-                pill.addEventListener('dragstart', function(e) {
-                    window.currentDraggedUser = this.getAttribute('data-uid'); e.dataTransfer.setData('text/plain', window.currentDraggedUser);
-                    e.dataTransfer.effectAllowed = 'copy'; this.style.opacity = '0.5';
-                });
-                pill.addEventListener('dragend', function(e) { window.currentDraggedUser = null; this.style.opacity = '1'; });
-            });
-
-            // Bindear eventos a filas renderizadas desde el backend
-            document.querySelectorAll('.subfase-group-wrapper').forEach(wrapper => {
-                const sfRow = wrapper.querySelector('.subfase-row-container'); if(sfRow) bindRowEvents(sfRow);
-                wrapper.querySelectorAll('.tarea-row-container').forEach(tRow => bindRowEvents(tRow));
-            });
-
+            document.querySelectorAll('.draggable-user').forEach(pill => { pill.addEventListener('dragstart', function(e) { window.currentDraggedUser = this.getAttribute('data-uid'); e.dataTransfer.setData('text/plain', window.currentDraggedUser); e.dataTransfer.effectAllowed = 'copy'; this.style.opacity = '0.5'; }); pill.addEventListener('dragend', function(e) { window.currentDraggedUser = null; this.style.opacity = '1'; }); });
+            document.querySelectorAll('.subfase-group-wrapper').forEach(wrapper => { const sfRow = wrapper.querySelector('.subfase-row-container'); if(sfRow) bindRowEvents(sfRow); wrapper.querySelectorAll('.tarea-row-container').forEach(tRow => bindRowEvents(tRow)); });
             document.getElementById('selectClienteId').dispatchEvent(new Event('change'));
             reindexAll(); actualizarTermometro();
             if(document.querySelectorAll('.subfase-group-wrapper').length > 0) document.getElementById('tray-asignacion').classList.remove('d-none');
         });
 
-        // ── MOTOR WBS: INYECTAR SUBFASES Y TAREAS ──
+        // ── LÓGICA DE INYECCIÓN WBS ──
         function inyectarFilaSubfase(nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
             const container = document.getElementById('wbs-container');
             const wrapper = document.createElement('div'); wrapper.className = 'subfase-group-wrapper';
-
             wrapper.innerHTML = `
                 <div class="subfase-row-container row-data-entity">
                     <input type="hidden" class="input-sf-id" value="0" />
@@ -441,7 +287,6 @@
             `;
             container.appendChild(wrapper);
             if (responsableVal) wrapper.querySelector('.user-select').value = responsableVal;
-
             bindRowEvents(wrapper.querySelector('.subfase-row-container'));
             reindexAll(); document.getElementById('tray-asignacion').classList.remove('d-none');
             return wrapper;
@@ -450,8 +295,8 @@
         function inyectarFilaTarea(wrapperGroup, nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
             const container = wrapperGroup.querySelector('.tareas-container');
             const row = document.createElement('div'); row.className = 'tarea-row-container row-data-entity';
-
             row.innerHTML = `
+                <input type="hidden" class="input-tarea-id" value="0" />
                 <div class="form-group-grid"><label class="text-info"><i class="bi bi-check2-square me-1"></i>Nombre de la Tarea</label><input type="text" class="form-control text-white border-info input-nombre" value="${nombre}" required /></div>
                 <div class="form-group-grid"><label>Inicio (Hora)</label><input type="datetime-local" class="form-control text-white border-secondary input-inicio" value="${fechaIni}" /></div>
                 <div class="form-group-grid"><label class="text-info">Horas</label><input type="number" step="0.5" class="form-control text-info border-secondary input-horas" min="0.5" value="${horasVal}" /></div>
@@ -464,7 +309,7 @@
             bindRowEvents(row); reindexAll();
         }
 
-        // ── RE-INDEXACIÓN MAESTRA DE FORMULARIO ──
+        // ── RE-INDEXACIÓN CORREGIDA ──
         function reindexAll() {
             const wrappers = document.querySelectorAll('.subfase-group-wrapper');
             wrappers.forEach((wrapper, sIdx) => {
@@ -477,9 +322,10 @@
                     const inpFin = sfRow.querySelector('.input-fin'); if(inpFin) inpFin.name = `Subfases[${sIdx}].FechaFinEstimada`;
                     const selRes = sfRow.querySelector('.user-select'); if(selRes) selRes.name = `Subfases[${sIdx}].ResponsableId`;
                 }
-
                 const tRows = wrapper.querySelectorAll('.tarea-row-container');
                 tRows.forEach((tRow, tIdx) => {
+                    // ¡AQUÍ ESTABA EL BUG PRINCIPAL DE LAS COMILLAS LITERALES!
+                    const tId = tRow.querySelector('.input-tarea-id'); if(tId) tId.name = `Subfases[${sIdx}].Tareas[${tIdx}].Id`;
                     const tNom = tRow.querySelector('.input-nombre'); if(tNom) tNom.name = `Subfases[${sIdx}].Tareas[${tIdx}].Nombre`;
                     const tIni = tRow.querySelector('.input-inicio'); if(tIni) tIni.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaInicioReal`;
                     const tFin = tRow.querySelector('.input-fin'); if(tFin) tFin.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaFinReal`;
@@ -489,83 +335,45 @@
             });
         }
 
-        // DELEGACIÓN DE EVENTOS DE CLICS (Añadir/Eliminar)
         document.getElementById('btnAddSubfase').addEventListener('click', () => inyectarFilaSubfase());
-
         document.getElementById('wbs-container').addEventListener('click', function(e) {
-            if (e.target.closest('.btn-add-tarea')) {
-                const wrapper = e.target.closest('.subfase-group-wrapper'); inyectarFilaTarea(wrapper);
-            }
+            if (e.target.closest('.btn-add-tarea')) { inyectarFilaTarea(e.target.closest('.subfase-group-wrapper')); }
             const btnRemoveSf = e.target.closest('.btn-remove-subfase');
-            if (btnRemoveSf) {
-                btnRemoveSf.closest('.subfase-group-wrapper').remove(); reindexAll(); actualizarTermometro(); guardarBorradorSilencioso();
-                if (document.querySelectorAll('.subfase-group-wrapper').length === 0) document.getElementById('tray-asignacion').classList.add('d-none');
-            }
+            if (btnRemoveSf) { btnRemoveSf.closest('.subfase-group-wrapper').remove(); reindexAll(); actualizarTermometro(); if(document.querySelectorAll('.subfase-group-wrapper').length===0) document.getElementById('tray-asignacion').classList.add('d-none'); }
             const btnRemoveT = e.target.closest('.btn-remove-tarea');
-            if (btnRemoveT) {
-                btnRemoveT.closest('.tarea-row-container').remove(); reindexAll(); actualizarTermometro(); guardarBorradorSilencioso();
-            }
+            if (btnRemoveT) { btnRemoveT.closest('.tarea-row-container').remove(); reindexAll(); actualizarTermometro(); }
         });
 
-        // ── LOGICA COMPARTIDA (Pincel, Fechas, Horarios) ──
+        // ── UTILIDADES (Fechas, Pincel y Pegado) ──
         function bindRowEvents(row) {
-            const inpInicio = row.querySelector('.input-inicio');
-            const inpHoras = row.querySelector('.input-horas');
-            const inpFin = row.querySelector('.input-fin');
-            const selectResp = row.querySelector('.user-select');
-            const paintZone = row.querySelector('.paint-zone');
-
+            const inpInicio = row.querySelector('.input-inicio'); const inpHoras = row.querySelector('.input-horas'); const inpFin = row.querySelector('.input-fin'); const selectResp = row.querySelector('.user-select'); const paintZone = row.querySelector('.paint-zone');
             function formatDatetimeLocal(d) { let tzoffset = (new Date()).getTimezoneOffset() * 60000; return (new Date(d - tzoffset)).toISOString().slice(0, 16); }
-
             function calcularFin() {
                 if (!inpInicio.value || !inpHoras.value) return;
                 let date = new Date(inpInicio.value); let hoursRemaining = parseFloat(inpHoras.value); if(isNaN(hoursRemaining) || hoursRemaining <= 0) return;
-
                 let safety = 0;
                 while (hoursRemaining > 0 && safety < 100) {
                     safety++; let dayOfWeek = date.getDay();
                     if (dayOfWeek === 0 || dayOfWeek === 6) { date.setDate(date.getDate() + (dayOfWeek === 6 ? 2 : 1)); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; }
-                    let exitH = (dayOfWeek === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH;
-                    let exitM = (dayOfWeek === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
-                    let endOfDay = new Date(date); endOfDay.setHours(exitH, exitM, 0, 0);
-                    let startOfDay = new Date(date); startOfDay.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+                    let exitH = (dayOfWeek === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH; let exitM = (dayOfWeek === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
+                    let endOfDay = new Date(date); endOfDay.setHours(exitH, exitM, 0, 0); let startOfDay = new Date(date); startOfDay.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
                     if (date < startOfDay) date = new Date(startOfDay);
                     if (date >= endOfDay) { date.setDate(date.getDate() + 1); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; }
-
                     let msRemainingToday = endOfDay - date; let hoursRemainingToday = msRemainingToday / (1000 * 60 * 60);
-                    if (hoursRemaining <= hoursRemainingToday) { date.setTime(date.getTime() + (hoursRemaining * 60 * 60 * 1000)); hoursRemaining = 0; }
-                    else { hoursRemaining -= hoursRemainingToday; date.setDate(date.getDate() + 1); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); }
+                    if (hoursRemaining <= hoursRemainingToday) { date.setTime(date.getTime() + (hoursRemaining * 60 * 60 * 1000)); hoursRemaining = 0; } else { hoursRemaining -= hoursRemainingToday; date.setDate(date.getDate() + 1); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); }
                 }
-                inpFin.value = formatDatetimeLocal(date);
-                inpFin.style.backgroundColor = 'rgba(255, 193, 7, 0.2)'; setTimeout(() => inpFin.style.backgroundColor = '', 400);
-                guardarBorradorSilencioso();
+                inpFin.value = formatDatetimeLocal(date); inpFin.style.backgroundColor = 'rgba(255, 193, 7, 0.2)'; setTimeout(() => inpFin.style.backgroundColor = '', 400);
             }
-
             inpInicio.addEventListener('change', calcularFin); inpHoras.addEventListener('input', calcularFin);
-
-            // Modo Pincel Drag & Drop
             if (paintZone && selectResp) {
-                paintZone.addEventListener('dragenter', function(e) {
-                    e.preventDefault();
-                    if (window.currentDraggedUser && selectResp.value !== window.currentDraggedUser) {
-                        selectResp.value = window.currentDraggedUser; row.style.boxShadow = 'inset 0 0 20px rgba(25, 135, 84, 0.3)';
-                        setTimeout(() => { row.style.boxShadow = ''; }, 500);
-                        const globalCb = document.getElementById('user_' + window.currentDraggedUser); if (globalCb) globalCb.checked = true; actualizarTermometro();
-                    }
-                });
-                paintZone.addEventListener('dragover', e => e.preventDefault());
-                row.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
-                row.addEventListener('drop', function(e) {
-                    e.preventDefault(); const uid = e.dataTransfer.getData('text/plain');
-                    if (uid) { selectResp.value = uid; const globalCb = document.getElementById('user_' + uid); if (globalCb) globalCb.checked = true; actualizarTermometro(); }
-                });
+                paintZone.addEventListener('dragenter', function(e) { e.preventDefault(); if (window.currentDraggedUser && selectResp.value !== window.currentDraggedUser) { selectResp.value = window.currentDraggedUser; row.style.boxShadow = 'inset 0 0 20px rgba(25, 135, 84, 0.3)'; setTimeout(() => { row.style.boxShadow = ''; }, 500); const globalCb = document.getElementById('user_' + window.currentDraggedUser); if (globalCb) globalCb.checked = true; actualizarTermometro(); } });
+                paintZone.addEventListener('dragover', e => e.preventDefault()); row.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+                row.addEventListener('drop', function(e) { e.preventDefault(); const uid = e.dataTransfer.getData('text/plain'); if (uid) { selectResp.value = uid; const globalCb = document.getElementById('user_' + uid); if (globalCb) globalCb.checked = true; actualizarTermometro(); } });
             }
         }
 
-        // ── PEGADO HEURÍSTICO AVANZADO ──
         function procesarPegadoHeuristico() {
             const texto = document.getElementById('txtPegadoMasivo').value; if (!texto.trim()) return;
-
             function parseDate(fechaTexto) {
                 if (!fechaTexto) return ""; let partes = fechaTexto.split(/[\/\-]/);
                 if (partes.length === 3) {
@@ -573,29 +381,16 @@
                     if (partes[0].length === 4) return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
                 } return "";
             }
-
             const filas = texto.split('\n'); let agregadasSub = 0; let agregadasTar = 0; let currentWrapper = null;
-
             filas.forEach(fila => {
                 if (!fila.trim()) return;
-                const esTarea = fila.startsWith(' ') || fila.startsWith('\t');
-                const celdas = fila.split(/\t|\|/).map(c => c.trim());
+                const esTarea = fila.startsWith(' ') || fila.startsWith('\t'); const celdas = fila.split(/\t|\|/).map(c => c.trim());
                 let nombre = celdas[0] || ""; let fecha1 = parseDate(celdas[1]); let fecha2 = parseDate(celdas[2]); let horasVal = celdas[3] ? celdas[3].replace(',', '.') : "";
-
                 if (fecha1) fecha1 = `${fecha1}T${activeSchedule.entradaH.toString().padStart(2,'0')}:${activeSchedule.entradaM.toString().padStart(2,'0')}`;
                 if (fecha2) fecha2 = `${fecha2}T${activeSchedule.salidaNormalH.toString().padStart(2,'0')}:${activeSchedule.salidaNormalM.toString().padStart(2,'0')}`;
-
-                if (nombre) {
-                    if (esTarea && currentWrapper) { inyectarFilaTarea(currentWrapper, nombre, fecha1, fecha2, "", horasVal); agregadasTar++; }
-                    else { currentWrapper = inyectarFilaSubfase(nombre, fecha1, fecha2, "", horasVal); agregadasSub++; }
-                }
+                if (nombre) { if (esTarea && currentWrapper) { inyectarFilaTarea(currentWrapper, nombre, fecha1, fecha2, "", horasVal); agregadasTar++; } else { currentWrapper = inyectarFilaSubfase(nombre, fecha1, fecha2, "", horasVal); agregadasSub++; } }
             });
-
-            if (agregadasSub > 0 || agregadasTar > 0) {
-                toastr.success(`¡Se procesaron ${agregadasSub} Subfases y ${agregadasTar} Tareas con éxito!`);
-                document.getElementById('txtPegadoMasivo').value = ''; bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide();
-                actualizarTermometro(); guardarBorradorSilencioso();
-            }
+            if (agregadasSub > 0 || agregadasTar > 0) { toastr.success(`¡Se procesaron ${agregadasSub} Subfases y ${agregadasTar} Tareas con éxito!`); document.getElementById('txtPegadoMasivo').value = ''; bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide(); actualizarTermometro(); }
         }
 
         function ejecutarEfectoDomino() {
@@ -613,15 +408,10 @@
         function actualizarTermometro() {
             document.querySelectorAll('.task-counter').forEach(b => { b.textContent = '0'; b.classList.add('d-none'); });
             document.querySelectorAll('.draggable-user').forEach(p => { p.classList.remove('border-warning', 'border-danger'); p.classList.add('border-secondary'); });
-
-            let conteo = {};
-            document.querySelectorAll('.user-select').forEach(sel => { if (sel.value) conteo[sel.value] = (conteo[sel.value] || 0) + 1; });
+            let conteo = {}; document.querySelectorAll('.user-select').forEach(sel => { if (sel.value) conteo[sel.value] = (conteo[sel.value] || 0) + 1; });
             for (let uid in conteo) {
                 let total = conteo[uid]; let badge = document.getElementById('counter_' + uid); let pill = document.querySelector(`.draggable-user[data-uid="${uid}"]`);
-                if (badge && pill) {
-                    badge.textContent = total; badge.classList.remove('d-none', 'bg-dark'); pill.classList.remove('border-secondary');
-                    if (total >= 5) { badge.classList.add('bg-danger'); pill.classList.add('border-danger'); } else if (total >= 3) { badge.classList.add('bg-warning'); pill.classList.add('border-warning'); } else { badge.classList.add('bg-info'); pill.classList.add('border-info'); }
-                }
+                if (badge && pill) { badge.textContent = total; badge.classList.remove('d-none', 'bg-dark'); pill.classList.remove('border-secondary'); if (total >= 5) { badge.classList.add('bg-danger'); pill.classList.add('border-danger'); } else if (total >= 3) { badge.classList.add('bg-warning'); pill.classList.add('border-warning'); } else { badge.classList.add('bg-info'); pill.classList.add('border-info'); } }
             }
         }
 
@@ -637,48 +427,6 @@
             if (minDate) gStart.value = minDate.toISOString().split('T')[0]; if (maxDate) gEnd.value = maxDate.toISOString().split('T')[0];
             [gStart, gEnd].forEach(el => { const oldBg = el.style.backgroundColor; el.style.backgroundColor = 'rgba(13, 202, 240, 0.4)'; setTimeout(() => el.style.backgroundColor = oldBg, 500); });
         }
-
-        const DRAFT_KEY = 'ProyectoEditDraftWBS_@Model.Id';
-        function guardarBorradorSilencioso() {
-            const draft = { wrappers: [] };
-            document.querySelectorAll('.subfase-group-wrapper').forEach(wrap => {
-                const sfRow = wrap.querySelector('.subfase-row-container');
-                const sfData = {
-                    nombre: sfRow.querySelector('.input-nombre').value, fInicio: sfRow.querySelector('.input-inicio').value, fFin: sfRow.querySelector('.input-fin').value,
-                    horas: sfRow.querySelector('.input-horas').value, resp: sfRow.querySelector('.user-select').value, tareas: []
-                };
-                wrap.querySelectorAll('.tarea-row-container').forEach(tRow => {
-                    sfData.tareas.push({
-                        nombre: tRow.querySelector('.input-nombre').value, fInicio: tRow.querySelector('.input-inicio').value, fFin: tRow.querySelector('.input-fin').value,
-                        horas: tRow.querySelector('.input-horas').value, resp: tRow.querySelector('.user-select').value
-                    });
-                });
-                draft.wrappers.push(sfData);
-            });
-            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-        }
-
-        function restaurarBorrador() {
-            const saved = localStorage.getItem(DRAFT_KEY); if (!saved) return; const draft = JSON.parse(saved);
-            if (draft.wrappers && draft.wrappers.length > 0) {
-                document.getElementById('wbs-container').innerHTML = '';
-                draft.wrappers.forEach(sf => {
-                    const w = inyectarFilaSubfase(sf.nombre, sf.fInicio, sf.fFin, sf.resp, sf.horas);
-                    if(sf.tareas) sf.tareas.forEach(t => inyectarFilaTarea(w, t.nombre, t.fInicio, t.fFin, t.resp, t.horas));
-                });
-                actualizarTermometro();
-            }
-            document.getElementById('draftAlert').classList.add('d-none');
-        }
-
-        function descartarBorrador() { localStorage.removeItem(DRAFT_KEY); document.getElementById('draftAlert').classList.add('d-none'); }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const saved = localStorage.getItem(DRAFT_KEY);
-            if (saved) { const draft = JSON.parse(saved); if (draft.wrappers && draft.wrappers.length > 0) document.getElementById('draftAlert').classList.remove('d-none'); }
-            document.getElementById('formEditProject').addEventListener('input', guardarBorradorSilencioso);
-            document.getElementById('wbs-container').addEventListener('DOMSubtreeModified', guardarBorradorSilencioso);
-        });
 
         function eliminarProyecto(id) {
             if (confirm("⚠️ ¡ATENCIÓN! ¿Estás completamente seguro de que deseas ELIMINAR este proyecto?\n\nEsta acción borrará todas sus fases, tareas y bitácoras de forma IRREVERSIBLE.")) {

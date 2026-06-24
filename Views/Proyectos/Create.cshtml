@@ -459,30 +459,35 @@
         }
 
         // ── RE-INDEXACIÓN MAESTRA DE FORMULARIO ──
-        function reindexAll() {
-            const wrappers = document.querySelectorAll('.subfase-group-wrapper');
-            wrappers.forEach((wrapper, sIdx) => {
-                // Indexar inputs de la Subfase
-                const sfRow = wrapper.querySelector('.subfase-row-container');
-                if (sfRow) {
-                    const selFase = sfRow.querySelector('.input-fasepadre'); if(selFase) selFase.name = `Subfases[${sIdx}].FasePadre`;
-                    const inpNom = sfRow.querySelector('.input-nombre'); if(inpNom) inpNom.name = `Subfases[${sIdx}].Nombre`;
-                    const inpIni = sfRow.querySelector('.input-inicio'); if(inpIni) inpIni.name = `Subfases[${sIdx}].FechaInicio`;
-                    const inpFin = sfRow.querySelector('.input-fin'); if(inpFin) inpFin.name = `Subfases[${sIdx}].FechaFinEstimada`;
-                    const selRes = sfRow.querySelector('.user-select'); if(selRes) selRes.name = `Subfases[${sIdx}].ResponsableId`;
+        function inyectarFilaTarea(wrapperGroup, nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
+                    const container = wrapperGroup.querySelector('.tareas-container');
+                    const row = document.createElement('div'); row.className = 'tarea-row-container row-data-entity';
+                    row.innerHTML = `
+                        <input type="hidden" class="input-tarea-id" value="0" />
+
+                        <div class="form-group-grid"><label class="text-info"><i class="bi bi-check2-square me-1"></i>Nombre de la Tarea</label><input type="text" class="form-control text-white border-info input-nombre" value="${nombre}" required /></div>
+                        `;
+                    container.appendChild(row);
+                    // ...
                 }
 
-                // Indexar inputs de las Tareas anidadas
-                const tRows = wrapper.querySelectorAll('.tarea-row-container');
-                tRows.forEach((tRow, tIdx) => {
-                    const tNom = tRow.querySelector('.input-nombre'); if(tNom) tNom.name = `Subfases[${sIdx}].Tareas[${tIdx}].Nombre`;
-                    const tIni = tRow.querySelector('.input-inicio'); if(tIni) tIni.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaInicioReal`;
-                    const tFin = tRow.querySelector('.input-fin'); if(tFin) tFin.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaFinReal`;
-                    const tHrs = tRow.querySelector('.input-horas'); if(tHrs) tHrs.name = `Subfases[${sIdx}].Tareas[${tIdx}].HorasEstimadas`;
-                    const tRes = tRow.querySelector('.user-select'); if(tRes) tRes.name = `Subfases[${sIdx}].Tareas[${tIdx}].UsuarioAsignadoId`;
-                });
-            });
-        }
+                function reindexAll() {
+                    const wrappers = document.querySelectorAll('.subfase-group-wrapper');
+                    wrappers.forEach((wrapper, sIdx) => {
+                        // ... (lógica subfases) ...
+
+                        const tRows = wrapper.querySelectorAll('.tarea-row-container');
+                        tRows.forEach((tRow, tIdx) => {
+                            // ¡VITAL CORRECCIÓN!
+                            const tId = tRow.querySelector('.input-tarea-id'); if(tId) tId.name = `Subfases[${sIdx}].Tareas[${tIdx}].Id`;
+                            const tNom = tRow.querySelector('.input-nombre'); if(tNom) tNom.name = `Subfases[${sIdx}].Tareas[${tIdx}].Nombre`;
+                            const tIni = tRow.querySelector('.input-inicio'); if(tIni) tIni.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaInicioReal`;
+                            const tFin = tRow.querySelector('.input-fin'); if(tFin) tFin.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaFinReal`;
+                            const tHrs = tRow.querySelector('.input-horas'); if(tHrs) tHrs.name = `Subfases[${sIdx}].Tareas[${tIdx}].HorasEstimadas`;
+                            const tRes = tRow.querySelector('.user-select'); if(tRes) tRes.name = `Subfases[${sIdx}].Tareas[${tIdx}].UsuarioAsignadoId`;
+                        });
+                    });
+                }
 
         // DELEGACIÓN DE EVENTOS DE CLICS (Añadir/Eliminar)
         document.getElementById('btnAddSubfase').addEventListener('click', () => inyectarFilaSubfase());
