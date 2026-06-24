@@ -34,6 +34,13 @@ namespace NotebookValidator.Web.Controllers
         {
             try
             {
+                // NOTA SOBRE ESCALA:
+                // Esta vista es "panorámica/global", por eso carga todas las tareas en
+                // una sola pasada: el front necesita el universo completo para poblar
+                // los filtros (usuario/proyecto), calcular la sobrecarga por día y armar
+                // el resumen del rango. Si en el futuro el volumen crece mucho, la mejora
+                // es exponer un modo paginado por rango (recibiendo ?start=&end= que envía
+                // FullCalendar) PERO manteniendo este endpoint para los filtros globales.
                 var tareas = await _context.TareasProyecto
                     .Include(t => t.SubFase)
                         .ThenInclude(s => s.Fase)
