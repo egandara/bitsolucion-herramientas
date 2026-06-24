@@ -693,9 +693,17 @@ namespace NotebookValidator.Web.Controllers
             }
             catch (Exception ex)
             {
-                // En caso de falla, imprimimos el error en consola para que puedas verlo, y volvemos a cargar la vista
-                Console.WriteLine($"\n--- ERROR CRÍTICO AL GUARDAR WBS ---\n{ex.Message}\n{ex.InnerException?.Message}\n----------------------------------\n");
-                throw;
+                var fullError = ex.Message;
+                if (ex.InnerException != null)
+                    fullError += " | INNER: " + ex.InnerException.Message;
+
+                // Devolver el error como JSON para verlo en el browser
+                return StatusCode(500, new
+                {
+                    error = fullError,
+                    stackTrace = ex.StackTrace,
+                    innerStack = ex.InnerException?.StackTrace
+                });
             }
         }
 
