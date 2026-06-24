@@ -8,7 +8,7 @@
 
 <style>
     /* ============================================================
-           ESTRUCTURA DE DOS COLUMNAS (SIDEBAR)
+           ESTRUCTURA LATERAL Y PANELES
            ============================================================ */
     .cal-sidebar-block {
         background-color: #111424 !important;
@@ -57,11 +57,11 @@
     }
 
     /* ============================================================
-           OPTIMIZACIÓN DE ESPACIO PARA FILAS DE SUBFASES (GRID)
+           GRID EXTENDIDO PARA SUBFASES (100% ANCHO)
            ============================================================ */
     .subfase-row-container {
         display: grid !important;
-        grid-template-columns: 1.2fr 3fr 1.6fr 0.7fr 1.6fr 2.5fr auto !important;
+        grid-template-columns: 1.5fr 3.5fr 1.5fr 0.8fr 1.5fr 2.5fr auto !important;
         gap: 12px !important;
         align-items: end !important;
         background-color: rgba(255, 255, 255, 0.02);
@@ -125,12 +125,26 @@
         @Html.AntiForgeryToken()
         <input type="hidden" name="id" value="@Model.Id" />
 
-        <div class="row g-4">
-            <div class="col-lg-8 col-xl-9">
+        <div class="row g-4 mb-4">
 
-                <div class="card p-4 border-0 mb-4" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-                    <h5 class="fw-bold text-warning mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-info-square me-2"></i>1. Metadatos Generales</h5>
+            <div class="col-lg-8 col-xl-9">
+                <div class="card p-4 border-0 h-100" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <h5 class="fw-bold text-warning mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-info-square me-2"></i>1. Información General y Configuración</h5>
                     <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-white small fw-bold">Empresa / Cliente</label>
+                            <select name="clienteId" id="selectClienteId" class="form-select bg-dark text-white border-secondary" asp-items="ViewBag.Clientes">
+                                <option value="">-- Interno / Sin Cliente --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-white small fw-bold">Estado del Proyecto</label>
+                            <select name="estado" class="form-select bg-dark text-white border-secondary">
+                                <!option value="Activo" @(Model.Estado == "Activo" ? "selected" : "")>Activo</!option>
+                                <!option value="Pausado" @(Model.Estado == "Pausado" ? "selected" : "")>Pausado</!option>
+                                <!option value="Finalizado" @(Model.Estado == "Finalizado" ? "selected" : "")>Finalizado</!option>
+                            </select>
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label text-white small fw-bold">Repositorio GitHub</label>
                             <div class="input-group input-group-sm">
@@ -146,16 +160,63 @@
                             </div>
                         </div>
                         <div class="col-md-12">
-                            <label class="form-label text-white small fw-bold">Descripción</label>
+                            <label class="form-label text-white small fw-bold">Descripción Corta</label>
                             <textarea name="descripcion" class="form-control bg-dark text-white border-secondary" rows="2">@Model.Descripcion</textarea>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div class="col-lg-4 col-xl-3">
+
+                <div class="cal-sidebar-block mb-3">
+                    <div class="cal-sidebar-title">
+                        <span><i class="bi bi-calendar3 me-1"></i>2. Cronograma</span>
+                        <button type="button" class="btn btn-outline-info btn-auto-calcular" onclick="sincronizarFechas()" title="Calcular por subfases">
+                            <i class="bi bi-magic me-1"></i>Auto
+                        </button>
+                    </div>
+                    <div class="form-group-stacked">
+                        <label>Fecha de Inicio</label>
+                        <input type="date" id="gFechaInicio" name="fechaInicio" class="form-control bg-dark text-white border-secondary" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="form-group-stacked mt-3">
+                        <label>Fin Estimado (Cierre)</label>
+                        <input type="date" id="gFechaFin" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" value="@Model.FechaFinEstimada?.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="form-group-stacked mt-3">
+                        <label>Paso a Producción</label>
+                        <input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" value="@Model.FechaPasoProduccion?.ToString("yyyy-MM-dd")" />
+                    </div>
+                    <div class="form-group-stacked mt-3">
+                        <label>Notas o Reprogramaciones</label>
+                        <textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="2" style="resize:none;">@Model.Notas</textarea>
+                    </div>
+                </div>
+
+                <div class="cal-sidebar-block mb-0">
+                    <div class="cal-sidebar-title">
+                        <span><i class="bi bi-shield-check me-1"></i>3. Calidad QA</span>
+                    </div>
+                    <div class="form-group-stacked">
+                        <label>Máximo Warnings Perm.</label>
+                        <input type="number" name="maxWarningsPermitidos" class="form-control bg-dark text-white border-secondary font-monospace text-center" min="0" value="@Model.MaxWarningsPermitidos" required />
+                    </div>
+                    <div class="form-group-stacked mt-3">
+                        <label>Máximo Infos Perm.</label>
+                        <input type="number" name="maxInfosPermitidos" class="form-control bg-dark text-white border-secondary font-monospace text-center" min="0" value="@Model.MaxInfosPermitidos" required />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
 
                 <div class="card p-4 border-0 mb-4" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
                     <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
                         <div>
-                            <h5 class="fw-bold text-light mb-0" style="font-size: 1rem;"><i class="bi bi-diagram-2-fill me-2"></i>2. Subfases Específicas</h5>
+                            <h5 class="fw-bold text-light mb-0" style="font-size: 1rem;"><i class="bi bi-diagram-3-fill me-2"></i>4. Subfases Específicas</h5>
                         </div>
                         <div class="d-flex gap-2">
                             <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalDomino">
@@ -258,7 +319,7 @@
                 </div>
 
                 <div class="card p-4 border-0 mb-4" style="background-color: #0b0d16; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-                    <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>3. Actualizar Equipo Global</h5>
+                    <h5 class="fw-bold text-success mb-3 border-bottom border-secondary pb-2" style="font-size: 1rem;"><i class="bi bi-people me-2"></i>5. Actualizar Equipo Global</h5>
                     <div class="bg-dark border border-secondary p-3" style="border-radius: 6px; max-height: 200px; overflow-y: auto;">
                         @if (usuariosBanco != null)
                         {
@@ -274,77 +335,16 @@
                     </div>
                 </div>
 
-            </div>
-
-            <div class="col-lg-4 col-xl-3">
-                <div class="cal-sidebar-block">
-                    <div class="cal-sidebar-title">
-                        <span><i class="bi bi-gear me-1"></i>Configuración</span>
-                    </div>
-                    <div class="form-group-stacked">
-                        <label>Empresa / Cliente</label>
-                        <select name="clienteId" id="selectClienteId" class="form-select bg-dark text-white border-secondary" asp-items="ViewBag.Clientes">
-                            <option value="">-- Interno / Sin Cliente --</option>
-                        </select>
-                    </div>
-                    <div class="form-group-stacked mt-3">
-                        <label>Estado del Proyecto</label>
-                        <select name="estado" class="form-select bg-dark text-white border-secondary">
-                            <!option value="Activo" @(Model.Estado == "Activo" ? "selected" : "")>Activo</!option>
-                            <!option value="Pausado" @(Model.Estado == "Pausado" ? "selected" : "")>Pausado</!option>
-                            <!option value="Finalizado" @(Model.Estado == "Finalizado" ? "selected" : "")>Finalizado</!option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="cal-sidebar-block">
-                    <div class="cal-sidebar-title">
-                        <span><i class="bi bi-calendar3 me-1"></i>Cronograma</span>
-                        <button type="button" class="btn btn-outline-info btn-auto-calcular" onclick="sincronizarFechas()" title="Calcular por subfases">
-                            <i class="bi bi-magic me-1"></i>Auto
-                        </button>
-                    </div>
-                    <div class="form-group-stacked">
-                        <label>Fecha de Inicio</label>
-                        <input type="date" id="gFechaInicio" name="fechaInicio" class="form-control bg-dark text-white border-secondary" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" />
-                    </div>
-                    <div class="form-group-stacked mt-3">
-                        <label>Fin Estimado (Cierre)</label>
-                        <input type="date" id="gFechaFin" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" value="@Model.FechaFinEstimada?.ToString("yyyy-MM-dd")" />
-                    </div>
-                    <div class="form-group-stacked mt-3">
-                        <label>Paso a Producción</label>
-                        <input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" value="@Model.FechaPasoProduccion?.ToString("yyyy-MM-dd")" />
-                    </div>
-                    <div class="form-group-stacked mt-3">
-                        <label>Notas o Reprogramaciones</label>
-                        <textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="3" style="resize:none;">@Model.Notas</textarea>
-                    </div>
-                </div>
-
-                <div class="cal-sidebar-block">
-                    <div class="cal-sidebar-title">
-                        <span><i class="bi bi-shield-check me-1"></i>Calidad QA</span>
-                    </div>
-                    <div class="form-group-stacked">
-                        <label>Máximo Warnings</label>
-                        <input type="number" name="maxWarningsPermitidos" class="form-control bg-dark text-white border-secondary font-monospace text-center" min="0" value="@Model.MaxWarningsPermitidos" required />
-                    </div>
-                    <div class="form-group-stacked mt-3">
-                        <label>Máximo Infos</label>
-                        <input type="number" name="maxInfosPermitidos" class="form-control bg-dark text-white border-secondary font-monospace text-center" min="0" value="@Model.MaxInfosPermitidos" required />
-                    </div>
-                </div>
-
-                <div class="cal-sidebar-block" style="background-color: transparent !important; border: none !important; padding: 0 !important;">
-                    <button type="submit" class="btn btn-warning w-100 py-3 fw-bold shadow mb-3" id="btnSubmit" style="border-radius: 10px; font-size: 1.1rem;">
+                <div class="text-end mb-5 d-flex justify-content-end gap-3">
+                    <button type="button" class="btn btn-outline-danger shadow-sm px-4 py-2" onclick="eliminarProyecto(@Model.Id)" style="border-radius: 8px;">
+                        <i class="bi bi-trash3-fill me-2"></i>Eliminar Proyecto
+                    </button>
+                    <button type="submit" class="btn btn-warning px-5 py-2 fw-bold shadow" id="btnSubmit" style="border-radius: 8px; font-size: 1.05rem;">
                         <span id="spinnerSubmit" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
                         <i class="bi bi-save me-1" id="iconSubmit"></i> Guardar Cambios
                     </button>
-                    <button type="button" class="btn btn-outline-danger w-100 shadow-sm" onclick="eliminarProyecto(@Model.Id)" style="border-radius: 8px;">
-                        <i class="bi bi-trash3-fill me-2"></i>Eliminar Proyecto
-                    </button>
                 </div>
+
             </div>
         </div>
     </form>
@@ -380,7 +380,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body px-4 py-4" style="background-color: #07091e;">
-                <textarea id="txtPegadoMasivo" class="form-control form-control-sm bg-dark text-white font-monospace border-success" rows="8" placeholder="Pega tus filas de Excel o Project aquí..."></textarea>
+                <textarea id="txtPegadoMasivo" class="form-control form-control-sm bg-dark text-white font-monospace border-success" rows="8" placeholder="Pega tus filas de Excel o Project aquí (Usa Ctrl+V)..."></textarea>
             </div>
             <div class="modal-footer border-secondary">
                 <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
@@ -531,7 +531,6 @@
             const container = document.getElementById('subfases-container');
             const row = document.createElement('div');
 
-            // USAMOS LA NUEVA CLASE GRID
             row.className = 'subfase-row-container subfase-row';
 
             row.innerHTML = `
