@@ -1013,33 +1013,50 @@
         return 'dayGridMonth';
         }
 
+        // ============================================================
+        // POPULAR FILTROS DINÁMICOS (TAREAS Y SUBFASES)
+        // ============================================================
         function poblarFiltroUsuarios(eventos) {
         var usuarios = {};
+
         eventos.forEach(function (e) {
-        if (e.extendedProps.tipo === 'tarea' && e.extendedProps.email) {
-        usuarios[e.extendedProps.email] = e.extendedProps.iniciales;
+        var p = e.extendedProps;
+        // MEJORA: Escanea cualquier evento (tarea o subfase) que tenga un email real asignado
+        if (p && p.email && p.email !== 'Sin_Asignar' && p.email.trim() !== '') {
+        // Si el evento no trae iniciales por defecto, las calculamos rápido
+        var ini = p.iniciales || (p.email.length >= 2 ? p.email.substring(0, 2).toUpperCase() : '??');
+        usuarios[p.email] = ini;
         }
         });
+
         var actual = filtroUsuario.value;
         var opciones = Object.entries(usuarios).sort(function (a, b) { return a[1].localeCompare(b[1]); });
+
         filtroUsuario.innerHTML = '<option value="">Todos los usuarios</option>' +
         opciones.map(function (par) {
         return '<option value="' + esc(par[0]) + '">[' + esc(par[1]) + '] ' + esc(par[0]) + '</option>';
         }).join('');
+
         filtroUsuario.value = actual;
         }
 
         function poblarFiltroProyectos(eventos) {
         var set = {};
+
         eventos.forEach(function (e) {
-        if (e.extendedProps.tipo === 'tarea' && e.extendedProps.proyecto) {
-        set[e.extendedProps.proyecto] = true;
+        var p = e.extendedProps;
+        // MEJORA: Registra el proyecto ya sea si viene de una tarea, una fase o una subfase
+        if (p && p.proyecto && p.proyecto !== 'Desconocido' && p.proyecto.trim() !== '') {
+        set[p.proyecto] = true;
         }
         });
+
         var actual = filtroProyecto.value;
         var nombres = Object.keys(set).sort(function (a, b) { return a.localeCompare(b); });
+
         filtroProyecto.innerHTML = '<option value="">Todos los proyectos</option>' +
         nombres.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
+
         filtroProyecto.value = actual;
         }
 
@@ -1264,7 +1281,7 @@
         var p = info.event.extendedProps;
         var titulo = (info.event.title || '').replace(/^\[[^\]]+\]\s*/, '');
 
-        setText('cal-modal-titulo', titulo || 'Tarea');
+        setText('cal-modal-titulo', titulo || 'Detalle');
         setText('cal-modal-proyecto', p.proyecto || '—');
         setText('cal-modal-fase', p.fase || '—');
         setText('cal-modal-subfase', p.subfase || '—');
@@ -1278,13 +1295,44 @@
         limEl.innerHTML = 'Sin límites definidos';
         }
 
-        document.getElementById('cal-modal-btn-guardar').dataset.id = info.event.id;
-
+        // Referencias de control de edición
+        var btnGuardar = document.getElementById('cal-modal-btn-guardar');
+        var btnEliminar = document.getElementById('cal-modal-btn-eliminar');
         var userSelect = document.getElementById('cal-modal-edit-responsable');
+        var estadoSelect = document.getElementById('cal-modal-edit-estado');
+        var inputInicio = document.getElementById('cal-modal-edit-inicio');
+        var inputFin = document.getElementById('cal-modal-edit-fin');
 
-        // CORREGIDO: Si el combo del filtro está vacío o no tiene al usuario, inyectamos las opciones de forma estática desde el backend de usuarios globales
+        if (p.tipo === 'subfase') {
+        // Es una Subfase estructural: Desactivar inputs de formulario y ocultar acciones de guardado
+        btnGuardar.classList.add('d-none');
+        btnEliminar.classList.add('d-none');
+
+        userSelect.disabled = true;
+        estadoSelect.disabled = true;
+        inputInicio.disabled = true;
+        inputFin.disabled = true;
+
+        userSelect.innerHTML = `<option value="${p.email}">${p.email ? '[' + p.iniciales + '] ' + p.email : 'Sin asignar'}</option>`;
+        estadoSelect.value = p.estado || 'Pendiente';
+        inputInicio.value = p.subfaseInicio ? p.subfaseInicio.substring(0, 16) : '';
+        inputFin.value = p.subfaseFin ? p.subfaseFin.substring(0, 16) : '';
+
+        setText('cal-modal-plan', '—');
+        setText('cal-modal-real', '—');
+        } else {
+        // Es una Tarea normal: Habilitar el comportamiento de edición estándar
+        btnGuardar.classList.remove('d-none');
+        btnEliminar.classList.remove('d-none');
+
+        userSelect.disabled = false;
+        estadoSelect.disabled = false;
+        inputInicio.disabled = false;
+        inputFin.disabled = false;
+
+        btnGuardar.dataset.id = info.event.id;
+
         if (document.getElementById('cal-filtro-usuario').options.length <= 1) {
-        // Generamos una opción temporal con el email asignado para asegurar su visualización y edición
         if (p.email) {
         userSelect.innerHTML = `<option value="">Sin asignar</option><option value="${p.email}" selected>${p.email}</option>`;
         } else {
@@ -1296,12 +1344,13 @@
         userSelect.value = p.email || '';
         }
 
-        document.getElementById('cal-modal-edit-estado').value = p.estado;
-        document.getElementById('cal-modal-edit-inicio').value = toLocalIso(info.event.start).substring(0, 16);
-        document.getElementById('cal-modal-edit-fin').value = info.event.end ? toLocalIso(info.event.end).substring(0, 16) : '';
+        estadoSelect.value = p.estado;
+        inputInicio.value = toLocalIso(info.event.start).substring(0, 16);
+        inputFin.value = info.event.end ? toLocalIso(info.event.end).substring(0, 16) : '';
 
         setText('cal-modal-plan', (p.horasEstimadas != null ? p.horasEstimadas + ' h' : '—'));
         setText('cal-modal-real', (parseFloat(p.horasReales) > 0 ? p.horasReales + ' h' : '—'));
+        }
 
         modalEvento.show();
         }

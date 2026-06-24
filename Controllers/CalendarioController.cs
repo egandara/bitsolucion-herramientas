@@ -74,22 +74,26 @@ namespace NotebookValidator.Web.Controllers
                     });
                 }
 
-                // --- 2. EVENTOS DE SUBFASE (Todo el día) - ¡MEJORADO SIN LÍNEAS! ---
+                // --- 2. EVENTOS DE SUBFASE (Todo el día) ---
                 foreach (var sub in subfases)
                 {
                     string email = sub.Responsable?.Email ?? "Sin_Asignar";
                     string iniciales = email.Length >= 2 ? email.Substring(0, 2).ToUpper() : "??";
 
+                    // Forzamos formato con hora completa para que FullCalendar y el modal sepan el tiempo exacto
+                    string startStr = sub.FechaInicio?.ToString("yyyy-MM-ddTHH:mm:ss");
+                    string endStr = sub.FechaFinEstimada?.ToString("yyyy-MM-ddTHH:mm:ss");
+
                     listaEventos.Add(new
                     {
                         id = "S_" + sub.Id,
                         title = sub.Nombre,
-                        start = sub.FechaInicio?.ToString("yyyy-MM-dd"),
-                        end = sub.FechaFinEstimada?.AddDays(1).ToString("yyyy-MM-dd"),
-                        allDay = true,
+                        start = startStr,
+                        end = endStr,
+                        allDay = false, // Permitimos que lea las horas en lugar de asumir todo el día
                         editable = false,
-                        backgroundColor = "rgba(255, 193, 7, 0.12)", // Barra sólida muy suave
-                        borderColor = "transparent",                 // CERO bordes/líneas
+                        backgroundColor = "rgba(255, 193, 7, 0.12)",
+                        borderColor = "transparent",
                         textColor = "#ffc107",
                         classNames = new[] { "evt-subfase" },
                         extendedProps = new
@@ -98,7 +102,12 @@ namespace NotebookValidator.Web.Controllers
                             proyecto = sub.Fase?.Proyecto?.Nombre ?? "Desconocido",
                             iniciales = iniciales,
                             email = email,
-                            estado = sub.Estado
+                            estado = sub.Estado,
+                            // --- SOLUCIÓN: Mapeamos los límites reales de la subfase para el Modal ---
+                            subfaseInicio = startStr,
+                            subfaseFin = endStr,
+                            fase = sub.Fase?.NombreFase?.Replace("_", " ") ?? "—",
+                            subfase = sub.Nombre ?? "—"
                         }
                     });
                 }
