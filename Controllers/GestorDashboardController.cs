@@ -36,6 +36,7 @@ namespace NotebookValidator.Web.Controllers
             return char.ToUpper(str[0]) + str.Substring(1);
         }
 
+        // Estructura unificada para el Gráfico y los KPIs
         private class WorkItem
         {
             public string Email { get; set; } = "Sin Asignar";
@@ -101,7 +102,7 @@ namespace NotebookValidator.Web.Controllers
             ViewBag.DataReal = System.Text.Json.JsonSerializer.Serialize(dataReal);
 
             // ==========================================
-            // 3A. GRÁFICO 2 (HISTÓRICO): CARGA DIARIA POR USUARIO
+            // 3A. GRÁFICO 2 (HISTÓRICO): CARGA DIARIA
             // ==========================================
             DateTime catorceDiasAtras = DateTime.Today.AddDays(-13);
             var tareasCompletadas = await _context.TareasProyecto
@@ -149,29 +150,47 @@ namespace NotebookValidator.Web.Controllers
             var etiquetasDiasFuturo = proximosDiasHabiles.Select(FormatearDiaSemana).ToList();
             DateTime maxFutureDate = proximosDiasHabiles.Last();
 
-            var todasLasTareasPendientes = await _context.TareasProyecto.Include(t => t.UsuarioAsignado).Where(t => t.Estado != "Terminada").ToListAsync();
+            // 🎯 AHORA SÍ: FUSIÓN DE TAREAS Y SUBFASES PARA EL GRÁFICO
+            var tareasPendientes = await _context.TareasProyecto.Include(t => t.UsuarioAsignado).Where(t => t.Estado != "Terminada").ToListAsync();
+            var subfasesPendientes = await _context.SubFasesProyecto.Include(s => s.Responsable).Where(s => s.Estado != "Terminada").ToListAsync();
+
+            var workItemsChart = new List<WorkItem>();
+
+            foreach (var t in tareasPendientes)
+            {
+                DateTime s = t.FechaInicioReal ?? t.FechaInicioPlanificada ?? t.FechaCreacion;
+                decimal h = t.HorasEstimadas > 0 ? t.HorasEstimadas : 1m;
+                DateTime e = t.FechaFinPlanificada ?? t.FechaFinReal ?? s.AddHours((double)h);
+                workItemsChart.Add(new WorkItem { Email = t.UsuarioAsignado?.Email ?? "Sin Asignar", Start = s, End = e, Horas = h });
+            }
+
+            foreach (var sub in subfasesPendientes)
+            {
+                if (!sub.FechaInicio.HasValue) continue;
+                DateTime s = sub.FechaInicio.Value;
+                decimal h = sub.HorasEstimadas > 0 ? sub.HorasEstimadas : 1m;
+                DateTime e = sub.FechaFinEstimada ?? s.AddHours((double)h);
+                workItemsChart.Add(new WorkItem { Email = sub.Responsable?.Email ?? "Sin Asignar", Start = s, End = e, Horas = h });
+            }
+
             var seriesCargaFuturo = new List<object>();
 
-            if (todasLasTareasPendientes.Any())
+            if (workItemsChart.Any())
             {
-                var usuariosFuturo = todasLasTareasPendientes.Select(t => t.UsuarioAsignado?.Email ?? "Sin Asignar").Distinct().ToList();
+                var usuariosFuturo = workItemsChart.Select(w => w.Email).Distinct().ToList();
 
                 foreach (var userEmail in usuariosFuturo)
                 {
                     var dataUsuarioFuturo = new decimal[14];
-                    var tareasDelUsuario = todasLasTareasPendientes.Where(t => (t.UsuarioAsignado?.Email ?? "Sin Asignar") == userEmail).ToList();
+                    var itemsDelUsuario = workItemsChart.Where(w => w.Email == userEmail).ToList();
 
-                    foreach (var t in tareasDelUsuario)
+                    foreach (var item in itemsDelUsuario)
                     {
-                        DateTime startOriginal = t.FechaInicioReal ?? t.FechaInicioPlanificada ?? t.FechaCreacion;
-                        decimal horasEstimadas = t.HorasEstimadas > 0 ? t.HorasEstimadas : 1m;
-                        DateTime endOriginal = t.FechaFinPlanificada ?? t.FechaFinReal ?? startOriginal.AddHours((double)horasEstimadas);
-
-                        DateTime startTask = startOriginal.Date < DateTime.Today ? DateTime.Today : startOriginal.Date;
-                        DateTime endTask = endOriginal.Date < DateTime.Today ? DateTime.Today : endOriginal.Date;
+                        DateTime startTask = item.Start.Date < DateTime.Today ? DateTime.Today : item.Start.Date;
+                        DateTime endTask = item.End.Date < DateTime.Today ? DateTime.Today : item.End.Date;
 
                         if (endTask < startTask) endTask = startTask;
-                        if (startTask > maxFutureDate) continue;
+                        if (startTask > maxFutureDate) continue; // Cae fuera de los 14 días
 
                         int taskWorkingDays = 0;
                         for (var d = startTask; d <= endTask; d = d.AddDays(1))
@@ -179,8 +198,8 @@ namespace NotebookValidator.Web.Controllers
                             if (EsHabil(d, feriadosDb)) taskWorkingDays++;
                         }
 
-                        if (taskWorkingDays == 0) taskWorkingDays = 1;
-                        decimal hoursPerDay = horasEstimadas / taskWorkingDays;
+                        if (taskWorkingDays == 0) taskWorkingDays = 1; // Seguridad
+                        decimal hoursPerDay = item.Horas / taskWorkingDays;
 
                         for (int i = 0; i < 14; i++)
                         {
@@ -259,7 +278,6 @@ namespace NotebookValidator.Web.Controllers
 
             var itemsEnRango = workItems.Where(w => w.Start >= inicioSemana && w.Start <= finSemana);
 
-            // 💡 SOLUCIÓN: Agregamos la propiedad 'Nombre' ya cortada para que la vista no use Split
             var usuariosSobrecargados = itemsEnRango
                 .GroupBy(w => w.Email)
                 .Select(g => new { Email = g.Key, TotalHoras = g.Sum(x => x.Horas) })
