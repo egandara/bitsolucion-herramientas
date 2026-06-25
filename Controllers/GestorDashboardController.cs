@@ -125,13 +125,19 @@ namespace NotebookValidator.Web.Controllers
             var etiquetasDiasFuturo = proximosDiasHabiles.Select(d => d.ToString("dd MMM")).ToList();
             DateTime maxFutureDate = proximosDiasHabiles.Last();
 
-            var tareasFuturas = await _context.TareasProyecto
+            // 🎯 CORRECCIÓN: Traemos las tareas a memoria para aplicar la lógica de fechas cruzadas (Coalescencia)
+            var todasLasTareasPendientes = await _context.TareasProyecto
                 .Include(t => t.UsuarioAsignado)
-                .Where(t => t.Estado != "Terminada" && t.UsuarioAsignado != null &&
-                            t.FechaInicioPlanificada.HasValue && t.FechaFinPlanificada.HasValue &&
-                            t.FechaInicioPlanificada.Value.Date <= maxFutureDate &&
-                            t.FechaFinPlanificada.Value.Date >= DateTime.Today)
+                .Where(t => t.Estado != "Terminada" && t.UsuarioAsignado != null)
                 .ToListAsync();
+
+            var tareasFuturas = todasLasTareasPendientes.Where(t => {
+                // Misma lógica del Calendario: Priorizar Fecha Real > Fecha Planificada > Creación
+                DateTime start = t.FechaInicioReal ?? t.FechaInicioPlanificada ?? t.FechaCreacion;
+                DateTime end = t.FechaFinPlanificada ?? start.AddHours((double)(t.HorasEstimadas > 0 ? t.HorasEstimadas : 1m));
+
+                return start.Date <= maxFutureDate && end.Date >= DateTime.Today;
+            }).ToList();
 
             var usuariosFuturo = tareasFuturas.Select(t => t.UsuarioAsignado.Email).Distinct().ToList();
             var seriesCargaFuturo = new List<object>();
@@ -143,8 +149,12 @@ namespace NotebookValidator.Web.Controllers
 
                 foreach (var t in tareasDelUsuario)
                 {
+                    DateTime start = t.FechaInicioReal ?? t.FechaInicioPlanificada ?? t.FechaCreacion;
+                    DateTime end = t.FechaFinPlanificada ?? start.AddHours((double)(t.HorasEstimadas > 0 ? t.HorasEstimadas : 1m));
+
+                    // Contar días hábiles en los que se divide la tarea
                     int taskWorkingDays = 0;
-                    for (var d = t.FechaInicioPlanificada.Value.Date; d <= t.FechaFinPlanificada.Value.Date; d = d.AddDays(1))
+                    for (var d = start.Date; d <= end.Date; d = d.AddDays(1))
                     {
                         if (EsHabil(d, feriadosDb)) taskWorkingDays++;
                     }
@@ -152,18 +162,17 @@ namespace NotebookValidator.Web.Controllers
                     if (taskWorkingDays > 0)
                     {
                         decimal hoursPerDay = t.HorasEstimadas / taskWorkingDays;
-                        // Repartir las horas en la ventana de 14 días
+                        // Repartir las horas en los próximos 14 días
                         for (int i = 0; i < 14; i++)
                         {
                             var diaHabil = proximosDiasHabiles[i];
-                            if (diaHabil >= t.FechaInicioPlanificada.Value.Date && diaHabil <= t.FechaFinPlanificada.Value.Date)
+                            if (diaHabil >= start.Date && diaHabil <= end.Date)
                             {
                                 dataUsuarioFuturo[i] += hoursPerDay;
                             }
                         }
                     }
                 }
-                // Redondear a 1 decimal
                 seriesCargaFuturo.Add(new { name = userEmail.Split('@')[0], data = dataUsuarioFuturo.Select(d => Math.Round(d, 1)).ToList() });
             }
 
@@ -204,14 +213,20 @@ namespace NotebookValidator.Web.Controllers
             DateTime inicioSemana = fechaBase.AddDays(-1 * diff).Date;
             DateTime finSemana = inicioSemana.AddDays(6).AddHours(23).AddMinutes(59).AddSeconds(59);
 
-            var count = await _context.TareasProyecto
-                .Where(t => t.UsuarioAsignadoId != null &&
-                            t.Estado != "Terminada" &&
-                            t.FechaInicioPlanificada.HasValue &&
-                            t.FechaInicioPlanificada >= inicioSemana && t.FechaInicioPlanificada <= finSemana)
+            var tareasPendientes = await _context.TareasProyecto
+                .Where(t => t.UsuarioAsignadoId != null && t.Estado != "Terminada")
+                .ToListAsync();
+
+            // 🎯 CORRECCIÓN: Unificamos criterio de Fechas aquí también
+            var tareasEnRango = tareasPendientes.Where(t => {
+                DateTime start = t.FechaInicioReal ?? t.FechaInicioPlanificada ?? t.FechaCreacion;
+                return start >= inicioSemana && start <= finSemana;
+            });
+
+            var count = tareasEnRango
                 .GroupBy(t => t.UsuarioAsignadoId)
                 .Select(g => new { TotalHoras = g.Sum(x => x.HorasEstimadas) })
-                .CountAsync(x => x.TotalHoras > 40);
+                .Count(x => x.TotalHoras > 40);
 
             string label = offsetSemanas == 0 ? "ESTA SEMANA" : (offsetSemanas == 1 ? "PRÓX. SEMANA" : (offsetSemanas == -1 ? "SEM. PASADA" : $"SEMANA {offsetSemanas}"));
             string rango = $"{inicioSemana:dd MMM} - {finSemana:dd MMM}";
