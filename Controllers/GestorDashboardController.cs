@@ -103,7 +103,12 @@ namespace NotebookValidator.Web.Controllers
                     var horasDia = tareasCompletadas.Where(t => t.UsuarioAsignado?.Email == userEmail && t.FechaFinReal?.Date == dia).Sum(t => t.HorasRealesDeducidas);
                     dataUsuario.Add(Math.Round(horasDia, 1));
                 }
-                seriesCargaPasado.Add(new { name = userEmail.Split('@')[0], data = dataUsuario });
+
+                // Solo agregar si el usuario tiene datos (evita leyendas vacías)
+                if (dataUsuario.Any(h => h > 0))
+                {
+                    seriesCargaPasado.Add(new { name = userEmail.Split('@')[0], data = dataUsuario });
+                }
             }
 
             ViewBag.EtiquetasDias = System.Text.Json.JsonSerializer.Serialize(etiquetasDiasPasados);
@@ -125,55 +130,76 @@ namespace NotebookValidator.Web.Controllers
             var etiquetasDiasFuturo = proximosDiasHabiles.Select(d => d.ToString("dd MMM")).ToList();
             DateTime maxFutureDate = proximosDiasHabiles.Last();
 
-            // 🎯 CORRECCIÓN: Traemos las tareas a memoria para aplicar la lógica de fechas cruzadas (Coalescencia)
+            // 🎯 CORRECCIÓN: Traemos TODAS las pendientes, incluso sin asignar
             var todasLasTareasPendientes = await _context.TareasProyecto
                 .Include(t => t.UsuarioAsignado)
-                .Where(t => t.Estado != "Terminada" && t.UsuarioAsignado != null)
+                .Where(t => t.Estado != "Terminada")
                 .ToListAsync();
 
-            var tareasFuturas = todasLasTareasPendientes.Where(t => {
-                // Misma lógica del Calendario: Priorizar Fecha Real > Fecha Planificada > Creación
-                DateTime start = t.FechaInicioReal ?? t.FechaInicioPlanificada ?? t.FechaCreacion;
-                DateTime end = t.FechaFinPlanificada ?? start.AddHours((double)(t.HorasEstimadas > 0 ? t.HorasEstimadas : 1m));
-
-                return start.Date <= maxFutureDate && end.Date >= DateTime.Today;
-            }).ToList();
-
-            var usuariosFuturo = tareasFuturas.Select(t => t.UsuarioAsignado.Email).Distinct().ToList();
             var seriesCargaFuturo = new List<object>();
 
-            foreach (var userEmail in usuariosFuturo)
+            if (todasLasTareasPendientes.Any())
             {
-                var dataUsuarioFuturo = new decimal[14];
-                var tareasDelUsuario = tareasFuturas.Where(t => t.UsuarioAsignado.Email == userEmail).ToList();
+                // 🎯 CORRECCIÓN: Agrupar por correo o bolsa de "Sin Asignar"
+                var usuariosFuturo = todasLasTareasPendientes
+                    .Select(t => t.UsuarioAsignado?.Email ?? "Sin Asignar")
+                    .Distinct()
+                    .ToList();
 
-                foreach (var t in tareasDelUsuario)
+                foreach (var userEmail in usuariosFuturo)
                 {
-                    DateTime start = t.FechaInicioReal ?? t.FechaInicioPlanificada ?? t.FechaCreacion;
-                    DateTime end = t.FechaFinPlanificada ?? start.AddHours((double)(t.HorasEstimadas > 0 ? t.HorasEstimadas : 1m));
+                    var dataUsuarioFuturo = new decimal[14];
+                    var tareasDelUsuario = todasLasTareasPendientes
+                        .Where(t => (t.UsuarioAsignado?.Email ?? "Sin Asignar") == userEmail)
+                        .ToList();
 
-                    // Contar días hábiles en los que se divide la tarea
-                    int taskWorkingDays = 0;
-                    for (var d = start.Date; d <= end.Date; d = d.AddDays(1))
+                    foreach (var t in tareasDelUsuario)
                     {
-                        if (EsHabil(d, feriadosDb)) taskWorkingDays++;
-                    }
+                        DateTime startOriginal = t.FechaInicioReal ?? t.FechaInicioPlanificada ?? t.FechaCreacion;
+                        decimal horasEstimadas = t.HorasEstimadas > 0 ? t.HorasEstimadas : 1m;
+                        DateTime endOriginal = t.FechaFinPlanificada ?? t.FechaFinReal ?? startOriginal.AddHours((double)horasEstimadas);
 
-                    if (taskWorkingDays > 0)
-                    {
-                        decimal hoursPerDay = t.HorasEstimadas / taskWorkingDays;
-                        // Repartir las horas en los próximos 14 días
+                        // 🎯 REGLA DE PM: Si está atrasada, el esfuerzo recae desde HOY
+                        DateTime startTask = startOriginal.Date < DateTime.Today ? DateTime.Today : startOriginal.Date;
+                        DateTime endTask = endOriginal.Date < DateTime.Today ? DateTime.Today : endOriginal.Date;
+
+                        if (endTask < startTask) endTask = startTask;
+
+                        // Si la tarea arranca después de nuestros 14 días proyectados, se omite
+                        if (startTask > maxFutureDate) continue;
+
+                        int taskWorkingDays = 0;
+                        for (var d = startTask; d <= endTask; d = d.AddDays(1))
+                        {
+                            if (EsHabil(d, feriadosDb)) taskWorkingDays++;
+                        }
+
+                        // Si la tarea se programó 100% en finde/feriado, forzar 1 día para no borrar las horas
+                        if (taskWorkingDays == 0) taskWorkingDays = 1;
+
+                        decimal hoursPerDay = horasEstimadas / taskWorkingDays;
+
                         for (int i = 0; i < 14; i++)
                         {
                             var diaHabil = proximosDiasHabiles[i];
-                            if (diaHabil >= start.Date && diaHabil <= end.Date)
+                            // Solo cobramos las horas si el día cae en el rango vital de la tarea
+                            if (diaHabil >= startTask && diaHabil <= endTask)
                             {
                                 dataUsuarioFuturo[i] += hoursPerDay;
                             }
                         }
                     }
+
+                    // Agregar al gráfico solo si tiene alguna hora proyectada
+                    if (dataUsuarioFuturo.Any(h => h > 0))
+                    {
+                        seriesCargaFuturo.Add(new
+                        {
+                            name = userEmail == "Sin Asignar" ? "Sin Asignar" : userEmail.Split('@')[0],
+                            data = dataUsuarioFuturo.Select(d => Math.Round(d, 1)).ToList()
+                        });
+                    }
                 }
-                seriesCargaFuturo.Add(new { name = userEmail.Split('@')[0], data = dataUsuarioFuturo.Select(d => Math.Round(d, 1)).ToList() });
             }
 
             ViewBag.EtiquetasDiasFuturo = System.Text.Json.JsonSerializer.Serialize(etiquetasDiasFuturo);
@@ -217,7 +243,6 @@ namespace NotebookValidator.Web.Controllers
                 .Where(t => t.UsuarioAsignadoId != null && t.Estado != "Terminada")
                 .ToListAsync();
 
-            // 🎯 CORRECCIÓN: Unificamos criterio de Fechas aquí también
             var tareasEnRango = tareasPendientes.Where(t => {
                 DateTime start = t.FechaInicioReal ?? t.FechaInicioPlanificada ?? t.FechaCreacion;
                 return start >= inicioSemana && start <= finSemana;
