@@ -218,9 +218,10 @@
                     <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
                         <div><h5 class="fw-bold text-light mb-0" style="font-size: 1rem;"><i class="bi bi-diagram-3-fill me-2"></i>4. Estructura WBS (Subfases y Tareas)</h5></div>
                         <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-info fw-bold" onclick="auditarYSanitizarCronograma(0)" title="Detecta fechas en días no hábiles y las ajusta"><i class="bi bi-shield-check me-1"></i> Sanitizar Fechas</button>
                             <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalDomino"><i class="bi bi-calendar-range"></i> Dominó</button>
                             <button type="button" class="btn btn-sm btn-outline-success shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalPegadoInteligente"><i class="bi bi-magic me-1"></i> Pegar Excel</button>
-                            <button type="button" class="btn btn-sm btn-outline-info" id="btnAddSubfase"><i class="bi bi-plus-lg"></i> Añadir Subfase</button>
+                            <button type="button" class="btn btn-sm btn-outline-light" id="btnAddSubfase"><i class="bi bi-plus-lg"></i> Añadir Subfase</button>
                         </div>
                     </div>
 
@@ -271,7 +272,7 @@
     </form>
 </div>
 
-<div class="modal fade" id="modalDomino" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #ffc107;"><div class="modal-header border-secondary p-3"><h6 class="modal-title fw-bold text-warning"><i class="bi bi-calendar-range me-2"></i>Desplazar Fechas</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-3" style="background-color: #07091e;"><label class="text-white-50 small mb-2 d-block">¿Desplazar todas las tareas por días?</label><div class="input-group input-group-sm mb-2"><input type="number" id="inputDominoDias" class="form-control bg-dark text-white border-warning text-center" placeholder="Ej: 7 o -3" /><span class="input-group-text bg-secondary border-warning text-white">días</span></div></div><div class="modal-footer border-secondary p-2"><button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-sm btn-warning fw-bold" onclick="ejecutarEfectoDomino()">Aplicar</button></div></div></div></div>
+<div class="modal fade" id="modalDomino" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #ffc107;"><div class="modal-header border-secondary p-3"><h6 class="modal-title fw-bold text-warning"><i class="bi bi-calendar-range me-2"></i>Desplazar Fechas Inteligente</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-3" style="background-color: #07091e;"><label class="text-white-50 small mb-2 d-block">¿Cuántos días de desplazamiento?</label><div class="input-group input-group-sm mb-2"><input type="number" id="inputDominoDias" class="form-control bg-dark text-white border-warning text-center" placeholder="Ej: 7" /><span class="input-group-text bg-secondary border-warning text-white">días</span></div><small class="text-success" style="font-size:0.65rem;"><i class="bi bi-info-circle me-1"></i>Evita automáticamente fines de semana.</small></div><div class="modal-footer border-secondary p-2"><button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-sm btn-warning fw-bold" onclick="ejecutarEfectoDomino()">Aplicar Cascada</button></div></div></div></div>
 <div class="modal fade" id="modalPegadoInteligente" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #198754;"><div class="modal-header border-secondary"><h5 class="modal-title fw-bold text-success">Importación Inteligente</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body px-4 py-4" style="background-color: #07091e;"><p class="text-white-50 small mb-2"><i class="bi bi-info-circle text-info me-1"></i> Tip: Si las celdas comienzan con un espacio o tabulación, serán consideradas Tareas bajo la última Subfase.</p><textarea id="txtPegadoMasivo" class="form-control form-control-sm bg-dark text-white font-monospace border-success" rows="8" placeholder="Pega tus filas aquí..."></textarea></div><div class="modal-footer border-secondary"><button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-success fw-bold" onclick="procesarPegadoHeuristico()">Procesar Filas</button></div></div></div></div>
 
 @section Scripts {
@@ -284,19 +285,15 @@
             document.querySelectorAll('.input-horas').forEach(inp => inp.dispatchEvent(new Event('input')));
         });
 
-        // ── INTERCEPTOR DE FORMULARIO PARA DECIMALES DE C# ──
         document.getElementById('formCreateProject').addEventListener('submit', function () {
-            // Convierte todos los 24.5 a 24,5 en inputs ocultos
             document.querySelectorAll('.input-horas').forEach(inp => {
                 if(inp.name && inp.value) {
-                    const hidden = document.createElement('input');
-                    hidden.type = 'hidden'; hidden.name = inp.name; hidden.value = inp.value.replace('.', ',');
+                    const hidden = document.createElement('input'); hidden.type = 'hidden'; hidden.name = inp.name; hidden.value = inp.value.replace('.', ',');
                     inp.removeAttribute('name'); inp.parentNode.appendChild(hidden);
                 }
             });
             var btn = document.getElementById('btnSubmit'); btn.disabled = true;
-            document.getElementById('spinnerSubmit').classList.remove('d-none');
-            localStorage.removeItem(DRAFT_KEY);
+            document.getElementById('spinnerSubmit').classList.remove('d-none'); localStorage.removeItem(DRAFT_KEY);
         });
 
         window.currentDraggedUser = null;
@@ -305,11 +302,7 @@
     }
 }
 `;
-const fasesOptions = `
-    <option value="2_Desarrollo_Notebooks" selected>2. Desarrollo</option>
-    <option value="1_Diseño_Arquitectura">1. Diseño</option>
-    <option value="3_Pruebas_Certificacion">3. Pruebas QA</option>
-    <option value="4_Paso_A_Produccion">4. Producción</option>`;
+const fasesOptions = `<option value="2_Desarrollo_Notebooks" selected>2. Desarrollo</option><option value="1_Diseño_Arquitectura">1. Diseño</option><option value="3_Pruebas_Certificacion">3. Pruebas QA</option><option value="4_Paso_A_Produccion">4. Producción</option>`;
 
 document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll('.draggable-user').forEach(pill => {
@@ -319,6 +312,97 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById('selectClienteId').dispatchEvent(new Event('change'));
 });
 
+// ── MOTOR ALGORÍTMICO DE FECHAS (SANITIZADOR Y CASCADA) ──
+function calcularFechaFinLogica(startDate, hoursRemaining) {
+    let date = new Date(startDate.getTime()); let safety = 0;
+    while (hoursRemaining > 0 && safety < 100) {
+        safety++; let dayOfWeek = date.getDay();
+        if (dayOfWeek === 0 || dayOfWeek === 6) { date.setDate(date.getDate() + (dayOfWeek === 6 ? 2 : 1)); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; }
+        let exitH = (dayOfWeek === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH; let exitM = (dayOfWeek === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
+        let endOfDay = new Date(date); endOfDay.setHours(exitH, exitM, 0, 0); let startOfDay = new Date(date); startOfDay.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+        if (date < startOfDay) date = new Date(startOfDay);
+        if (date >= endOfDay) { date.setDate(date.getDate() + 1); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; }
+        let msRemainingToday = endOfDay - date; let hoursRemainingToday = msRemainingToday / 3600000;
+        if (hoursRemaining <= hoursRemainingToday) { date.setTime(date.getTime() + (hoursRemaining * 3600000)); hoursRemaining = 0; }
+        else { hoursRemaining -= hoursRemainingToday; date.setDate(date.getDate() + 1); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); }
+    }
+    return date;
+}
+
+function snapToWorkingHours(d) {
+    let date = new Date(d.getTime()); let safety = 0;
+    while(safety < 10) {
+        safety++; let day = date.getDay();
+        if (day === 0 || day === 6) { date.setDate(date.getDate() + (day === 6 ? 2 : 1)); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; }
+        let exitH = (day === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH; let exitM = (day === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
+        let endOfDay = new Date(date); endOfDay.setHours(exitH, exitM, 0, 0); let startOfDay = new Date(date); startOfDay.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+        if (date < startOfDay) { date = new Date(startOfDay); break; } else if (date >= endOfDay) { date.setDate(date.getDate() + 1); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; } else { break; }
+    }
+    return date;
+}
+
+// Audita el cronograma buscando errores. Si dominoDays > 0, ejecuta un efecto cascada topológico.
+function auditarYSanitizarCronograma(dominoDays = 0) {
+    const rows = Array.from(document.querySelectorAll('.row-data-entity'));
+    let parsedRows = [];
+
+    rows.forEach(row => {
+        const inpInicio = row.querySelector('.input-inicio'); const inpHoras = row.querySelector('.input-horas'); const inpFin = row.querySelector('.input-fin');
+        if (inpInicio && inpInicio.value && inpHoras && inpHoras.value) {
+            parsedRows.push({ rowEl: row, inpInicio: inpInicio, inpHoras: inpHoras, inpFin: inpFin, originalStart: new Date(inpInicio.value), hours: parseFloat(inpHoras.value) });
+        }
+    });
+
+    if (parsedRows.length === 0) return;
+    parsedRows.sort((a, b) => a.originalStart - b.originalStart); // Orden Topológico (Vital para la cascada)
+
+    let cumulativeShiftMs = 0;
+    let dominoMs = dominoDays * 24 * 60 * 60 * 1000;
+    let totalCorrected = 0;
+
+    function formatLocal(d) { let tzoffset = (new Date()).getTimezoneOffset() * 60000; return (new Date(d - tzoffset)).toISOString().slice(0, 16); }
+
+    parsedRows.forEach(item => {
+        // Sumamos el desplazamiento inicial (si lo hay) y la cascada de errores previos
+        let baseStart = new Date(item.originalStart.getTime() + dominoMs + cumulativeShiftMs);
+        let snappedStart = snapToWorkingHours(baseStart); // Si cae en domingo, lo mueve a Lunes.
+
+        // Registramos el empuje extra para cascadaarlo a las tareas de abajo
+        let extraShift = snappedStart.getTime() - baseStart.getTime();
+        cumulativeShiftMs += extraShift;
+
+        let newEnd = calcularFechaFinLogica(snappedStart, item.hours);
+        let strStart = formatLocal(snappedStart); let strEnd = formatLocal(newEnd);
+
+        let changed = false;
+        if (item.inpInicio.value !== strStart) { item.inpInicio.value = strStart; changed = true; }
+        if (item.inpFin.value !== strEnd) { item.inpFin.value = strEnd; changed = true; }
+
+        if (changed) {
+            totalCorrected++;
+            item.rowEl.style.boxShadow = 'inset 0 0 15px rgba(25, 135, 84, 0.4)';
+            setTimeout(() => item.rowEl.style.boxShadow = '', 600);
+        }
+    });
+
+    sincronizarFechas(); guardarBorradorSilencioso();
+
+    if (dominoDays > 0) {
+        toastr.success(`Cascada aplicada: El cronograma se desplazó y se esquivaron ${totalCorrected} conflictos en fines de semana.`);
+        bootstrap.Modal.getInstance(document.getElementById('modalDomino')).hide();
+    } else {
+        if (totalCorrected > 0) toastr.success(`¡Cronograma sanitizado! Se corrigieron ${totalCorrected} fechas que estaban en días u horas no hábiles.`);
+        else toastr.info(`El cronograma está perfecto. No se encontraron fechas inválidas.`);
+    }
+}
+
+function ejecutarEfectoDomino() {
+    const dias = parseInt(document.getElementById('inputDominoDias').value, 10);
+    if (isNaN(dias) || dias === 0) return;
+    auditarYSanitizarCronograma(dias);
+}
+
+// ── INYECCIÓN UI ──
 function inyectarFilaSubfase(nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
     const container = document.getElementById('wbs-container');
     const wrapper = document.createElement('div'); wrapper.className = 'subfase-group-wrapper';
@@ -360,13 +444,11 @@ function inyectarFilaTarea(wrapperGroup, nombre = "", fechaIni = "", fechaFin = 
     bindRowEvents(row); reindexAll();
 }
 
-// ── RE-INDEXACIÓN MAESTRA DE FORMULARIO ──
 function reindexAll() {
     const wrappers = document.querySelectorAll('.subfase-group-wrapper');
     wrappers.forEach((wrapper, sIdx) => {
         const sfRow = wrapper.querySelector('.subfase-row-container');
         if (sfRow) {
-            const inpId = sfRow.querySelector('.input-sf-id'); if(inpId) inpId.name = `Subfases[${sIdx}].Id`;
             const selFase = sfRow.querySelector('.input-fasepadre'); if(selFase) selFase.name = `Subfases[${sIdx}].FasePadre`;
             const inpNom = sfRow.querySelector('.input-nombre'); if(inpNom) inpNom.name = `Subfases[${sIdx}].Nombre`;
             const inpIni = sfRow.querySelector('.input-inicio'); if(inpIni) inpIni.name = `Subfases[${sIdx}].FechaInicio`;
@@ -374,7 +456,6 @@ function reindexAll() {
             const inpHrs = sfRow.querySelector('.input-horas'); if(inpHrs) inpHrs.name = `Subfases[${sIdx}].HorasEstimadas`;
             const selRes = sfRow.querySelector('.user-select'); if(selRes) selRes.name = `Subfases[${sIdx}].ResponsableId`;
         }
-
         const tRows = wrapper.querySelectorAll('.tarea-row-container');
         tRows.forEach((tRow, tIdx) => {
             const tId = tRow.querySelector('.input-tarea-id'); if(tId) tId.name = `Subfases[${sIdx}].Tareas[${tIdx}].Id`;
@@ -396,45 +477,16 @@ document.getElementById('wbs-container').addEventListener('click', function(e) {
     if (btnRemoveT) { btnRemoveT.closest('.tarea-row-container').remove(); reindexAll(); actualizarTermometro(); guardarBorradorSilencioso(); }
 });
 
-// ── CALCULAR HORAS FALTANTES PARA SUBFASES ──
-function calcularHorasDesdeFechas(startStr, endStr) {
-    if (!startStr || !endStr) return "";
-    let dStart = new Date(startStr); let dEnd = new Date(endStr);
-    if (dStart >= dEnd) return 0;
-    let totalHoras = 0; let curr = new Date(dStart);
-    while (curr < dEnd) {
-        let dayOfWeek = curr.getDay();
-        if (dayOfWeek === 0 || dayOfWeek === 6) { curr.setDate(curr.getDate() + 1); curr.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; }
-        let exitH = (dayOfWeek === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH;
-        let exitM = (dayOfWeek === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
-        let endOfDay = new Date(curr); endOfDay.setHours(exitH, exitM, 0, 0);
-        if (dEnd <= endOfDay) { totalHoras += (dEnd - curr) / 3600000; break; }
-        else { totalHoras += (endOfDay - curr) / 3600000; curr.setDate(curr.getDate() + 1); curr.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); }
-    }
-    return totalHoras.toFixed(1).replace('.0', '');
-}
-
+// ── ACTUALIZACIÓN INDIVIDUAL DE FILA ──
 function bindRowEvents(row) {
     const inpInicio = row.querySelector('.input-inicio'); const inpHoras = row.querySelector('.input-horas'); const inpFin = row.querySelector('.input-fin'); const selectResp = row.querySelector('.user-select'); const paintZone = row.querySelector('.paint-zone');
     function formatDatetimeLocal(d) { let tzoffset = (new Date()).getTimezoneOffset() * 60000; return (new Date(d - tzoffset)).toISOString().slice(0, 16); }
-    function calcularFin() {
+    function actualizarUnaFila() {
         if (!inpInicio.value || !inpHoras.value) return;
-        let date = new Date(inpInicio.value); let hoursRemaining = parseFloat(inpHoras.value); if(isNaN(hoursRemaining) || hoursRemaining <= 0) return;
-        let safety = 0;
-        while (hoursRemaining > 0 && safety < 100) {
-            safety++; let dayOfWeek = date.getDay();
-            if (dayOfWeek === 0 || dayOfWeek === 6) { date.setDate(date.getDate() + (dayOfWeek === 6 ? 2 : 1)); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; }
-            let exitH = (dayOfWeek === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH; let exitM = (dayOfWeek === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
-            let endOfDay = new Date(date); endOfDay.setHours(exitH, exitM, 0, 0); let startOfDay = new Date(date); startOfDay.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
-            if (date < startOfDay) date = new Date(startOfDay);
-            if (date >= endOfDay) { date.setDate(date.getDate() + 1); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; }
-            let msRemainingToday = endOfDay - date; let hoursRemainingToday = msRemainingToday / (1000 * 60 * 60);
-            if (hoursRemaining <= hoursRemainingToday) { date.setTime(date.getTime() + (hoursRemaining * 60 * 60 * 1000)); hoursRemaining = 0; } else { hoursRemaining -= hoursRemainingToday; date.setDate(date.getDate() + 1); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); }
-        }
-        inpFin.value = formatDatetimeLocal(date); inpFin.style.backgroundColor = 'rgba(255, 193, 7, 0.2)'; setTimeout(() => inpFin.style.backgroundColor = '', 400);
-        guardarBorradorSilencioso();
+        let date = calcularFechaFinLogica(new Date(inpInicio.value), parseFloat(inpHoras.value));
+        if (date) { inpFin.value = formatDatetimeLocal(date); inpFin.style.backgroundColor = 'rgba(255, 193, 7, 0.2)'; setTimeout(() => inpFin.style.backgroundColor = '', 400); guardarBorradorSilencioso(); }
     }
-    inpInicio.addEventListener('change', calcularFin); inpHoras.addEventListener('input', calcularFin);
+    inpInicio.addEventListener('change', actualizarUnaFila); inpHoras.addEventListener('input', actualizarUnaFila);
     if (paintZone && selectResp) {
         paintZone.addEventListener('dragenter', function(e) { e.preventDefault(); if (window.currentDraggedUser && selectResp.value !== window.currentDraggedUser) { selectResp.value = window.currentDraggedUser; row.style.boxShadow = 'inset 0 0 20px rgba(25, 135, 84, 0.3)'; setTimeout(() => { row.style.boxShadow = ''; }, 500); const globalCb = document.getElementById('user_' + window.currentDraggedUser); if (globalCb) globalCb.checked = true; actualizarTermometro(); } });
         paintZone.addEventListener('dragover', e => e.preventDefault()); row.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
@@ -442,14 +494,12 @@ function bindRowEvents(row) {
     }
 }
 
+// ── PEGADO Y COMPONENTES EXTRAS ──
 function procesarPegadoHeuristico() {
     const texto = document.getElementById('txtPegadoMasivo').value; if (!texto.trim()) return;
     function parseDate(fechaTexto) {
         if (!fechaTexto) return ""; let partes = fechaTexto.split(/[\/\-]/);
-        if (partes.length === 3) {
-            if (partes[0].length <= 2 && (partes[2].length === 4 || partes[2].length === 2)) { let year = partes[2].length === 2 ? "20" + partes[2] : partes[2]; return `${year}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`; }
-            if (partes[0].length === 4) return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
-        } return "";
+        if (partes.length === 3) { if (partes[0].length <= 2 && (partes[2].length === 4 || partes[2].length === 2)) { let year = partes[2].length === 2 ? "20" + partes[2] : partes[2]; return `${year}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`; } if (partes[0].length === 4) return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`; } return "";
     }
     const filas = texto.split('\n'); let agregadasSub = 0; let agregadasTar = 0; let currentWrapper = null;
     filas.forEach(fila => {
@@ -461,18 +511,6 @@ function procesarPegadoHeuristico() {
         if (nombre) { if (esTarea && currentWrapper) { inyectarFilaTarea(currentWrapper, nombre, fecha1, fecha2, "", horasVal); agregadasTar++; } else { currentWrapper = inyectarFilaSubfase(nombre, fecha1, fecha2, "", horasVal); agregadasSub++; } }
     });
     if (agregadasSub > 0 || agregadasTar > 0) { toastr.success(`¡Se procesaron ${agregadasSub} Subfases y ${agregadasTar} Tareas con éxito!`); document.getElementById('txtPegadoMasivo').value = ''; bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide(); actualizarTermometro(); }
-}
-
-function ejecutarEfectoDomino() {
-    const dias = parseInt(document.getElementById('inputDominoDias').value, 10); if (isNaN(dias) || dias === 0) return;
-    document.querySelectorAll('.row-data-entity').forEach(row => {
-        const iInicio = row.querySelector('.input-inicio'); const iFin = row.querySelector('.input-fin');
-        function formatLocal(d) { let tzoffset = (new Date()).getTimezoneOffset() * 60000; return (new Date(d - tzoffset)).toISOString().slice(0, 16); }
-        if (iInicio && iInicio.value) { let d = new Date(iInicio.value); d.setDate(d.getDate() + dias); iInicio.value = formatLocal(d); }
-        if (iFin && iFin.value) { let d = new Date(iFin.value); d.setDate(d.getDate() + dias); iFin.value = formatLocal(d); }
-        row.style.boxShadow = 'inset 0 0 15px rgba(255,193,7,0.3)'; setTimeout(() => row.style.boxShadow = '', 400);
-    });
-    sincronizarFechas(); bootstrap.Modal.getInstance(document.getElementById('modalDomino')).hide(); toastr.success(`Fechas desplazadas ${dias} días.`);
 }
 
 function actualizarTermometro() {
@@ -504,13 +542,8 @@ function guardarBorradorSilencioso() {
     const draft = { nombre: form.querySelector('input[name="nombre"]').value, clienteId: form.querySelector('select[name="clienteId"]').value, wrappers: [] };
     document.querySelectorAll('.subfase-group-wrapper').forEach(wrap => {
         const sfRow = wrap.querySelector('.subfase-row-container');
-        const sfData = {
-            nombre: sfRow.querySelector('.input-nombre').value, fInicio: sfRow.querySelector('.input-inicio').value, fFin: sfRow.querySelector('.input-fin').value,
-            horas: sfRow.querySelector('.input-horas').value, resp: sfRow.querySelector('.user-select').value, tareas: []
-        };
-        wrap.querySelectorAll('.tarea-row-container').forEach(tRow => {
-            sfData.tareas.push({ nombre: tRow.querySelector('.input-nombre').value, fInicio: tRow.querySelector('.input-inicio').value, fFin: tRow.querySelector('.input-fin').value, horas: tRow.querySelector('.input-horas').value, resp: tRow.querySelector('.user-select').value });
-        });
+        const sfData = { nombre: sfRow.querySelector('.input-nombre').value, fInicio: sfRow.querySelector('.input-inicio').value, fFin: sfRow.querySelector('.input-fin').value, horas: sfRow.querySelector('.input-horas').value, resp: sfRow.querySelector('.user-select').value, tareas: [] };
+        wrap.querySelectorAll('.tarea-row-container').forEach(tRow => { sfData.tareas.push({ nombre: tRow.querySelector('.input-nombre').value, fInicio: tRow.querySelector('.input-inicio').value, fFin: tRow.querySelector('.input-fin').value, horas: tRow.querySelector('.input-horas').value, resp: tRow.querySelector('.user-select').value }); });
         draft.wrappers.push(sfData);
     });
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
