@@ -38,6 +38,8 @@ namespace NotebookValidator.Web.Data
         public DbSet<SubFaseProyecto> SubFasesProyecto { get; set; }
         public DbSet<TareaProyecto> TareasProyecto { get; set; }
 
+        public DbSet<Feriado> Feriados { get; set; }
+
         // =========================================================
         // CONFIGURACIÓN AVANZADA DE MODELOS (Fluent API)
         // =========================================================

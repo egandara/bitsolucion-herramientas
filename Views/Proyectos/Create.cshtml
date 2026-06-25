@@ -285,6 +285,27 @@
             document.querySelectorAll('.input-horas').forEach(inp => inp.dispatchEvent(new Event('input')));
         });
 
+        // ========================================================
+        // 🚀 NUEVO: MOTOR DE DÍAS INHÁBILES Y FERIADOS
+        // ========================================================
+        const feriadosDB = @Html.Raw(ViewBag.FeriadosJson ?? "[]");
+        const feriadosMap = new Map();
+        feriadosDB.forEach(f => {
+            let d = f.Fecha.split('T')[0];
+            feriadosMap.set(d, f.Motivo);
+        });
+
+        function esInhabil(dateObj) {
+            let day = dateObj.getDay();
+            if (day === 0 || day === 6) return true; // Sábados y Domingos
+
+            let isoStr = dateObj.getFullYear() + "-" +
+                         String(dateObj.getMonth() + 1).padStart(2, '0') + "-" +
+                         String(dateObj.getDate()).padStart(2, '0');
+
+            return feriadosMap.has(isoStr); // Feriado
+        }
+
         document.getElementById('formCreateProject').addEventListener('submit', function () {
             document.querySelectorAll('.input-horas').forEach(inp => {
                 if(inp.name && inp.value) {
@@ -316,8 +337,13 @@ document.addEventListener("DOMContentLoaded", function () {
 function calcularFechaFinLogica(startDate, hoursRemaining) {
     let date = new Date(startDate.getTime()); let safety = 0;
     while (hoursRemaining > 0 && safety < 100) {
-        safety++; let dayOfWeek = date.getDay();
-        if (dayOfWeek === 0 || dayOfWeek === 6) { date.setDate(date.getDate() + (dayOfWeek === 6 ? 2 : 1)); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; }
+        safety++;
+        if (esInhabil(date)) {
+            date.setDate(date.getDate() + 1);
+            date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+            continue;
+        }
+        let dayOfWeek = date.getDay();
         let exitH = (dayOfWeek === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH; let exitM = (dayOfWeek === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
         let endOfDay = new Date(date); endOfDay.setHours(exitH, exitM, 0, 0); let startOfDay = new Date(date); startOfDay.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
         if (date < startOfDay) date = new Date(startOfDay);
@@ -331,9 +357,14 @@ function calcularFechaFinLogica(startDate, hoursRemaining) {
 
 function snapToWorkingHours(d) {
     let date = new Date(d.getTime()); let safety = 0;
-    while(safety < 10) {
-        safety++; let day = date.getDay();
-        if (day === 0 || day === 6) { date.setDate(date.getDate() + (day === 6 ? 2 : 1)); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; }
+    while(safety < 30) {
+        safety++;
+        if (esInhabil(date)) {
+            date.setDate(date.getDate() + 1);
+            date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+            continue;
+        }
+        let day = date.getDay();
         let exitH = (day === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH; let exitM = (day === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
         let endOfDay = new Date(date); endOfDay.setHours(exitH, exitM, 0, 0); let startOfDay = new Date(date); startOfDay.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
         if (date < startOfDay) { date = new Date(startOfDay); break; } else if (date >= endOfDay) { date.setDate(date.getDate() + 1); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; } else { break; }
@@ -341,7 +372,6 @@ function snapToWorkingHours(d) {
     return date;
 }
 
-// Audita el cronograma buscando errores. Si dominoDays > 0, ejecuta un efecto cascada topológico.
 function auditarYSanitizarCronograma(dominoDays = 0) {
     const rows = Array.from(document.querySelectorAll('.row-data-entity'));
     let parsedRows = [];
@@ -354,7 +384,7 @@ function auditarYSanitizarCronograma(dominoDays = 0) {
     });
 
     if (parsedRows.length === 0) return;
-    parsedRows.sort((a, b) => a.originalStart - b.originalStart); // Orden Topológico (Vital para la cascada)
+    parsedRows.sort((a, b) => a.originalStart - b.originalStart);
 
     let cumulativeShiftMs = 0;
     let dominoMs = dominoDays * 24 * 60 * 60 * 1000;
@@ -363,11 +393,9 @@ function auditarYSanitizarCronograma(dominoDays = 0) {
     function formatLocal(d) { let tzoffset = (new Date()).getTimezoneOffset() * 60000; return (new Date(d - tzoffset)).toISOString().slice(0, 16); }
 
     parsedRows.forEach(item => {
-        // Sumamos el desplazamiento inicial (si lo hay) y la cascada de errores previos
         let baseStart = new Date(item.originalStart.getTime() + dominoMs + cumulativeShiftMs);
-        let snappedStart = snapToWorkingHours(baseStart); // Si cae en domingo, lo mueve a Lunes.
+        let snappedStart = snapToWorkingHours(baseStart);
 
-        // Registramos el empuje extra para cascadaarlo a las tareas de abajo
         let extraShift = snappedStart.getTime() - baseStart.getTime();
         cumulativeShiftMs += extraShift;
 
@@ -388,7 +416,7 @@ function auditarYSanitizarCronograma(dominoDays = 0) {
     sincronizarFechas(); guardarBorradorSilencioso();
 
     if (dominoDays > 0) {
-        toastr.success(`Cascada aplicada: El cronograma se desplazó y se esquivaron ${totalCorrected} conflictos en fines de semana.`);
+        toastr.success(`Cascada aplicada: El cronograma se desplazó y se esquivaron ${totalCorrected} conflictos.`);
         bootstrap.Modal.getInstance(document.getElementById('modalDomino')).hide();
     } else {
         if (totalCorrected > 0) toastr.success(`¡Cronograma sanitizado! Se corrigieron ${totalCorrected} fechas que estaban en días u horas no hábiles.`);
@@ -402,7 +430,6 @@ function ejecutarEfectoDomino() {
     auditarYSanitizarCronograma(dias);
 }
 
-// ── INYECCIÓN UI ──
 function inyectarFilaSubfase(nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
     const container = document.getElementById('wbs-container');
     const wrapper = document.createElement('div'); wrapper.className = 'subfase-group-wrapper';
@@ -477,7 +504,6 @@ document.getElementById('wbs-container').addEventListener('click', function(e) {
     if (btnRemoveT) { btnRemoveT.closest('.tarea-row-container').remove(); reindexAll(); actualizarTermometro(); guardarBorradorSilencioso(); }
 });
 
-// ── ACTUALIZACIÓN INDIVIDUAL DE FILA ──
 function bindRowEvents(row) {
     const inpInicio = row.querySelector('.input-inicio'); const inpHoras = row.querySelector('.input-horas'); const inpFin = row.querySelector('.input-fin'); const selectResp = row.querySelector('.user-select'); const paintZone = row.querySelector('.paint-zone');
     function formatDatetimeLocal(d) { let tzoffset = (new Date()).getTimezoneOffset() * 60000; return (new Date(d - tzoffset)).toISOString().slice(0, 16); }
@@ -494,7 +520,6 @@ function bindRowEvents(row) {
     }
 }
 
-// ── PEGADO Y COMPONENTES EXTRAS ──
 function procesarPegadoHeuristico() {
     const texto = document.getElementById('txtPegadoMasivo').value; if (!texto.trim()) return;
     function parseDate(fechaTexto) {

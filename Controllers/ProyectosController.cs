@@ -110,15 +110,12 @@ namespace NotebookValidator.Web.Controllers
         [HttpGet]
         public async Task<IActionResult> Create()
         {
-            // Cargar usuarios para el combo de responsables
             var usuarios = await _userManager.Users.OrderBy(u => u.Email).ToListAsync();
             ViewBag.UsuariosBanco = usuarios;
 
-            // Cargar clientes para el combo principal
             var clientes = await _context.Clientes.Where(c => c.Activo).OrderBy(c => c.Nombre).ToListAsync();
             ViewBag.Clientes = new SelectList(clientes, "Id", "Nombre");
 
-            // EL PUENTE: Mandamos los horarios al Javascript en formato JSON
             var horarios = clientes.Select(c => new {
                 id = c.Id.ToString(),
                 entradaH = c.HoraEntrada.Hours,
@@ -128,8 +125,14 @@ namespace NotebookValidator.Web.Controllers
                 salidaViernesH = c.HoraSalidaViernes.Hours,
                 salidaViernesM = c.HoraSalidaViernes.Minutes
             }).ToList();
-
             ViewBag.ClientesHorariosJson = System.Text.Json.JsonSerializer.Serialize(horarios);
+
+            // ¡NUEVO! Cargar los Feriados Activos de la Base de Datos
+            var feriados = await _context.Feriados
+                .Where(f => f.Activo)
+                .Select(f => new { f.Fecha, f.Motivo })
+                .ToListAsync();
+            ViewBag.FeriadosJson = System.Text.Json.JsonSerializer.Serialize(feriados);
 
             return View();
         }
@@ -424,20 +427,16 @@ namespace NotebookValidator.Web.Controllers
                 .Include(p => p.UsuariosAsignados)
                 .Include(p => p.Fases.OrderBy(f => f.Orden))
                     .ThenInclude(f => f.SubFases)
-                        .ThenInclude(s => s.Tareas) // <-- ¡VITAL!: Cargamos las tareas de cada subfase
-                            .ThenInclude(t => t.UsuarioAsignado) // Cargamos el ejecutor de la tarea
+                        .ThenInclude(s => s.Tareas)
+                            .ThenInclude(t => t.UsuarioAsignado)
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(p => p.Id == id);
 
-            if (proyecto == null)
-            {
-                return NotFound();
-            }
+            if (proyecto == null) return NotFound();
 
             ViewBag.Clientes = new SelectList(await _context.Clientes.Where(c => c.Activo).OrderBy(c => c.Nombre).ToListAsync(), "Id", "Nombre", proyecto.ClienteId);
             ViewBag.UsuariosBanco = await _context.Users.Where(u => u.IsActive).OrderBy(u => u.Email).ToListAsync();
 
-            // EL PUENTE: Mandamos los horarios al Javascript en formato JSON para el Motor de Horas
             var clientes = await _context.Clientes.Where(c => c.Activo).ToListAsync();
             var horarios = clientes.Select(c => new {
                 id = c.Id.ToString(),
@@ -448,8 +447,14 @@ namespace NotebookValidator.Web.Controllers
                 salidaViernesH = c.HoraSalidaViernes.Hours,
                 salidaViernesM = c.HoraSalidaViernes.Minutes
             }).ToList();
-
             ViewBag.ClientesHorariosJson = System.Text.Json.JsonSerializer.Serialize(horarios);
+
+            // ¡NUEVO! Cargar los Feriados Activos de la Base de Datos
+            var feriados = await _context.Feriados
+                .Where(f => f.Activo)
+                .Select(f => new { f.Fecha, f.Motivo })
+                .ToListAsync();
+            ViewBag.FeriadosJson = System.Text.Json.JsonSerializer.Serialize(feriados);
 
             return View(proyecto);
         }

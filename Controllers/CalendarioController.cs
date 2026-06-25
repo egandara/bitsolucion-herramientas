@@ -23,8 +23,16 @@ namespace NotebookValidator.Web.Controllers
         }
 
         [HttpGet]
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
+            // ¡NUEVO! Cargar los Feriados Activos de la Base de Datos y enviarlos a la vista
+            var feriados = await _context.Feriados
+                .Where(f => f.Activo)
+                .Select(f => new { f.Fecha, f.Motivo })
+                .ToListAsync();
+
+            ViewBag.FeriadosJson = System.Text.Json.JsonSerializer.Serialize(feriados);
+
             return View();
         }
 

@@ -274,7 +274,7 @@
     }
 
     .fc-theme-standard td, .fc-theme-standard th {
-        border-color: rgba(255, 255, 255, 0.03) !important; /* Líneas de la grilla reducidas */
+        border-color: rgba(255, 255, 255, 0.03) !important;
     }
 
     .fc .fc-toolbar-title {
@@ -305,15 +305,12 @@
         border-radius: 4px;
     }
 
-    /* ===== FullCalendar: Look Minimalista Avanzado (Estilo Google) ===== */
-
-    /* 1. Eliminación radical de líneas verticales en la grilla mensual */
+    /* ===== FullCalendar: Look Minimalista Avanzado ===== */
     .fc-daygrid-body .fc-scrollgrid-sync-table td {
         border-left: none !important;
         border-right: none !important;
     }
 
-    /* 2. Cabeceras de los días superiores (LUN, MAR, MIÉ...) */
     .fc .fc-col-header-cell {
         padding: 12px 0 !important;
         font-weight: 600 !important;
@@ -328,7 +325,6 @@
         color: #6a737d !important;
     }
 
-    /* 3. Estructuración fina de las celdas diarias */
     .fc .fc-daygrid-day {
         background-color: rgba(255, 255, 255, 0.005);
         transition: background-color 0.2s ease;
@@ -342,13 +338,11 @@
         background-color: rgba(0, 0, 0, 0.25) !important;
     }
 
-    .fc-day.cal-overload,
-    .fc-daygrid-day.cal-overload {
+    .fc-day.cal-overload, .fc-daygrid-day.cal-overload {
         background-color: rgba(239, 68, 68, 0.08) !important;
         box-shadow: inset 3px 0 0 var(--cal-red) !important;
     }
 
-    /* 4. Renderizado de los números de los días */
     .fc .fc-daygrid-day-top {
         flex-direction: row-reverse !important;
         padding: 6px 10px 2px 10px !important;
@@ -362,7 +356,6 @@
         text-decoration: none !important;
     }
 
-    /* 5. FIX PERFECCIONADO: Alineación e inscripción del Día Actual (Hoy) */
     .fc .fc-day-today {
         background-color: rgba(13, 202, 240, 0.01) !important;
     }
@@ -375,13 +368,12 @@
             height: 24px !important;
             display: inline-block !important;
             text-align: center !important;
-            line-height: 24px !important; /* Centrado vertical impecable sin cortes */
+            line-height: 24px !important;
             border-radius: 50% !important;
             padding: 0 !important;
             margin: 0 !important;
         }
 
-    /* Indicador de número de semanas, línea temporal y slots horariales */
     .fc .fc-timegrid-now-indicator-arrow, .fc-weeknumber {
         font-size: 0.75rem !important;
         opacity: 0.6;
@@ -418,7 +410,12 @@
         color: var(--cal-red);
     }
 
-    /* ===== Diseño de Cápsulas/Píldoras de Eventos (Google Style) ===== */
+    /* ===== FERIADOS UI CORREGIDA ===== */
+    .feriado-banner {
+        pointer-events: none !important;
+    }
+
+    /* ===== Cápsulas/Píldoras ===== */
     .fc-daygrid-event {
         border: none !important;
         border-radius: 5px !important;
@@ -436,7 +433,7 @@
         }
 
     .fc-daygrid-event-dot {
-        display: none !important; /* Remueve los dots por defecto */
+        display: none !important;
     }
 
     .fc-dayGridMonth-view .evt-resumen {
@@ -456,7 +453,6 @@
         white-space: nowrap;
     }
 
-    /* Mapeo cromático fluido por estados de tarea */
     .fc-daygrid-event.evt-pendiente {
         background-color: rgba(13, 202, 240, 0.09) !important;
         border-left: 3px solid #0dcaf0 !important;
@@ -486,7 +482,6 @@
             text-decoration: line-through;
         }
 
-    /* Subfases extendidas sin bordes de caja toscos */
     .fc-daygrid-event.evt-subfase {
         border: none !important;
         border-radius: 4px !important;
@@ -511,7 +506,7 @@
         text-decoration: none !important;
     }
 
-    /* ===== Componentes Adicionales (Tooltips, Modales, Contextual, Clones) ===== */
+    /* ===== Componentes Adicionales ===== */
     .custom-cal-tooltip {
         --bs-tooltip-bg: var(--cal-panel);
         --bs-tooltip-color: #ffffff;
@@ -536,8 +531,7 @@
         border-radius: 12px;
     }
 
-    .cal-modal .modal-header,
-    .cal-modal .modal-footer {
+    .cal-modal .modal-header, .cal-modal .modal-footer {
         border-color: var(--cal-border);
     }
 
@@ -570,29 +564,6 @@
             margin: 0;
             color: var(--cal-text);
             word-break: break-word;
-        }
-
-    .cal-modal-badge {
-        display: inline-block;
-        padding: 2px 10px;
-        border-radius: 999px;
-        font-size: 0.72rem;
-        font-weight: 700;
-    }
-
-        .cal-modal-badge.bucket-pendiente {
-            background-color: rgba(13,202,240,0.15);
-            color: var(--cal-cyan);
-        }
-
-        .cal-modal-badge.bucket-progreso {
-            background-color: rgba(255,193,7,0.18);
-            color: var(--cal-amber);
-        }
-
-        .cal-modal-badge.bucket-terminada {
-            background-color: rgba(34,197,94,0.18);
-            color: var(--cal-green);
         }
 
     .cal-toast {
@@ -658,6 +629,29 @@
                 color: #0dcaf0 !important;
             }
 
+    /* ============================================================
+           COMPRESIÓN DE FINES DE SEMANA (Ahorro de espacio)
+        ============================================================ */
+    th.fc-day-sat, td.fc-day-sat,
+    th.fc-day-sun, td.fc-day-sun {
+        width: 3.5% !important;
+        background-color: rgba(0, 0, 0, 0.4) !important;
+    }
+
+    .fc-day-sat .fc-col-header-cell-cushion,
+    .fc-day-sun .fc-col-header-cell-cushion,
+    .fc-day-sat .fc-daygrid-day-number,
+    .fc-day-sun .fc-daygrid-day-number {
+        font-size: 0.6rem !important;
+        opacity: 0.3 !important;
+        overflow: hidden;
+    }
+
+    .fc-day-sat .fc-daygrid-event,
+    .fc-day-sun .fc-daygrid-event {
+        display: none !important;
+    }
+
     @@media (max-width: 768px) {
         .cal-resumen-label {
             border-right: none;
@@ -675,7 +669,6 @@
 </style>
 
 <div class="container-fluid mt-3">
-    @* Token anti-CSRF para el POST de reprogramación *@
     @Html.AntiForgeryToken()
 
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
@@ -705,6 +698,7 @@
                     <option value="">Todos los proyectos</option>
                 </select>
             </div>
+
             <div class="cal-legend">
                 <span class="cal-chip is-pendiente" data-bucket="pendiente" role="button" tabindex="0" title="Mostrar/ocultar Pendientes"><span class="dot"></span> <span class="label">Pendiente</span></span>
                 <span class="cal-chip is-progreso" data-bucket="progreso" role="button" tabindex="0" title="Mostrar/ocultar En progreso"><span class="dot"></span> <span class="label">En progreso</span></span>
@@ -755,7 +749,6 @@
             <div class="modal-body">
                 <dl class="cal-modal-dl">
                     <div><dt>Proyecto</dt><dd id="cal-modal-proyecto">—</dd></div>
-
                     <div><dt>Fase</dt><dd id="cal-modal-fase" class="text-white-50">—</dd></div>
                     <div><dt>Subfase</dt><dd id="cal-modal-subfase" class="text-info">—</dd></div>
                     <div>
@@ -786,8 +779,8 @@
             <button type="button" class="btn btn-sm btn-primary" id="cal-modal-btn-guardar">Guardar cambios</button>
             <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
         </div>
-        </div>
     </div>
+</div>
 </div>
 
 <div class="modal fade cal-modal" id="cal-modal-crear" tabindex="-1" aria-hidden="true">
@@ -862,6 +855,35 @@
         var LS_VIEW = 'cal_view', LS_USER = 'cal_user', LS_PROY = 'cal_proy', LS_EST = 'cal_estados';
 
         // ============================================================
+        // MOTOR DE FERIADOS
+        // ============================================================
+        const feriadosDB = @Html.Raw(ViewBag.FeriadosJson ?? "[]");
+        var eventosFeriados = [];
+
+        feriadosDB.forEach(function(f) {
+        var d = f.Fecha.split('T')[0];
+        // Evento para pintar la columna de forma sutil
+        eventosFeriados.push({
+        start: d,
+        allDay: true,
+        display: 'background',
+        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+        extendedProps: { tipo: 'feriado_bg' } // CORRECCIÓN: Etiqueta para que no rompa
+        });
+        // Banner superior de texto limpio
+        eventosFeriados.push({
+        start: d,
+        title: '🌴 ' + f.Motivo,
+        allDay: true,
+        display: 'block',
+        backgroundColor: 'transparent',
+        borderColor: 'transparent',
+        classNames: ['feriado-banner'],
+        extendedProps: { tipo: 'feriado', motivo: f.Motivo }
+        });
+        });
+
+        // ============================================================
         // REFERENCIAS DEL DOM
         // ============================================================
         var calendarEl = document.getElementById('calendario-global');
@@ -874,7 +896,6 @@
         var filtroUsuario = document.getElementById('cal-filtro-usuario');
         var filtroProyecto = document.getElementById('cal-filtro-proyecto');
         var toastEl = document.getElementById('cal-toast');
-
         var modalEvento = new bootstrap.Modal(document.getElementById('cal-modal-evento'));
         var modalCrear = new bootstrap.Modal(document.getElementById('cal-modal-crear'));
 
@@ -910,60 +931,15 @@
 
         function fechaISO(d) { return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); }
         function hhmm(d) { return p2(d.getHours()) + ':' + p2(d.getMinutes()); }
-
-        function toLocalIso(d) {
-        return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) +
-        'T' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ':' + p2(d.getSeconds());
-        }
-
-        function pisoHora(hhmmStr) {
-        var h = parseInt(hhmmStr.substring(0, 2), 10);
-        if (h < 0) h = 0;
-        return p2(h) + ':00:00';
-        }
-
-        function techoHora(hhmmStr) {
-        var parts = hhmmStr.split(':');
-        var h = parseInt(parts[0], 10);
-        var mm = parseInt(parts[1] || '0', 10);
-        if (mm > 0) h += 1;
-        if (h > 24) h = 24;
-        return p2(h) + ':00:00';
-        }
-
-        function formatoFecha(d) {
-        return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
-        }
-
-        function fmtFechaHora(d) {
-        if (!d) return '—';
-        return d.toLocaleString('es-ES', {
-        day: '2-digit', month: 'short', year: 'numeric',
-        hour: '2-digit', minute: '2-digit', hour12: false
-        });
-        }
-
-        function setText(id, valor) {
-        var el = document.getElementById(id);
-        if (el) el.textContent = valor;
-        }
-
-        function estadoBucket(estado) {
-        if (estado === 'Terminada') return 'terminada';
-        if (estado === 'En Progreso') return 'progreso';
-        return 'pendiente';
-        }
-
-        function iconoEstado(estado) {
-        if (estado === 'Terminada') return 'bi-check-circle-fill';
-        if (estado === 'En Progreso') return 'bi-play-circle-fill';
-        return 'bi-hourglass-split';
-        }
-
-        function tokenCSRF() {
-        var el = document.querySelector('input[name="__RequestVerificationToken"]');
-        return el ? el.value : '';
-        }
+        function toLocalIso(d) { return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + 'T' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ':' + p2(d.getSeconds()); }
+        function pisoHora(hhmmStr) { var h = parseInt(hhmmStr.substring(0, 2), 10); if (h < 0) h = 0; return p2(h) + ':00:00'; }
+        function techoHora(hhmmStr) { var parts = hhmmStr.split(':'); var h = parseInt(parts[0], 10); var mm = parseInt(parts[1] || '0', 10); if (mm > 0) h += 1; if (h > 24) h = 24; return p2(h) + ':00:00'; }
+        function formatoFecha(d) { return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }); }
+        function fmtFechaHora(d) { if (!d) return '—'; return d.toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }); }
+        function setText(id, valor) { var el = document.getElementById(id); if (el) el.textContent = valor; }
+        function estadoBucket(estado) { if (estado === 'Terminada') return 'terminada'; if (estado === 'En Progreso') return 'progreso'; return 'pendiente'; }
+        function iconoEstado(estado) { if (estado === 'Terminada') return 'bi-check-circle-fill'; if (estado === 'En Progreso') return 'bi-play-circle-fill'; return 'bi-hourglass-split'; }
+        function tokenCSRF() { var el = document.querySelector('input[name="__RequestVerificationToken"]'); return el ? el.value : ''; }
 
         function notificar(msg, tipo) {
         toastEl.textContent = msg;
@@ -991,7 +967,8 @@
 
         function restaurarFiltros() {
         try {
-        var u = localStorage.getItem(LS_USER); if (u != null) filtroUsuario.value = u;
+        var u = localStorage.getItem(LS_USER);
+        if (u != null) filtroUsuario.value = u;
         var p = localStorage.getItem(LS_PROY); if (p != null) filtroProyecto.value = p;
         var es = localStorage.getItem(LS_EST);
         if (es) {
@@ -1013,50 +990,33 @@
         return 'dayGridMonth';
         }
 
-        // ============================================================
-        // POPULAR FILTROS DINÁMICOS (TAREAS Y SUBFASES)
-        // ============================================================
         function poblarFiltroUsuarios(eventos) {
         var usuarios = {};
-
         eventos.forEach(function (e) {
         var p = e.extendedProps;
-        // MEJORA: Escanea cualquier evento (tarea o subfase) que tenga un email real asignado
         if (p && p.email && p.email !== 'Sin_Asignar' && p.email.trim() !== '') {
-        // Si el evento no trae iniciales por defecto, las calculamos rápido
         var ini = p.iniciales || (p.email.length >= 2 ? p.email.substring(0, 2).toUpperCase() : '??');
         usuarios[p.email] = ini;
         }
         });
-
         var actual = filtroUsuario.value;
         var opciones = Object.entries(usuarios).sort(function (a, b) { return a[1].localeCompare(b[1]); });
-
         filtroUsuario.innerHTML = '<option value="">Todos los usuarios</option>' +
-        opciones.map(function (par) {
-        return '<option value="' + esc(par[0]) + '">[' + esc(par[1]) + '] ' + esc(par[0]) + '</option>';
-        }).join('');
-
+        opciones.map(function (par) { return '<option value="' + esc(par[0]) + '">[' + esc(par[1]) + '] ' + esc(par[0]) + '</option>'; }).join('');
         filtroUsuario.value = actual;
         }
 
         function poblarFiltroProyectos(eventos) {
         var set = {};
-
         eventos.forEach(function (e) {
         var p = e.extendedProps;
-        // MEJORA: Registra el proyecto ya sea si viene de una tarea, una fase o una subfase
         if (p && p.proyecto && p.proyecto !== 'Desconocido' && p.proyecto.trim() !== '') {
         set[p.proyecto] = true;
         }
         });
-
         var actual = filtroProyecto.value;
         var nombres = Object.keys(set).sort(function (a, b) { return a.localeCompare(b); });
-
-        filtroProyecto.innerHTML = '<option value="">Todos los proyectos</option>' +
-        nombres.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
-
+        filtroProyecto.innerHTML = '<option value="">Todos los projects</option>' + nombres.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
         filtroProyecto.value = actual;
         }
 
@@ -1072,7 +1032,6 @@
         if (!estadosActivos.has(estadoBucket(p.estado))) return false;
         return true;
         });
-
         var otrosEventos = todosLosEventos.filter(function (e) {
         if (e.extendedProps.tipo === 'tarea') return false;
         var p = e.extendedProps;
@@ -1082,7 +1041,6 @@
         if (p.tipo === 'subfase' && usuario && p.email !== usuario) return false;
         return true;
         });
-
         return eventosTareas.concat(otrosEventos);
         }
 
@@ -1092,6 +1050,7 @@
         if (calendar) {
         calendar.removeAllEventSources();
         calendar.addEventSource(visibles);
+        calendar.addEventSource(eventosFeriados); // Mantenemos los feriados intactos
         aplicarVentana();
         renderResumen(calendar.view.currentStart, calendar.view.currentEnd);
         calendar.render();
@@ -1110,13 +1069,11 @@
         if (!cargaPorDia[dia]) cargaPorDia[dia] = { porUsuario: {}, max: 0, maxEmail: null };
         var c = cargaPorDia[dia];
         c.porUsuario[email] = (c.porUsuario[email] || 0) + h;
+
         if (c.porUsuario[email] > c.max) { c.max = c.porUsuario[email]; c.maxEmail = email; }
         });
         }
 
-        // ============================================================
-        // CALCULAR HORAS LABORALES REALES (MÁXIMO 8H DIARIAS - LUN A VIE)
-        // ============================================================
         function calcularHorasLaboralesEnRango(fIni, fFin, rIni, rFin) {
         var s = new Date(Math.max(parseLocal(fIni), parseLocal(rIni)));
         var e = new Date(Math.min(parseLocal(fFin), parseLocal(rFin)));
@@ -1126,11 +1083,9 @@
         var curr = new Date(s.getFullYear(), s.getMonth(), s.getDate());
         var endDay = new Date(e.getFullYear(), e.getMonth(), e.getDate());
 
-        // Iteramos día por día sobre la intersección real
         while (curr <= endDay) {
         var dayOfWeek = curr.getDay();
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Excluir Sábado (6) y Domingo (0)
-        // Establecemos la ventana de jornada estándar (09:00 a 17:00 = 8 horas laborables)
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
         var dtStart = new Date(curr.getFullYear(), curr.getMonth(), curr.getDate(), 9, 0, 0);
         var dtEnd = new Date(curr.getFullYear(), curr.getMonth(), curr.getDate(), 17, 0, 0);
 
@@ -1152,7 +1107,6 @@
 
         var visibles = recomputarFiltrados();
 
-        // PASO 1: Computar Subfases aplicando el filtro de horas laborables estrictas
         visibles.forEach(function (ev) {
         var p = ev.extendedProps;
         if (!p || p.tipo !== 'subfase') return;
@@ -1168,13 +1122,11 @@
         totales[ini] = { est: 0, real: 0, email: email, subfasesContadas: {} };
         }
         totales[ini].est += diffHoras;
-
         var nomeSubfase = p.subfase || ev.title;
         totales[ini].subfasesContadas[nomeSubfase] = true;
         }
         });
 
-        // PASO 2: Computar Tareas hijas evitando duplicar si su subfase ya aportó el tiempo
         visibles.forEach(function (ev) {
         var p = ev.extendedProps;
         if (!p || p.tipo !== 'tarea') return;
@@ -1233,7 +1185,6 @@
 
         if (!minH) minH = HORARIOS_CLIENTE.__default__.inicio;
         if (!maxH) maxH = HORARIOS_CLIENTE.__default__.fin;
-
         eventosTareas.forEach(function (e) {
         var s = parseLocal(e.start);
         var en = e.end ? parseLocal(e.end) : s;
@@ -1268,23 +1219,36 @@
         }
 
         // ============================================================
-        // RENDER VISUAL Y TOOLTIPS
+        // RENDERIZADO VISUAL DEL CALENDARIO CORREGIDO
         // ============================================================
         function renderEvento(arg) {
-        var props = arg.event.extendedProps;
+        var props = arg.event.extendedProps || {};
+
+        // CORRECCIÓN: Si es el fondo sutil del feriado, no pintamos nada.
+        if (props.tipo === 'feriado_bg') return {};
+
+        // CORRECCIÓN: Si es el banner del feriado, lo mostramos limpio y centrado.
+        if (props.tipo === 'feriado') {
+        return {
+        html: '<div class="w-100 text-center text-truncate" style="color:#ef4444; font-size:0.7rem; font-weight:700; font-family:ui-monospace,monospace; padding: 2px 0;">' + esc(arg.event.title) + '</div>'
+        };
+        }
 
         if (arg.view.type === 'dayGridMonth' && props.tipo === 'tarea') {
         return { html: '<span class="cal-month-evt-text">' + esc(arg.event.title) + '</span>' };
         }
+
         if (props.tipo === 'fase') {
         return {};
         }
+
         if (props.tipo === 'subfase') {
         return {
         html: '<div class="w-100 px-1 text-truncate" style="font-size:0.65rem;font-family:ui-monospace,monospace;">' +
         '<i class="bi bi-diagram-2 me-1"></i>[' + esc(props.iniciales) + '] ' + esc(arg.event.title) + '</div>'
         };
         }
+
         if (props.tipo === 'resumen') {
         return {
         html: '<div class="w-100 text-center text-truncate" style="font-size:0.65rem;font-family:ui-monospace,monospace;padding:2px;">' +
@@ -1307,6 +1271,10 @@
         function mostrarTooltip(info) {
         var props = info.event.extendedProps;
         var html;
+
+        if (props.tipo === 'feriado' || props.tipo === 'feriado_bg') {
+        return; // Sin tooltip extra para feriados, ya se ve el banner
+        }
 
         if (props.tipo === 'resumen') {
         html = '<div class="font-monospace p-1" style="font-size:0.75rem;">' +
@@ -1365,7 +1333,6 @@
         limEl.innerHTML = 'Sin límites definidos';
         }
 
-        // Referencias de control de edición
         var btnGuardar = document.getElementById('cal-modal-btn-guardar');
         var btnEliminar = document.getElementById('cal-modal-btn-eliminar');
         var userSelect = document.getElementById('cal-modal-edit-responsable');
@@ -1374,7 +1341,6 @@
         var inputFin = document.getElementById('cal-modal-edit-fin');
 
         if (p.tipo === 'subfase') {
-        // Es una Subfase estructural: Desactivar inputs de formulario y ocultar acciones de guardado
         btnGuardar.classList.add('d-none');
         btnEliminar.classList.add('d-none');
 
@@ -1391,7 +1357,6 @@
         setText('cal-modal-plan', '—');
         setText('cal-modal-real', '—');
         } else {
-        // Es una Tarea normal: Habilitar el comportamiento de edición estándar
         btnGuardar.classList.remove('d-none');
         btnEliminar.classList.remove('d-none');
 
@@ -1417,11 +1382,9 @@
         estadoSelect.value = p.estado;
         inputInicio.value = toLocalIso(info.event.start).substring(0, 16);
         inputFin.value = info.event.end ? toLocalIso(info.event.end).substring(0, 16) : '';
-
         setText('cal-modal-plan', (p.horasEstimadas != null ? p.horasEstimadas + ' h' : '—'));
         setText('cal-modal-real', (parseFloat(p.horasReales) > 0 ? p.horasReales + ' h' : '—'));
         }
-
         modalEvento.show();
         }
 
@@ -1459,7 +1422,6 @@
         }
 
         var subs = todosLosEventos.filter(function(e) { return e.extendedProps.tipo === 'subfase' && e.extendedProps.proyecto === proy; });
-
         if(subs.length === 0) {
         selSub.innerHTML = '<option value="">(Sin subfases programadas)</option>';
         selSub.disabled = true;
@@ -1476,9 +1438,6 @@
         });
         }
 
-        // ============================================================
-        // REPROGRAMACIÓN Y DRAG & DROP
-        // ============================================================
         function sincronizarEventoLocal(fcEvent) {
         var obj = todosLosEventos.find(function (e) { return e.id === fcEvent.id; });
         if (obj) {
@@ -1489,7 +1448,7 @@
 
         function onReprogramar(info) {
         var ev = info.event;
-        if (ev.extendedProps.tipo === 'resumen') { info.revert(); return; }
+        if (ev.extendedProps.tipo === 'resumen' || ev.extendedProps.tipo === 'feriado' || ev.extendedProps.tipo === 'feriado_bg') { info.revert(); return; }
 
         var props = ev.extendedProps;
         if (props.subfaseInicio && props.subfaseFin) {
@@ -1517,7 +1476,6 @@
 
         var startFijo = redondearA5(ev.start);
         var endFijo = ev.end ? redondearA5(ev.end) : null;
-
         var esClonacion = info.delta && info.jsEvent && (info.jsEvent.altKey || info.jsEvent.ctrlKey);
 
         if (esClonacion) {
@@ -1526,6 +1484,7 @@
         id: parseInt(String(ev.id).replace('T_', ''), 10),
         start: toLocalIso(startFijo)
         };
+
         fetch('/Calendario/DuplicarTarea', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': tokenCSRF() },
@@ -1589,7 +1548,7 @@
         }
 
         // ============================================================
-        // CONSTRUIR CALENDARIO (CON REGULARIZACIÓN DE HORAS SEMANALES)
+        // CONSTRUIR CALENDARIO
         // ============================================================
         function construirCalendario(eventos) {
         calendar = new FullCalendar.Calendar(calendarEl, {
@@ -1601,7 +1560,10 @@
         right: 'dayGridMonth,timeGridWeek,timeGridDay'
         },
         themeSystem: 'standard',
-        events: eventos,
+        eventSources: [
+        { events: eventos },
+        { events: eventosFeriados } // Cargamos la capa visual de Feriados
+        ],
         height: alturaDisponible(),
         nowIndicator: true,
 
@@ -1618,7 +1580,7 @@
         eventDragStart: ocultarTooltip,
         eventResizeStart: ocultarTooltip,
         eventAllow: function (dropInfo, draggedEvent) {
-        return draggedEvent.extendedProps.tipo !== 'resumen';
+        return draggedEvent.extendedProps.tipo !== 'resumen' && draggedEvent.extendedProps.tipo !== 'feriado' && draggedEvent.extendedProps.tipo !== 'feriado_bg';
         },
 
         slotEventOverlap: false,
@@ -1661,7 +1623,7 @@
 
         eventClick: function (info) {
         info.jsEvent.preventDefault();
-        if (info.event.extendedProps.tipo === 'resumen') return;
+        if (info.event.extendedProps.tipo === 'resumen' || info.event.extendedProps.tipo === 'feriado' || info.event.extendedProps.tipo === 'feriado_bg') return;
         abrirModal(info);
         },
 
@@ -1671,7 +1633,6 @@
         eventMouseEnter: mostrarTooltip,
         eventMouseLeave: ocultarTooltip,
 
-        // --- BURBUJA SEMANAL INTEGRADA CON MÁXIMO 8H LABORALES ---
         weekNumberDidMount: function(info) {
         var weekStart = info.date;
         var weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -1679,7 +1640,6 @@
         var visibles = recomputarFiltrados();
         var cargaSemanal = {};
 
-        // 1. Pasada de Subfases estructurales
         visibles.forEach(function(ev) {
         var p = ev.extendedProps;
         if (!p || p.tipo !== 'subfase') return;
@@ -1699,7 +1659,6 @@
         }
         });
 
-        // 2. Pasada de Tareas operativas (Filtrando duplicidad)
         visibles.forEach(function(ev) {
         var p = ev.extendedProps;
         if (!p || p.tipo !== 'tarea') return;
@@ -1738,13 +1697,7 @@
         html += '</div>';
 
         new bootstrap.Tooltip(info.el, {
-        title: html,
-        html: true,
-        placement: 'right',
-        trigger: 'hover',
-        container: 'body',
-        sanitize: false,
-        customClass: 'custom-cal-tooltip'
+        title: html, html: true, placement: 'right', trigger: 'hover', container: 'body', sanitize: false, customClass: 'custom-cal-tooltip'
         });
         },
 
@@ -1766,9 +1719,7 @@
         });
         calendar.render();
         aplicarVentana();
-        window.addEventListener('resize', function () {
-        calendar.setOption('height', alturaDisponible());
-        });
+        window.addEventListener('resize', function () { calendar.setOption('height', alturaDisponible()); });
         }
 
         // ============================================================
@@ -1810,12 +1761,10 @@
         calendarEl.classList.remove('d-none');
 
         function actualizarEstadoClonacion(e) {
-        if (e.altKey || e.ctrlKey) {
-        document.body.classList.add('cal-alt-cloning');
-        } else {
-        document.body.classList.remove('cal-alt-cloning');
+        if (e.altKey || e.ctrlKey) { document.body.classList.add('cal-alt-cloning'); }
+        else { document.body.classList.remove('cal-alt-cloning'); }
         }
-        }
+
         window.addEventListener('keydown', actualizarEstadoClonacion);
         window.addEventListener('keyup', actualizarEstadoClonacion);
         window.addEventListener('mousemove', actualizarEstadoClonacion);
@@ -1830,7 +1779,6 @@
         // ============================================================
         // LISTENERS Y EVENTOS UX
         // ============================================================
-
         filtroUsuario.addEventListener('change', aplicarFiltro);
         filtroProyecto.addEventListener('change', aplicarFiltro);
 
@@ -1848,7 +1796,6 @@
         });
 
         retryBtn.addEventListener('click', cargarCalendario);
-
         document.getElementById('crear-proyecto').addEventListener('change', actualizarSubfasesSelect);
 
         document.getElementById('btn-mis-tareas').addEventListener('click', function() {
