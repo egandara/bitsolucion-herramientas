@@ -6,7 +6,6 @@
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
 <style>
-    /* ESTILOS POWER BI (DARK & NEON) */
     .kpi-card {
     background-color: #111424;
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -86,19 +85,23 @@
     cursor: pointer;
     }
 
-    .kpi-clickable:hover {
+    #btn-toggle-risk:hover {
     border-color: rgba(220, 53, 69, 0.5);
     box-shadow: 0 0 15px rgba(220, 53, 69, 0.2);
     }
 
-    .risk-popover {
+    #btn-toggle-overload:hover {
+    border-color: rgba(255, 193, 7, 0.5);
+    box-shadow: 0 0 15px rgba(255, 193, 7, 0.2);
+    }
+
+    .kpi-popover {
     position: absolute;
     top: 105%;
     left: 0;
     width: 100%;
     min-width: 260px;
     background: #111424;
-    border: 1px solid rgba(220, 53, 69, 0.4);
     border-radius: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85);
     z-index: 1050;
@@ -108,9 +111,17 @@
     font-size: 0.72rem;
     }
 
-    .risk-popover.active {
+    .kpi-popover.active {
     display: block;
     animation: fadeIn 0.2s ease;
+    }
+
+    .popover-danger {
+    border: 1px solid rgba(220, 53, 69, 0.4);
+    }
+
+    .popover-warning {
+    border: 1px solid rgba(255, 193, 7, 0.4);
     }
 
     @@keyframes fadeIn {
@@ -125,7 +136,6 @@
     }
     }
 
-    /* Estilos del Switch de Proyección */
     .btn-outline-cyan {
     color: #0dcaf0;
     border-color: #0dcaf0;
@@ -170,7 +180,7 @@
                 <div class="kpi-value">@ViewBag.ProyectosEnRiesgo</div>
                 <div class="small text-danger mt-2"><i class="bi bi-exclamation-circle-fill me-1"></i>Atrasados vs Plan</div>
 
-                <div class="risk-popover" id="popover-risk">
+                <div class="kpi-popover popover-danger" id="popover-risk">
                     <div class="d-flex justify-content-between align-items-center border-bottom border-danger border-opacity-25 pb-1 mb-2 text-danger fw-bold" style="font-size:0.65rem;">
                         <span><i class="bi bi-fire me-1"></i> PROYECTOS ATRASADOS</span>
                         <span>FIN ESTIMADO</span>
@@ -182,7 +192,7 @@
                             var atraso = (DateTime.Now - (DateTime)p.FechaFinEstimada).Days;
                             <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-secondary border-opacity-25 text-white">
                                 <span class="text-truncate" style="max-width: 65%;">@p.Nombre</span>
-                                <span class="text-danger fw-bold text-end">@p.FechaFinEstimada.ToString("dd MMM") <br><span style="font-size:0.55rem; color:#ff4a5a;">(-@atraso días)</span></span>
+                                <span class="text-danger fw-bold text-end">@p.FechaFinEstimada.ToString("dd MMM") <br><span style="font-size:0.55rem; color:#ff4a5a;">(-@(atraso) días)</span></span>
                             </div>
                         }
                     }
@@ -203,10 +213,14 @@
         </div>
 
         <div class="col-md-3">
-            <div class="kpi-card p-4 kpi-warning">
+            <div class="kpi-card p-4 kpi-warning kpi-clickable" id="btn-toggle-overload">
                 <div class="kpi-title mb-2 d-flex justify-content-between align-items-center">
-                    <span>Equipo Sobrecargado</span>
-                    <div class="d-flex align-items-center bg-dark rounded border border-secondary border-opacity-50 px-1">
+                    <div>
+                        <span>Equipo Sobrecargado</span>
+                        <i class="bi bi-chevron-down text-warning opacity-50 ms-1"></i>
+                    </div>
+
+                    <div class="d-flex align-items-center bg-dark rounded border border-secondary border-opacity-50 px-1" onclick="event.stopPropagation();">
                         <button class="week-nav-btn" onclick="cambiarSemana(-1)"><i class="bi bi-caret-left-fill"></i></button>
                         <div class="text-center px-1" style="min-width: 75px; cursor:default;">
                             <div id="lbl-semana" style="font-size: 0.55rem; color:#ffc107; font-weight:700;">@ViewBag.SobrecargaLabel</div>
@@ -220,6 +234,29 @@
                     <div id="spinner-sobrecarga" class="spinner-border spinner-border-sm text-warning d-none" role="status"></div>
                 </div>
                 <div class="small text-warning mt-2"><i class="bi bi-person-fill-exclamation me-1"></i>> 40h asignadas</div>
+
+                <div class="kpi-popover popover-warning" id="popover-overload" onclick="event.stopPropagation();">
+                    <div class="d-flex justify-content-between align-items-center border-bottom border-warning border-opacity-25 pb-1 mb-2 text-warning fw-bold" style="font-size:0.65rem;">
+                        <span><i class="bi bi-people-fill me-1"></i> USUARIOS SOBRECARGADOS</span>
+                        <span>HORAS</span>
+                    </div>
+                    <div id="overload-list-container">
+                        @if (ViewBag.SobrecargaList != null && Enumerable.Count(ViewBag.SobrecargaList) > 0)
+                        {
+                            foreach (var u in ViewBag.SobrecargaList)
+                            {
+                                <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-secondary border-opacity-25 text-white">
+                                    <span class="text-truncate" style="max-width: 65%;">@u.Nombre</span>
+                                    <span class="text-warning fw-bold text-end">@u.Horas h <br><span style="font-size:0.55rem; color:#ffc107;">(> 40h)</span></span>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="text-success text-center py-2">Carga de trabajo equilibrada.</div>
+                        }
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -247,7 +284,6 @@
                         <input type="radio" class="btn-check" name="btnSwitchCarga" id="btn-futuro" autocomplete="off" onchange="toggleChartMode('futuro')">
                         <label class="btn btn-sm btn-outline-amber fw-bold font-monospace" for="btn-futuro" style="font-size:0.75rem;"><i class="bi bi-fast-forward-fill me-1"></i>Proyectado</label>
                     </div>
-
                 </div>
                 <div id="cargaDiariaChart" style="min-height: 320px;"></div>
             </div>
@@ -271,13 +307,16 @@
                         <ul class="list-group list-group-flush">
                             @foreach (var t in tareasEstancadas)
                             {
+                                // Fíjate aquí: No se usa @{} porque estamos ya dentro del contexto de código de foreach
                                 var diasEstancada = (DateTime.Now - (t.FechaInicioReal ?? DateTime.Now)).Days;
+                                string devAlias = t.UsuarioAsignado?.Email != null ? t.UsuarioAsignado.Email.Split((char)64)[0] : "Sin Asignar";
+
                                 <li class="list-group-item bg-transparent border-secondary border-opacity-25 px-0 text-white">
                                     <div class="d-flex justify-content-between align-items-start">
                                         <div>
                                             <div class="fw-bold" style="font-size: 0.85rem;">@t.Nombre</div>
                                             <div class="text-white-50 mt-1" style="font-size: 0.7rem;">
-                                                <i class="bi bi-person-fill me-1"></i>@(t.UsuarioAsignado?.Email?.Split('@')[0] ?? "Sin Asignar")
+                                                <i class="bi bi-person-fill me-1"></i>@devAlias
                                                 <br />
                                                 <i class="bi bi-folder2-open me-1"></i>@t.SubFase?.Fase?.Proyecto?.Nombre
                                             </div>
@@ -303,7 +342,6 @@
 
 @section Scripts {
     <script>
-        // Lógica de Navegación de Semanas (AJAX)
         let currentWeekOffset = 0;
         function cambiarSemana(direccion) {
         currentWeekOffset += direccion;
@@ -316,6 +354,20 @@
         document.getElementById('val-sobrecarga').textContent = data.count;
         document.getElementById('lbl-semana').textContent = data.label;
         document.getElementById('lbl-rango').textContent = data.rango;
+
+        let listHtml = '';
+        if (data.usuarios && data.usuarios.length > 0) {
+        data.usuarios.forEach(u => {
+        listHtml += `
+        <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-secondary border-opacity-25 text-white">
+        <span class="text-truncate" style="max-width: 65%;">${u.nombre}</span>
+        <span class="text-warning fw-bold text-end">${u.horas} h <br><span style="font-size:0.55rem; color:#ffc107;">(> 40h)</span></span>
+        </div>`;
+        });
+        } else {
+        listHtml = '<div class="text-success text-center py-2">Carga de trabajo equilibrada.</div>';
+        }
+        document.getElementById('overload-list-container').innerHTML = listHtml;
         })
         .finally(() => {
         document.getElementById('spinner-sobrecarga').classList.add('d-none');
@@ -323,10 +375,8 @@
         });
         }
 
-        // Variable global para la instancia del gráfico
         var chartCargaDiaria;
 
-        // Datos Inyectados desde C#
         var dataPasado = {
         etiquetas: @Html.Raw(ViewBag.EtiquetasDias),
         series: @Html.Raw(ViewBag.SeriesCarga)
@@ -345,25 +395,39 @@
 
         document.getElementById('titulo-grafico-carga').innerHTML = newTitle;
 
-        // Actualizar opciones (eje X)
         chartCargaDiaria.updateOptions({
         xaxis: { categories: isFuturo ? dataFuturo.etiquetas : dataPasado.etiquetas },
         yaxis: { title: { text: isFuturo ? 'Horas Estimadas' : 'Horas Reportadas' } }
         });
 
-        // Actualizar los datos de las barras
         chartCargaDiaria.updateSeries(isFuturo ? dataFuturo.series : dataPasado.series);
         }
 
         document.addEventListener("DOMContentLoaded", function () {
 
-        // POPOVER MUNDIAL (Riesgo)
         const btnRisk = document.getElementById('btn-toggle-risk');
         const popoverRisk = document.getElementById('popover-risk');
-        btnRisk.addEventListener('click', e => { e.stopPropagation(); popoverRisk.classList.toggle('active'); });
-        document.addEventListener('click', e => { if(!btnRisk.contains(e.target)) popoverRisk.classList.remove('active'); });
 
-        // 1. Gráfico Esfuerzo (Existente)
+        const btnOverload = document.getElementById('btn-toggle-overload');
+        const popoverOverload = document.getElementById('popover-overload');
+
+        btnRisk.addEventListener('click', e => {
+        e.stopPropagation();
+        popoverRisk.classList.toggle('active');
+        popoverOverload.classList.remove('active');
+        });
+
+        btnOverload.addEventListener('click', e => {
+        e.stopPropagation();
+        popoverOverload.classList.toggle('active');
+        popoverRisk.classList.remove('active');
+        });
+
+        document.addEventListener('click', e => {
+        if(!btnRisk.contains(e.target)) popoverRisk.classList.remove('active');
+        if(!btnOverload.contains(e.target)) popoverOverload.classList.remove('active');
+        });
+
         var labelsProyectos = @Html.Raw(ViewBag.LabelsEsfuerzo);
         var dataPlanificada = @Html.Raw(ViewBag.DataPlanificada);
         var dataReal = @Html.Raw(ViewBag.DataReal);
@@ -381,7 +445,6 @@
         tooltip: { theme: 'dark' }
         }).render();
 
-        // 2. Gráfico Carga Diaria Inicial (Histórico por defecto)
         var colorPalette = ['#0dcaf0', '#20c997', '#ffc107', '#fd7e14', '#6f42c1', '#d63384', '#dc3545', '#0d6efd'];
         var optionsCarga = {
         series: dataPasado.series,

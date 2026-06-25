@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using NotebookValidator.Web.Data;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -27,7 +28,14 @@ namespace NotebookValidator.Web.Controllers
                    !feriados.Contains(date.Date);
         }
 
-        // Objeto unificado para mezclar Tareas y Subfases en el mismo gráfico
+        // Helper para formatear las fechas a "Lun 25 jun"
+        private string FormatearDiaSemana(DateTime d)
+        {
+            var culture = new CultureInfo("es-ES");
+            string str = d.ToString("ddd dd MMM", culture).Replace(".", "");
+            return char.ToUpper(str[0]) + str.Substring(1);
+        }
+
         private class WorkItem
         {
             public string Email { get; set; } = "Sin Asignar";
@@ -59,9 +67,12 @@ namespace NotebookValidator.Web.Controllers
             ViewBag.ProyectosEnRiesgo = proyectosEnRiesgoList.Count;
             ViewBag.ProyectosEnRiesgoList = proyectosEnRiesgoList;
             ViewBag.TasaExitoQA = tasaExitoQA;
+
             ViewBag.SobrecargaCount = sobrecargaActual.Count;
             ViewBag.SobrecargaLabel = sobrecargaActual.Label;
             ViewBag.SobrecargaRango = sobrecargaActual.Rango;
+            ViewBag.SobrecargaList = sobrecargaActual.Usuarios;
+
             ViewBag.AlertasVencidas = alertasVencidas;
 
             // ==========================================
@@ -99,7 +110,8 @@ namespace NotebookValidator.Web.Controllers
                 .ToListAsync();
 
             var diasPasados = Enumerable.Range(0, 14).Select(i => catorceDiasAtras.AddDays(i).Date).ToList();
-            var etiquetasDiasPasados = diasPasados.Select(d => d.ToString("dd MMM")).ToList();
+            var etiquetasDiasPasados = diasPasados.Select(FormatearDiaSemana).ToList();
+
             var usuariosPasado = tareasCompletadas.Where(t => t.UsuarioAsignado != null).Select(t => t.UsuarioAsignado.Email).Distinct().ToList();
             var seriesCargaPasado = new List<object>();
 
@@ -134,52 +146,32 @@ namespace NotebookValidator.Web.Controllers
                 cursor = cursor.AddDays(1);
             }
 
-            var etiquetasDiasFuturo = proximosDiasHabiles.Select(d => d.ToString("dd MMM")).ToList();
+            var etiquetasDiasFuturo = proximosDiasHabiles.Select(FormatearDiaSemana).ToList();
             DateTime maxFutureDate = proximosDiasHabiles.Last();
 
-            // 🎯 FUSIÓN DE TAREAS Y SUBFASES PARA LA PROYECCIÓN
-            var tareasPendientes = await _context.TareasProyecto.Include(t => t.UsuarioAsignado).Where(t => t.Estado != "Terminada").ToListAsync();
-            var subfasesPendientes = await _context.SubFasesProyecto.Include(s => s.Responsable).Where(s => s.Estado != "Terminada").ToListAsync();
-
-            var workItems = new List<WorkItem>();
-
-            // Procesar Tareas
-            foreach (var t in tareasPendientes)
-            {
-                DateTime s = t.FechaInicioReal ?? t.FechaInicioPlanificada ?? t.FechaCreacion;
-                decimal h = t.HorasEstimadas > 0 ? t.HorasEstimadas : 1m;
-                DateTime e = t.FechaFinPlanificada ?? t.FechaFinReal ?? s.AddHours((double)h);
-                workItems.Add(new WorkItem { Email = t.UsuarioAsignado?.Email ?? "Sin Asignar", Start = s, End = e, Horas = h });
-            }
-
-            // Procesar Subfases (Lo que te estaba faltando)
-            foreach (var sub in subfasesPendientes)
-            {
-                if (!sub.FechaInicio.HasValue) continue;
-                DateTime s = sub.FechaInicio.Value;
-                decimal h = sub.HorasEstimadas > 0 ? sub.HorasEstimadas : 1m;
-                DateTime e = sub.FechaFinEstimada ?? s.AddHours((double)h);
-                workItems.Add(new WorkItem { Email = sub.Responsable?.Email ?? "Sin Asignar", Start = s, End = e, Horas = h });
-            }
-
+            var todasLasTareasPendientes = await _context.TareasProyecto.Include(t => t.UsuarioAsignado).Where(t => t.Estado != "Terminada").ToListAsync();
             var seriesCargaFuturo = new List<object>();
 
-            if (workItems.Any())
+            if (todasLasTareasPendientes.Any())
             {
-                var usuariosFuturo = workItems.Select(w => w.Email).Distinct().ToList();
+                var usuariosFuturo = todasLasTareasPendientes.Select(t => t.UsuarioAsignado?.Email ?? "Sin Asignar").Distinct().ToList();
 
                 foreach (var userEmail in usuariosFuturo)
                 {
                     var dataUsuarioFuturo = new decimal[14];
-                    var itemsDelUsuario = workItems.Where(w => w.Email == userEmail).ToList();
+                    var tareasDelUsuario = todasLasTareasPendientes.Where(t => (t.UsuarioAsignado?.Email ?? "Sin Asignar") == userEmail).ToList();
 
-                    foreach (var item in itemsDelUsuario)
+                    foreach (var t in tareasDelUsuario)
                     {
-                        DateTime startTask = item.Start.Date < DateTime.Today ? DateTime.Today : item.Start.Date;
-                        DateTime endTask = item.End.Date < DateTime.Today ? DateTime.Today : item.End.Date;
+                        DateTime startOriginal = t.FechaInicioReal ?? t.FechaInicioPlanificada ?? t.FechaCreacion;
+                        decimal horasEstimadas = t.HorasEstimadas > 0 ? t.HorasEstimadas : 1m;
+                        DateTime endOriginal = t.FechaFinPlanificada ?? t.FechaFinReal ?? startOriginal.AddHours((double)horasEstimadas);
+
+                        DateTime startTask = startOriginal.Date < DateTime.Today ? DateTime.Today : startOriginal.Date;
+                        DateTime endTask = endOriginal.Date < DateTime.Today ? DateTime.Today : endOriginal.Date;
 
                         if (endTask < startTask) endTask = startTask;
-                        if (startTask > maxFutureDate) continue; // Cae fuera de los 14 días
+                        if (startTask > maxFutureDate) continue;
 
                         int taskWorkingDays = 0;
                         for (var d = startTask; d <= endTask; d = d.AddDays(1))
@@ -187,8 +179,8 @@ namespace NotebookValidator.Web.Controllers
                             if (EsHabil(d, feriadosDb)) taskWorkingDays++;
                         }
 
-                        if (taskWorkingDays == 0) taskWorkingDays = 1; // Seguridad
-                        decimal hoursPerDay = item.Horas / taskWorkingDays;
+                        if (taskWorkingDays == 0) taskWorkingDays = 1;
+                        decimal hoursPerDay = horasEstimadas / taskWorkingDays;
 
                         for (int i = 0; i < 14; i++)
                         {
@@ -249,32 +241,49 @@ namespace NotebookValidator.Web.Controllers
             DateTime finSemana = inicioSemana.AddDays(6).AddHours(23).AddMinutes(59).AddSeconds(59);
 
             var tareasPendientes = await _context.TareasProyecto.Where(t => t.UsuarioAsignadoId != null && t.Estado != "Terminada").ToListAsync();
-            var subfasesPendientes = await _context.SubFasesProyecto.Where(s => s.ResponsableId != null && s.Estado != "Terminada").ToListAsync();
+            var subfasesPendientes = await _context.SubFasesProyecto.Include(s => s.Responsable).Where(s => s.ResponsableId != null && s.Estado != "Terminada").ToListAsync();
 
             var workItems = new List<WorkItem>();
 
             foreach (var t in tareasPendientes)
             {
                 DateTime s = t.FechaInicioReal ?? t.FechaInicioPlanificada ?? t.FechaCreacion;
-                workItems.Add(new WorkItem { Email = t.UsuarioAsignadoId, Start = s, Horas = t.HorasEstimadas });
+                var emailStr = _context.Users.Where(u => u.Id == t.UsuarioAsignadoId).Select(u => u.Email).FirstOrDefault() ?? t.UsuarioAsignadoId;
+                workItems.Add(new WorkItem { Email = emailStr, Start = s, Horas = t.HorasEstimadas });
             }
             foreach (var sub in subfasesPendientes)
             {
                 if (sub.FechaInicio.HasValue)
-                    workItems.Add(new WorkItem { Email = sub.ResponsableId, Start = sub.FechaInicio.Value, Horas = sub.HorasEstimadas });
+                    workItems.Add(new WorkItem { Email = sub.Responsable?.Email ?? sub.ResponsableId, Start = sub.FechaInicio.Value, Horas = sub.HorasEstimadas });
             }
 
             var itemsEnRango = workItems.Where(w => w.Start >= inicioSemana && w.Start <= finSemana);
 
-            var count = itemsEnRango
+            // 💡 SOLUCIÓN: Agregamos la propiedad 'Nombre' ya cortada para que la vista no use Split
+            var usuariosSobrecargados = itemsEnRango
                 .GroupBy(w => w.Email)
-                .Select(g => new { TotalHoras = g.Sum(x => x.Horas) })
-                .Count(x => x.TotalHoras > 40);
+                .Select(g => new { Email = g.Key, TotalHoras = g.Sum(x => x.Horas) })
+                .Where(x => x.TotalHoras > 40)
+                .OrderByDescending(x => x.TotalHoras)
+                .Select(x => new SobrecargaUsuario
+                {
+                    Email = x.Email ?? "Sin Asignar",
+                    Nombre = (x.Email ?? "Sin Asignar").Split('@')[0],
+                    Horas = Math.Round(x.TotalHoras, 1)
+                })
+                .ToList();
 
             string label = offsetSemanas == 0 ? "ESTA SEMANA" : (offsetSemanas == 1 ? "PRÓX. SEMANA" : (offsetSemanas == -1 ? "SEM. PASADA" : $"SEMANA {offsetSemanas}"));
             string rango = $"{inicioSemana:dd MMM} - {finSemana:dd MMM}";
 
-            return new SobrecargaResult { Count = count, Label = label, Rango = rango };
+            return new SobrecargaResult { Count = usuariosSobrecargados.Count, Label = label, Rango = rango, Usuarios = usuariosSobrecargados };
+        }
+
+        private class SobrecargaUsuario
+        {
+            public string Email { get; set; } = string.Empty;
+            public string Nombre { get; set; } = string.Empty;
+            public decimal Horas { get; set; }
         }
 
         private class SobrecargaResult
@@ -282,6 +291,7 @@ namespace NotebookValidator.Web.Controllers
             public int Count { get; set; }
             public string Label { get; set; } = string.Empty;
             public string Rango { get; set; } = string.Empty;
+            public List<SobrecargaUsuario> Usuarios { get; set; } = new List<SobrecargaUsuario>();
         }
     }
 }
