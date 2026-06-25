@@ -1,6 +1,19 @@
 @{
     ViewData["Title"] = "Dashboard de Proyectos";
     var tareasEstancadas = ViewBag.TareasEstancadas as IEnumerable<NotebookValidator.Web.Models.GestorProyectos.TareaProyecto>;
+
+    // LÓGICA DE PSICOLOGÍA DEL COLOR PARA KPIs
+    string riskColorClass = ViewBag.ProyectosEnRiesgo > 0 ? "kpi-danger" : "kpi-success";
+    string riskTextClass = ViewBag.ProyectosEnRiesgo > 0 ? "text-danger" : "text-success";
+    string riskIcon = ViewBag.ProyectosEnRiesgo > 0 ? "bi-exclamation-circle-fill" : "bi-check-circle-fill";
+
+    string overloadColorClass = ViewBag.SobrecargaCount > 0 ? "kpi-warning" : "kpi-success";
+    string overloadTextClass = ViewBag.SobrecargaCount > 0 ? "text-warning" : "text-success";
+    string overloadIcon = ViewBag.SobrecargaCount > 0 ? "bi-person-fill-exclamation" : "bi-check-circle-fill";
+
+    string alertsColorClass = ViewBag.AlertasVencidas > 0 ? "kpi-info" : "kpi-success";
+    string alertsTextClass = ViewBag.AlertasVencidas > 0 ? "text-info" : "text-success";
+    string alertsIcon = ViewBag.AlertasVencidas > 0 ? "bi-clock-history" : "bi-check-circle-fill";
 }
 
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
@@ -8,33 +21,32 @@
 
 <style>
     /* ESTILOS BASE */
-    .kpi-card { background-color: #111424; border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 8px; transition: transform 0.2s ease, box-shadow 0.2s ease; height: 100%; position: relative; }
-    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.5); }
+    .kpi-card { background-color: #111424; border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 8px; transition: transform 0.2s ease, box-shadow 0.2s ease; height: 100%; position: relative; z-index: 1;}
+    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.5); z-index: 10;}
     .kpi-title { font-family: ui-monospace, monospace; font-size: 0.75rem; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; }
     .kpi-value { font-size: 2.2rem; font-weight: 800; color: #ffffff; line-height: 1.2; }
-    .kpi-danger  { border-left: 4px solid #dc3545; }
-    .kpi-success { border-left: 4px solid #20c997; }
-    .kpi-warning { border-left: 4px solid #ffc107; }
-    .kpi-info    { border-left: 4px solid #0dcaf0; }
-    .chart-container { background-color: #111424; border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 20px; }
+    
+    .kpi-danger  { border-left: 4px solid #dc3545 !important; }
+    .kpi-success { border-left: 4px solid #20c997 !important; }
+    .kpi-warning { border-left: 4px solid #ffc107 !important; }
+    .kpi-info    { border-left: 4px solid #0dcaf0 !important; }
+    
+    .chart-container { background-color: #111424; border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 20px; position: relative; z-index: 1;}
     .section-title { color: #fff; font-weight: 700; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 20px; display: flex; align-items: center; }
     
     .week-nav-btn { background: transparent; border: none; color: rgba(255,255,255,0.4); cursor: pointer; padding: 0 4px; transition: color 0.2s; font-size: 0.8rem; }
     .week-nav-btn:hover { color: #ffc107; }
     .kpi-clickable { cursor: pointer; }
-    #btn-toggle-risk:hover { border-color: rgba(220, 53, 69, 0.5); box-shadow: 0 0 15px rgba(220, 53, 69, 0.2); }
-    #btn-toggle-overload:hover { border-color: rgba(255, 193, 7, 0.5); box-shadow: 0 0 15px rgba(255, 193, 7, 0.2); }
     
-    .kpi-popover { position: absolute; top: 105%; left: 0; width: 100%; min-width: 260px; background: #111424; border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85); z-index: 1050; padding: 12px; display: none; font-family: ui-monospace, monospace; font-size: 0.72rem; }
+    .kpi-popover { position: absolute; top: 105%; left: 0; width: 100%; min-width: 260px; background: #111424; border-radius: 8px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9); z-index: 9999; padding: 12px; display: none; font-family: ui-monospace, monospace; font-size: 0.72rem; }
     .kpi-popover.active { display: block; animation: fadeIn 0.2s ease; }
-    .popover-danger { border: 1px solid rgba(220, 53, 69, 0.4); }
-    .popover-warning { border: 1px solid rgba(255, 193, 7, 0.4); }
     @@keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
     .btn-outline-cyan { color: #0dcaf0; border-color: #0dcaf0; }
     .btn-outline-cyan:hover, .btn-check:checked + .btn-outline-cyan { background-color: #0dcaf0; color: #000; border-color: #0dcaf0; }
     .btn-outline-amber { color: #ffc107; border-color: #ffc107; }
     .btn-outline-amber:hover, .btn-check:checked + .btn-outline-amber { background-color: #ffc107; color: #000; border-color: #ffc107; }
+    
     .icon-info-help { font-size: 0.85rem; color: rgba(255, 255, 255, 0.3); margin-left: 6px; cursor: help; transition: color 0.2s ease; }
     .icon-info-help:hover { color: #0dcaf0; }
     .tooltip-inner { background-color: #111424 !important; color: #f8f9fa !important; border: 1px solid #0dcaf0 !important; box-shadow: 0 4px 15px rgba(0,0,0,0.8); font-family: ui-monospace, monospace; font-size: 0.75rem; padding: 8px 12px; text-align: left; max-width: 250px; }
@@ -51,7 +63,6 @@
     .edit-mode .sortable-item:active { cursor: grabbing; }
     @@keyframes wiggle { 0% { transform: rotate(0deg); } 25% { transform: rotate(-0.5deg); } 50% { transform: rotate(0deg); } 75% { transform: rotate(0.5deg); } 100% { transform: rotate(0deg); } }
 
-    /* Estilos del Panel de Ajustes del Gráfico */
     .chart-settings-btn { background: transparent; color: #6c757d; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 3px 8px; transition: all 0.2s; }
     .chart-settings-btn:hover { color: #fff; border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.05); }
     .color-picker-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
@@ -89,24 +100,25 @@
         
         <div class="sortable-item mb-4" data-id="block-kpis">
             <div class="row g-4">
-                <div class="col-md-3">
-                    <div class="kpi-card p-4 kpi-danger kpi-clickable" id="btn-toggle-risk">
+                
+                <div class="col-md-3 position-relative">
+                    <div class="kpi-card p-4 @riskColorClass kpi-clickable" id="btn-toggle-risk">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <div class="kpi-title">
                                 Proyectos en Riesgo 
                                 <i class="bi bi-info-circle-fill icon-info-help" data-bs-toggle="tooltip" title="Proyectos activos cuya fecha de fin estimada ya fue superada."></i>
                             </div>
-                            <i class="bi bi-chevron-down text-danger opacity-50"></i>
+                            <i class="bi bi-chevron-down opacity-50 @riskTextClass"></i>
                         </div>
                         <div class="kpi-value">@ViewBag.ProyectosEnRiesgo</div>
-                        <div class="small text-danger mt-2"><i class="bi bi-exclamation-circle-fill me-1"></i>Atrasados vs Plan</div>
+                        <div class="small @riskTextClass mt-2"><i class="bi @riskIcon me-1"></i>@(ViewBag.ProyectosEnRiesgo > 0 ? "Atrasados vs Plan" : "Plan al día")</div>
                         
-                        <div class="kpi-popover popover-danger" id="popover-risk">
-                            <div class="d-flex justify-content-between align-items-center border-bottom border-danger border-opacity-25 pb-1 mb-2 text-danger fw-bold" style="font-size:0.65rem;">
+                        <div class="kpi-popover" id="popover-risk" style="border: 1px solid @(ViewBag.ProyectosEnRiesgo > 0 ? "rgba(220, 53, 69, 0.4)" : "rgba(32, 201, 151, 0.4)");">
+                            <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-2 fw-bold @riskTextClass" style="border-color: inherit; font-size:0.65rem;">
                                 <span><i class="bi bi-fire me-1"></i> PROYECTOS ATRASADOS</span>
                                 <span>FIN ESTIMADO</span>
                             </div>
-                            @if(ViewBag.ProyectosEnRiesgoList != null)
+                            @if(ViewBag.ProyectosEnRiesgoList != null && Enumerable.Count(ViewBag.ProyectosEnRiesgoList) > 0)
                             {
                                 foreach(dynamic p in ViewBag.ProyectosEnRiesgoList)
                                 {
@@ -117,25 +129,31 @@
                                     </div>
                                 }
                             }
+                            else { <div class="text-success text-center py-2">Todo marcha a la perfección.</div> }
                         </div>
                     </div>
                 </div>
 
                 <div class="col-md-3">
                     <div class="kpi-card p-4 kpi-success">
-                        <div class="kpi-title mb-2">Tasa Éxito QA <i class="bi bi-info-circle-fill icon-info-help" data-bs-toggle="tooltip" title="Validaciones aprobadas a la primera."></i></div>
+                        <div class="kpi-title mb-2">
+                            Tasa Éxito QA (Global)
+                            <i class="bi bi-info-circle-fill icon-info-help" data-bs-toggle="tooltip" title="Porcentaje de validaciones de Workspace aprobadas a la primera."></i>
+                        </div>
                         <div class="kpi-value">@ViewBag.TasaExitoQA%</div>
-                        <div class="small text-success mt-2"><i class="bi bi-shield-fill-check me-1"></i>Calidad de código</div>
+                        <div class="small text-success mt-2"><i class="bi bi-shield-fill-check me-1"></i>Aprobados a la primera</div>
                     </div>
                 </div>
 
-                <div class="col-md-3">
-                    <div class="kpi-card p-4 kpi-warning kpi-clickable" id="btn-toggle-overload">
+                <div class="col-md-3 position-relative">
+                    <div class="kpi-card p-4 @overloadColorClass kpi-clickable" id="btn-toggle-overload">
                         <div class="kpi-title mb-2 d-flex justify-content-between align-items-center w-100">
                             <div class="d-flex align-items-center">
                                 <span>Equipo Sobrecargado</span>
-                                <i class="bi bi-chevron-down text-warning opacity-50 ms-2"></i>
+                                <i class="bi bi-info-circle-fill icon-info-help" data-bs-toggle="tooltip" title="Usuarios con > 40h asignadas para la semana seleccionada."></i>
+                                <i id="overload-chevron" class="bi bi-chevron-down opacity-50 ms-2 @overloadTextClass"></i>
                             </div>
+                            
                             <div class="d-flex align-items-center bg-dark rounded border border-secondary border-opacity-50 px-1" onclick="event.stopPropagation();">
                                 <button class="week-nav-btn" onclick="cambiarSemana(-1)"><i class="bi bi-caret-left-fill"></i></button>
                                 <div class="text-center px-1" style="min-width: 75px; cursor:default;">
@@ -149,10 +167,10 @@
                             <span id="val-sobrecarga">@ViewBag.SobrecargaCount</span>
                             <div id="spinner-sobrecarga" class="spinner-border spinner-border-sm text-warning d-none" role="status"></div>
                         </div>
-                        <div class="small text-warning mt-2"><i class="bi bi-person-fill-exclamation me-1"></i>> 40h asignadas</div>
+                        <div id="overload-status-text" class="small @overloadTextClass mt-2"><i class="bi @overloadIcon me-1"></i>@(ViewBag.SobrecargaCount > 0 ? "> 40h asignadas" : "Carga balanceada")</div>
 
-                        <div class="kpi-popover popover-warning" id="popover-overload" onclick="event.stopPropagation();">
-                            <div class="d-flex justify-content-between align-items-center border-bottom border-warning border-opacity-25 pb-1 mb-2 text-warning fw-bold" style="font-size:0.65rem;">
+                        <div class="kpi-popover" id="popover-overload" style="border: 1px solid @(ViewBag.SobrecargaCount > 0 ? "rgba(255, 193, 7, 0.4)" : "rgba(32, 201, 151, 0.4)");">
+                            <div id="overload-popover-header" class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-2 fw-bold @overloadTextClass" style="border-color: inherit; font-size:0.65rem;">
                                 <span><i class="bi bi-people-fill me-1"></i> USUARIOS SOBRECARGADOS</span>
                                 <span>HORAS</span>
                             </div>
@@ -173,20 +191,45 @@
                     </div>
                 </div>
 
-                <div class="col-md-3">
-                    <div class="kpi-card p-4 kpi-info">
-                        <div class="kpi-title mb-2">Alertas Vencidas <i class="bi bi-info-circle-fill icon-info-help" data-bs-toggle="tooltip" title="Bitácoras pendientes."></i></div>
+                <div class="col-md-3 position-relative">
+                    <div class="kpi-card p-4 @alertsColorClass kpi-clickable" id="btn-toggle-alerts">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="kpi-title">
+                                Alertas Vencidas
+                                <i class="bi bi-info-circle-fill icon-info-help" data-bs-toggle="tooltip" title="Recordatorios que han superado su fecha y no están resueltos."></i>
+                            </div>
+                            <i class="bi bi-chevron-down opacity-50 @alertsTextClass"></i>
+                        </div>
                         <div class="kpi-value">@ViewBag.AlertasVencidas</div>
-                        <div class="small text-info mt-2"><i class="bi bi-clock-history me-1"></i>Sin resolver</div>
+                        <div class="small @alertsTextClass mt-2"><i class="bi @alertsIcon me-1"></i>@(ViewBag.AlertasVencidas > 0 ? "Sin resolver" : "Todo resuelto")</div>
+
+                        <div class="kpi-popover" id="popover-alerts" style="border: 1px solid @(ViewBag.AlertasVencidas > 0 ? "rgba(13, 202, 240, 0.4)" : "rgba(32, 201, 151, 0.4)");">
+                            <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-2 fw-bold @alertsTextClass" style="border-color: inherit; font-size:0.65rem;">
+                                <span><i class="bi bi-clock-history me-1"></i> BITÁCORAS ATRASADAS</span>
+                                <span>FECHA</span>
+                            </div>
+                            @if(ViewBag.AlertasList != null && Enumerable.Count(ViewBag.AlertasList) > 0)
+                            {
+                                foreach(dynamic c in ViewBag.AlertasList)
+                                {
+                                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-secondary border-opacity-25 text-white">
+                                        <span class="text-truncate text-info" style="max-width: 65%;">@c.ProyectoNombre</span>
+                                        <span class="text-white-50 text-end">@c.Fecha.ToString("dd MMM")</span>
+                                    </div>
+                                }
+                            }
+                            else { <div class="text-success text-center py-2">No hay alertas vencidas.</div> }
+                        </div>
                     </div>
                 </div>
+
             </div>
         </div>
 
         <div class="sortable-item mb-4" data-id="block-carga">
             <div class="row">
                 <div class="col-12">
-                    <div class="chart-container position-relative">
+                    <div class="chart-container">
                         <div class="d-flex justify-content-between align-items-center border-bottom border-secondary border-opacity-25 pb-2 mb-3">
                             <div class="section-title border-0 mb-0 pb-0" id="titulo-grafico-carga">
                                 <i class="bi bi-activity text-info me-2"></i> Productividad Diaria del Equipo
@@ -213,14 +256,20 @@
             <div class="row g-4">
                 <div class="col-lg-7">
                     <div class="chart-container h-100">
-                        <div class="section-title"><i class="bi bi-bar-chart-fill text-info me-2"></i> Desviación de Esfuerzo <i class="bi bi-info-circle-fill icon-info-help ms-2 fs-6" data-bs-toggle="tooltip" title="CLIC en la barra para ver el detalle de tareas que causaron sobrecosto."></i></div>
+                        <div class="section-title">
+                            <i class="bi bi-bar-chart-fill text-info me-2"></i> Desviación de Esfuerzo 
+                            <i class="bi bi-info-circle-fill icon-info-help ms-2 fs-6" data-bs-toggle="tooltip" title="CLIC en la barra para ver el detalle de tareas que causaron sobrecosto."></i>
+                        </div>
                         <div id="esfuerzoChart" style="min-height: 300px;"></div>
                     </div>
                 </div>
 
                 <div class="col-lg-5">
                     <div class="chart-container h-100 d-flex flex-column">
-                        <div class="section-title text-danger"><i class="bi bi-fire me-2"></i> Tareas Estancadas <i class="bi bi-info-circle-fill icon-info-help ms-2 fs-6" data-bs-toggle="tooltip" title="Campana para enviar recordatorio al responsable."></i></div>
+                        <div class="section-title text-danger">
+                            <i class="bi bi-fire me-2"></i> Tareas Estancadas
+                            <i class="bi bi-info-circle-fill icon-info-help ms-2 fs-6" data-bs-toggle="tooltip" title="Campana para enviar recordatorio al responsable."></i>
+                        </div>
                         <div class="flex-grow-1 overflow-auto" style="max-height: 300px;">
                             @if(tareasEstancadas != null && tareasEstancadas.Any())
                             {
@@ -252,7 +301,8 @@
             </div>
         </div>
 
-    </div> </div>
+    </div> 
+</div>
 
 <div class="modal fade" id="modalDrillDown" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -305,7 +355,6 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body text-white">
-          
           <div class="mb-4">
               <label class="form-label small text-white-50 text-uppercase letter-spacing-1">Tipo de Gráfico</label>
               <select id="cfgChartType" class="filter-select w-100">
@@ -315,7 +364,6 @@
                   <option value="scatter">Dispersión de Puntos</option>
               </select>
           </div>
-
           <div class="mb-4 d-flex justify-content-between align-items-center border-bottom border-secondary border-opacity-25 pb-3">
               <label class="form-label small text-white-50 text-uppercase mb-0">Disposición Visual</label>
               <div class="btn-group" role="group">
@@ -325,20 +373,16 @@
                   <label class="btn btn-sm btn-outline-secondary font-monospace" for="cfgStackedOff">Agrupado</label>
               </div>
           </div>
-
           <div class="mb-4 d-flex justify-content-between align-items-center border-bottom border-secondary border-opacity-25 pb-3">
               <label class="form-label small text-white-50 text-uppercase mb-0">Valores (Data Labels)</label>
               <div class="form-check form-switch fs-5">
                   <input class="form-check-input" type="checkbox" id="cfgDataLabels">
               </div>
           </div>
-
           <div>
               <label class="form-label small text-info text-uppercase mb-2"><i class="bi bi-palette-fill me-1"></i>Colores del Equipo</label>
-              <div id="cfgColorList" class="ps-2 pe-3" style="max-height: 150px; overflow-y: auto;">
-                  </div>
+              <div id="cfgColorList" class="ps-2 pe-3" style="max-height: 150px; overflow-y: auto;"></div>
           </div>
-
       </div>
       <div class="modal-footer border-top border-secondary border-opacity-25">
         <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
@@ -350,171 +394,171 @@
 
 @section Scripts {
     <script>
+        function toggleZIndex(cardBtn, isActive) {
+            cardBtn.style.zIndex = isActive ? '1050' : '';
+            if (cardBtn.closest('.col-md-3')) cardBtn.closest('.col-md-3').style.zIndex = isActive ? '1050' : '';
+            if (cardBtn.closest('.sortable-item')) cardBtn.closest('.sortable-item').style.zIndex = isActive ? '1050' : '';
+        }
+
         // ==========================================
-        // 1. LÓGICA DEL MOTOR DE PREFERENCIAS (LOCALSTORAGE)
+        // 1. MOTOR DE PREFERENCIAS (LOCALSTORAGE)
         // ==========================================
         const PREFS_KEY = 'chartCargaDiariaPrefs';
         const BASE_PALETTE = ['#0dcaf0', '#20c997', '#ffc107', '#fd7e14', '#6f42c1', '#d63384', '#dc3545', '#0d6efd', '#28a745', '#e83e8c'];
-
-        let chartPrefs = JSON.parse(localStorage.getItem(PREFS_KEY)) || {
-        type: 'bar',
-        stacked: true,
-        dataLabels: false,
-        userColors: {}
-        };
+        let chartPrefs = JSON.parse(localStorage.getItem(PREFS_KEY)) || { type: 'bar', stacked: true, dataLabels: false, userColors: {} };
 
         function getColorForUser(userName, index) {
-        if (!chartPrefs.userColors[userName]) {
-        chartPrefs.userColors[userName] = BASE_PALETTE[index % BASE_PALETTE.length];
-        localStorage.setItem(PREFS_KEY, JSON.stringify(chartPrefs));
-        }
-        return chartPrefs.userColors[userName];
+            if (!chartPrefs.userColors[userName]) {
+                chartPrefs.userColors[userName] = BASE_PALETTE[index % BASE_PALETTE.length];
+                localStorage.setItem(PREFS_KEY, JSON.stringify(chartPrefs)); 
+            }
+            return chartPrefs.userColors[userName];
         }
 
         // ==========================================
         // 2. MODAL DE AJUSTES DEL GRÁFICO
         // ==========================================
-        let currentChartMode = 'pasado';
+        let currentChartMode = 'pasado'; 
 
         function openChartSettings() {
-        document.getElementById('cfgChartType').value = chartPrefs.type;
-        document.getElementById('cfgStackedOn').checked = chartPrefs.stacked;
-        document.getElementById('cfgStackedOff').checked = !chartPrefs.stacked;
-        document.getElementById('cfgDataLabels').checked = chartPrefs.dataLabels;
+            document.getElementById('cfgChartType').value = chartPrefs.type;
+            document.getElementById('cfgStackedOn').checked = chartPrefs.stacked;
+            document.getElementById('cfgStackedOff').checked = !chartPrefs.stacked;
+            document.getElementById('cfgDataLabels').checked = chartPrefs.dataLabels;
 
-        let currentSeries = currentChartMode === 'pasado' ? dataPasado.series : dataFuturo.series;
-        let htmlColors = '';
+            let currentSeries = currentChartMode === 'pasado' ? dataPasado.series : dataFuturo.series;
+            let htmlColors = '';
+            
+            currentSeries.forEach((s, idx) => {
+                let userColor = getColorForUser(s.name, idx);
+                htmlColors += `<div class="color-picker-row"><span class="font-monospace small">${s.name}</span><input type="color" class="color-picker-input" data-username="${s.name}" value="${userColor}"></div>`;
+            });
 
-        currentSeries.forEach((s, idx) => {
-        let userColor = getColorForUser(s.name, idx);
-        htmlColors += `
-        <div class="color-picker-row">
-        <span class="font-monospace small">${s.name}</span>
-        <input type="color" class="color-picker-input" data-username="${s.name}" value="${userColor}">
-        </div>`;
-        });
-
-        document.getElementById('cfgColorList').innerHTML = htmlColors;
-        new bootstrap.Modal(document.getElementById('modalChartSettings')).show();
+            document.getElementById('cfgColorList').innerHTML = htmlColors;
+            new bootstrap.Modal(document.getElementById('modalChartSettings')).show();
         }
 
         function saveChartSettings() {
-        chartPrefs.type = document.getElementById('cfgChartType').value;
-        chartPrefs.stacked = document.getElementById('cfgStackedOn').checked;
-        chartPrefs.dataLabels = document.getElementById('cfgDataLabels').checked;
+            chartPrefs.type = document.getElementById('cfgChartType').value;
+            chartPrefs.stacked = document.getElementById('cfgStackedOn').checked;
+            chartPrefs.dataLabels = document.getElementById('cfgDataLabels').checked;
 
-        document.querySelectorAll('.color-picker-input').forEach(input => {
-        let userName = input.getAttribute('data-username');
-        chartPrefs.userColors[userName] = input.value;
-        });
+            document.querySelectorAll('.color-picker-input').forEach(input => {
+                let userName = input.getAttribute('data-username');
+                chartPrefs.userColors[userName] = input.value;
+            });
 
-        localStorage.setItem(PREFS_KEY, JSON.stringify(chartPrefs));
-        applyChartSettingsToActiveView();
-
-        bootstrap.Modal.getInstance(document.getElementById('modalChartSettings')).hide();
-        toastr.success("Ajustes visuales guardados con éxito.");
+            localStorage.setItem(PREFS_KEY, JSON.stringify(chartPrefs));
+            applyChartSettingsToActiveView();
+            
+            bootstrap.Modal.getInstance(document.getElementById('modalChartSettings')).hide();
+            toastr.success("Ajustes visuales guardados con éxito.");
         }
 
         function applyChartSettingsToActiveView() {
-        let activeSeries = currentChartMode === 'pasado' ? dataPasado.series : dataFuturo.series;
-        let activeColors = activeSeries.map((s, idx) => getColorForUser(s.name, idx));
+            let activeSeries = currentChartMode === 'pasado' ? dataPasado.series : dataFuturo.series;
+            let activeColors = activeSeries.map((s, idx) => getColorForUser(s.name, idx));
 
-        chartCargaDiaria.updateOptions({
-        chart: { type: chartPrefs.type, stacked: chartPrefs.stacked },
-        dataLabels: {
-        enabled: chartPrefs.dataLabels,
-        offsetY: chartPrefs.type === 'bar' ? 0 : -10, // Si es línea, sube el texto
-        background: {
-        enabled: true,
-        foreColor: '#ffffff',
-        padding: 4,
-        borderRadius: 4,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-        opacity: 0.85
-        }
-        },
-        colors: activeColors,
-        stroke: {
-        width: chartPrefs.type === 'line' || chartPrefs.type === 'area' ? 3 : 0,
-        curve: 'smooth' // Suaviza las líneas
-        },
-        markers: { size: chartPrefs.type === 'scatter' ? 6 : (chartPrefs.type === 'line' || chartPrefs.type === 'area' ? 4 : 0) }
-        });
-        chartCargaDiaria.updateSeries(activeSeries);
+            chartCargaDiaria.updateOptions({
+                chart: { type: chartPrefs.type, stacked: chartPrefs.stacked },
+                dataLabels: { 
+                    enabled: chartPrefs.dataLabels,
+                    formatter: function (val) { return val < 1 ? '' : val; }, // Ocultar ruido visual de Ceros
+                    offsetY: chartPrefs.type === 'bar' ? 0 : -10,
+                    background: { enabled: true, foreColor: '#ffffff', padding: 4, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', opacity: 0.85 }
+                },
+                colors: activeColors,
+                stroke: { width: chartPrefs.type === 'line' || chartPrefs.type === 'area' ? 3 : 0, curve: 'smooth' },
+                markers: { size: chartPrefs.type === 'scatter' ? 6 : (chartPrefs.type === 'line' || chartPrefs.type === 'area' ? 4 : 0) }
+            });
+            chartCargaDiaria.updateSeries(activeSeries);
         }
 
         // ==========================================
         // 3. NUDGE (MODAL Y ENVÍO)
         // ==========================================
         function openNudgeModal(tareaId, tareaNombre, userAlias) {
-        document.getElementById('nudgeTaskId').value = tareaId;
-        document.getElementById('nudgeTaskName').textContent = tareaNombre;
-        document.getElementById('nudgeUserAlias').textContent = userAlias;
-        document.getElementById('nudgeMessage').value = '';
-
-        new bootstrap.Modal(document.getElementById('modalNudge')).show();
+            document.getElementById('nudgeTaskId').value = tareaId;
+            document.getElementById('nudgeTaskName').textContent = tareaNombre;
+            document.getElementById('nudgeUserAlias').textContent = userAlias;
+            document.getElementById('nudgeMessage').value = ''; 
+            new bootstrap.Modal(document.getElementById('modalNudge')).show();
         }
 
         function sendNudge() {
-        const taskId = document.getElementById('nudgeTaskId').value;
-        const message = document.getElementById('nudgeMessage').value.trim();
-        const btn = document.getElementById('btnConfirmNudge');
-
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
-
-        fetch('/GestorDashboard/NudgeUser', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' },
-        body: JSON.stringify({ TareaId: parseInt(taskId), Mensaje: message })
-        }).then(r => r.json()).then(data => {
-        bootstrap.Modal.getInstance(document.getElementById('modalNudge')).hide();
-        const listBtn = document.getElementById(`btn-nudge-${taskId}`);
-        if(listBtn) {
-        listBtn.classList.add('sent');
-        listBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
-        listBtn.disabled = true;
-        }
-        toastr.success(data.message);
-        }).finally(() => {
-        btn.disabled = false;
-        btn.innerHTML = 'Enviar Notificación';
-        });
+            const taskId = document.getElementById('nudgeTaskId').value;
+            const message = document.getElementById('nudgeMessage').value.trim();
+            const btn = document.getElementById('btnConfirmNudge');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
+            
+            fetch('/GestorDashboard/NudgeUser', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' },
+                body: JSON.stringify({ TareaId: parseInt(taskId), Mensaje: message })
+            }).then(r => r.json()).then(data => {
+                bootstrap.Modal.getInstance(document.getElementById('modalNudge')).hide();
+                const listBtn = document.getElementById(`btn-nudge-${taskId}`);
+                if(listBtn) { listBtn.classList.add('sent'); listBtn.innerHTML = '<i class="bi bi-check-lg"></i>'; listBtn.disabled = true; }
+                toastr.success(data.message);
+            }).finally(() => {
+                btn.disabled = false; btn.innerHTML = 'Enviar Notificación';
+            });
         }
 
         // ==========================================
-        // 4. INICIALIZACIÓN Y NAVEGACIÓN
+        // 4. INICIALIZACIÓN Y NAVEGACIÓN SEMANAL
         // ==========================================
         let currentWeekOffset = 0;
         const currentProyectoId = new URLSearchParams(window.location.search).get('proyectoId');
 
         function cambiarSemana(direccion) {
-        currentWeekOffset += direccion;
-        document.getElementById('val-sobrecarga').classList.add('d-none');
-        document.getElementById('spinner-sobrecarga').classList.remove('d-none');
+            currentWeekOffset += direccion;
+            document.getElementById('val-sobrecarga').classList.add('d-none');
+            document.getElementById('spinner-sobrecarga').classList.remove('d-none');
 
-        let url = `/GestorDashboard/GetSobrecargaPorSemana?offset=${currentWeekOffset}`;
-        if (currentProyectoId) url += `&proyectoId=${currentProyectoId}`;
+            let url = `/GestorDashboard/GetSobrecargaPorSemana?offset=${currentWeekOffset}`;
+            if (currentProyectoId) url += `&proyectoId=${currentProyectoId}`;
 
-        fetch(url).then(r => r.json()).then(data => {
-        document.getElementById('val-sobrecarga').textContent = data.count;
-        document.getElementById('lbl-semana').textContent = data.label;
-        document.getElementById('lbl-rango').textContent = data.rango;
+            fetch(url).then(r => r.json()).then(data => {
+                document.getElementById('val-sobrecarga').textContent = data.count;
+                document.getElementById('lbl-semana').textContent = data.label;
+                document.getElementById('lbl-rango').textContent = data.rango;
 
-        let listHtml = '';
-        if (data.usuarios && data.usuarios.length > 0) {
-        data.usuarios.forEach(u => {
-        listHtml += `<div class="d-flex justify-content-between align-items-center py-1 border-bottom border-secondary border-opacity-25 text-white"><span class="text-truncate" style="max-width: 65%;">${u.nombre}</span><span class="text-warning fw-bold text-end">${u.horas} h <br><span style="font-size:0.55rem; color:#ffc107;">(> 40h)</span></span></div>`;
-        });
-        } else {
-        listHtml = '<div class="text-success text-center py-2">Carga de trabajo equilibrada.</div>';
-        }
-        document.getElementById('overload-list-container').innerHTML = listHtml;
-        }).finally(() => {
-        document.getElementById('spinner-sobrecarga').classList.add('d-none');
-        document.getElementById('val-sobrecarga').classList.remove('d-none');
-        });
+                // Lógica de Psicología de Color dinámica
+                const card = document.getElementById('btn-toggle-overload');
+                const txt = document.getElementById('overload-status-text');
+                const icon = document.getElementById('overload-chevron');
+                const header = document.getElementById('overload-popover-header');
+
+                if (data.count > 0) {
+                    card.classList.replace('kpi-success', 'kpi-warning');
+                    txt.classList.replace('text-success', 'text-warning');
+                    icon.classList.replace('text-success', 'text-warning');
+                    header.classList.replace('text-success', 'text-warning');
+                    txt.innerHTML = '<i class="bi bi-person-fill-exclamation me-1"></i>> 40h asignadas';
+                    document.getElementById('popover-overload').style.borderColor = 'rgba(255, 193, 7, 0.4)';
+                } else {
+                    card.classList.replace('kpi-warning', 'kpi-success');
+                    txt.classList.replace('text-warning', 'text-success');
+                    icon.classList.replace('text-warning', 'text-success');
+                    header.classList.replace('text-warning', 'text-success');
+                    txt.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Carga balanceada';
+                    document.getElementById('popover-overload').style.borderColor = 'rgba(32, 201, 151, 0.4)';
+                }
+
+                let listHtml = '';
+                if (data.usuarios && data.usuarios.length > 0) {
+                    data.usuarios.forEach(u => {
+                        listHtml += `<div class="d-flex justify-content-between align-items-center py-1 border-bottom border-secondary border-opacity-25 text-white"><span class="text-truncate" style="max-width: 65%;">${u.nombre}</span><span class="text-warning fw-bold text-end">${u.horas} h <br><span style="font-size:0.55rem; color:#ffc107;">(> 40h)</span></span></div>`;
+                    });
+                } else { listHtml = '<div class="text-success text-center py-2">Carga de trabajo equilibrada.</div>'; }
+                document.getElementById('overload-list-container').innerHTML = listHtml;
+            }).finally(() => {
+                document.getElementById('spinner-sobrecarga').classList.add('d-none');
+                document.getElementById('val-sobrecarga').classList.remove('d-none');
+            });
         }
 
         var chartCargaDiaria;
@@ -522,127 +566,152 @@
         var dataFuturo = { etiquetas: @Html.Raw(ViewBag.EtiquetasDiasFuturo), series: @Html.Raw(ViewBag.SeriesCargaFuturo) };
 
         function toggleChartMode(modo) {
-        currentChartMode = modo;
-        const isFuturo = (modo === 'futuro');
+            currentChartMode = modo;
+            const isFuturo = (modo === 'futuro');
+            
+            const tooltipContent = "Distribución de las horas de trabajo estimadas (Proyectado) o reales (Histórico) a lo largo de los días hábiles, omitiendo fines de semana y feriados.";
+            document.getElementById('titulo-grafico-carga').innerHTML = isFuturo 
+                ? `<i class="bi bi-fast-forward-fill text-warning me-2"></i>Carga Proyectada (Próximos 14 días hábiles) <i class="bi bi-info-circle-fill icon-info-help ms-2 fs-6" data-bs-toggle="tooltip" title="${tooltipContent}"></i>` 
+                : `<i class="bi bi-clock-history text-info me-2"></i>Productividad Diaria del Equipo <i class="bi bi-info-circle-fill icon-info-help ms-2 fs-6" data-bs-toggle="tooltip" title="${tooltipContent}"></i>`;
+            
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('#titulo-grafico-carga [data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) { return new bootstrap.Tooltip(tooltipTriggerEl); });
 
-        const tooltipContent = "Distribución de las horas de trabajo estimadas (Proyectado) o reales (Histórico) a lo largo de los días hábiles, omitiendo fines de semana y feriados.";
-        document.getElementById('titulo-grafico-carga').innerHTML = isFuturo
-        ? `<i class="bi bi-fast-forward-fill text-warning me-2"></i>Carga Proyectada (Próximos 14 días hábiles) <i class="bi bi-info-circle-fill icon-info-help ms-2 fs-6" data-bs-toggle="tooltip" title="${tooltipContent}"></i>`
-        : `<i class="bi bi-clock-history text-info me-2"></i>Productividad Diaria del Equipo <i class="bi bi-info-circle-fill icon-info-help ms-2 fs-6" data-bs-toggle="tooltip" title="${tooltipContent}"></i>`;
-
-        // Re-bind tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('#titulo-grafico-carga [data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.map(function (tooltipTriggerEl) { return new bootstrap.Tooltip(tooltipTriggerEl); });
-
-        chartCargaDiaria.updateOptions({
-        xaxis: { categories: isFuturo ? dataFuturo.etiquetas : dataPasado.etiquetas },
-        yaxis: { title: { text: isFuturo ? 'Horas Estimadas' : 'Horas Reportadas' } }
-        });
-        applyChartSettingsToActiveView();
+            chartCargaDiaria.updateOptions({
+                xaxis: { categories: isFuturo ? dataFuturo.etiquetas : dataPasado.etiquetas },
+                yaxis: { title: { text: isFuturo ? 'Horas Estimadas' : 'Horas Reportadas' } }
+            });
+            applyChartSettingsToActiveView();
         }
 
-        // 5. DRAG & DROP (Sortable.js)
+        // 5. EVENTOS PRINCIPALES Y DRAG & DROP
         let isEditMode = false;
         let sortableInstance = null;
 
         function toggleEditMode() {
-        const grid = document.getElementById('dashboard-grid');
-        const btn = document.getElementById('btnEditLayout');
-        isEditMode = !isEditMode;
+            const grid = document.getElementById('dashboard-grid');
+            const btn = document.getElementById('btnEditLayout');
+            isEditMode = !isEditMode;
 
-        if (isEditMode) {
-        grid.classList.add('edit-mode');
-        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Guardar Diseño';
-        btn.classList.replace('btn-outline-info', 'btn-success');
-
-        sortableInstance = new Sortable(grid, { animation: 150, ghostClass: 'opacity-50' });
-        } else {
-        grid.classList.remove('edit-mode');
-        btn.innerHTML = '<i class="bi bi-arrows-move me-1"></i>Personalizar Vista';
-        btn.classList.replace('btn-success', 'btn-outline-info');
-        if (sortableInstance) sortableInstance.destroy();
-
-        const order = Array.from(grid.children).map(el => el.getAttribute('data-id'));
-        localStorage.setItem('dashboardLayout', JSON.stringify(order));
-        toastr.success("Diseño del dashboard guardado.");
-        }
+            if (isEditMode) {
+                grid.classList.add('edit-mode');
+                btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Guardar Diseño';
+                btn.classList.replace('btn-outline-info', 'btn-success');
+                sortableInstance = new Sortable(grid, { animation: 150, ghostClass: 'opacity-50' });
+            } else {
+                grid.classList.remove('edit-mode');
+                btn.innerHTML = '<i class="bi bi-arrows-move me-1"></i>Personalizar Vista';
+                btn.classList.replace('btn-success', 'btn-outline-info');
+                if (sortableInstance) sortableInstance.destroy();
+                const order = Array.from(grid.children).map(el => el.getAttribute('data-id'));
+                localStorage.setItem('dashboardLayout', JSON.stringify(order));
+                toastr.success("Diseño del dashboard guardado.");
+            }
         }
 
         document.addEventListener("DOMContentLoaded", function () {
+            
+            const savedOrder = JSON.parse(localStorage.getItem('dashboardLayout'));
+            if (savedOrder) {
+                const grid = document.getElementById('dashboard-grid');
+                savedOrder.forEach(id => { const el = document.querySelector(`[data-id="${id}"]`); if (el) grid.appendChild(el); });
+            }
 
-        const savedOrder = JSON.parse(localStorage.getItem('dashboardLayout'));
-        if (savedOrder) {
-        const grid = document.getElementById('dashboard-grid');
-        savedOrder.forEach(id => { const el = document.querySelector(`[data-id="${id}"]`); if (el) grid.appendChild(el); });
-        }
+            // POPOVERS
+            const btnRisk = document.getElementById('btn-toggle-risk');
+            const popoverRisk = document.getElementById('popover-risk');
+            const btnOverload = document.getElementById('btn-toggle-overload');
+            const popoverOverload = document.getElementById('popover-overload');
+            const btnAlerts = document.getElementById('btn-toggle-alerts');
+            const popoverAlerts = document.getElementById('popover-alerts');
 
-        const btnRisk = document.getElementById('btn-toggle-risk');
-        const popoverRisk = document.getElementById('popover-risk');
-        const btnOverload = document.getElementById('btn-toggle-overload');
-        const popoverOverload = document.getElementById('popover-overload');
+            btnRisk.addEventListener('click', e => { 
+                e.stopPropagation(); 
+                let isActive = popoverRisk.classList.toggle('active'); 
+                toggleZIndex(btnRisk, isActive);
+                popoverOverload.classList.remove('active'); toggleZIndex(btnOverload, false);
+                popoverAlerts.classList.remove('active'); toggleZIndex(btnAlerts, false);
+            });
 
-        btnRisk.addEventListener('click', e => { e.stopPropagation(); popoverRisk.classList.toggle('active'); popoverOverload.classList.remove('active'); });
-        btnOverload.addEventListener('click', e => { e.stopPropagation(); popoverOverload.classList.toggle('active'); popoverRisk.classList.remove('active'); });
-        document.addEventListener('click', e => { if(!btnRisk.contains(e.target)) popoverRisk.classList.remove('active'); if(!btnOverload.contains(e.target)) popoverOverload.classList.remove('active'); });
+            btnOverload.addEventListener('click', e => { 
+                e.stopPropagation(); 
+                let isActive = popoverOverload.classList.toggle('active'); 
+                toggleZIndex(btnOverload, isActive);
+                popoverRisk.classList.remove('active'); toggleZIndex(btnRisk, false);
+                popoverAlerts.classList.remove('active'); toggleZIndex(btnAlerts, false);
+            });
 
-        // INICIALIZAR GRÁFICO ESFUERZO
-        var labelsProyectos = @Html.Raw(ViewBag.LabelsEsfuerzo);
-        var dataPlanificada = @Html.Raw(ViewBag.DataPlanificada);
-        var dataReal = @Html.Raw(ViewBag.DataReal);
+            btnAlerts.addEventListener('click', e => { 
+                e.stopPropagation(); 
+                let isActive = popoverAlerts.classList.toggle('active'); 
+                toggleZIndex(btnAlerts, isActive);
+                popoverRisk.classList.remove('active'); toggleZIndex(btnRisk, false);
+                popoverOverload.classList.remove('active'); toggleZIndex(btnOverload, false);
+            });
 
-        new ApexCharts(document.querySelector("#esfuerzoChart"), {
-        series: [{ name: 'Horas Plan', data: dataPlanificada }, { name: 'Horas Reales', data: dataReal }],
-        chart: {
-        type: 'bar', height: 300, background: 'transparent', foreColor: 'rgba(255,255,255,0.45)', toolbar: { show: false },
-        events: {
-        dataPointSelection: function(e, ctx, config) {
-        var pName = labelsProyectos[config.dataPointIndex];
-        document.getElementById('drillDownTitle').innerHTML = `<i class="bi bi-search me-2 text-info"></i>Desviación en: ${pName}`;
-        var tb = document.getElementById('drillDownBody');
-        tb.innerHTML = '<tr><td colspan="4" class="text-center"><div class="spinner-border text-info my-3"></div></td></tr>';
-        new bootstrap.Modal(document.getElementById('modalDrillDown')).show();
-        fetch(`/GestorDashboard/GetProyectoDetalle?nombre=${encodeURIComponent(pName)}`)
-        .then(r => r.json()).then(data => {
-        if(data.tareas.length === 0) tb.innerHTML = '<tr><td colspan="4" class="text-center text-success py-3">Sin tareas excedidas.</td></tr>';
-        else tb.innerHTML = data.tareas.map(t => `<tr><td>${t.nombre}</td><td>${t.responsable}</td><td class="text-end">${t.estimado}</td><td class="text-end text-danger fw-bold">+${t.exceso}</td></tr>`).join('');
-        });
-        }
-        }
-        },
-        colors: ['#0dcaf0', '#ffc107'],
-        plotOptions: { bar: { horizontal: false, columnWidth: '50%', borderRadius: 3 } },
-        dataLabels: { enabled: false }, stroke: { show: true, width: 2, colors: ['transparent'] },
-        xaxis: { categories: labelsProyectos, axisBorder: { show: false }, axisTicks: { show: false }, labels: { style: { cssClass: 'cursor-pointer' } } },
-        yaxis: { title: { text: 'Horas (h)' } },
-        fill: { type: 'gradient', gradient: { shade: 'dark', type: 'vertical', shadeIntensity: 0.5, opacityFrom: 0.9, opacityTo: 0.3 } },
-        grid: { borderColor: 'rgba(255,255,255,0.05)', strokeDashArray: 4 }, tooltip: { theme: 'dark' }
-        }).render();
+            document.addEventListener('click', e => { 
+                if(!btnRisk.contains(e.target)) { popoverRisk.classList.remove('active'); toggleZIndex(btnRisk, false); }
+                if(!btnOverload.contains(e.target)) { popoverOverload.classList.remove('active'); toggleZIndex(btnOverload, false); }
+                if(!btnAlerts.contains(e.target)) { popoverAlerts.classList.remove('active'); toggleZIndex(btnAlerts, false); }
+            });
 
-        // INICIALIZAR GRÁFICO CARGA DIARIA CON VALORES DE LOCALSTORAGE
-        let initialColors = dataPasado.series.map((s, idx) => getColorForUser(s.name, idx));
+            // GRÁFICO ESFUERZO (AHORA BARRAS HORIZONTALES PARA NOMBRES LARGOS)
+            var labelsProyectos = @Html.Raw(ViewBag.LabelsEsfuerzo);
+            var dataPlanificada = @Html.Raw(ViewBag.DataPlanificada);
+            var dataReal = @Html.Raw(ViewBag.DataReal);
+            new ApexCharts(document.querySelector("#esfuerzoChart"), {
+                series: [{ name: 'Horas Plan', data: dataPlanificada }, { name: 'Horas Reales', data: dataReal }],
+                chart: { 
+                    type: 'bar', height: 300, background: 'transparent', foreColor: 'rgba(255,255,255,0.45)', toolbar: { show: false },
+                    events: {
+                        dataPointSelection: function(e, ctx, config) {
+                            var pName = labelsProyectos[config.dataPointIndex];
+                            document.getElementById('drillDownTitle').innerHTML = `<i class="bi bi-search me-2 text-info"></i>Desviación en: ${pName}`;
+                            var tb = document.getElementById('drillDownBody');
+                            tb.innerHTML = '<tr><td colspan="4" class="text-center"><div class="spinner-border text-info my-3"></div></td></tr>';
+                            new bootstrap.Modal(document.getElementById('modalDrillDown')).show();
+                            fetch(`/GestorDashboard/GetProyectoDetalle?nombre=${encodeURIComponent(pName)}`)
+                                .then(r => r.json()).then(data => {
+                                    if(data.tareas.length === 0) tb.innerHTML = '<tr><td colspan="4" class="text-center text-success py-3">Sin tareas excedidas.</td></tr>';
+                                    else tb.innerHTML = data.tareas.map(t => `<tr><td>${t.nombre}</td><td>${t.responsable}</td><td class="text-end">${t.estimado}</td><td class="text-end text-danger fw-bold">+${t.exceso}</td></tr>`).join('');
+                                });
+                        }
+                    }
+                },
+                colors: ['#0dcaf0', '#ffc107'],
+                plotOptions: { bar: { horizontal: true, columnWidth: '50%', borderRadius: 3 } },
+                dataLabels: { enabled: false }, stroke: { show: true, width: 2, colors: ['transparent'] },
+                xaxis: { title: { text: 'Horas (h)' } },
+                yaxis: { categories: labelsProyectos, labels: { style: { colors: 'rgba(255,255,255,0.85)', fontSize: '11px', fontFamily: 'monospace' } } },
+                fill: { type: 'gradient', gradient: { shade: 'dark', type: 'vertical', shadeIntensity: 0.5, opacityFrom: 0.9, opacityTo: 0.3 } },
+                grid: { borderColor: 'rgba(255,255,255,0.05)', strokeDashArray: 4 }, tooltip: { theme: 'dark' }
+            }).render();
 
-        var optionsCarga = {
-        series: dataPasado.series,
-        chart: { type: chartPrefs.type, height: 320, stacked: chartPrefs.stacked, background: 'transparent', foreColor: 'rgba(255, 255, 255, 0.5)', toolbar: { show: true } },
-        colors: initialColors,
-        plotOptions: { bar: { horizontal: false, borderRadius: 2, columnWidth: '40%' } },
-        dataLabels: {
-        enabled: chartPrefs.dataLabels,
-        offsetY: chartPrefs.type === 'bar' ? 0 : -10,
-        background: { enabled: true, foreColor: '#ffffff', padding: 4, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', opacity: 0.85 }
-        },
-        stroke: { width: chartPrefs.type === 'line' || chartPrefs.type === 'area' ? 3 : 0, curve: 'smooth' },
-        markers: { size: chartPrefs.type === 'scatter' ? 6 : (chartPrefs.type === 'line' || chartPrefs.type === 'area' ? 4 : 0) },
-        xaxis: { categories: dataPasado.etiquetas, axisBorder: { show: false }, axisTicks: { show: false } },
-        yaxis: { title: { text: 'Horas Reportadas' }, labels: { formatter: function (val) { return val + " h"; } } },
-        fill: { opacity: 0.9 },
-        legend: { position: 'top', horizontalAlign: 'center', labels: { colors: '#ffffff' } },
-        grid: { borderColor: 'rgba(255, 255, 255, 0.05)', strokeDashArray: 3 },
-        tooltip: { theme: 'dark', y: { formatter: function (val) { return val + " h" } } },
-        noData: { text: 'No hay datos para mostrar', align: 'center', verticalAlign: 'middle', style: { color: '#ffffff', fontSize: '14px' } }
-        };
-        chartCargaDiaria = new ApexCharts(document.querySelector("#cargaDiariaChart"), optionsCarga);
-        chartCargaDiaria.render();
+            // GRÁFICO CARGA DIARIA (INICIAL)
+            let initialColors = dataPasado.series.map((s, idx) => getColorForUser(s.name, idx));
+            var optionsCarga = {
+                series: dataPasado.series,
+                chart: { type: chartPrefs.type, height: 320, stacked: chartPrefs.stacked, background: 'transparent', foreColor: 'rgba(255, 255, 255, 0.5)', toolbar: { show: true } },
+                colors: initialColors,
+                plotOptions: { bar: { horizontal: false, borderRadius: 2, columnWidth: '40%' } },
+                dataLabels: { 
+                    enabled: chartPrefs.dataLabels,
+                    formatter: function (val) { return val < 1 ? '' : val; },
+                    offsetY: chartPrefs.type === 'bar' ? 0 : -10,
+                    background: { enabled: true, foreColor: '#ffffff', padding: 4, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', opacity: 0.85 }
+                },
+                stroke: { width: chartPrefs.type === 'line' || chartPrefs.type === 'area' ? 3 : 0, curve: 'smooth' },
+                markers: { size: chartPrefs.type === 'scatter' ? 6 : (chartPrefs.type === 'line' || chartPrefs.type === 'area' ? 4 : 0) },
+                xaxis: { categories: dataPasado.etiquetas, axisBorder: { show: false }, axisTicks: { show: false } },
+                yaxis: { title: { text: 'Horas Reportadas' }, labels: { formatter: function (val) { return val + " h"; } } },
+                fill: { opacity: 0.9 },
+                legend: { position: 'top', horizontalAlign: 'center', labels: { colors: '#ffffff' } },
+                grid: { borderColor: 'rgba(255, 255, 255, 0.05)', strokeDashArray: 3 },
+                tooltip: { theme: 'dark', y: { formatter: function (val) { return val + " h" } } },
+                noData: { text: 'No hay datos para mostrar', align: 'center', verticalAlign: 'middle', style: { color: '#ffffff', fontSize: '14px' } }
+            };
+            chartCargaDiaria = new ApexCharts(document.querySelector("#cargaDiariaChart"), optionsCarga);
+            chartCargaDiaria.render();
         });
     </script>
 }

@@ -66,18 +66,27 @@ namespace NotebookValidator.Web.Controllers
 
             var sobrecargaActual = await CalcularSobrecarga(0, proyectoId);
 
-            var alertasQuery = _context.ComentariosProyecto.Where(c => !c.Resuelto && c.Tipo == "Recordatorio" && c.FechaVencimiento.HasValue && c.FechaVencimiento.Value < DateTime.Now);
+            var alertasQuery = _context.ComentariosProyecto.Include(c => c.Proyecto).Where(c => !c.Resuelto && c.Tipo == "Recordatorio" && c.FechaVencimiento.HasValue && c.FechaVencimiento.Value < DateTime.Now);
             if (proyectoId.HasValue) alertasQuery = alertasQuery.Where(c => c.ProyectoId == proyectoId.Value);
-            var alertasVencidas = await alertasQuery.CountAsync();
+
+            var alertasList = await alertasQuery
+                .Select(c => new {
+                    ProyectoNombre = c.Proyecto != null ? c.Proyecto.Nombre : "Global",
+                    Fecha = c.FechaVencimiento.Value
+                })
+                .OrderBy(c => c.Fecha).Take(15).ToListAsync();
 
             ViewBag.ProyectosEnRiesgo = proyectosEnRiesgoList.Count;
             ViewBag.ProyectosEnRiesgoList = proyectosEnRiesgoList;
             ViewBag.TasaExitoQA = tasaExitoQA;
+
             ViewBag.SobrecargaCount = sobrecargaActual.Count;
             ViewBag.SobrecargaLabel = sobrecargaActual.Label;
             ViewBag.SobrecargaRango = sobrecargaActual.Rango;
             ViewBag.SobrecargaList = sobrecargaActual.Usuarios;
-            ViewBag.AlertasVencidas = alertasVencidas;
+
+            ViewBag.AlertasVencidas = alertasList.Count;
+            ViewBag.AlertasList = alertasList;
 
             // ==========================================
             // 2. GRÁFICO 1: DESVIACIÓN DE ESFUERZO
@@ -212,19 +221,13 @@ namespace NotebookValidator.Web.Controllers
             return Json(new { proyecto = proyecto.Nombre, tareas = tareasMalas });
         }
 
-        // 🎯 ACTUALIZACIÓN: Recibe el Mensaje del Modal
         [HttpPost]
         public IActionResult NudgeUser([FromBody] NudgeRequest req)
         {
-            // Aquí puedes conectar en el futuro con: _notifService.NotificarNudgeAsync(req.TareaId, req.Mensaje);
             return Json(new { success = true, message = "Recordatorio enviado con éxito al responsable." });
         }
 
-        public class NudgeRequest
-        {
-            public int TareaId { get; set; }
-            public string Mensaje { get; set; } = string.Empty;
-        }
+        public class NudgeRequest { public int TareaId { get; set; } public string Mensaje { get; set; } = string.Empty; }
 
         private async Task<SobrecargaResult> CalcularSobrecarga(int offsetSemanas, int? proyectoId = null)
         {
@@ -262,7 +265,12 @@ namespace NotebookValidator.Web.Controllers
                 .Select(g => new { Email = g.Key, TotalHoras = g.Sum(x => x.Horas) })
                 .Where(x => x.TotalHoras > 40)
                 .OrderByDescending(x => x.TotalHoras)
-                .Select(x => new SobrecargaUsuario { Email = x.Email ?? "Sin Asignar", Nombre = (x.Email ?? "Sin Asignar").Split('@')[0], Horas = Math.Round(x.TotalHoras, 1) })
+                .Select(x => new SobrecargaUsuario
+                {
+                    Email = x.Email ?? "Sin Asignar",
+                    Nombre = (x.Email ?? "Sin Asignar").Split('@')[0],
+                    Horas = Math.Round(x.TotalHoras, 1)
+                })
                 .ToList();
 
             string label = offsetSemanas == 0 ? "ESTA SEMANA" : (offsetSemanas == 1 ? "PRÓX. SEMANA" : (offsetSemanas == -1 ? "SEM. PASADA" : $"SEMANA {offsetSemanas}"));
