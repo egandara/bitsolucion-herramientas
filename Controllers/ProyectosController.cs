@@ -1452,27 +1452,85 @@ namespace NotebookValidator.Web.Controllers
 
             tarea.Estado = nuevoEstado;
 
-            // 🧠 MOTOR EXPERIMENTAL DE TELEMETRÍA 🧠
+            // 🧠 MOTOR INTELIGENTE DE TELEMETRÍA (Fines de Semana y Feriados) 🧠
             if (nuevoEstado == "En Progreso" && !tarea.FechaInicioReal.HasValue)
             {
-                // Si la pasa a En Progreso por primera vez, estampa el inicio
+                // Si la pasa a En Progreso por primera vez, estampa el inicio exacto
                 tarea.FechaInicioReal = DateTime.Now;
             }
             else if (nuevoEstado == "Terminada")
             {
-                // Al terminar, estampa el fin y calcula las horas automáticamente
+                // Al terminar, estampa el fin exacto
                 tarea.FechaFinReal = DateTime.Now;
 
                 if (tarea.FechaInicioReal.HasValue)
                 {
-                    var tiempoTranscurrido = tarea.FechaFinReal.Value - tarea.FechaInicioReal.Value;
-                    // Calcula las horas reales (puedes refinar esto a futuro para excluir fines de semana)
-                    tarea.HorasRealesDeducidas = (decimal)Math.Round(tiempoTranscurrido.TotalHours, 2);
+                    // 1. Obtener la lista de Feriados desde la BD
+                    var feriadosDb = await _context.Feriados
+                        .Where(f => f.Activo)
+                        .Select(f => f.Fecha.Date)
+                        .ToListAsync();
+
+                    // 2. Calcular las horas laborales estrictas
+                    decimal horasTrabajadas = CalcularHorasLaborales(tarea.FechaInicioReal.Value, tarea.FechaFinReal.Value, feriadosDb);
+
+                    // Si por alguna razón la terminó en 2 minutos, le asignamos al menos 0.1h para que se registre el esfuerzo
+                    tarea.HorasRealesDeducidas = horasTrabajadas > 0 ? Math.Round(horasTrabajadas, 2) : 0.1m;
                 }
             }
 
             await _context.SaveChangesAsync();
             return Json(new { success = true });
+        }
+
+        // --- HELPER: ALGORITMO C# PARA CALCULAR HORAS LABORALES REALES ---
+        private decimal CalcularHorasLaborales(DateTime inicio, DateTime fin, List<DateTime> feriados)
+        {
+            if (inicio >= fin) return 0;
+
+            decimal totalHoras = 0;
+            DateTime curr = inicio;
+
+            while (curr < fin)
+            {
+                // Si el día actual es Sábado, Domingo o Feriado, saltar al siguiente día a las 09:00 AM
+                if (curr.DayOfWeek == DayOfWeek.Saturday || curr.DayOfWeek == DayOfWeek.Sunday || feriados.Contains(curr.Date))
+                {
+                    curr = curr.AddDays(1).Date.AddHours(9);
+                    continue;
+                }
+
+                // Definimos la jornada laboral estándar (09:00 a 18:00)
+                DateTime inicioJornada = curr.Date.AddHours(9);
+                DateTime finJornada = curr.Date.AddHours(18);
+
+                // Si por error el "curr" empezó antes de las 9am, lo ajustamos a las 9am
+                if (curr < inicioJornada) curr = inicioJornada;
+
+                // Si el "curr" ya pasó de las 6pm, saltamos al día siguiente a las 9am
+                if (curr >= finJornada)
+                {
+                    curr = curr.AddDays(1).Date.AddHours(9);
+                    continue;
+                }
+
+                // Si el Fin de la tarea ocurre hoy y antes de que termine la jornada
+                if (fin <= finJornada && fin.Date == curr.Date)
+                {
+                    totalHoras += (decimal)(fin - curr).TotalHours;
+                    break; // Terminamos de contar
+                }
+                else
+                {
+                    // La tarea cruza al día siguiente. Sumamos el remanente de HOY hasta las 18:00.
+                    totalHoras += (decimal)(finJornada - curr).TotalHours;
+
+                    // Saltamos al siguiente día a las 09:00 AM
+                    curr = curr.AddDays(1).Date.AddHours(9);
+                }
+            }
+
+            return totalHoras;
         }
 
     }

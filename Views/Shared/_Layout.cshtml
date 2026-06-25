@@ -1021,6 +1021,16 @@
                         </a>
                     </li>
 
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link @(currentController == "GestorDashboard" ? "active" : "")" asp-controller="GestorDashboard" asp-action="Index"
+                               data-sidebar-label="Salud de Proyectos" style="padding-left: 2.2rem !important; font-size: 0.72rem !important; color: #ffc107 !important; border-left: 2px solid rgba(255,193,7, 0.3) !important; margin-left: 0.8rem;">
+                                <i class="bi bi-graph-up-arrow" style="font-size: 0.85rem !important; margin-right: 0.4rem !important;"></i> <span>Dashboard Gerencial</span>
+                            </a>
+                        </li>
+                    }
+
                     @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
                     {
                         <li class="nav-item">

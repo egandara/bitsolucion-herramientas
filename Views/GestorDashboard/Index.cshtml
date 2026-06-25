@@ -1,0 +1,411 @@
+@{
+    ViewData["Title"] = "Dashboard de Proyectos";
+    var tareasEstancadas = ViewBag.TareasEstancadas as IEnumerable<NotebookValidator.Web.Models.GestorProyectos.TareaProyecto>;
+}
+
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+<style>
+    /* ESTILOS POWER BI (DARK & NEON) */
+    .kpi-card {
+    background-color: #111424;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
+    position: relative;
+    }
+
+    .kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+    }
+
+    .kpi-title {
+    font-family: ui-monospace, monospace;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    }
+
+    .kpi-value {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.2;
+    }
+
+    .kpi-danger {
+    border-left: 4px solid #dc3545;
+    }
+
+    .kpi-success {
+    border-left: 4px solid #20c997;
+    }
+
+    .kpi-warning {
+    border-left: 4px solid #ffc107;
+    }
+
+    .kpi-info {
+    border-left: 4px solid #0dcaf0;
+    }
+
+    .chart-container {
+    background-color: #111424;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 20px;
+    }
+
+    .section-title {
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    }
+
+    .week-nav-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.4);
+    cursor: pointer;
+    padding: 0 4px;
+    transition: color 0.2s;
+    font-size: 0.8rem;
+    }
+
+    .week-nav-btn:hover {
+    color: #ffc107;
+    }
+
+    .kpi-clickable {
+    cursor: pointer;
+    }
+
+    .kpi-clickable:hover {
+    border-color: rgba(220, 53, 69, 0.5);
+    box-shadow: 0 0 15px rgba(220, 53, 69, 0.2);
+    }
+
+    .risk-popover {
+    position: absolute;
+    top: 105%;
+    left: 0;
+    width: 100%;
+    min-width: 260px;
+    background: #111424;
+    border: 1px solid rgba(220, 53, 69, 0.4);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85);
+    z-index: 1050;
+    padding: 12px;
+    display: none;
+    font-family: ui-monospace, monospace;
+    font-size: 0.72rem;
+    }
+
+    .risk-popover.active {
+    display: block;
+    animation: fadeIn 0.2s ease;
+    }
+
+    @@keyframes fadeIn {
+    from {
+    opacity: 0;
+    transform: translateY(-5px);
+    }
+
+    to {
+    opacity: 1;
+    transform: translateY(0);
+    }
+    }
+
+    /* Estilos del Switch de Proyección */
+    .btn-outline-cyan {
+    color: #0dcaf0;
+    border-color: #0dcaf0;
+    }
+
+    .btn-outline-cyan:hover, .btn-check:checked + .btn-outline-cyan {
+    background-color: #0dcaf0;
+    color: #000;
+    border-color: #0dcaf0;
+    }
+
+    .btn-outline-amber {
+    color: #ffc107;
+    border-color: #ffc107;
+    }
+
+    .btn-outline-amber:hover, .btn-check:checked + .btn-outline-amber {
+    background-color: #ffc107;
+    color: #000;
+    border-color: #ffc107;
+    }
+</style>
+
+<div class="container-fluid mt-2">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 fw-bold text-white mb-0"><i class="bi bi-graph-up-arrow me-2 text-warning"></i>Salud de Proyectos</h1>
+            <p class="text-white-50 small mb-0 mt-1">Visión gerencial del estado del portafolio, desviaciones y cuellos de botella.</p>
+        </div>
+        <div>
+            <button class="btn btn-sm btn-outline-secondary" onclick="location.reload();"><i class="bi bi-arrow-clockwise me-1"></i>Refrescar</button>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="kpi-card p-4 kpi-danger kpi-clickable" id="btn-toggle-risk">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="kpi-title">Proyectos en Riesgo</div>
+                    <i class="bi bi-chevron-down text-danger opacity-50"></i>
+                </div>
+                <div class="kpi-value">@ViewBag.ProyectosEnRiesgo</div>
+                <div class="small text-danger mt-2"><i class="bi bi-exclamation-circle-fill me-1"></i>Atrasados vs Plan</div>
+
+                <div class="risk-popover" id="popover-risk">
+                    <div class="d-flex justify-content-between align-items-center border-bottom border-danger border-opacity-25 pb-1 mb-2 text-danger fw-bold" style="font-size:0.65rem;">
+                        <span><i class="bi bi-fire me-1"></i> PROYECTOS ATRASADOS</span>
+                        <span>FIN ESTIMADO</span>
+                    </div>
+                    @if (ViewBag.ProyectosEnRiesgoList != null)
+                    {
+                        foreach (dynamic p in ViewBag.ProyectosEnRiesgoList)
+                        {
+                            var atraso = (DateTime.Now - (DateTime)p.FechaFinEstimada).Days;
+                            <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-secondary border-opacity-25 text-white">
+                                <span class="text-truncate" style="max-width: 65%;">@p.Nombre</span>
+                                <span class="text-danger fw-bold text-end">@p.FechaFinEstimada.ToString("dd MMM") <br><span style="font-size:0.55rem; color:#ff4a5a;">(-@atraso días)</span></span>
+                            </div>
+                        }
+                    }
+                    @if (ViewBag.ProyectosEnRiesgo == 0)
+                    {
+                        <div class="text-success text-center py-2">Todo marcha a la perfección.</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="kpi-card p-4 kpi-success">
+                <div class="kpi-title mb-2">Tasa Éxito QA (Global)</div>
+                <div class="kpi-value">@ViewBag.TasaExitoQA%</div>
+                <div class="small text-success mt-2"><i class="bi bi-shield-fill-check me-1"></i>Aprobados a la primera</div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="kpi-card p-4 kpi-warning">
+                <div class="kpi-title mb-2 d-flex justify-content-between align-items-center">
+                    <span>Equipo Sobrecargado</span>
+                    <div class="d-flex align-items-center bg-dark rounded border border-secondary border-opacity-50 px-1">
+                        <button class="week-nav-btn" onclick="cambiarSemana(-1)"><i class="bi bi-caret-left-fill"></i></button>
+                        <div class="text-center px-1" style="min-width: 75px; cursor:default;">
+                            <div id="lbl-semana" style="font-size: 0.55rem; color:#ffc107; font-weight:700;">@ViewBag.SobrecargaLabel</div>
+                            <div id="lbl-rango" style="font-size: 0.5rem; color:rgba(255,255,255,0.5);">@ViewBag.SobrecargaRango</div>
+                        </div>
+                        <button class="week-nav-btn" onclick="cambiarSemana(1)"><i class="bi bi-caret-right-fill"></i></button>
+                    </div>
+                </div>
+                <div class="kpi-value d-flex align-items-center gap-2">
+                    <span id="val-sobrecarga">@ViewBag.SobrecargaCount</span>
+                    <div id="spinner-sobrecarga" class="spinner-border spinner-border-sm text-warning d-none" role="status"></div>
+                </div>
+                <div class="small text-warning mt-2"><i class="bi bi-person-fill-exclamation me-1"></i>> 40h asignadas</div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="kpi-card p-4 kpi-info">
+                <div class="kpi-title mb-2">Alertas Vencidas</div>
+                <div class="kpi-value">@ViewBag.AlertasVencidas</div>
+                <div class="small text-info mt-2"><i class="bi bi-clock-history me-1"></i>Recordatorios sin resolver</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="chart-container">
+                <div class="d-flex justify-content-between align-items-center border-bottom border-secondary border-opacity-25 pb-2 mb-3">
+                    <div class="section-title border-0 mb-0 pb-0" id="titulo-grafico-carga">
+                        <i class="bi bi-activity text-info me-2"></i>Productividad Diaria del Equipo (Últimos 14 días)
+                    </div>
+
+                    <div class="btn-group shadow-sm" role="group">
+                        <input type="radio" class="btn-check" name="btnSwitchCarga" id="btn-pasado" autocomplete="off" checked onchange="toggleChartMode('pasado')">
+                        <label class="btn btn-sm btn-outline-cyan fw-bold font-monospace" for="btn-pasado" style="font-size:0.75rem;"><i class="bi bi-clock-history me-1"></i>Histórico</label>
+
+                        <input type="radio" class="btn-check" name="btnSwitchCarga" id="btn-futuro" autocomplete="off" onchange="toggleChartMode('futuro')">
+                        <label class="btn btn-sm btn-outline-amber fw-bold font-monospace" for="btn-futuro" style="font-size:0.75rem;"><i class="bi bi-fast-forward-fill me-1"></i>Proyectado</label>
+                    </div>
+
+                </div>
+                <div id="cargaDiariaChart" style="min-height: 320px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="chart-container h-100">
+                <div class="section-title"><i class="bi bi-bar-chart-fill text-info me-2"></i>Desviación de Esfuerzo (Últimos Proyectos)</div>
+                <div id="esfuerzoChart" style="min-height: 300px;"></div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="chart-container h-100 d-flex flex-column">
+                <div class="section-title text-danger"><i class="bi bi-fire me-2"></i>Tareas Estancadas</div>
+                <div class="flex-grow-1 overflow-auto" style="max-height: 300px;">
+                    @if (tareasEstancadas != null && tareasEstancadas.Any())
+                    {
+                        <ul class="list-group list-group-flush">
+                            @foreach (var t in tareasEstancadas)
+                            {
+                                var diasEstancada = (DateTime.Now - (t.FechaInicioReal ?? DateTime.Now)).Days;
+                                <li class="list-group-item bg-transparent border-secondary border-opacity-25 px-0 text-white">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <div class="fw-bold" style="font-size: 0.85rem;">@t.Nombre</div>
+                                            <div class="text-white-50 mt-1" style="font-size: 0.7rem;">
+                                                <i class="bi bi-person-fill me-1"></i>@(t.UsuarioAsignado?.Email?.Split('@')[0] ?? "Sin Asignar")
+                                                <br />
+                                                <i class="bi bi-folder2-open me-1"></i>@t.SubFase?.Fase?.Proyecto?.Nombre
+                                            </div>
+                                        </div>
+                                        <span class="badge bg-danger rounded-pill bg-opacity-25 text-danger border border-danger">@diasEstancada Días</span>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <div class="text-center text-white-50 mt-5 pt-3">
+                            <i class="bi bi-check-circle fs-1 text-success opacity-50 mb-3 d-block"></i>
+                            <p>¡Excelente! No hay tareas estancadas.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Lógica de Navegación de Semanas (AJAX)
+        let currentWeekOffset = 0;
+        function cambiarSemana(direccion) {
+        currentWeekOffset += direccion;
+        document.getElementById('val-sobrecarga').classList.add('d-none');
+        document.getElementById('spinner-sobrecarga').classList.remove('d-none');
+
+        fetch(`/GestorDashboard/GetSobrecargaPorSemana?offset=${currentWeekOffset}`)
+        .then(r => r.json())
+        .then(data => {
+        document.getElementById('val-sobrecarga').textContent = data.count;
+        document.getElementById('lbl-semana').textContent = data.label;
+        document.getElementById('lbl-rango').textContent = data.rango;
+        })
+        .finally(() => {
+        document.getElementById('spinner-sobrecarga').classList.add('d-none');
+        document.getElementById('val-sobrecarga').classList.remove('d-none');
+        });
+        }
+
+        // Variable global para la instancia del gráfico
+        var chartCargaDiaria;
+
+        // Datos Inyectados desde C#
+        var dataPasado = {
+        etiquetas: @Html.Raw(ViewBag.EtiquetasDias),
+        series: @Html.Raw(ViewBag.SeriesCarga)
+        };
+
+        var dataFuturo = {
+        etiquetas: @Html.Raw(ViewBag.EtiquetasDiasFuturo),
+        series: @Html.Raw(ViewBag.SeriesCargaFuturo)
+        };
+
+        function toggleChartMode(modo) {
+        const isFuturo = (modo === 'futuro');
+        const newTitle = isFuturo
+        ? '<i class="bi bi-fast-forward-fill text-warning me-2"></i>Carga Proyectada (Próximos 14 días hábiles)'
+        : '<i class="bi bi-clock-history text-info me-2"></i>Productividad Diaria del Equipo (Últimos 14 días)';
+
+        document.getElementById('titulo-grafico-carga').innerHTML = newTitle;
+
+        // Actualizar opciones (eje X)
+        chartCargaDiaria.updateOptions({
+        xaxis: { categories: isFuturo ? dataFuturo.etiquetas : dataPasado.etiquetas },
+        yaxis: { title: { text: isFuturo ? 'Horas Estimadas' : 'Horas Reportadas' } }
+        });
+
+        // Actualizar los datos de las barras
+        chartCargaDiaria.updateSeries(isFuturo ? dataFuturo.series : dataPasado.series);
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+        // POPOVER MUNDIAL (Riesgo)
+        const btnRisk = document.getElementById('btn-toggle-risk');
+        const popoverRisk = document.getElementById('popover-risk');
+        btnRisk.addEventListener('click', e => { e.stopPropagation(); popoverRisk.classList.toggle('active'); });
+        document.addEventListener('click', e => { if(!btnRisk.contains(e.target)) popoverRisk.classList.remove('active'); });
+
+        // 1. Gráfico Esfuerzo (Existente)
+        var labelsProyectos = @Html.Raw(ViewBag.LabelsEsfuerzo);
+        var dataPlanificada = @Html.Raw(ViewBag.DataPlanificada);
+        var dataReal = @Html.Raw(ViewBag.DataReal);
+        new ApexCharts(document.querySelector("#esfuerzoChart"), {
+        series: [{ name: 'Horas Plan', data: dataPlanificada }, { name: 'Horas Reales', data: dataReal }],
+        chart: { type: 'bar', height: 300, background: 'transparent', foreColor: 'rgba(255,255,255,0.45)', toolbar: { show: false } },
+        colors: ['#0dcaf0', '#ffc107'],
+        plotOptions: { bar: { horizontal: false, columnWidth: '50%', borderRadius: 3 } },
+        dataLabels: { enabled: false },
+        stroke: { show: true, width: 2, colors: ['transparent'] },
+        xaxis: { categories: labelsProyectos, axisBorder: { show: false }, axisTicks: { show: false } },
+        yaxis: { title: { text: 'Horas (h)' } },
+        fill: { type: 'gradient', gradient: { shade: 'dark', type: 'vertical', shadeIntensity: 0.5, opacityFrom: 0.9, opacityTo: 0.3 } },
+        grid: { borderColor: 'rgba(255,255,255,0.05)', strokeDashArray: 4 },
+        tooltip: { theme: 'dark' }
+        }).render();
+
+        // 2. Gráfico Carga Diaria Inicial (Histórico por defecto)
+        var colorPalette = ['#0dcaf0', '#20c997', '#ffc107', '#fd7e14', '#6f42c1', '#d63384', '#dc3545', '#0d6efd'];
+        var optionsCarga = {
+        series: dataPasado.series,
+        chart: {
+        type: 'bar',
+        height: 320,
+        stacked: true,
+        background: 'transparent',
+        foreColor: 'rgba(255, 255, 255, 0.5)',
+        toolbar: { show: true }
+        },
+        colors: colorPalette,
+        plotOptions: { bar: { horizontal: false, borderRadius: 2, columnWidth: '40%' } },
+        xaxis: { categories: dataPasado.etiquetas, axisBorder: { show: false }, axisTicks: { show: false } },
+        yaxis: { title: { text: 'Horas Reportadas' }, labels: { formatter: function (val) { return val + " h"; } } },
+        fill: { opacity: 0.9 },
+        legend: { position: 'top', horizontalAlign: 'center', labels: { colors: '#ffffff' } },
+        grid: { borderColor: 'rgba(255, 255, 255, 0.05)', strokeDashArray: 3 },
+        tooltip: { theme: 'dark', y: { formatter: function (val) { return val + " h" } } },
+        noData: { text: 'No hay datos para mostrar', align: 'center', verticalAlign: 'middle', style: { color: '#ffffff', fontSize: '14px' } }
+        };
+
+        chartCargaDiaria = new ApexCharts(document.querySelector("#cargaDiariaChart"), optionsCarga);
+        chartCargaDiaria.render();
+        });
+    </script>
+}
