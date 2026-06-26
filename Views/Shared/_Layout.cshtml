@@ -1021,6 +1021,13 @@
                         </a>
                     </li>
 
+                    <li class="nav-item">
+                        <a class="nav-link @(currentController == "Kanban" ? "active" : "")" asp-controller="Kanban" asp-action="Index"
+                           data-sidebar-label="Tablero Kanban">
+                            <i class="bi bi-layout-three-columns"></i> <span>Tablero Kanban</span>
+                        </a>
+                    </li>
+
                     @if (User.IsInRole("Admin"))
                     {
                         <li class="nav-item">
@@ -1629,7 +1636,7 @@
 
     @if (User.Identity?.IsAuthenticated == true)
     {
-        <script src="~/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
         <script>
             (function() {
             const NOTIF_TIPOS_ICONOS = {

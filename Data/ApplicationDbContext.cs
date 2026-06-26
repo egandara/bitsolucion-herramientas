@@ -38,6 +38,8 @@ namespace NotebookValidator.Web.Data
         public DbSet<SubFaseProyecto> SubFasesProyecto { get; set; }
         public DbSet<TareaProyecto> TareasProyecto { get; set; }
 
+        public DbSet<ComentarioTarea> ComentariosTareas { get; set; }
+
         public DbSet<Feriado> Feriados { get; set; }
 
         // =========================================================

@@ -1,0 +1,1075 @@
+@model IEnumerable<NotebookValidator.Web.Models.GestorProyectos.TareaProyecto>
+@{
+    ViewData["Title"] = "Tablero Kanban";
+    var pendientes = Model.Where(t => t.Estado == "Pendiente").ToList();
+    var enProgreso = Model.Where(t => t.Estado == "En Progreso").ToList();
+    var enRevision = Model.Where(t => t.Estado == "En Revisión").ToList();
+    var terminadas = Model.Where(t => t.Estado == "Terminada").ToList();
+}
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+<style>
+    .kanban-board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    min-height: calc(100vh - 180px);
+    align-items: start;
+    overflow-x: auto;
+    padding-bottom: 20px;
+    }
+
+    .kanban-col {
+    background-color: #111424;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 180px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    .kanban-col-header {
+    padding: 12px 15px;
+    border-bottom: 2px solid;
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: rgba(255,255,255,0.02);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    }
+
+    .col-pendiente {
+    border-bottom-color: #6c757d;
+    color: #ced4da;
+    }
+
+    .col-progreso {
+    border-bottom-color: #ffc107;
+    color: #ffc107;
+    }
+
+    .col-revision {
+    border-bottom-color: #0dcaf0;
+    color: #0dcaf0;
+    }
+
+    .col-terminada {
+    border-bottom-color: #20c997;
+    color: #20c997;
+    }
+
+    .kanban-tasks {
+    padding: 10px;
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 150px;
+    }
+
+    .kanban-tasks.is-empty::after {
+    content: 'Soltar tarea aquí';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100px;
+    color: rgba(255,255,255,0.2);
+    font-size: 0.8rem;
+    border: 2px dashed rgba(255,255,255,0.05);
+    border-radius: 6px;
+    margin-top: 5px;
+    font-family: monospace;
+    }
+
+    .k-card {
+    background-color: #1a1d2e;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
+    cursor: grab;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    position: relative;
+    }
+
+    .k-card:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.6);
+    }
+
+    .k-card:active {
+    cursor: grabbing;
+    }
+
+    .k-card.sortable-ghost {
+    opacity: 0.4;
+    background-color: #2a2e45;
+    border: 1px dashed #0dcaf0;
+    }
+
+    .k-card-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #fff;
+    margin-bottom: 6px;
+    line-height: 1.3;
+    }
+
+    .k-card-title:hover {
+    text-decoration: underline;
+    }
+
+    .k-tag-project {
+    font-size: 0.6rem;
+    padding: 3px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255,255,255,0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+    display: inline-block;
+    }
+
+    .k-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(255,193,7,0.2);
+    border: 1px solid #ffc107;
+    color: #ffc107;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    }
+
+    .filter-select {
+    background-color: #111424;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 0.85rem;
+    outline: none;
+    }
+
+    .search-input {
+    background: #111424 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='rgba(255,255,255,0.4)' class='bi bi-search' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z'/%3E%3C/svg%3E") no-repeat 10px center;
+    padding-left: 35px;
+    }
+
+    .ctx-menu {
+    position: fixed;
+    background: #1a1d2e;
+    border: 1px solid rgba(13, 202, 240, 0.4);
+    border-radius: 6px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    z-index: 10000;
+    display: none;
+    min-width: 200px;
+    padding: 6px 0;
+    font-size: 0.8rem;
+    }
+
+    .ctx-menu .menu-item {
+    padding: 8px 15px;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.2s;
+    }
+
+    .ctx-menu .menu-item:hover {
+    background: rgba(13, 202, 240, 0.15);
+    color: #0dcaf0;
+    }
+
+    .ctx-menu .menu-item.warning:hover {
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffc107;
+    }
+
+    .chat-bubble {
+    background: #1a1d2e;
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 12px;
+    }
+
+    .chat-bubble .meta {
+    font-size: 0.7rem;
+    color: #0dcaf0;
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+    font-family: monospace;
+    }
+
+    .chat-bubble .texto {
+    font-size: 0.85rem;
+    color: #fff;
+    line-height: 1.4;
+    word-wrap: break-word;
+    }
+
+    .user-search-container {
+    position: relative;
+    display: inline-block;
+    }
+
+    .user-search-input {
+    background: #0a0c16;
+    color: #fff;
+    border: 1px solid #0dcaf0;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    outline: none;
+    width: 100%;
+    box-shadow: 0 0 10px rgba(13,202,240,0.3);
+    }
+
+    .user-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #1a1d2e;
+    border: 1px solid rgba(13, 202, 240, 0.4);
+    border-radius: 4px;
+    max-height: 150px;
+    overflow-y: auto;
+    z-index: 1060;
+    width: 100%;
+    display: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    margin-top: 4px;
+    }
+
+    .user-dropdown-item {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s;
+    }
+
+    .user-dropdown-item:hover {
+    background: rgba(13, 202, 240, 0.2);
+    color: #0dcaf0;
+    }
+
+    #mentionsDropdown {
+    position: absolute;
+    bottom: calc(100% + 5px);
+    left: 10px;
+    background: #1a1d2e;
+    border: 1px solid #ffc107;
+    border-radius: 6px;
+    max-height: 150px;
+    overflow-y: auto;
+    z-index: 10000;
+    width: 250px;
+    display: none;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.8);
+    }
+
+    .mention-item {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .mention-item:hover {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    }
+
+    textarea#newTaskComment::placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+    opacity: 1;
+    }
+
+    textarea#newTaskComment {
+    color: #ffffff !important;
+    }
+
+    .text-placeholder-highlight {
+    color: rgba(13, 202, 240, 0.65) !important;
+    font-style: italic;
+    font-weight: 500;
+    }
+
+    /* ESTILOS DE LA NUEVA LISTA DE CONTROL (CHECKLIST) */
+    .checklist-wrapper {
+    background: rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    padding: 12px;
+    }
+
+    .checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.75);
+    cursor: pointer;
+    user-select: none;
+    }
+
+    .checklist-item input[type="checkbox"] {
+    width: 15px;
+    height: 16px;
+    accent-color: #0dcaf0;
+    cursor: pointer;
+    }
+
+    .checklist-item.checked {
+    text-decoration: line-through;
+    opacity: 0.45;
+    }
+</style>
+
+<div class="container-fluid mt-2">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold text-white mb-0"><i class="bi bi-layout-three-columns me-2 text-info"></i>Tablero Kanban</h1>
+            <p class="text-white-50 small mb-0 mt-1">Arrastra las tarjetas, haz <strong>clic derecho</strong> para opciones o <strong>clic en el título</strong> para comentar.</p>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <input type="text" id="kanbanSearch" class="filter-select search-input" placeholder="Buscar tarea..." autocomplete="off" style="width: 220px;" />
+            <div class="d-flex align-items-center">
+                <span class="text-white-50 small me-2">Vista:</span>
+                <select class="filter-select" id="filtroProyecto" onchange="window.location.href='?proyectoId=' + this.value">
+                    <option value="">Mis Tareas Globales</option>
+                    @if (ViewBag.FiltroProyectos != null)
+                    {
+                        foreach (var item in ViewBag.FiltroProyectos)
+                        {
+                            <option value="@item.Value" selected="@item.Selected">@item.Text</option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="kanban-board">
+        <div class="kanban-col">
+            <div class="kanban-col-header col-pendiente"><span>POR HACER</span><span class="badge bg-secondary rounded-pill" id="count-Pendiente">@pendientes.Count</span></div>
+            <div class="kanban-tasks @(pendientes.Count == 0 ? "is-empty" : "")" id="col-Pendiente" data-estado="Pendiente">
+                @foreach (var t in pendientes)
+                {
+                    @await Html.PartialAsync("_KanbanCard", t)
+                }
+            </div>
+        </div>
+
+        <div class="kanban-col">
+            <div class="kanban-col-header col-progreso"><span>EN PROGRESO</span><span class="badge bg-warning text-dark rounded-pill" id="count-En Progreso">@enProgreso.Count</span></div>
+            <div class="kanban-tasks @(enProgreso.Count == 0 ? "is-empty" : "")" id="col-En Progreso" data-estado="En Progreso">
+                @foreach (var t in enProgreso)
+                {
+                    @await Html.PartialAsync("_KanbanCard", t)
+                }
+            </div>
+        </div>
+
+        <div class="kanban-col">
+            <div class="kanban-col-header col-revision"><span>EN REVISIÓN (QA)</span><span class="badge bg-info text-dark rounded-pill" id="count-En Revisión">@enRevision.Count</span></div>
+            <div class="kanban-tasks @(enRevision.Count == 0 ? "is-empty" : "")" id="col-En Revisión" data-estado="En Revisión">
+                @foreach (var t in enRevision)
+                {
+                    @await Html.PartialAsync("_KanbanCard", t)
+                }
+            </div>
+        </div>
+
+        <div class="kanban-col">
+            <div class="kanban-col-header col-terminada"><span>TERMINADAS</span><span class="badge bg-success rounded-pill" id="count-Terminada">@terminadas.Count</span></div>
+            <div class="kanban-tasks @(terminadas.Count == 0 ? "is-empty" : "")" id="col-Terminada" data-estado="Terminada">
+                @foreach (var t in terminadas)
+                {
+                    @await Html.PartialAsync("_KanbanCard", t)
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="ctxMenu" class="ctx-menu">
+    <div class="menu-item" id="ctxOpenProject"><i class="bi bi-box-arrow-up-right"></i> Abrir Proyecto</div>
+    <div class="menu-item" id="ctxCopyName"><i class="bi bi-clipboard"></i> Copiar Título</div>
+    <div class="menu-item" id="ctxComment"><i class="bi bi-chat-text"></i> Comentar / Ver Detalles</div>
+    <hr>
+    <div class="menu-item warning" id="ctxNudge"><i class="bi bi-bell-fill"></i> Solicitar Actualización</div>
+</div>
+
+<div class="modal fade" id="modalNudge" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background-color: #111424; border: 1px solid #ffc107; box-shadow: 0 10px 40px rgba(0,0,0,0.8);">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <h5 class="modal-title text-warning font-monospace"><i class="bi bi-bell-fill me-2"></i>Solicitar Actualización</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="nudgeTaskId" />
+                <div class="mb-3 text-white-50 small">
+                    Se enviará una notificación a <strong class="text-white" id="nudgeUserAlias"></strong> sobre la tarea:<br>
+                    <span class="text-info fw-bold" id="nudgeTaskName"></span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label text-warning small font-monospace">Mensaje Adjunto</label>
+                    <textarea id="nudgeMessage" class="form-control text-white border-secondary" style="background-color: #1a1e36; font-size: 0.85rem;" rows="3" placeholder="Ej: ¿Necesitas ayuda con esto?"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer border-top border-secondary border-opacity-25">
+                <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-sm btn-warning fw-bold" id="btnConfirmNudge" onclick="sendNudge()">Enviar Notificación</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalTaskDetails" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="background-color: #111424; border: 1px solid #0dcaf0; box-shadow: 0 10px 40px rgba(0,0,0,0.8); height: 85vh;">
+
+            <input type="hidden" id="detailTaskId" />
+
+            <div class="modal-header border-bottom border-secondary border-opacity-25 flex-column align-items-start pb-2" style="height: 75px;">
+                <div class="mb-1 font-monospace text-white-50" style="font-size: 0.7rem; opacity: 0.65;">
+                    <span id="breadcrumbProject"></span> / <span id="breadcrumbFase"></span> / <span id="breadcrumbSubFase"></span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center w-100">
+                    <h5 class="modal-title text-info font-monospace fw-bold" id="detailTaskName">Cargando...</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+            </div>
+
+            <div class="modal-body p-0" style="height: calc(85vh - 75px); overflow: hidden;">
+                <div class="row g-0 h-100">
+
+                    <div class="col-md-6 p-3 d-flex flex-column h-100 border-end border-secondary border-opacity-25" style="background: rgba(255,255,255,0.01); overflow: hidden;">
+
+                        <div class="flex-grow-1 d-flex flex-column gap-3" style="overflow-y: auto; padding-right: 5px;">
+
+                            <div class="d-flex flex-wrap gap-4">
+                                <div>
+                                    <label class="form-label font-monospace small text-white-50 text-uppercase mb-1" style="font-size:0.65rem;">
+                                        Responsable <i class="bi bi-info-circle-fill text-info ms-1" style="cursor:help; font-size:0.7rem;" data-bs-toggle="tooltip" title="Usuario encargado de la ejecución física y cierre técnico de este ítem."></i>
+                                    </label>
+                                    <div id="displayUserBox" class="d-flex align-items-center text-white" style="font-size: 0.85rem;">
+                                        <i class="bi bi-person-circle text-info me-1 fs-6"></i>
+                                        <span id="detailTaskUser" class="fw-bold"></span>
+                                        <i class="bi bi-pencil-square ms-2 text-info opacity-75" style="cursor:pointer;" onclick="toggleReassign()" title="Reasignar Tarea"></i>
+                                    </div>
+                                    <div id="editUserBox" class="user-search-container d-none" style="width: 160px;">
+                                        <input type="text" id="reassignInput" class="user-search-input" placeholder="Buscar..." autocomplete="off">
+                                        <div id="reassignDropdown" class="user-dropdown"></div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="form-label font-monospace small text-white-50 text-uppercase mb-1" style="font-size:0.65rem;">
+                                        Esfuerzo <i class="bi bi-info-circle-fill text-info ms-1" style="cursor:help; font-size:0.7rem;" data-bs-toggle="tooltip" title="HH (Horas Hombre) estimadas originalmente para la resolución de la tarea."></i>
+                                    </label>
+                                    <div class="text-white font-monospace fw-bold small"><i class="bi bi-clock me-1 text-white-50"></i><span id="detailTaskHours">0</span> h</div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="form-label small text-white-50 text-uppercase mb-1" style="font-size:0.65rem;">
+                                    Estado de la Tarea <i class="bi bi-info-circle-fill text-info ms-1" style="cursor:help; font-size:0.7rem;" data-bs-toggle="tooltip" title="Fase operativa actual de la tarea dentro del flujo Kanban configurado."></i>
+                                </label>
+                                <select id="detailStateSelect" class="filter-select w-100 font-monospace" style="font-size:0.8rem; padding: 4px 10px;" onchange="updateTaskStateDirect(this.value)">
+                                    <option value="Pendiente">Por Hacer</option>
+                                    <option value="En Progreso">En Progreso</option>
+                                    <option value="En Revisión">En Revisión (QA)</option>
+                                    <option value="Terminada">Terminada</option>
+                                </select>
+                            </div>
+
+                            <div class="d-flex gap-4">
+                                <div class="flex-fill">
+                                    <label class="form-label font-monospace small text-white-50 text-uppercase mb-1" style="font-size:0.65rem;">
+                                        Inicio Planificado <i class="bi bi-info-circle-fill text-info ms-1" style="cursor:help; font-size:0.7rem;" data-bs-toggle="tooltip" title="Fecha estipulada en el cronograma base para dar comienzo a las actividades."></i>
+                                    </label>
+                                    <div class="text-white font-monospace small" id="detailTaskStart" style="font-size:0.75rem;">--</div>
+                                </div>
+                                <div class="flex-fill">
+                                    <label class="form-label font-monospace small text-white-50 text-uppercase mb-1" style="font-size:0.65rem;">
+                                        Fin Planificado <i class="bi bi-info-circle-fill text-info ms-1" style="cursor:help; font-size:0.7rem;" data-bs-toggle="tooltip" title="Fecha límite comprometida para la entrega de entregables y cierre de QA."></i>
+                                    </label>
+                                    <div class="text-white font-monospace small" id="detailTaskEnd" style="font-size:0.75rem;">--</div>
+                                </div>
+                            </div>
+
+                            <div class="mt-2">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="form-label font-monospace small text-white-50 text-uppercase m-0" style="font-size:0.65rem;">
+                                        <i class="bi bi-list-task me-1 text-info"></i>Criterios de Aceptación
+                                        <i class="bi bi-info-circle-fill text-info ms-1" style="cursor:help; font-size:0.7rem;" data-bs-toggle="tooltip" title="Lista de control técnica que debe ser cumplida al 100% para poder mover la tarjeta a Terminada."></i>
+                                    </label>
+                                    <span id="checklistPercent" class="font-monospace text-info fw-bold" style="font-size:0.72rem;">0%</span>
+                                </div>
+
+                                <div class="progress mb-3" style="height: 6px; background-color: rgba(255,255,255,0.05);">
+                                    <div class="progress-bar bg-info" id="checklistProgressBar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+
+                                <div class="wc-timeline-viewport p-0" id="checklistContainerCore" style="overflow: visible;">
+                                    <div class="wc-day-group-node w-100 m-0 p-0 border-0 flex-column align-items-start gap-1">
+                                        <div class="wc-match-interactive-pill w-100 justify-content-start py-2 px-3 m-0" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.05); cursor: default;">
+                                            <input type="checkbox" class="form-check-input me-2 bg-dark border-secondary" id="chkItem1" onchange="calculateChecklistProgress()">
+                                            <label class="form-check-label text-white-50 small" for="chkItem1" style="cursor:pointer;">Validar estructura y esquema de Notebooks</label>
+                                        </div>
+                                        <div class="wc-match-interactive-pill w-100 justify-content-start py-2 px-3 m-0" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.05); cursor: default;">
+                                            <input type="checkbox" class="form-check-input me-2 bg-dark border-secondary" id="chkItem2" onchange="calculateChecklistProgress()">
+                                            <label class="form-check-label text-white-50 small" for="chkItem2" style="cursor:pointer;">Verificar mapeo de tablas maestras y proyectos</label>
+                                        </div>
+                                        <div class="wc-match-interactive-pill w-100 justify-content-start py-2 px-3 m-0" style="background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.05); cursor: default;">
+                                            <input type="checkbox" class="form-check-input me-2 bg-dark border-secondary" id="chkItem3" onchange="calculateChecklistProgress()">
+                                            <label class="form-check-label text-white-50 small" for="chkItem3" style="cursor:pointer;">Confirmar conexiones en ambiente local</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="pt-2 border-top border-secondary border-opacity-25 mt-2" style="height: 140px;">
+                            <label class="form-label font-monospace small text-white-50 text-uppercase" style="font-size:0.65rem; margin-bottom:4px;">
+                                Documentación / Descripción <i class="bi bi-info-circle-fill text-info ms-1" style="cursor:help; font-size:0.7rem;" data-bs-toggle="tooltip" title="Repositorio de requerimientos, reglas de negocio e instrucciones técnicas de la tarea."></i>
+                            </label>
+                            <div id="displayDescBox" class="p-2 rounded text-white-50" style="background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.03); min-height: 110px; cursor: pointer; font-size: 0.82rem;" onclick="toggleEditDesc()">
+                                <span id="detailTaskDesc"></span>
+                            </div>
+                            <div id="editDescBox" class="d-none">
+                                <textarea id="editDescTextarea" class="form-control text-white border-secondary mb-1" style="background-color: #1a1e36; font-size: 0.8rem; height: 65px; resize: none;" rows="2"></textarea>
+                                <div class="d-flex gap-2 justify-content-end">
+                                    <button class="btn btn-xs btn-outline-secondary font-monospace py-0 px-2" style="font-size:0.7rem;" onclick="cancelEditDesc()">Cancelar</button>
+                                    <button class="btn btn-xs btn-info fw-bold font-monospace py-0 px-2" style="font-size:0.7rem;" onclick="saveTaskDescription()"><i class="bi bi-check-lg"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 p-3 d-flex flex-column h-100" style="overflow: hidden;">
+                        <div class="pb-2 font-monospace small text-white-50 border-bottom border-secondary border-opacity-25" style="font-size:0.75rem;">
+                            <i class="bi bi-chat-text-fill me-2 text-info"></i>Bitácora de Colaboración
+                            <i class="bi bi-info-circle ms-1 text-white-50" style="cursor:help; font-size:0.65rem;" title="Historial inalterable de auditoría y comentarios de la tarea." data-bs-toggle="tooltip"></i>
+                        </div>
+
+                        <div class="flex-grow-1 py-2" id="taskCommentsList" style="background: rgba(0,0,0,0.02); overflow-y: auto; padding-right: 5px;">
+                            <div class="text-center text-white-50 my-5"><span class="spinner-border"></span></div>
+                        </div>
+
+                        <div class="pt-2 border-top border-secondary border-opacity-25 position-relative mt-2" style="height: 140px;">
+                            <label class="form-label font-monospace small text-white-50 text-uppercase" style="font-size:0.65rem; margin-bottom:4px;">
+                                Nuevo Comentario <i class="bi bi-info-circle-fill text-info ms-1" style="cursor:help; font-size:0.7rem;" data-bs-toggle="tooltip" title="Publica una actualización en la bitácora. Recuerda usar el símbolo &#64; para llamar la atención de un colaborador en tiempo real."></i>
+                            </label>
+                            <div id="mentionsDropdown"></div>
+                            <div class="input-group" style="height: 95px;">
+                                <textarea id="newTaskComment" class="form-control border-secondary" style="background-color: #1a1e36; font-size: 0.8rem; height: 95px; resize: none;" placeholder="Escribe un comentario (Usa &#64; para mencionar)..."></textarea>
+                                <button class="btn btn-info px-3" onclick="sendTaskComment()" style="height: 95px;"><i class="bi bi-send-fill"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        let allUsers = [];
+
+        fetch('@Url.Action("GetAllUsers", "Kanban")')
+        .then(r => r.json())
+        .then(d => {
+        let usersArray = d.$values || d.value || d;
+        if (Array.isArray(usersArray)) {
+        allUsers = usersArray.map(u => ({
+        id: u.id || u.Id,
+        alias: u.alias || u.Alias || "Desconocido"
+        }));
+        }
+        })
+        .catch(e => console.error("Error cargando usuarios:", e));
+
+        // CONTROLADOR DEL CHECKLIST (NUEVO)
+        function toggleChecklistItem(itemElement) {
+        const checkbox = itemElement.querySelector('input[type="checkbox"]');
+        if (event.target !== checkbox) {
+        checkbox.checked = !checkbox.checked;
+        }
+        if (checkbox.checked) {
+        itemElement.classList.add('checked');
+        } else {
+        itemElement.classList.remove('checked');
+        }
+        calculateChecklistProgress();
+        }
+
+        function calculateChecklistProgress() {
+        // Buscamos los inputs de tipo checkbox dentro del contenedor del modal
+        const checkboxes = document.querySelectorAll('#checklistContainerCore input[type="checkbox"]');
+        const total = checkboxes.length;
+        const checked = document.querySelectorAll('#checklistContainerCore input[type="checkbox"]:checked').length;
+        const percentage = total > 0 ? Math.round((checked / total) * 100) : 0;
+
+        // Actualizamos el texto del porcentaje
+        document.getElementById('checklistPercent').textContent = percentage + "%";
+
+        // Sincronizamos la barra de progreso de Bootstrap en vivo
+        const progressBar = document.getElementById('checklistProgressBar');
+        if (progressBar) {
+        progressBar.style.width = percentage + "%";
+        progressBar.setAttribute('aria-valuenow', percentage);
+        }
+
+        // Aplicamos o removemos el tachado visual al texto de los ítems
+        checkboxes.forEach(chk => {
+        const itemLabel = chk.closest('.wc-match-interactive-pill');
+        if (chk.checked) {
+        itemLabel.style.opacity = "0.35";
+        itemLabel.style.textDecoration = "line-through";
+        } else {
+        itemLabel.style.opacity = "1";
+        itemLabel.style.textDecoration = "none";
+        }
+        });
+        }
+
+        function toggleEditDesc() {
+        document.getElementById('displayDescBox').classList.add('d-none');
+        document.getElementById('editDescBox').classList.remove('d-none');
+        document.getElementById('editDescTextarea').focus();
+        }
+
+        // Restablece el Checklist a su estado original al cambiar de tarea
+        function resetChecklistUI() {
+        document.querySelectorAll('.checklist-item').forEach(item => {
+        item.classList.remove('checked');
+        item.querySelector('input[type="checkbox"]').checked = false;
+        });
+        calculateChecklistProgress();
+        }
+
+        function cancelEditDesc() {
+        document.getElementById('displayDescBox').classList.remove('d-none');
+        document.getElementById('editDescBox').classList.add('d-none');
+        }
+
+        function formatCommentText(text) {
+        let safeText = text.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, '<br>');
+        const mentionRegex = new RegExp('\\u0040([\\w\\.]+)', 'g');
+
+        return safeText.replace(mentionRegex, function(match, username) {
+        const userObj = allUsers.find(u => u.alias.toLowerCase() === username.toLowerCase());
+        if (userObj) {
+        return `<span class="badge bg-info text-dark" style="cursor:help;" title="Usuario verificado: ${userObj.alias}" data-bs-toggle="tooltip">&#64;${username}</span>`;
+        } else {
+        return `<strong class="text-warning">&#64;${username}</strong>`;
+        }
+        });
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        tooltipTriggerList.map(function (tooltipTriggerEl) { return new bootstrap.Tooltip(tooltipTriggerEl) });
+
+        const modalEl = document.getElementById('modalTaskDetails');
+        if (modalEl) {
+        modalEl.addEventListener('hidden.bs.modal', function () {
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.style.overflow = 'auto';
+        document.body.classList.remove('modal-open');
+        });
+        }
+
+        document.addEventListener('click', function(e) {
+        const titleElement = e.target.closest('.k-card-title');
+        if (titleElement) {
+        const card = titleElement.closest('.k-card');
+        if (card) {
+        const taskId = card.getAttribute('data-id');
+        if (taskId) openTaskDetails(taskId);
+        }
+        }
+        });
+
+        const columns = document.querySelectorAll('.kanban-tasks');
+        columns.forEach(col => {
+        new Sortable(col, {
+        group: 'kanban',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        onEnd: function (evt) {
+        const itemEl = evt.item;
+        const toList = evt.to;
+        const fromList = evt.from;
+
+        if(fromList.children.length === 0) fromList.classList.add('is-empty');
+        toList.classList.remove('is-empty');
+
+        const newState = toList.getAttribute('data-estado');
+        const oldState = fromList.getAttribute('data-estado');
+        const taskId = itemEl.getAttribute('data-id');
+
+        if (newState !== oldState) {
+        document.getElementById('count-' + oldState).textContent = fromList.children.length;
+        document.getElementById('count-' + newState).textContent = toList.children.length;
+
+        let formData = new FormData();
+        formData.append('tareaId', taskId);
+        formData.append('nuevoEstado', newState);
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+        fetch('/Proyectos/UpdateTareaStatus', { method: 'POST', body: formData, headers: { 'RequestVerificationToken': token } })
+        .then(r => r.json())
+        .then(data => {
+        if (data.success) toastr.success(`Movida a ${newState}`);
+        else {
+        toastr.error(data.message);
+        fromList.appendChild(itemEl);
+        document.getElementById('count-' + oldState).textContent = fromList.children.length;
+        document.getElementById('count-' + newState).textContent = toList.children.length;
+        if(fromList.children.length > 0) fromList.classList.remove('is-empty');
+        if(toList.children.length === 0) toList.classList.add('is-empty');
+        }
+        }).catch(() => { toastr.error("Error de red"); fromList.appendChild(itemEl); });
+        }
+        }
+        });
+        });
+
+        document.getElementById('kanbanSearch').addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase();
+        document.querySelectorAll('.k-card').forEach(card => {
+        const title = card.querySelector('.k-card-title').textContent.toLowerCase();
+        card.style.display = title.includes(term) ? 'block' : 'none';
+        });
+        });
+
+        const ctxMenu = document.getElementById('ctxMenu');
+        let contextTargetCard = null;
+
+        document.addEventListener('contextmenu', function(e) {
+        const card = e.target.closest('.k-card');
+        if (card) {
+        e.preventDefault();
+        contextTargetCard = card;
+        ctxMenu.style.display = 'block';
+        let x = e.pageX; let y = e.pageY;
+        if (x + ctxMenu.offsetWidth > window.innerWidth) x = window.innerWidth - ctxMenu.offsetWidth - 10;
+        if (y + ctxMenu.offsetHeight > window.innerHeight) y = window.innerHeight - ctxMenu.offsetHeight - 10;
+        ctxMenu.style.left = x + 'px'; ctxMenu.style.top = y + 'px';
+        } else { ctxMenu.style.display = 'none'; }
+        });
+
+        document.addEventListener('click', function(e) { if (!ctxMenu.contains(e.target)) ctxMenu.style.display = 'none'; });
+
+        document.getElementById('ctxOpenProject').addEventListener('click', function() {
+        if(contextTargetCard) {
+        const projectId = contextTargetCard.getAttribute('data-project-id');
+        if(projectId && projectId !== "0") window.open(`/Proyectos/Details/${projectId}`, '_blank');
+        else toastr.info("No vinculada a proyecto.");
+        }
+        ctxMenu.style.display = 'none';
+        });
+
+        document.getElementById('ctxCopyName').addEventListener('click', function() {
+        if(contextTargetCard) navigator.clipboard.writeText(contextTargetCard.getAttribute('data-task-name')).then(() => toastr.success("Copiado"));
+        ctxMenu.style.display = 'none';
+        });
+
+        document.getElementById('ctxComment').addEventListener('click', function() {
+        if(contextTargetCard) openTaskDetails(contextTargetCard.getAttribute('data-id'));
+        ctxMenu.style.display = 'none';
+        });
+
+        document.getElementById('ctxNudge').addEventListener('click', function() {
+        if(contextTargetCard) {
+        document.getElementById('nudgeTaskId').value = contextTargetCard.getAttribute('data-id');
+        document.getElementById('nudgeTaskName').textContent = contextTargetCard.getAttribute('data-task-name');
+        document.getElementById('nudgeUserAlias').textContent = contextTargetCard.getAttribute('data-user-alias');
+        document.getElementById('nudgeMessage').value = '';
+        ctxMenu.style.display = 'none';
+        new bootstrap.Modal(document.getElementById('modalNudge')).show();
+        }
+        });
+
+        const commentInput = document.getElementById('newTaskComment');
+        const mentionsDrop = document.getElementById('mentionsDropdown');
+        const AT_SYM = String.fromCharCode(64);
+
+        commentInput.addEventListener('input', function() {
+        const text = this.value;
+        const textBeforeCursor = text.substring(0, this.selectionStart);
+        const words = textBeforeCursor.split(/[\s\n]+/);
+        const lastWord = words[words.length - 1];
+
+        if (lastWord.startsWith(AT_SYM)) {
+        const searchTerm = lastWord.substring(1).toLowerCase();
+
+        let filtered = [];
+        if(searchTerm === "") {
+        filtered = allUsers.slice(0, 5);
+        } else {
+        filtered = allUsers.filter(u => u.alias.toLowerCase().includes(searchTerm));
+        }
+
+        if(filtered.length > 0) {
+        mentionsDrop.innerHTML = filtered.map(u =>
+        `<div class="mention-item" onclick="insertMention('` + u.alias + `')"><i class="bi bi-at text-warning"></i>` + u.alias + `</div>`
+        ).join('');
+        mentionsDrop.style.display = 'block';
+        } else {
+        mentionsDrop.style.display = 'none';
+        }
+        } else {
+        mentionsDrop.style.display = 'none';
+        }
+        });
+
+        document.getElementById('reassignInput').addEventListener('input', function() {
+        const val = this.value.toLowerCase();
+        const drop = document.getElementById('reassignDropdown');
+        if(val.length < 1) { drop.style.display = 'none'; return; }
+
+        const filtered = allUsers.filter(u => u.alias.toLowerCase().includes(val));
+        drop.innerHTML = filtered.map(u =>
+        `<div class="user-dropdown-item" onclick="confirmReassign('` + u.id + `', '` + u.alias + `')"><i class="bi bi-person me-2"></i>` + u.alias + `</div>`
+        ).join('');
+
+        drop.style.display = filtered.length ? 'block' : 'none';
+        });
+        });
+
+        function sendNudge() {
+        const taskId = document.getElementById('nudgeTaskId').value;
+        const message = document.getElementById('nudgeMessage').value.trim();
+        const btn = document.getElementById('btnConfirmNudge');
+
+        btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+        fetch('/GestorDashboard/NudgeUser', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+        body: JSON.stringify({ TareaId: parseInt(taskId), Mensaje: message })
+        }).then(r => r.json()).then(data => {
+        bootstrap.Modal.getInstance(document.getElementById('modalNudge')).hide();
+        toastr.success(data.message, "Aviso Enviado");
+        }).finally(() => { btn.disabled = false; btn.innerHTML = 'Enviar Notificación'; });
+        }
+
+        function openTaskDetails(taskId) {
+        document.getElementById('detailTaskId').value = taskId;
+        document.getElementById('taskCommentsList').innerHTML = '<div class="text-center text-white-50 my-5"><span class="spinner-border"></span></div>';
+        document.getElementById('newTaskComment').value = '';
+        document.getElementById('mentionsDropdown').style.display = 'none';
+
+        document.getElementById('displayUserBox').classList.remove('d-none');
+        document.getElementById('editUserBox').classList.add('d-none');
+        cancelEditDesc();
+        resetChecklistUI(); // Limpia los checks anteriores
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTaskDetails')).show();
+
+        fetch(`/Kanban/GetDetalleTarea?tareaId=${taskId}`)
+        .then(r => r.json())
+        .then(data => {
+        document.getElementById('detailTaskName').textContent = data.nombre;
+        document.getElementById('detailTaskUser').textContent = data.responsable;
+        document.getElementById('detailTaskHours').textContent = data.horas;
+
+        document.getElementById('breadcrumbProject').textContent = data.proyectoNombre;
+        document.getElementById('breadcrumbFase').textContent = data.faseNombre;
+        document.getElementById('breadcrumbSubFase').textContent = data.subFaseNombre;
+
+        document.getElementById('detailStateSelect').value = data.estado;
+        document.getElementById('detailTaskStart').innerHTML = `<i class="bi bi-calendar-event me-1 text-white-50"></i>` + (data.fechaInicio ? data.fechaInicio : '--');
+        document.getElementById('detailTaskEnd').innerHTML = `<i class="bi bi-calendar-check me-1 text-white-50"></i>` + (data.fechaFin ? data.fechaFin : '--');
+
+        const descSpan = document.getElementById('detailTaskDesc');
+        if(!data.descripcion.trim()) {
+        descSpan.innerHTML = `<span class="text-placeholder-highlight"><i class="bi bi-pencil-fill me-1 small"></i>Sin descripción registrada. Clic para añadir...</span>`;
+        document.getElementById('editDescTextarea').value = '';
+        } else {
+        descSpan.textContent = data.descripcion;
+        document.getElementById('editDescTextarea').value = data.descripcion;
+        }
+
+        const container = document.getElementById('taskCommentsList');
+        if (!data.comentarios || data.comentarios.length === 0) {
+        container.innerHTML = '<div class="text-center text-white-50 mt-4"><i class="bi bi-chat-left-dots fs-1 d-block mb-2"></i>Aún no hay comentarios.</div>';
+        } else {
+        container.innerHTML = data.comentarios.map(c => `
+        <div class="chat-bubble">
+        <div class="meta"><span>${c.usuario}</span><span class="text-white-50">${c.fechaStr}</span></div>
+        <div class="texto">${formatCommentText(c.texto)}</div>
+        </div>`).join('');
+
+        var tooltipTriggerList = [].slice.call(container.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) { return new bootstrap.Tooltip(tooltipTriggerEl); });
+        container.scrollTop = container.scrollHeight;
+        }
+        });
+        }
+
+        // El resto de los scripts (saveTaskDescription, sendTaskComment, etc.) se mantienen intactos...
+        function saveTaskDescription() {
+        const taskId = document.getElementById('detailTaskId').value;
+        const text = document.getElementById('editDescTextarea').value;
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+        fetch('/Kanban/UpdateTaskDescription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+        body: JSON.stringify({ TareaId: parseInt(taskId), Descripcion: text })
+        })
+        .then(r => r.json())
+        .then(data => {
+        if(data.success) {
+        toastr.success("Descripción actualizada");
+        const descSpan = document.getElementById('detailTaskDesc');
+        if(!text.trim()) {
+        descSpan.innerHTML = `<span class="text-placeholder-highlight"><i class="bi bi-pencil-fill me-1 small"></i>Sin descripción registrada. Clic para añadir...</span>`;
+        } else {
+        descSpan.textContent = text;
+        }
+        cancelEditDesc();
+        }
+        });
+        }
+
+        function updateTaskStateDirect(newState) {
+        const taskId = document.getElementById('detailTaskId').value;
+        let formData = new FormData();
+        formData.append('tareaId', taskId);
+        formData.append('nuevoEstado', newState);
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+        fetch('/Proyectos/UpdateTareaStatus', { method: 'POST', body: formData, headers: { 'RequestVerificationToken': token } })
+        .then(r => r.json())
+        .then(data => {
+        if (data.success) {
+        toastr.success(`Estado actualizado a ${newState}`);
+        setTimeout(() => location.reload(), 600);
+        } else {
+        toastr.error(data.message);
+        }
+        });
+        }
+
+        function sendTaskComment() {
+        const taskId = document.getElementById('detailTaskId').value;
+        const input = document.getElementById('newTaskComment');
+        const texto = input.value.trim();
+        if (!texto) return;
+
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+        fetch('/Kanban/AddComentario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+        body: JSON.stringify({ TareaId: parseInt(taskId), Texto: texto })
+        }).then(r => r.json()).then(data => {
+        if (data.success) {
+        input.value = '';
+        document.getElementById('mentionsDropdown').style.display = 'none';
+        const container = document.getElementById('taskCommentsList');
+        if(container.innerHTML.includes('Aún no hay comentarios')) container.innerHTML = '';
+
+        const bubbleHTML = `
+        <div class="chat-bubble" style="border-color: #0dcaf0;">
+        <div class="meta"><span>${data.usuario}</span><span class="text-white-50">${data.fechaStr}</span></div>
+        <div class="texto">${formatCommentText(data.texto)}</div>
+        </div>`;
+
+        container.insertAdjacentHTML('beforeend', bubbleHTML);
+        var newTooltips = [].slice.call(container.lastElementChild.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        newTooltips.map(function (tooltipTriggerEl) { return new bootstrap.Tooltip(tooltipTriggerEl); });
+        container.scrollTop = container.scrollHeight;
+        } else toastr.error(data.message);
+        });
+        }
+
+        function insertMention(alias) {
+        const input = document.getElementById('newTaskComment');
+        const text = input.value;
+        const textBeforeCursor = text.substring(0, input.selectionStart);
+        const textAfterCursor = text.substring(input.selectionStart);
+
+        const words = textBeforeCursor.split(/[\s\n]+/);
+        words.pop();
+
+        const AT_SYM = String.fromCharCode(64);
+        const newTextBefore = words.join(' ') + (words.length > 0 ? ' ' : '') + AT_SYM + alias + ' ';
+
+        input.value = newTextBefore + textAfterCursor;
+        input.focus();
+        input.selectionStart = input.selectionEnd = newTextBefore.length;
+        document.getElementById('mentionsDropdown').style.display = 'none';
+        }
+
+        function toggleReassign() {
+        document.getElementById('displayUserBox').classList.add('d-none');
+        document.getElementById('editUserBox').classList.remove('d-none');
+        document.getElementById('reassignInput').value = '';
+        document.getElementById('reassignDropdown').style.display = 'none';
+        document.getElementById('reassignInput').focus();
+        }
+
+        function confirmReassign(userId, alias) {
+        const taskId = document.getElementById('detailTaskId').value;
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+        fetch('/Kanban/UpdateTaskAssignee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+        body: JSON.stringify({ TareaId: parseInt(taskId), UserId: userId })
+        }).then(r=>r.json()).then(data => {
+        if(data.success) {
+        document.getElementById('detailTaskUser').textContent = data.newAlias;
+        document.getElementById('displayUserBox').classList.remove('d-none');
+        document.getElementById('editUserBox').classList.add('d-none');
+
+        const card = document.querySelector(`.k-card[data-id="${taskId}"]`);
+        if(card) {
+        card.querySelector('.k-avatar').textContent = data.newAlias.substring(0,2).toUpperCase();
+        card.setAttribute('data-user-alias', data.newAlias);
+        }
+        toastr.success("Tarea reasignada a " + data.newAlias);
+        }
+        });
+        }
+
+        document.getElementById('newTaskComment').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTaskComment(); }
+        });
+    </script>
+}

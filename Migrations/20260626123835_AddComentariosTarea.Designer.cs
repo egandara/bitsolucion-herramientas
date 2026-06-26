@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NotebookValidator.Web.Data;
 
@@ -11,9 +12,11 @@ using NotebookValidator.Web.Data;
 namespace NotebookValidator.Web.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260626123835_AddComentariosTarea")]
+    partial class AddComentariosTarea
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -498,36 +501,6 @@ namespace NotebookValidator.Web.Migrations
                     b.HasIndex("SubFaseProyectoId");
 
                     b.ToTable("ComentariosProyecto");
-                });
-
-            modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.ComentarioTarea", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("TareaProyectoId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Texto")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("UsuarioAlias")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TareaProyectoId");
-
-                    b.ToTable("ComentariosTareas");
                 });
 
             modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.FaseProyecto", b =>
@@ -1130,17 +1103,6 @@ namespace NotebookValidator.Web.Migrations
                     b.Navigation("Proyecto");
 
                     b.Navigation("SubFase");
-                });
-
-            modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.ComentarioTarea", b =>
-                {
-                    b.HasOne("NotebookValidator.Web.Models.GestorProyectos.TareaProyecto", "Tarea")
-                        .WithMany()
-                        .HasForeignKey("TareaProyectoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Tarea");
                 });
 
             modelBuilder.Entity("NotebookValidator.Web.Models.GestorProyectos.FaseProyecto", b =>
