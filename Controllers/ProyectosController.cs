@@ -165,11 +165,19 @@ namespace NotebookValidator.Web.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(string nombre, string descripcion, int? clienteId, string? repositorioGitHub, string? contraparteCliente,
-                    DateTime? fechaInicio, DateTime? fechaFinEstimada, DateTime? fechaPasoProduccion, string notas,
-                    List<string> fasesSeleccionadas, List<string> usuariosAsignadosIds,
-                    List<SubfaseInputDto> subfases)
+                            DateTime? fechaInicio, DateTime? fechaFinEstimada, DateTime? fechaPasoProduccion, string notas,
+                            List<string> fasesSeleccionadas, List<string> usuariosAsignadosIds,
+                            List<SubfaseInputDto> subfases)
         {
             if (string.IsNullOrWhiteSpace(nombre)) return View();
+
+            // 💡 NUEVO: VALIDACIÓN ANTI-COLISIÓN ANTES DE EMPEZAR 
+            var (hayColision, mensajeColision) = await VerificarColisionesAsync(subfases);
+            if (hayColision)
+            {
+                // Si hay choque, devolvemos un código de error al Frontend (SweetAlert/Toastr lo atrapará)
+                return StatusCode(409, new { success = false, message = mensajeColision });
+            }
 
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
@@ -463,12 +471,19 @@ namespace NotebookValidator.Web.Controllers
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int id, string descripcion, int? clienteId, string estado, string? repositorioGitHub,
-                    string? contraparteCliente, DateTime? fechaInicio, DateTime? fechaFinEstimada, DateTime? fechaPasoProduccion,
-                    string notas, int maxWarningsPermitidos, int maxInfosPermitidos, List<string> usuariosAsignadosIds,
-                    List<SubfaseInputDto> subfases)
+                            string? contraparteCliente, DateTime? fechaInicio, DateTime? fechaFinEstimada, DateTime? fechaPasoProduccion,
+                            string notas, int maxWarningsPermitidos, int maxInfosPermitidos, List<string> usuariosAsignadosIds,
+                            List<SubfaseInputDto> subfases)
         {
             try
             {
+                // 💡 NUEVO: VALIDACIÓN ANTI-COLISIÓN ANTES DE EMPEZAR (Excluimos el ID actual para que no choque consigo mismo)
+                var (hayColision, mensajeColision) = await VerificarColisionesAsync(subfases, id);
+                if (hayColision)
+                {
+                    return StatusCode(409, new { success = false, message = mensajeColision });
+                }
+
                 // 1. Cargamos el proyecto original con TODO su árbol (Fases -> Subfases -> Tareas)
                 var proyectoDb = await _context.Proyectos
                     .Include(p => p.UsuariosAsignados)
@@ -1483,6 +1498,52 @@ namespace NotebookValidator.Web.Controllers
             return Json(new { success = true });
         }
 
+        // 💡 NUEVO ENDPOINT: CONSULTA DE AGENDAS EN VIVO PARA EL MINI-CALENDARIO
+        [HttpGet]
+        public async Task<IActionResult> ObtenerAgendaUsuario(string usuarioId)
+        {
+            if (string.IsNullOrEmpty(usuarioId)) return Json(new List<object>());
+
+            // 1. Recolectar las tareas del usuario planificadas futuras en ejecución
+            var tareas = await _context.TareasProyecto
+                .Include(t => t.SubFase).ThenInclude(sf => sf.Fase).ThenInclude(f => f.Proyecto)
+                .Where(t => t.UsuarioAsignadoId == usuarioId
+                            && t.FechaInicioPlanificada.HasValue
+                            && t.FechaFinPlanificada.HasValue
+                            && t.Estado != "Terminada")
+                .Select(t => new {
+                    inicio = t.FechaInicioPlanificada!.Value.ToString("dd/MM/yyyy HH:mm"),
+                    fin = t.FechaFinPlanificada!.Value.ToString("dd/MM/yyyy HH:mm"),
+                    nombre = t.Nombre,
+                    tipo = "Tarea",
+                    proyecto = t.SubFase!.Fase!.Proyecto!.Nombre
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            // 2. Recolectar las subfases donde el usuario es el responsable principal
+            var subfases = await _context.SubFasesProyecto
+                .Include(sf => sf.Fase).ThenInclude(f => f.Proyecto)
+                .Where(sf => sf.ResponsableId == usuarioId
+                            && sf.FechaInicio.HasValue
+                            && sf.FechaFinEstimada.HasValue
+                            && sf.Estado != "Terminada")
+                .Select(sf => new {
+                    inicio = sf.FechaInicio!.Value.ToString("dd/MM/yyyy HH:mm"),
+                    fin = sf.FechaFinEstimada!.Value.ToString("dd/MM/yyyy HH:mm"),
+                    nombre = sf.Nombre,
+                    tipo = "Subfase",
+                    proyecto = sf.Fase!.Proyecto!.Nombre
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            // 3. Combinar ambos registros en una única lista cronológica
+            var agendaCompleta = tareas.Cast<object>().Concat(subfases.Cast<object>()).ToList();
+
+            return Json(agendaCompleta);
+        }
+
         // --- HELPER: ALGORITMO C# PARA CALCULAR HORAS LABORALES REALES ---
         private decimal CalcularHorasLaborales(DateTime inicio, DateTime fin, List<DateTime> feriados)
         {
@@ -1531,6 +1592,116 @@ namespace NotebookValidator.Web.Controllers
             }
 
             return totalHoras;
+        }
+        // --- HELPER: ALGORITMO C# PARA PREVENIR DOUBLE-BOOKING (COLISIONES) ---
+        private async Task<(bool hayColision, string mensaje)> VerificarColisionesAsync(List<SubfaseInputDto> subfases, int proyectoIdAExcluir = 0)
+        {
+            if (subfases == null || !subfases.Any()) return (false, "");
+
+            // 1. Recolectar todos los bloques de tiempo solicitados (Subfases + Tareas)
+            var bloquesSolicitados = new List<(string UsuarioId, DateTime Inicio, DateTime Fin, string Nombre)>();
+
+            foreach (var sf in subfases)
+            {
+                // Si la subfase tiene responsable y fechas, es un bloque de tiempo ocupado
+                if (!string.IsNullOrEmpty(sf.ResponsableId) && sf.FechaInicio.HasValue && sf.FechaFinEstimada.HasValue)
+                {
+                    bloquesSolicitados.Add((sf.ResponsableId, sf.FechaInicio.Value, sf.FechaFinEstimada.Value, $"Subfase: {sf.Nombre}"));
+                }
+
+                // Si tiene tareas asignadas, también son bloques ocupados
+                if (sf.Tareas != null)
+                {
+                    foreach (var t in sf.Tareas)
+                    {
+                        if (!string.IsNullOrEmpty(t.UsuarioAsignadoId) && t.FechaInicioPlanificada.HasValue && t.FechaFinPlanificada.HasValue)
+                        {
+                            bloquesSolicitados.Add((t.UsuarioAsignadoId, t.FechaInicioPlanificada.Value, t.FechaFinPlanificada.Value, $"Tarea: {t.Nombre}"));
+                        }
+                    }
+                }
+            }
+
+            if (!bloquesSolicitados.Any()) return (false, "");
+
+            // 2. Extraer los IDs únicos de los usuarios involucrados
+            var usuariosIds = bloquesSolicitados.Select(b => b.UsuarioId).Distinct().ToList();
+
+            // 3. Buscar en la BD TODAS las TAREAS futuras de estos usuarios en OTROS proyectos
+            var tareasExistentes = await _context.TareasProyecto
+                .Include(t => t.SubFase).ThenInclude(sf => sf.Fase).ThenInclude(f => f.Proyecto)
+                .Include(t => t.UsuarioAsignado)
+                .Where(t => usuariosIds.Contains(t.UsuarioAsignadoId)
+                            && t.FechaInicioPlanificada.HasValue
+                            && t.FechaFinPlanificada.HasValue
+                            && t.Estado != "Terminada"
+                            && t.SubFase != null
+                            && t.SubFase.Fase != null
+                            && t.SubFase.Fase.ProyectoId != proyectoIdAExcluir) // Excluimos el proyecto actual
+                .AsNoTracking()
+                .ToListAsync();
+
+            // 4. Buscar en la BD TODAS las SUBFASES futuras de estos usuarios en OTROS proyectos
+            var subfasesExistentes = await _context.SubFasesProyecto
+                .Include(sf => sf.Fase).ThenInclude(f => f.Proyecto)
+                .Include(sf => sf.Responsable)
+                .Where(sf => usuariosIds.Contains(sf.ResponsableId)
+                            && sf.FechaInicio.HasValue
+                            && sf.FechaFinEstimada.HasValue
+                            && sf.Estado != "Terminada"
+                            && sf.Fase != null
+                            && sf.Fase.ProyectoId != proyectoIdAExcluir)
+                .AsNoTracking()
+                .ToListAsync();
+
+            // 5. Cruzar los datos y buscar solapamientos (Overlaps)
+            foreach (var bloque in bloquesSolicitados)
+            {
+                // A. Revisar si choca con alguna TAREA en la BD
+                var choqueTarea = tareasExistentes.FirstOrDefault(tExist =>
+                    tExist.UsuarioAsignadoId == bloque.UsuarioId &&
+                    bloque.Inicio < tExist.FechaFinPlanificada!.Value &&
+                    bloque.Fin > tExist.FechaInicioPlanificada!.Value
+                );
+
+                if (choqueTarea != null)
+                {
+                    string email = choqueTarea.UsuarioAsignado?.Email?.Split('@')[0] ?? "Usuario";
+                    string proyChoque = choqueTarea.SubFase?.Fase?.Proyecto?.Nombre ?? "Otro Proyecto";
+                    return (true, $"¡COLISIÓN! {email} ya tiene la tarea '{choqueTarea.Nombre}' en '{proyChoque}' ({choqueTarea.FechaInicioPlanificada:dd/MM HH:mm} a {choqueTarea.FechaFinPlanificada:HH:mm}).");
+                }
+
+                // B. Revisar si choca con alguna SUBFASE en la BD
+                var choqueSubfase = subfasesExistentes.FirstOrDefault(sfExist =>
+                    sfExist.ResponsableId == bloque.UsuarioId &&
+                    bloque.Inicio < sfExist.FechaFinEstimada!.Value &&
+                    bloque.Fin > sfExist.FechaInicio!.Value
+                );
+
+                if (choqueSubfase != null)
+                {
+                    string email = choqueSubfase.Responsable?.Email?.Split('@')[0] ?? "Usuario";
+                    string proyChoque = choqueSubfase.Fase?.Proyecto?.Nombre ?? "Otro Proyecto";
+                    return (true, $"¡COLISIÓN! {email} ya es responsable de la subfase '{choqueSubfase.Nombre}' en '{proyChoque}' ({choqueSubfase.FechaInicio:dd/MM HH:mm} a {choqueSubfase.FechaFinEstimada:HH:mm}).");
+                }
+
+                // C. Revisar si choca internamente (con otro bloque en el mismo formulario que estás llenando)
+                var choqueInterno = bloquesSolicitados.FirstOrDefault(bInterno =>
+                    bInterno.UsuarioId == bloque.UsuarioId &&
+                    bInterno.Nombre != bloque.Nombre && // Evitar compararse consigo mismo
+                    bloque.Inicio < bInterno.Fin &&
+                    bloque.Fin > bInterno.Inicio
+                );
+
+                if (choqueInterno != default)
+                {
+                    var userObj = await _userManager.FindByIdAsync(bloque.UsuarioId);
+                    string email = userObj?.Email?.Split('@')[0] ?? "Usuario";
+                    return (true, $"¡COLISIÓN INTERNA! Le asignaste a {email} '{bloque.Nombre}' y '{choqueInterno.Nombre}' en el mismo horario en este proyecto. Revisa tus fechas.");
+                }
+            }
+
+            return (false, "");
         }
 
     }

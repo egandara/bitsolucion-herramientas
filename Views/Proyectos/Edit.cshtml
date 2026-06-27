@@ -7,6 +7,9 @@
 }
 
 <style>
+    /* ============================================================
+       ESTRUCTURA LATERAL Y PANELES
+       ============================================================ */
     .cal-sidebar-block {
         background-color: #111424 !important;
         border: 1px solid rgba(255, 255, 255, 0.05) !important;
@@ -33,18 +36,18 @@
         margin-bottom: 12px;
     }
 
-        .form-group-stacked:last-child {
-            margin-bottom: 0;
-        }
+    .form-group-stacked:last-child {
+        margin-bottom: 0;
+    }
 
-        .form-group-stacked label {
-            font-size: 0.72rem !important;
-            color: rgba(255, 255, 255, 0.4) !important;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px !important;
-            font-weight: bold;
-        }
+    .form-group-stacked label {
+        font-size: 0.72rem !important;
+        color: rgba(255, 255, 255, 0.4) !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px !important;
+        font-weight: bold;
+    }
 
     .btn-auto-calcular {
         font-size: 0.65rem !important;
@@ -53,6 +56,9 @@
         font-family: ui-monospace, monospace;
     }
 
+    /* ============================================================
+       GRID EXTENDIDO PARA SUBFASES Y TAREAS (WBS)
+       ============================================================ */
     .subfase-group-wrapper {
         background-color: rgba(255, 255, 255, 0.01);
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -64,7 +70,7 @@
 
     .subfase-row-container {
         display: grid !important;
-        grid-template-columns: 1.5fr 3.5fr 1.5fr 0.8fr 1.5fr 2.5fr auto !important;
+        grid-template-columns: auto 1.5fr 3.5fr 1.5fr 0.8fr 1.5fr 2.5fr auto !important;
         gap: 12px !important;
         align-items: end !important;
         margin-bottom: 8px;
@@ -72,7 +78,7 @@
 
     .tarea-row-container {
         display: grid !important;
-        grid-template-columns: 3.5fr 1.5fr 0.8fr 1.5fr 2.5fr auto !important;
+        grid-template-columns: auto 3.5fr 1.5fr 0.8fr 1.5fr 2.5fr auto !important;
         gap: 12px !important;
         align-items: end !important;
         background-color: rgba(13, 202, 240, 0.03);
@@ -81,6 +87,7 @@
         padding: 10px 14px !important;
         margin-bottom: 8px;
         margin-left: 40px;
+        transition: box-shadow 0.3s ease;
     }
 
     .form-group-grid {
@@ -89,25 +96,25 @@
         width: 100% !important;
     }
 
-        .form-group-grid label {
-            font-size: 0.7rem !important;
-            color: rgba(255, 255, 255, 0.4) !important;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 6px !important;
-            white-space: nowrap;
-        }
+    .form-group-grid label {
+        font-size: 0.7rem !important;
+        color: rgba(255, 255, 255, 0.4) !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px !important;
+        white-space: nowrap;
+    }
 
-        .form-group-grid .form-control, .form-group-grid .form-select {
-            width: 100% !important;
-            padding: 6px 10px !important;
-            font-size: 0.8rem !important;
-            background-color: #171b2e !important;
-            border: 1px solid rgba(255,255,255,0.08) !important;
-            color: #f5f6fa !important;
-            border-radius: 6px !important;
-            text-overflow: ellipsis;
-        }
+    .form-group-grid .form-control, .form-group-grid .form-select {
+        width: 100% !important;
+        padding: 6px 10px !important;
+        font-size: 0.8rem !important;
+        background-color: #171b2e !important;
+        border: 1px solid rgba(255,255,255,0.08) !important;
+        color: #f5f6fa !important;
+        border-radius: 6px !important;
+        text-overflow: ellipsis;
+    }
 
     .input-horas {
         text-align: center;
@@ -119,6 +126,25 @@
         justify-content: center;
         gap: 8px;
         padding-bottom: 4px;
+    }
+
+    .drag-handle-sf, .drag-handle-t {
+        cursor: grab;
+        color: rgba(255, 255, 255, 0.3);
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding-bottom: 6px;
+        transition: color 0.2s;
+    }
+
+    .drag-handle-sf:hover, .drag-handle-t:hover {
+        color: #0dcaf0;
+    }
+
+    .drag-handle-sf:active, .drag-handle-t:active {
+        cursor: grabbing;
     }
 
     .sticky-tray {
@@ -191,18 +217,20 @@
             </div>
 
             <div class="col-lg-4 col-xl-3">
-                <div class="cal-sidebar-block mb-3">
-                    <div class="cal-sidebar-title"><span><i class="bi bi-calendar3 me-1"></i>2. Cronograma</span><button type="button" class="btn btn-outline-info btn-auto-calcular" onclick="sincronizarFechas()"><i class="bi bi-magic"></i> Auto</button></div>
-                    <div class="form-group-stacked"><label>Fecha de Inicio</label><input type="date" id="gFechaInicio" name="fechaInicio" class="form-control bg-dark text-white border-secondary" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" /></div>
-                    <div class="form-group-stacked mt-3"><label>Fin Estimado</label><input type="date" id="gFechaFin" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" value="@Model.FechaFinEstimada?.ToString("yyyy-MM-dd")" /></div>
-                    <div class="form-group-stacked mt-3"><label>Paso a Producción</label><input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" value="@Model.FechaPasoProduccion?.ToString("yyyy-MM-dd")" /></div>
-                    <div class="form-group-stacked mt-3"><label>Notas</label><textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="2">@Model.Notas</textarea></div>
-                </div>
+                <div class="card p-3 border-0 h-100" style="background-color: #0b0d16; border-radius: 10px;">
+                    <div class="cal-sidebar-block mb-3">
+                        <div class="cal-sidebar-title"><span><i class="bi bi-calendar3 me-1"></i>2. Cronograma</span><button type="button" class="btn btn-outline-info btn-auto-calcular" onclick="sincronizarFechas()"><i class="bi bi-magic"></i> Auto</button></div>
+                        <div class="form-group-stacked"><label>Fecha de Inicio</label><input type="date" id="gFechaInicio" name="fechaInicio" class="form-control bg-dark text-white border-secondary" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" /></div>
+                        <div class="form-group-stacked mt-3"><label>Fin Estimado</label><input type="date" id="gFechaFin" name="fechaFinEstimada" class="form-control bg-dark text-white border-secondary" value="@Model.FechaFinEstimada?.ToString("yyyy-MM-dd")" /></div>
+                        <div class="form-group-stacked mt-3"><label>Paso a Producción</label><input type="date" name="fechaPasoProduccion" class="form-control bg-dark text-white border-secondary" value="@Model.FechaPasoProduccion?.ToString("yyyy-MM-dd")" /></div>
+                        <div class="form-group-stacked mt-3"><label>Notas</label><textarea name="notas" class="form-control bg-dark text-white border-secondary" rows="2">@Model.Notas</textarea></div>
+                    </div>
 
-                <div class="cal-sidebar-block mb-0">
-                    <div class="cal-sidebar-title"><span><i class="bi bi-shield-check me-1"></i>3. Calidad QA</span></div>
-                    <div class="form-group-stacked"><label>Max Warnings</label><input type="number" name="maxWarningsPermitidos" class="form-control bg-dark text-white border-secondary text-center" min="0" value="@Model.MaxWarningsPermitidos" required /></div>
-                    <div class="form-group-stacked mt-3"><label>Max Infos</label><input type="number" name="maxInfosPermitidos" class="form-control bg-dark text-white border-secondary text-center" min="0" value="@Model.MaxInfosPermitidos" required /></div>
+                    <div class="cal-sidebar-block mb-0">
+                        <div class="cal-sidebar-title"><span><i class="bi bi-shield-check me-1"></i>3. Calidad QA</span></div>
+                        <div class="form-group-stacked"><label>Max Warnings</label><input type="number" name="maxWarningsPermitidos" class="form-control bg-dark text-white border-secondary text-center" min="0" value="@Model.MaxWarningsPermitidos" required /></div>
+                        <div class="form-group-stacked mt-3"><label>Max Infos</label><input type="number" name="maxInfosPermitidos" class="form-control bg-dark text-white border-secondary text-center" min="0" value="@Model.MaxInfosPermitidos" required /></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -247,6 +275,7 @@
                                     {
                                         <div class="subfase-group-wrapper" data-sf-id="@sub.Id">
                                             <div class="subfase-row-container row-data-entity">
+                                                <div class="drag-handle-sf" title="Arrastrar para reordenar"><i class="bi bi-list"></i></div>
                                                 <input type="hidden" class="input-sf-id" value="@sub.Id" />
                                                 <div class="form-group-grid">
                                                     <label class="text-warning">Fase Principal</label>
@@ -274,10 +303,14 @@
                                                                 }
                                                             }
                                                         </select>
+                                                        <button type="button" class="btn btn-sm btn-outline-info btn-ver-agenda" title="Ver disponibilidad" style="min-width: 32px; height: 32px;"><i class="bi bi-calendar3"></i></button>
                                                         <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="Desliza para pintar" style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;"><i class="bi bi-brush-fill text-warning opacity-75"></i></div>
                                                     </div>
                                                 </div>
-                                                <div class="actions-group"><button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button></div>
+                                                <div class="actions-group">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary border-0 btn-demote-sf" title="Convertir a Tarea"><i class="bi bi-arrow-right"></i></button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button>
+                                                </div>
                                             </div>
 
                                             <div class="tareas-container">
@@ -286,6 +319,7 @@
                                                     foreach (var tarea in sub.Tareas)
                                                     {
                                                         <div class="tarea-row-container row-data-entity">
+                                                            <div class="drag-handle-t" title="Arrastrar para reordenar"><i class="bi bi-list"></i></div>
                                                             <input type="hidden" class="input-tarea-id" value="@tarea.Id" />
                                                             <div class="form-group-grid">
                                                                 <label class="text-info"><i class="bi bi-check2-square me-1"></i>Nombre de la Tarea</label>
@@ -316,10 +350,14 @@
                                                                             }
                                                                         }
                                                                     </select>
+                                                                    <button type="button" class="btn btn-sm btn-outline-info btn-ver-agenda" title="Ver disponibilidad" style="min-width: 32px; height: 32px;"><i class="bi bi-calendar3"></i></button>
                                                                     <div class="paint-zone rounded d-flex align-items-center justify-content-center" title="Desliza para pintar" style="min-width: 32px; height: 32px; border: 2px dashed rgba(13, 202, 240, 0.4); cursor: crosshair;"><i class="bi bi-brush-fill text-info opacity-75"></i></div>
                                                                 </div>
                                                             </div>
-                                                            <div class="actions-group"><button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-tarea"><i class="bi bi-x-circle"></i></button></div>
+                                                            <div class="actions-group">
+                                                                <button type="button" class="btn btn-sm btn-outline-secondary border-0 btn-promote-t" title="Convertir a Subfase"><i class="bi bi-arrow-left"></i></button>
+                                                                <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-tarea"><i class="bi bi-x-circle"></i></button>
+                                                            </div>
                                                         </div>
                                                     }
                                                 }
@@ -365,19 +403,37 @@
 <div class="modal fade" id="modalDomino" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #ffc107;"><div class="modal-header border-secondary p-3"><h6 class="modal-title fw-bold text-warning"><i class="bi bi-calendar-range me-2"></i>Desplazar Fechas Inteligente</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-3" style="background-color: #07091e;"><label class="text-white-50 small mb-2 d-block">¿Cuántos días de desplazamiento?</label><div class="input-group input-group-sm mb-2"><input type="number" id="inputDominoDias" class="form-control bg-dark text-white border-warning text-center" placeholder="Ej: 7" /><span class="input-group-text bg-secondary border-warning text-white">días</span></div><small class="text-success" style="font-size:0.65rem;"><i class="bi bi-info-circle me-1"></i>Evita automáticamente fines de semana.</small></div><div class="modal-footer border-secondary p-2"><button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-sm btn-warning fw-bold" onclick="ejecutarEfectoDomino()">Aplicar Cascada</button></div></div></div></div>
 <div class="modal fade" id="modalPegadoInteligente" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #198754;"><div class="modal-header border-secondary"><h5 class="modal-title fw-bold text-success">Importación Inteligente</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body px-4 py-4" style="background-color: #07091e;"><p class="text-white-50 small mb-2"><i class="bi bi-info-circle text-info me-1"></i> Tip: Si las celdas comienzan con un espacio o tabulación, serán consideradas Tareas bajo la última Subfase.</p><textarea id="txtPegadoMasivo" class="form-control form-control-sm bg-dark text-white font-monospace border-success" rows="8" placeholder="Pega tus filas aquí..."></textarea></div><div class="modal-footer border-secondary"><button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-success fw-bold" onclick="procesarPegadoHeuristico()">Procesar Filas</button></div></div></div></div>
 
+<div class="modal fade" id="modalAgendaUsuario" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-white" style="background-color: #0b0d16; border: 1px solid #0dcaf0;">
+            <div class="modal-header border-secondary p-3">
+                <h6 class="modal-title fw-bold text-info"><i class="bi bi-calendar3 me-2"></i>Agenda y Disponibilidad del Recurso</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3" style="background-color: #07091e; max-height: 400px; overflow-y: auto;">
+                <div id="agendaCargando" class="text-center py-3 d-none">
+                    <div class="spinner-border spinner-border-sm text-info" role="status"></div>
+                    <span class="ms-2 small text-white-50">Consultando agenda activa...</span>
+                </div>
+                <div id="agendaLista" class="d-flex flex-column gap-2"></div>
+            </div>
+            <div class="modal-footer border-secondary p-2">
+                <button type="button" class="btn btn-sm btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
     <script>
+        // ========================================================
+        // 1. CONFIGURACIONES GLOBALES Y DICCIONARIOS
+        // ========================================================
         const clientesHorarios = @Html.Raw(ViewBag.ClientesHorariosJson ?? "[]");
         let activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
-        document.getElementById('selectClienteId').addEventListener('change', function() {
-            const val = this.value; const match = clientesHorarios.find(c => c.id === val);
-            if(match) activeSchedule = match; else activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
-            document.querySelectorAll('.input-horas').forEach(inp => inp.dispatchEvent(new Event('input')));
-        });
-
-        // ========================================================
-        // 🚀 NUEVO: MOTOR DE DÍAS INHÁBILES Y FERIADOS
-        // ========================================================
+        
         const feriadosDB = @Html.Raw(ViewBag.FeriadosJson ?? "[]");
         const feriadosMap = new Map();
         feriadosDB.forEach(f => {
@@ -385,357 +441,806 @@
             feriadosMap.set(d, f.Motivo);
         });
 
+        const DRAFT_KEY = 'ProyectoEditDraftWBS_@Model.Id';
+        window.currentDraggedUser = null;
+        
+        const usuariosOptions = `@if (usuariosBanco != null) { foreach (var user in usuariosBanco) { <option value="@user.Id">@user.Email</option> } }`;
+        const fasesOptions = `@if (Model.Fases != null) { foreach (var f in Model.Fases.OrderBy(x => x.Orden)) { <option value="@f.NombreFase">@f.Orden. @f.NombreFase.Replace("_", " ")</option> } }`;
+
+        // ========================================================
+        // 2. FUNCIONES DE FECHAS Y HORARIOS HÁBILES
+        // ========================================================
         function esInhabil(dateObj) {
             let day = dateObj.getDay();
             if (day === 0 || day === 6) return true; // Sábados y Domingos
-
-            let isoStr = dateObj.getFullYear() + "-" +
-                         String(dateObj.getMonth() + 1).padStart(2, '0') + "-" +
-                         String(dateObj.getDate()).padStart(2, '0');
-
+            let isoStr = dateObj.getFullYear() + "-" + String(dateObj.getMonth() + 1).padStart(2, '0') + "-" + String(dateObj.getDate()).padStart(2, '0');
             return feriadosMap.has(isoStr); // Feriado
         }
 
-        document.getElementById('formEditProject').addEventListener('submit', function () {
-            document.querySelectorAll('.input-horas').forEach(inp => {
-                if(inp.name && inp.value) {
-                    const hidden = document.createElement('input'); hidden.type = 'hidden'; hidden.name = inp.name; hidden.value = inp.value.replace('.', ',');
-                    inp.removeAttribute('name'); inp.parentNode.appendChild(hidden);
+        function calcularFechaFinLogica(startDate, hoursRemaining) {
+            let date = new Date(startDate.getTime());
+            let safety = 0;
+            while (hoursRemaining > 0 && safety < 100) {
+                safety++;
+                if (esInhabil(date)) {
+                    date.setDate(date.getDate() + 1);
+                    date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+                    continue;
+                }
+                let dayOfWeek = date.getDay();
+                let exitH = (dayOfWeek === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH; 
+                let exitM = (dayOfWeek === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
+                
+                let endOfDay = new Date(date); endOfDay.setHours(exitH, exitM, 0, 0); 
+                let startOfDay = new Date(date); startOfDay.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+                
+                if (date < startOfDay) date = new Date(startOfDay);
+                if (date >= endOfDay) { 
+                    date.setDate(date.getDate() + 1); 
+                    date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+                    continue; 
+                }
+                let msRemainingToday = endOfDay - date;
+                let hoursRemainingToday = msRemainingToday / 3600000;
+                
+                if (hoursRemaining <= hoursRemainingToday) { 
+                    date.setTime(date.getTime() + (hoursRemaining * 3600000)); 
+                    hoursRemaining = 0;
+                } else { 
+                    hoursRemaining -= hoursRemainingToday; 
+                    date.setDate(date.getDate() + 1); 
+                    date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+                }
+            }
+            return date;
+        }
+
+        function snapToWorkingHours(d) {
+            let date = new Date(d.getTime()); let safety = 0;
+            while(safety < 30) {
+                safety++;
+                if (esInhabil(date)) {
+                    date.setDate(date.getDate() + 1);
+                    date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+                    continue;
+                }
+                let day = date.getDay();
+                let exitH = (day === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH; 
+                let exitM = (day === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
+                
+                let endOfDay = new Date(date); endOfDay.setHours(exitH, exitM, 0, 0); 
+                let startOfDay = new Date(date); startOfDay.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+                
+                if (date < startOfDay) { date = new Date(startOfDay); break; } 
+                else if (date >= endOfDay) { 
+                    date.setDate(date.getDate() + 1);
+                    date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); 
+                    continue; 
+                } else { break; }
+            }
+            return date;
+        }
+
+        function calcularHorasDesdeFechas(startStr, endStr) {
+            if (!startStr || !endStr) return "";
+            let dStart = new Date(startStr);
+            let dEnd = new Date(endStr);
+            if (dStart >= dEnd) return 0;
+            let totalHoras = 0; let curr = new Date(dStart);
+            while (curr < dEnd) {
+                if (esInhabil(curr)) {
+                    curr.setDate(curr.getDate() + 1);
+                    curr.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
+                    continue;
+                }
+                let dayOfWeek = curr.getDay();
+                let exitH = (dayOfWeek === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH;
+                let exitM = (dayOfWeek === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
+                let endOfDay = new Date(curr); endOfDay.setHours(exitH, exitM, 0, 0);
+                if (dEnd <= endOfDay) { totalHoras += (dEnd - curr) / 3600000; break; }
+                else { 
+                    totalHoras += (endOfDay - curr) / 3600000;
+                    curr.setDate(curr.getDate() + 1); 
+                    curr.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); 
+                }
+            }
+            return totalHoras.toFixed(1).replace('.0', '');
+        }
+
+        // ========================================================
+        // 3. ESTRUCTURA WBS: CREACIÓN Y MANIPULACIÓN DEL DOM
+        // ========================================================
+        function inyectarFilaSubfase(nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
+            const container = document.getElementById('wbs-container');
+            const wrapper = document.createElement('div'); wrapper.className = 'subfase-group-wrapper';
+            wrapper.innerHTML = `
+                <div class="subfase-row-container row-data-entity">
+                    <div class="drag-handle-sf" title="Arrastrar para reordenar"><i class="bi bi-list"></i></div>
+                    <input type="hidden" class="input-sf-id" value="0" />
+                    <div class="form-group-grid"><label class="text-warning">Fase Principal</label><select class="form-select text-white border-secondary input-fasepadre" required>${fasesOptions}</select></div>
+                    <div class="form-group-grid"><label class="text-warning">Nombre Subfase</label><input type="text" class="form-control text-white border-secondary input-nombre" value="${nombre}" required /></div>
+                    <div class="form-group-grid"><label>Inicio (Hora)</label><input type="datetime-local" class="form-control text-white border-secondary input-inicio" value="${fechaIni}" /></div>
+                    <div class="form-group-grid"><label class="text-warning">Horas</label><input type="number" step="0.5" class="form-control text-warning border-secondary input-horas" min="0.5" value="${horasVal}" /></div>
+                    <div class="form-group-grid"><label>Fin Estimado</label><input type="datetime-local" class="form-control text-white border-secondary input-fin" value="${fechaFin}" /></div>
+                    <div class="form-group-grid"><label>Responsable</label><div class="d-flex align-items-center gap-1 w-100"><select class="form-select text-white border-secondary user-select" style="flex-grow: 1;"><option value="">-- Sin asignar --</option>${usuariosOptions}</select><button type="button" class="btn btn-sm btn-outline-info btn-ver-agenda" title="Ver disponibilidad" style="min-width: 32px; height: 32px;"><i class="bi bi-calendar3"></i></button><div class="paint-zone rounded d-flex align-items-center justify-content-center" title="Desliza para pintar" style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;"><i class="bi bi-brush-fill text-warning opacity-75"></i></div></div></div>
+                    <div class="actions-group">
+                        <button type="button" class="btn btn-sm btn-outline-secondary border-0 btn-demote-sf" title="Convertir a Tarea"><i class="bi bi-arrow-right"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button>
+                    </div>
+                </div>
+                <div class="tareas-container"></div>
+                <div class="ms-4 mt-2"><button type="button" class="btn btn-sm btn-link text-info text-decoration-none p-0 btn-add-tarea" style="font-size: 0.75rem;"><i class="bi bi-arrow-return-right me-1"></i>Añadir Tarea</button></div>
+            `;
+            container.appendChild(wrapper);
+            if (responsableVal) wrapper.querySelector('.user-select').value = responsableVal;
+            bindRowEvents(wrapper.querySelector('.subfase-row-container'));
+            initSortableTareas(wrapper.querySelector('.tareas-container'));
+            reindexAll(); 
+            document.getElementById('tray-asignacion').classList.remove('d-none');
+            return wrapper;
+        }
+
+        function inyectarFilaTarea(wrapperGroup, nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
+            const container = wrapperGroup.querySelector('.tareas-container');
+            
+            if (!fechaIni && !fechaFin) {
+                const tareasExistentes = container.querySelectorAll('.tarea-row-container');
+                if (tareasExistentes.length > 0) {
+                    const ultimaTarea = tareasExistentes[tareasExistentes.length - 1];
+                    const finUltimaTarea = ultimaTarea.querySelector('.input-fin').value;
+                    if (finUltimaTarea) {
+                        fechaIni = finUltimaTarea;
+                        let d = new Date(fechaIni);
+                        let tzoffset = d.getTimezoneOffset() * 60000;
+                        let dEnd = new Date(d.getTime() + 3600000); 
+                        fechaFin = new Date(dEnd - tzoffset).toISOString().slice(0, 16);
+                        horasVal = "1";
+                    }
+                } else {
+                    const sfInicio = wrapperGroup.querySelector('.subfase-row-container .input-inicio').value;
+                    if (sfInicio) fechaIni = sfInicio;
+                }
+            }
+
+            const row = document.createElement('div'); row.className = 'tarea-row-container row-data-entity';
+            row.innerHTML = `
+                <div class="drag-handle-t" title="Arrastrar para reordenar"><i class="bi bi-list"></i></div>
+                <input type="hidden" class="input-tarea-id" value="0" />
+                <div class="form-group-grid"><label class="text-info"><i class="bi bi-check2-square me-1"></i>Nombre de la Tarea</label><input type="text" class="form-control text-white border-info input-nombre" value="${nombre}" required /></div>
+                <div class="form-group-grid"><label>Inicio (Hora)</label><input type="datetime-local" class="form-control text-white border-secondary input-inicio" value="${fechaIni}" /></div>
+                <div class="form-group-grid"><label class="text-info">Horas</label><input type="number" step="0.5" class="form-control text-info border-secondary input-horas" min="0.5" value="${horasVal}" /></div>
+                <div class="form-group-grid"><label>Fin Estimado</label><input type="datetime-local" class="form-control text-white border-secondary input-fin" value="${fechaFin}" /></div>
+                <div class="form-group-grid"><label>Responsable</label><div class="d-flex align-items-center gap-1 w-100"><select class="form-select text-white border-secondary user-select" style="flex-grow: 1;"><option value="">-- Sin asignar --</option>${usuariosOptions}</select><button type="button" class="btn btn-sm btn-outline-info btn-ver-agenda" title="Ver disponibilidad" style="min-width: 32px; height: 32px;"><i class="bi bi-calendar3"></i></button><div class="paint-zone rounded d-flex align-items-center justify-content-center" title="Desliza para pintar" style="min-width: 32px; height: 32px; border: 2px dashed rgba(13, 202, 240, 0.4); cursor: crosshair;"><i class="bi bi-brush-fill text-info opacity-75"></i></div></div></div>
+                <div class="actions-group">
+                    <button type="button" class="btn btn-sm btn-outline-secondary border-0 btn-promote-t" title="Convertir a Subfase"><i class="bi bi-arrow-left"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-tarea"><i class="bi bi-x-circle"></i></button>
+                </div>
+            `;
+            container.appendChild(row);
+            if (responsableVal) row.querySelector('.user-select').value = responsableVal;
+            bindRowEvents(row); 
+            reindexAll();
+        }
+
+        // ========================================================
+        // 4. SANGRÍA, MANIPULACIÓN Y EFECTO CASCADA
+        // ========================================================
+        function demoteSubfaseToTarea(wrapper) {
+            const prevWrapper = wrapper.previousElementSibling;
+            if (!prevWrapper || !prevWrapper.classList.contains('subfase-group-wrapper')) {
+                toastr.warning("No hay una subfase arriba a la cual asignarle esta tarea.");
+                return;
+            }
+
+            const sfRow = wrapper.querySelector('.subfase-row-container');
+            const nombre = sfRow.querySelector('.input-nombre').value;
+            const ini = sfRow.querySelector('.input-inicio').value;
+            const fin = sfRow.querySelector('.input-fin').value;
+            const horas = sfRow.querySelector('.input-horas').value;
+            const resp = sfRow.querySelector('.user-select').value;
+
+            inyectarFilaTarea(prevWrapper, nombre, ini, fin, resp, horas);
+
+            const tareasChild = wrapper.querySelectorAll('.tarea-row-container');
+            tareasChild.forEach(tRow => {
+                const tNombre = tRow.querySelector('.input-nombre').value;
+                const tIni = tRow.querySelector('.input-inicio').value;
+                const tFin = tRow.querySelector('.input-fin').value;
+                const tHoras = tRow.querySelector('.input-horas').value;
+                const tResp = tRow.querySelector('.user-select').value;
+                inyectarFilaTarea(prevWrapper, tNombre, tIni, tFin, tResp, tHoras);
+            });
+
+            wrapper.remove();
+            reindexAll();
+            actualizarTermometro();
+            guardarBorradorSilencioso();
+        }
+
+        function promoteTareaToSubfase(tRow) {
+            const currentWrapper = tRow.closest('.subfase-group-wrapper');
+            const nombre = tRow.querySelector('.input-nombre').value;
+            const ini = tRow.querySelector('.input-inicio').value;
+            const fin = tRow.querySelector('.input-fin').value;
+            const horas = tRow.querySelector('.input-horas').value;
+            const resp = tRow.querySelector('.user-select').value;
+
+            tRow.remove();
+
+            const newWrapper = inyectarFilaSubfase(nombre, ini, fin, resp, horas);
+            currentWrapper.after(newWrapper);
+
+            reindexAll();
+            actualizarTermometro();
+            guardarBorradorSilencioso();
+        }
+
+        function aplicarCascadaSubfase(wrapperGroup) {
+            try {
+                if (!wrapperGroup) return;
+                const sfRow = wrapperGroup.querySelector('.subfase-row-container');
+                let currentStartStr = sfRow.querySelector('.input-inicio').value;
+                
+                if (!currentStartStr) return; 
+
+                const tareas = wrapperGroup.querySelectorAll('.tarea-row-container');
+                
+                tareas.forEach(tRow => {
+                    const tIni = tRow.querySelector('.input-inicio');
+                    const tFin = tRow.querySelector('.input-fin');
+                    const tHoras = tRow.querySelector('.input-horas');
+                    
+                    if(tIni.value !== currentStartStr) {
+                        tIni.value = currentStartStr;
+                    }
+                    
+                    let horasVal = parseFloat(tHoras.value) || 1;
+                    let dEnd = calcularFechaFinLogica(new Date(currentStartStr), horasVal);
+                    
+                    if (dEnd) {
+                        let tzoffset = dEnd.getTimezoneOffset() * 60000;
+                        let endStr = new Date(dEnd - tzoffset).toISOString().slice(0, 16);
+                        tFin.value = endStr;
+                        currentStartStr = endStr; 
+                    }
+                    
+                    tRow.style.boxShadow = 'inset 0 0 15px rgba(13, 202, 240, 0.4)';
+                    setTimeout(() => tRow.style.boxShadow = '', 600);
+                });
+                
+                validarLimitesPadreHijo();
+                guardarBorradorSilencioso();
+            } catch(e) { console.error("Error en cascada:", e); }
+        }
+
+        // ========================================================
+        // 5. VALIDACIÓN, REINDEXACIÓN Y MINI-CALENDARIO AJAX
+        // ========================================================
+        async function verAgendaUsuario(selectElement) {
+            if (!selectElement) return;
+            const usuarioId = selectElement.value;
+            if (!usuarioId) {
+                toastr.warning("Selecciona un responsable primero para inspeccionar su agenda.");
+                return;
+            }
+
+            const modalNode = document.getElementById('modalAgendaUsuario');
+            const modalInstance = new bootstrap.Modal(modalNode);
+            
+            const cargando = document.getElementById('agendaCargando');
+            const lista = document.getElementById('agendaLista');
+            
+            cargando.classList.remove('d-none');
+            lista.innerHTML = '';
+            
+            modalInstance.show();
+            
+            try {
+                let response = await fetch(`/Proyectos/ObtenerAgendaUsuario?usuarioId=${usuarioId}`);
+                let agenda = await response.json();
+                
+                cargando.classList.add('d-none');
+                
+                if (!agenda || agenda.length === 0) {
+                    lista.innerHTML = `<div class="text-center py-4 text-white-50 small"><i class="bi bi-calendar-check text-success me-2 fs-5"></i> El usuario no registra tareas ni subfases activas. ¡Totalmente Disponible!</div>`;
+                    return;
+                }
+                
+                agenda.forEach(item => {
+                    const badgeColor = item.tipo === 'Subfase' ? 'bg-warning text-dark' : 'bg-info text-dark';
+                    const block = document.createElement('div');
+                    block.className = 'p-2 rounded border border-secondary mb-2';
+                    block.style.backgroundColor = '#171b2e';
+                    block.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="badge ${badgeColor} small" style="font-size:0.65rem; font-weight:bold;">${item.tipo}</span>
+                            <span class="text-white-50 font-monospace" style="font-size:0.7rem;"><i class="bi bi-clock me-1"></i>${item.inicio} al ${item.fin.split(' ')[1]}</span>
+                        </div>
+                        <div class="small fw-bold text-white mb-1">${item.nombre}</div>
+                        <div class="text-info opacity-75 small" style="font-size:0.7rem;"><i class="bi bi-briefcase me-1"></i>Proyecto: ${item.proyecto}</div>
+                    `;
+                    lista.appendChild(block);
+                });
+            } catch (e) {
+                cargando.classList.add('d-none');
+                lista.innerHTML = `<div class="text-center py-3 text-danger small"><i class="bi bi-exclamation-octagon me-1"></i> Error al conectar con el motor de agendas.</div>`;
+            }
+        }
+
+        function validarLimitesPadreHijo() {
+            try {
+                let hayErrores = false;
+                const wrappers = document.querySelectorAll('.subfase-group-wrapper');
+
+                function setInputError(input, isError) {
+                    if (!input) return;
+                    if (isError) {
+                        input.style.setProperty('border', '2px solid #ef4444', 'important');
+                        input.style.setProperty('background-color', 'rgba(239, 68, 68, 0.15)', 'important');
+                        input.style.setProperty('color', '#ff6b6b', 'important');
+                    } else {
+                        input.style.removeProperty('border');
+                        input.style.removeProperty('background-color');
+                        input.style.removeProperty('color');
+                    }
+                }
+
+                wrappers.forEach(wrapper => {
+                    const sfRow = wrapper.querySelector('.subfase-row-container');
+                    if (!sfRow) return;
+
+                    const sfIniInput = sfRow.querySelector('.input-inicio');
+                    const sfFinInput = sfRow.querySelector('.input-fin');
+                    const sfHorasInput = sfRow.querySelector('.input-horas');
+
+                    const sfIniDate = (sfIniInput && sfIniInput.value) ? new Date(sfIniInput.value) : null;
+                    const sfFinDate = (sfFinInput && sfFinInput.value) ? new Date(sfFinInput.value) : null;
+                    const sfHorasVal = (sfHorasInput && sfHorasInput.value) ? parseFloat(sfHorasInput.value) : 0;
+
+                    let sumaHorasHijas = 0;
+                    const tareas = wrapper.querySelectorAll('.tarea-row-container');
+
+                    tareas.forEach(tRow => {
+                        const tIniInput = tRow.querySelector('.input-inicio');
+                        const tFinInput = tRow.querySelector('.input-fin');
+                        const tHorasInput = tRow.querySelector('.input-horas');
+
+                        const tIniDate = (tIniInput && tIniInput.value) ? new Date(tIniInput.value) : null;
+                        const tFinDate = (tFinInput && tFinInput.value) ? new Date(tFinInput.value) : null;
+                        const tHorasVal = (tHorasInput && tHorasInput.value) ? parseFloat(tHorasInput.value) : 0;
+
+                        sumaHorasHijas += tHorasVal;
+                        let errorFechas = false;
+
+                        if (sfIniDate && tIniDate && tIniDate < sfIniDate) errorFechas = true;
+                        if (sfFinDate && tFinDate && tFinDate > sfFinDate) errorFechas = true;
+
+                        setInputError(tIniInput, errorFechas);
+                        setInputError(tFinInput, errorFechas);
+                        setInputError(tHorasInput, sumaHorasHijas > sfHorasVal);
+
+                        if (sumaHorasHijas > sfHorasVal || errorFechas) hayErrores = true;
+                    });
+
+                    setInputError(sfHorasInput, sumaHorasHijas > sfHorasVal && tareas.length > 0);
+                });
+
+                const btnSubmit = document.getElementById('btnSubmit');
+                const btnIcon = document.getElementById('iconSubmit');
+                if (btnSubmit) {
+                    if (hayErrores) {
+                        btnSubmit.disabled = true;
+                        btnSubmit.classList.replace('btn-warning', 'btn-danger');
+                        if(btnIcon) btnIcon.className = 'bi bi-shield-fill-x me-1';
+                    } else {
+                        btnSubmit.disabled = false;
+                        btnSubmit.classList.replace('btn-danger', 'btn-warning');
+                        if(btnIcon) btnIcon.className = 'bi bi-save me-1';
+                    }
+                }
+            } catch (error) {
+                console.error("Error en validación:", error);
+            }
+        }
+
+        function reindexAll() {
+            const wrappers = document.querySelectorAll('.subfase-group-wrapper');
+            wrappers.forEach((wrapper, sIdx) => {
+                const sfRow = wrapper.querySelector('.subfase-row-container');
+                if (sfRow) {
+                    const inpId = sfRow.querySelector('.input-sf-id'); if(inpId) inpId.name = `Subfases[${sIdx}].Id`;
+                    const selFase = sfRow.querySelector('.input-fasepadre'); if(selFase) selFase.name = `Subfases[${sIdx}].FasePadre`;
+                    const inpNom = sfRow.querySelector('.input-nombre'); if(inpNom) inpNom.name = `Subfases[${sIdx}].Nombre`;
+                    const inpIni = sfRow.querySelector('.input-inicio'); if(inpIni) inpIni.name = `Subfases[${sIdx}].FechaInicio`;
+                    const inpFin = sfRow.querySelector('.input-fin'); if(inpFin) inpFin.name = `Subfases[${sIdx}].FechaFinEstimada`;
+                    const inpHrs = sfRow.querySelector('.input-horas'); if(inpHrs) inpHrs.name = `Subfases[${sIdx}].HorasEstimadas`;
+                    const selRes = sfRow.querySelector('.user-select'); if(selRes) selRes.name = `Subfases[${sIdx}].ResponsableId`;
+                }
+                const tRows = wrapper.querySelectorAll('.tarea-row-container');
+                tRows.forEach((tRow, tIdx) => {
+                    const tId = tRow.querySelector('.input-tarea-id'); if(tId) tId.name = `Subfases[${sIdx}].Tareas[${tIdx}].Id`;
+                    const tNom = tRow.querySelector('.input-nombre'); if(tNom) tNom.name = `Subfases[${sIdx}].Tareas[${tIdx}].Nombre`;
+                    const tIni = tRow.querySelector('.input-inicio'); if(tIni) tIni.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaInicioPlanificada`;
+                    const tFin = tRow.querySelector('.input-fin'); if(tFin) tFin.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaFinPlanificada`;
+                    const tHrs = tRow.querySelector('.input-horas'); if(tHrs) tHrs.name = `Subfases[${sIdx}].Tareas[${tIdx}].HorasEstimadas`;
+                    const tRes = tRow.querySelector('.user-select'); if(tRes) tRes.name = `Subfases[${sIdx}].Tareas[${tIdx}].UsuarioAsignadoId`;
+                });
+            });
+
+            validarLimitesPadreHijo();
+        }
+
+        // ========================================================
+        // 6. EVENT LISTENERS DINÁMICOS E INICIALIZADORES SORTABLE
+        // ========================================================
+        function initSortableTareas(container) {
+            if (!container) return;
+            new Sortable(container, {
+                handle: '.drag-handle-t', 
+                animation: 150,
+                ghostClass: 'bg-info',
+                onEnd: function(evt) {
+                    reindexAll(); 
+                    aplicarCascadaSubfase(evt.item.closest('.subfase-group-wrapper')); 
                 }
             });
-            var btn = document.getElementById('btnSubmit'); btn.disabled = true;
-            document.getElementById('spinnerSubmit').classList.remove('d-none'); document.getElementById('iconSubmit').classList.add('d-none');
-            localStorage.removeItem(DRAFT_KEY);
+        }
+
+        function bindRowEvents(row) {
+            const inpInicio = row.querySelector('.input-inicio');
+            const inpHoras = row.querySelector('.input-horas');
+            const inpFin = row.querySelector('.input-fin');
+            const selectResp = row.querySelector('.user-select');
+            const paintZone = row.querySelector('.paint-zone');
+
+            function formatDatetimeLocal(d) {
+                let tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                return (new Date(d - tzoffset)).toISOString().slice(0, 16);
+            }
+
+            function actualizarUnaFila() {
+                try {
+                    if (inpInicio && inpHoras && inpInicio.value && inpHoras.value) {
+                        let date = calcularFechaFinLogica(new Date(inpInicio.value), parseFloat(inpHoras.value));
+                        if (date && inpFin) {
+                            inpFin.value = formatDatetimeLocal(date);
+                            inpFin.style.backgroundColor = 'rgba(255, 193, 7, 0.2)';
+                            setTimeout(() => inpFin.style.backgroundColor = '', 400);
+                            guardarBorradorSilencioso();
+                        }
+                    }
+                    validarLimitesPadreHijo();
+                } catch(e) { console.error("Error calculando fechas:", e); }
+            }
+
+            if (inpInicio) inpInicio.addEventListener('change', actualizarUnaFila);
+            if (inpHoras) inpHoras.addEventListener('input', actualizarUnaFila);
+            if (inpFin) inpFin.addEventListener('change', validarLimitesPadreHijo);
+
+            if (paintZone && selectResp) {
+                paintZone.addEventListener('dragenter', function(e) {
+                    e.preventDefault();
+                    if (window.currentDraggedUser && selectResp.value !== window.currentDraggedUser) {
+                        selectResp.value = window.currentDraggedUser;
+                        row.style.boxShadow = 'inset 0 0 20px rgba(25, 135, 84, 0.3)';
+                        setTimeout(() => { row.style.boxShadow = ''; }, 500);
+                        const globalCb = document.getElementById('user_' + window.currentDraggedUser);
+                        if (globalCb) globalCb.checked = true;
+                        actualizarTermometro();
+                    }
+                });
+                paintZone.addEventListener('dragover', e => e.preventDefault());
+                row.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+                row.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    const uid = e.dataTransfer.getData('text/plain');
+                    if (uid) {
+                        selectResp.value = uid;
+                        const globalCb = document.getElementById('user_' + uid);
+                        if (globalCb) globalCb.checked = true;
+                        actualizarTermometro();
+                    }
+                });
+            }
+        }
+
+        document.getElementById('wbs-container').addEventListener('click', function(e) {
+            if (e.target.closest('.btn-add-tarea')) { inyectarFilaTarea(e.target.closest('.subfase-group-wrapper')); }
+            
+            const btnDemote = e.target.closest('.btn-demote-sf');
+            if (btnDemote) { demoteSubfaseToTarea(btnDemote.closest('.subfase-group-wrapper')); }
+            
+            const btnPromote = e.target.closest('.btn-promote-t');
+            if (btnPromote) { promoteTareaToSubfase(btnPromote.closest('.tarea-row-container')); }
+            
+            // 💡 Escuchar el botón del Mini-Calendario flotante
+            const btnAgenda = e.target.closest('.btn-ver-agenda');
+            if (btnAgenda) {
+                verAgendaUsuario(btnAgenda.closest('.d-flex').querySelector('.user-select'));
+            }
+
+            const btnRemoveSf = e.target.closest('.btn-remove-subfase');
+            if (btnRemoveSf) { 
+                btnRemoveSf.closest('.subfase-group-wrapper').remove(); 
+                reindexAll(); actualizarTermometro(); guardarBorradorSilencioso(); 
+                if(document.querySelectorAll('.subfase-group-wrapper').length===0) document.getElementById('tray-asignacion').classList.add('d-none'); 
+            }
+            
+            const btnRemoveT = e.target.closest('.btn-remove-tarea');
+            if (btnRemoveT) { 
+                btnRemoveT.closest('.tarea-row-container').remove(); 
+                reindexAll(); actualizarTermometro(); guardarBorradorSilencioso(); 
+            }
         });
 
-        window.currentDraggedUser = null;
-        const usuariosOptions = `@if (usuariosBanco != null) { foreach (var user in usuariosBanco) {
-        <option value="@user.Id">@user.Email</option>
-    }
-}
-`;
-const fasesOptions = `@if (Model.Fases != null) { foreach (var f in Model.Fases.OrderBy(x => x.Orden)) {
-<option value="@f.NombreFase">@f.Orden. @f.NombreFase.Replace("_", " ")</option>
-    } }
-`;
-
-// ── MOTOR ALGORÍTMICO DE FECHAS (SANITIZADOR Y CASCADA) ──
-function calcularFechaFinLogica(startDate, hoursRemaining) {
-    let date = new Date(startDate.getTime()); let safety = 0;
-    while (hoursRemaining > 0 && safety < 100) {
-        safety++;
-        if (esInhabil(date)) {
-            date.setDate(date.getDate() + 1);
-            date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
-            continue;
-        }
-        let dayOfWeek = date.getDay();
-        let exitH = (dayOfWeek === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH; let exitM = (dayOfWeek === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
-        let endOfDay = new Date(date); endOfDay.setHours(exitH, exitM, 0, 0); let startOfDay = new Date(date); startOfDay.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
-        if (date < startOfDay) date = new Date(startOfDay);
-        if (date >= endOfDay) { date.setDate(date.getDate() + 1); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; }
-        let msRemainingToday = endOfDay - date; let hoursRemainingToday = msRemainingToday / 3600000;
-        if (hoursRemaining <= hoursRemainingToday) { date.setTime(date.getTime() + (hoursRemaining * 3600000)); hoursRemaining = 0; }
-        else { hoursRemaining -= hoursRemainingToday; date.setDate(date.getDate() + 1); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); }
-    }
-    return date;
-}
-
-function snapToWorkingHours(d) {
-    let date = new Date(d.getTime()); let safety = 0;
-    while(safety < 30) {
-        safety++;
-        if (esInhabil(date)) {
-            date.setDate(date.getDate() + 1);
-            date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
-            continue;
-        }
-        let day = date.getDay();
-        let exitH = (day === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH; let exitM = (day === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
-        let endOfDay = new Date(date); endOfDay.setHours(exitH, exitM, 0, 0); let startOfDay = new Date(date); startOfDay.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
-        if (date < startOfDay) { date = new Date(startOfDay); break; } else if (date >= endOfDay) { date.setDate(date.getDate() + 1); date.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); continue; } else { break; }
-    }
-    return date;
-}
-
-function calcularHorasDesdeFechas(startStr, endStr) {
-    if (!startStr || !endStr) return "";
-    let dStart = new Date(startStr); let dEnd = new Date(endStr);
-    if (dStart >= dEnd) return 0;
-    let totalHoras = 0; let curr = new Date(dStart);
-    while (curr < dEnd) {
-        if (esInhabil(curr)) {
-            curr.setDate(curr.getDate() + 1);
-            curr.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0);
-            continue;
-        }
-        let dayOfWeek = curr.getDay();
-        let exitH = (dayOfWeek === 5) ? activeSchedule.salidaViernesH : activeSchedule.salidaNormalH;
-        let exitM = (dayOfWeek === 5) ? activeSchedule.salidaViernesM : activeSchedule.salidaNormalM;
-        let endOfDay = new Date(curr); endOfDay.setHours(exitH, exitM, 0, 0);
-        if (dEnd <= endOfDay) { totalHoras += (dEnd - curr) / 3600000; break; }
-        else { totalHoras += (endOfDay - curr) / 3600000; curr.setDate(curr.getDate() + 1); curr.setHours(activeSchedule.entradaH, activeSchedule.entradaM, 0, 0); }
-    }
-    return totalHoras.toFixed(1).replace('.0', '');
-}
-
-function auditarYSanitizarCronograma(dominoDays = 0) {
-    const rows = Array.from(document.querySelectorAll('.row-data-entity'));
-    let parsedRows = [];
-
-    rows.forEach(row => {
-        const inpInicio = row.querySelector('.input-inicio'); const inpHoras = row.querySelector('.input-horas'); const inpFin = row.querySelector('.input-fin');
-        if (inpInicio && inpInicio.value && inpHoras && inpHoras.value) {
-            parsedRows.push({ rowEl: row, inpInicio: inpInicio, inpHoras: inpHoras, inpFin: inpFin, originalStart: new Date(inpInicio.value), hours: parseFloat(inpHoras.value) });
-        }
-    });
-
-    if (parsedRows.length === 0) return;
-    parsedRows.sort((a, b) => a.originalStart - b.originalStart);
-
-    let cumulativeShiftMs = 0;
-    let dominoMs = dominoDays * 24 * 60 * 60 * 1000;
-    let totalCorrected = 0;
-
-    function formatLocal(d) { let tzoffset = (new Date()).getTimezoneOffset() * 60000; return (new Date(d - tzoffset)).toISOString().slice(0, 16); }
-
-    parsedRows.forEach(item => {
-        let baseStart = new Date(item.originalStart.getTime() + dominoMs + cumulativeShiftMs);
-        let snappedStart = snapToWorkingHours(baseStart);
-
-        let extraShift = snappedStart.getTime() - baseStart.getTime();
-        cumulativeShiftMs += extraShift;
-
-        let newEnd = calcularFechaFinLogica(snappedStart, item.hours);
-        let strStart = formatLocal(snappedStart); let strEnd = formatLocal(newEnd);
-
-        let changed = false;
-        if (item.inpInicio.value !== strStart) { item.inpInicio.value = strStart; changed = true; }
-        if (item.inpFin.value !== strEnd) { item.inpFin.value = strEnd; changed = true; }
-
-        if (changed) {
-            totalCorrected++;
-            item.rowEl.style.boxShadow = 'inset 0 0 15px rgba(25, 135, 84, 0.4)';
-            setTimeout(() => item.rowEl.style.boxShadow = '', 600);
-        }
-    });
-
-    sincronizarFechas(); guardarBorradorSilencioso();
-
-    if (dominoDays > 0) {
-        toastr.success(`Cascada aplicada: El cronograma se desplazó y se esquivaron ${totalCorrected} conflictos.`);
-        bootstrap.Modal.getInstance(document.getElementById('modalDomino')).hide();
-    } else {
-        if (totalCorrected > 0) toastr.success(`¡Cronograma sanitizado! Se corrigieron ${totalCorrected} fechas que estaban en días u horas no hábiles.`);
-        else toastr.info(`El cronograma está perfecto. No se encontraron fechas inválidas.`);
-    }
-}
-
-function ejecutarEfectoDomino() {
-    const dias = parseInt(document.getElementById('inputDominoDias').value, 10);
-    if (isNaN(dias) || dias === 0) return;
-    auditarYSanitizarCronograma(dias);
-}
-
-document.addEventListener("DOMContentLoaded", function () {
-    document.querySelectorAll('.draggable-user').forEach(pill => {
-        pill.addEventListener('dragstart', function(e) { window.currentDraggedUser = this.getAttribute('data-uid'); e.dataTransfer.setData('text/plain', window.currentDraggedUser); e.dataTransfer.effectAllowed = 'copy'; this.style.opacity = '0.5'; });
-        pill.addEventListener('dragend', function(e) { window.currentDraggedUser = null; this.style.opacity = '1'; });
-    });
-    document.querySelectorAll('.subfase-group-wrapper').forEach(wrapper => {
-        const sfRow = wrapper.querySelector('.subfase-row-container');
-        if(sfRow) {
-            bindRowEvents(sfRow);
-            let iIni = sfRow.querySelector('.input-inicio'); let iFin = sfRow.querySelector('.input-fin'); let iHrs = sfRow.querySelector('.input-horas');
-            if (iIni && iFin && iHrs && !iHrs.value) iHrs.value = calcularHorasDesdeFechas(iIni.value, iFin.value);
-        }
-        wrapper.querySelectorAll('.tarea-row-container').forEach(tRow => bindRowEvents(tRow));
-    });
-    document.getElementById('selectClienteId').dispatchEvent(new Event('change'));
-    reindexAll(); actualizarTermometro();
-    if(document.querySelectorAll('.subfase-group-wrapper').length > 0) document.getElementById('tray-asignacion').classList.remove('d-none');
-});
-
-function inyectarFilaSubfase(nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
-    const container = document.getElementById('wbs-container');
-    const wrapper = document.createElement('div'); wrapper.className = 'subfase-group-wrapper';
-    wrapper.innerHTML = `
-        <div class="subfase-row-container row-data-entity">
-            <input type="hidden" class="input-sf-id" value="0" />
-            <div class="form-group-grid"><label class="text-warning">Fase Principal</label><select class="form-select text-white border-secondary input-fasepadre" required>${fasesOptions}</select></div>
-            <div class="form-group-grid"><label class="text-warning">Nombre Subfase</label><input type="text" class="form-control text-white border-secondary input-nombre" value="${nombre}" required /></div>
-            <div class="form-group-grid"><label>Inicio (Hora)</label><input type="datetime-local" class="form-control text-white border-secondary input-inicio" value="${fechaIni}" /></div>
-            <div class="form-group-grid"><label class="text-warning">Horas</label><input type="number" step="0.5" class="form-control text-warning border-secondary input-horas" min="0.5" value="${horasVal}" /></div>
-            <div class="form-group-grid"><label>Fin Estimado</label><input type="datetime-local" class="form-control text-white border-secondary input-fin" value="${fechaFin}" /></div>
-            <div class="form-group-grid"><label>Responsable</label><div class="d-flex align-items-center gap-1 w-100"><select class="form-select text-white border-secondary user-select" style="flex-grow: 1;"><option value="">-- Sin asignar --</option>${usuariosOptions}</select><div class="paint-zone rounded d-flex align-items-center justify-content-center" title="Desliza para pintar" style="min-width: 32px; height: 32px; border: 2px dashed rgba(255,193,7, 0.4); cursor: crosshair;"><i class="bi bi-brush-fill text-warning opacity-75"></i></div></div></div>
-            <div class="actions-group"><button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-subfase"><i class="bi bi-trash"></i></button></div>
-        </div>
-        <div class="tareas-container"></div>
-        <div class="ms-4 mt-2"><button type="button" class="btn btn-sm btn-link text-info text-decoration-none p-0 btn-add-tarea" style="font-size: 0.75rem;"><i class="bi bi-arrow-return-right me-1"></i>Añadir Tarea</button></div>
-    `;
-    container.appendChild(wrapper);
-    if (responsableVal) wrapper.querySelector('.user-select').value = responsableVal;
-    bindRowEvents(wrapper.querySelector('.subfase-row-container'));
-    reindexAll(); document.getElementById('tray-asignacion').classList.remove('d-none');
-    return wrapper;
-}
-
-function inyectarFilaTarea(wrapperGroup, nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
-    const container = wrapperGroup.querySelector('.tareas-container');
-    const row = document.createElement('div'); row.className = 'tarea-row-container row-data-entity';
-    row.innerHTML = `
-        <input type="hidden" class="input-tarea-id" value="0" />
-        <div class="form-group-grid"><label class="text-info"><i class="bi bi-check2-square me-1"></i>Nombre de la Tarea</label><input type="text" class="form-control text-white border-info input-nombre" value="${nombre}" required /></div>
-        <div class="form-group-grid"><label>Inicio (Hora)</label><input type="datetime-local" class="form-control text-white border-secondary input-inicio" value="${fechaIni}" /></div>
-        <div class="form-group-grid"><label class="text-info">Horas</label><input type="number" step="0.5" class="form-control text-info border-secondary input-horas" min="0.5" value="${horasVal}" /></div>
-        <div class="form-group-grid"><label>Fin Estimado</label><input type="datetime-local" class="form-control text-white border-secondary input-fin" value="${fechaFin}" /></div>
-        <div class="form-group-grid"><label>Responsable</label><div class="d-flex align-items-center gap-1 w-100"><select class="form-select text-white border-secondary user-select" style="flex-grow: 1;"><option value="">-- Sin asignar --</option>${usuariosOptions}</select><div class="paint-zone rounded d-flex align-items-center justify-content-center" title="Desliza para pintar" style="min-width: 32px; height: 32px; border: 2px dashed rgba(13, 202, 240, 0.4); cursor: crosshair;"><i class="bi bi-brush-fill text-info opacity-75"></i></div></div></div>
-        <div class="actions-group"><button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-tarea"><i class="bi bi-x-circle"></i></button></div>
-    `;
-    container.appendChild(row);
-    if (responsableVal) row.querySelector('.user-select').value = responsableVal;
-    bindRowEvents(row); reindexAll();
-}
-
-function reindexAll() {
-    const wrappers = document.querySelectorAll('.subfase-group-wrapper');
-    wrappers.forEach((wrapper, sIdx) => {
-        const sfRow = wrapper.querySelector('.subfase-row-container');
-        if (sfRow) {
-            const inpId = sfRow.querySelector('.input-sf-id'); if(inpId) inpId.name = `Subfases[${sIdx}].Id`;
-            const selFase = sfRow.querySelector('.input-fasepadre'); if(selFase) selFase.name = `Subfases[${sIdx}].FasePadre`;
-            const inpNom = sfRow.querySelector('.input-nombre'); if(inpNom) inpNom.name = `Subfases[${sIdx}].Nombre`;
-            const inpIni = sfRow.querySelector('.input-inicio'); if(inpIni) inpIni.name = `Subfases[${sIdx}].FechaInicio`;
-            const inpFin = sfRow.querySelector('.input-fin'); if(inpFin) inpFin.name = `Subfases[${sIdx}].FechaFinEstimada`;
-            const inpHrs = sfRow.querySelector('.input-horas'); if(inpHrs) inpHrs.name = `Subfases[${sIdx}].HorasEstimadas`;
-            const selRes = sfRow.querySelector('.user-select'); if(selRes) selRes.name = `Subfases[${sIdx}].ResponsableId`;
-        }
-        const tRows = wrapper.querySelectorAll('.tarea-row-container');
-        tRows.forEach((tRow, tIdx) => {
-            const tId = tRow.querySelector('.input-tarea-id'); if(tId) tId.name = `Subfases[${sIdx}].Tareas[${tIdx}].Id`;
-            const tNom = tRow.querySelector('.input-nombre'); if(tNom) tNom.name = `Subfases[${sIdx}].Tareas[${tIdx}].Nombre`;
-            const tIni = tRow.querySelector('.input-inicio'); if(tIni) tIni.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaInicioPlanificada`;
-            const tFin = tRow.querySelector('.input-fin'); if(tFin) tFin.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaFinPlanificada`;
-            const tHrs = tRow.querySelector('.input-horas'); if(tHrs) tHrs.name = `Subfases[${sIdx}].Tareas[${tIdx}].HorasEstimadas`;
-            const tRes = tRow.querySelector('.user-select'); if(tRes) tRes.name = `Subfases[${sIdx}].Tareas[${tIdx}].UsuarioAsignadoId`;
-        });
-    });
-}
-
-document.getElementById('btnAddSubfase').addEventListener('click', () => inyectarFilaSubfase());
-document.getElementById('wbs-container').addEventListener('click', function(e) {
-    if (e.target.closest('.btn-add-tarea')) { inyectarFilaTarea(e.target.closest('.subfase-group-wrapper')); }
-    const btnRemoveSf = e.target.closest('.btn-remove-subfase');
-    if (btnRemoveSf) { btnRemoveSf.closest('.subfase-group-wrapper').remove(); reindexAll(); actualizarTermometro(); guardarBorradorSilencioso(); if(document.querySelectorAll('.subfase-group-wrapper').length===0) document.getElementById('tray-asignacion').classList.add('d-none'); }
-    const btnRemoveT = e.target.closest('.btn-remove-tarea');
-    if (btnRemoveT) { btnRemoveT.closest('.tarea-row-container').remove(); reindexAll(); actualizarTermometro(); guardarBorradorSilencioso(); }
-});
-
-function bindRowEvents(row) {
-    const inpInicio = row.querySelector('.input-inicio'); const inpHoras = row.querySelector('.input-horas'); const inpFin = row.querySelector('.input-fin'); const selectResp = row.querySelector('.user-select'); const paintZone = row.querySelector('.paint-zone');
-    function formatDatetimeLocal(d) { let tzoffset = (new Date()).getTimezoneOffset() * 60000; return (new Date(d - tzoffset)).toISOString().slice(0, 16); }
-    function actualizarUnaFila() {
-        if (!inpInicio.value || !inpHoras.value) return;
-        let date = calcularFechaFinLogica(new Date(inpInicio.value), parseFloat(inpHoras.value));
-        if (date) { inpFin.value = formatDatetimeLocal(date); inpFin.style.backgroundColor = 'rgba(255, 193, 7, 0.2)'; setTimeout(() => inpFin.style.backgroundColor = '', 400); guardarBorradorSilencioso(); }
-    }
-    inpInicio.addEventListener('change', actualizarUnaFila); inpHoras.addEventListener('input', actualizarUnaFila);
-    if (paintZone && selectResp) {
-        paintZone.addEventListener('dragenter', function(e) { e.preventDefault(); if (window.currentDraggedUser && selectResp.value !== window.currentDraggedUser) { selectResp.value = window.currentDraggedUser; row.style.boxShadow = 'inset 0 0 20px rgba(25, 135, 84, 0.3)'; setTimeout(() => { row.style.boxShadow = ''; }, 500); const globalCb = document.getElementById('user_' + window.currentDraggedUser); if (globalCb) globalCb.checked = true; actualizarTermometro(); } });
-        paintZone.addEventListener('dragover', e => e.preventDefault()); row.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
-        row.addEventListener('drop', function(e) { e.preventDefault(); const uid = e.dataTransfer.getData('text/plain'); if (uid) { selectResp.value = uid; const globalCb = document.getElementById('user_' + uid); if (globalCb) globalCb.checked = true; actualizarTermometro(); } });
-    }
-}
-
-function procesarPegadoHeuristico() {
-    const texto = document.getElementById('txtPegadoMasivo').value; if (!texto.trim()) return;
-    function parseDate(fechaTexto) {
-        if (!fechaTexto) return ""; let partes = fechaTexto.split(/[\/\-]/);
-        if (partes.length === 3) { if (partes[0].length <= 2 && (partes[2].length === 4 || partes[2].length === 2)) { let year = partes[2].length === 2 ? "20" + partes[2] : partes[2]; return `${year}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`; } if (partes[0].length === 4) return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`; } return "";
-    }
-    const filas = texto.split('\n'); let agregadasSub = 0; let agregadasTar = 0; let currentWrapper = null;
-    filas.forEach(fila => {
-        if (!fila.trim()) return;
-        const esTarea = fila.startsWith(' ') || fila.startsWith('\t'); const celdas = fila.split(/\t|\|/).map(c => c.trim());
-        let nombre = celdas[0] || ""; let fecha1 = parseDate(celdas[1]); let fecha2 = parseDate(celdas[2]); let horasVal = celdas[3] ? celdas[3].replace(',', '.') : "";
-        if (fecha1) fecha1 = `${fecha1}T${activeSchedule.entradaH.toString().padStart(2,'0')}:${activeSchedule.entradaM.toString().padStart(2,'0')}`;
-        if (fecha2) fecha2 = `${fecha2}T${activeSchedule.salidaNormalH.toString().padStart(2,'0')}:${activeSchedule.salidaNormalM.toString().padStart(2,'0')}`;
-        if (nombre) { if (esTarea && currentWrapper) { inyectarFilaTarea(currentWrapper, nombre, fecha1, fecha2, "", horasVal); agregadasTar++; } else { currentWrapper = inyectarFilaSubfase(nombre, fecha1, fecha2, "", horasVal); agregadasSub++; } }
-    });
-    if (agregadasSub > 0 || agregadasTar > 0) { toastr.success(`¡Se procesaron ${agregadasSub} Subfases y ${agregadasTar} Tareas con éxito!`); document.getElementById('txtPegadoMasivo').value = ''; bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide(); actualizarTermometro(); }
-}
-
-function actualizarTermometro() {
-    document.querySelectorAll('.task-counter').forEach(b => { b.textContent = '0'; b.classList.add('d-none'); });
-    document.querySelectorAll('.draggable-user').forEach(p => { p.classList.remove('border-warning', 'border-danger'); p.classList.add('border-secondary'); });
-    let conteo = {}; document.querySelectorAll('.user-select').forEach(sel => { if (sel.value) conteo[sel.value] = (conteo[sel.value] || 0) + 1; });
-    for (let uid in conteo) {
-        let total = conteo[uid]; let badge = document.getElementById('counter_' + uid); let pill = document.querySelector(`.draggable-user[data-uid="${uid}"]`);
-        if (badge && pill) { badge.textContent = total; badge.classList.remove('d-none', 'bg-dark'); pill.classList.remove('border-secondary'); if (total >= 5) { badge.classList.add('bg-danger'); pill.classList.add('border-danger'); } else if (total >= 3) { badge.classList.add('bg-warning'); pill.classList.add('border-warning'); } else { badge.classList.add('bg-info'); pill.classList.add('border-info'); } }
-    }
-}
-
-function sincronizarFechas() {
-    const rows = document.querySelectorAll('.row-data-entity'); if (rows.length === 0) return;
-    let minDate = null; let maxDate = null;
-    rows.forEach(row => {
-        const startInput = row.querySelector('.input-inicio'); const endInput = row.querySelector('.input-fin');
-        if (startInput && startInput.value) { let d = new Date(startInput.value); if (!minDate || d < minDate) minDate = d; }
-        if (endInput && endInput.value) { let d = new Date(endInput.value); if (!maxDate || d > maxDate) maxDate = d; }
-    });
-    const gStart = document.getElementById('gFechaInicio'); const gEnd = document.getElementById('gFechaFin');
-    if (minDate) gStart.value = minDate.toISOString().split('T')[0]; if (maxDate) gEnd.value = maxDate.toISOString().split('T')[0];
-    [gStart, gEnd].forEach(el => { const oldBg = el.style.backgroundColor; el.style.backgroundColor = 'rgba(13, 202, 240, 0.4)'; setTimeout(() => el.style.backgroundColor = oldBg, 500); });
-}
-
-const DRAFT_KEY = 'ProyectoEditDraftWBS_@Model.Id';
-function guardarBorradorSilencioso() {
-    const draft = { wrappers: [] };
-    document.querySelectorAll('.subfase-group-wrapper').forEach(wrap => {
-        const sfRow = wrap.querySelector('.subfase-row-container');
-        const sfData = {
-            nombre: sfRow.querySelector('.input-nombre').value, fInicio: sfRow.querySelector('.input-inicio').value, fFin: sfRow.querySelector('.input-fin').value,
-            horas: sfRow.querySelector('.input-horas').value, resp: sfRow.querySelector('.user-select').value, tareas: []
-        };
-        wrap.querySelectorAll('.tarea-row-container').forEach(tRow => {
-            sfData.tareas.push({
-                nombre: tRow.querySelector('.input-nombre').value, fInicio: tRow.querySelector('.input-inicio').value, fFin: tRow.querySelector('.input-fin').value,
-                horas: tRow.querySelector('.input-horas').value, resp: tRow.querySelector('.user-select').value
+        // ========================================================
+        // 7. FUNCIONES ADICIONALES (DOMINÓ, PEGADO, ETC)
+        // ========================================================
+        function auditarYSanitizarCronograma(dominoDays = 0) {
+            const rows = Array.from(document.querySelectorAll('.row-data-entity'));
+            let parsedRows = [];
+            rows.forEach(row => {
+                const inpInicio = row.querySelector('.input-inicio'); const inpHoras = row.querySelector('.input-horas'); const inpFin = row.querySelector('.input-fin');
+                if (inpInicio && inpInicio.value && inpHoras && inpHoras.value) {
+                    parsedRows.push({ rowEl: row, inpInicio: inpInicio, inpHoras: inpHoras, inpFin: inpFin, originalStart: new Date(inpInicio.value), hours: parseFloat(inpHoras.value) });
+                }
             });
+            if (parsedRows.length === 0) return;
+            parsedRows.sort((a, b) => a.originalStart - b.originalStart);
+
+            let cumulativeShiftMs = 0;
+            let dominoMs = dominoDays * 24 * 60 * 60 * 1000;
+            let totalCorrected = 0;
+            function formatLocal(d) { let tzoffset = (new Date()).getTimezoneOffset() * 60000; return (new Date(d - tzoffset)).toISOString().slice(0, 16); }
+
+            parsedRows.forEach(item => {
+                let baseStart = new Date(item.originalStart.getTime() + dominoMs + cumulativeShiftMs);
+                let snappedStart = snapToWorkingHours(baseStart);
+                let extraShift = snappedStart.getTime() - baseStart.getTime();
+                cumulativeShiftMs += extraShift;
+                let newEnd = calcularFechaFinLogica(snappedStart, item.hours);
+                let strStart = formatLocal(snappedStart); let strEnd = formatLocal(newEnd);
+                let changed = false;
+              
+                if (item.inpInicio.value !== strStart) { item.inpInicio.value = strStart; changed = true; }
+                if (item.inpFin.value !== strEnd) { item.inpFin.value = strEnd; changed = true; }
+
+                if (changed) {
+                    totalCorrected++;
+                    item.rowEl.style.boxShadow = 'inset 0 0 15px rgba(25, 135, 84, 0.4)';
+                    setTimeout(() => item.rowEl.style.boxShadow = '', 600);
+                }
+            });
+
+            sincronizarFechas(); guardarBorradorSilencioso();
+
+            if (dominoDays > 0) {
+                toastr.success(`Cascada aplicada: El cronograma se desplazó y se esquivaron ${totalCorrected} conflictos.`);
+                bootstrap.Modal.getInstance(document.getElementById('modalDomino')).hide();
+            } else {
+                if (totalCorrected > 0) toastr.success(`¡Cronograma sanitizado! Se corrigieron ${totalCorrected} fechas que estaban en días u horas no hábiles.`);
+                else toastr.info(`El cronograma está perfecto. No se encontraron fechas inválidas.`);
+            }
+        }
+
+        function ejecutarEfectoDomino() {
+            const dias = parseInt(document.getElementById('inputDominoDias').value, 10);
+            if (isNaN(dias) || dias === 0) return;
+            auditarYSanitizarCronograma(dias);
+        }
+
+        function procesarPegadoHeuristico() {
+            const texto = document.getElementById('txtPegadoMasivo').value;
+            if (!texto.trim()) return;
+            function parseDate(fechaTexto) {
+                if (!fechaTexto) return "";
+                let partes = fechaTexto.split(/[\/\-]/);
+                if (partes.length === 3) { 
+                    if (partes[0].length <= 2 && (partes[2].length === 4 || partes[2].length === 2)) { 
+                        let year = partes[2].length === 2 ? "20" + partes[2] : partes[2]; 
+                        return `${year}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`; 
+                    } 
+                    if (partes[0].length === 4) return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
+                } return "";
+            }
+            const filas = texto.split('\n'); let agregadasSub = 0; let agregadasTar = 0;
+            let currentWrapper = null;
+            filas.forEach(fila => {
+                if (!fila.trim()) return;
+                const esTarea = fila.startsWith(' ') || fila.startsWith('\t'); const celdas = fila.split(/\t|\|/).map(c => c.trim());
+                let nombre = celdas[0] || ""; let fecha1 = parseDate(celdas[1]); let fecha2 = parseDate(celdas[2]); let horasVal = celdas[3] ? celdas[3].replace(',', '.') : "";
+                if (fecha1) fecha1 = `${fecha1}T${activeSchedule.entradaH.toString().padStart(2,'0')}:${activeSchedule.entradaM.toString().padStart(2,'0')}`;
+                if (fecha2) fecha2 = `${fecha2}T${activeSchedule.salidaNormalH.toString().padStart(2,'0')}:${activeSchedule.salidaNormalM.toString().padStart(2,'0')}`;
+                if (nombre) { 
+                    if (esTarea && currentWrapper) { inyectarFilaTarea(currentWrapper, nombre, fecha1, fecha2, "", horasVal); agregadasTar++; } 
+                    else { currentWrapper = inyectarFilaSubfase(nombre, fecha1, fecha2, "", horasVal); agregadasSub++; } 
+                }
+            });
+            if (agregadasSub > 0 || agregadasTar > 0) { 
+                toastr.success(`¡Se procesaron ${agregadasSub} Subfases y ${agregadasTar} Tareas con éxito!`);
+                document.getElementById('txtPegadoMasivo').value = ''; 
+                bootstrap.Modal.getInstance(document.getElementById('modalPegadoInteligente')).hide(); 
+                actualizarTermometro(); 
+            }
+        }
+
+        function actualizarTermometro() {
+            document.querySelectorAll('.task-counter').forEach(b => { b.textContent = '0'; b.classList.add('d-none'); });
+            document.querySelectorAll('.draggable-user').forEach(p => { p.classList.remove('border-warning', 'border-danger'); p.classList.add('border-secondary'); });
+            let conteo = {};
+            document.querySelectorAll('.user-select').forEach(sel => { if (sel.value) conteo[sel.value] = (conteo[sel.value] || 0) + 1; });
+            for (let uid in conteo) {
+                let total = conteo[uid];
+                let badge = document.getElementById('counter_' + uid); let pill = document.querySelector(`.draggable-user[data-uid="${uid}"]`);
+                if (badge && pill) { 
+                    badge.textContent = total; badge.classList.remove('d-none', 'bg-dark');
+                    pill.classList.remove('border-secondary'); 
+                    if (total >= 5) { badge.classList.add('bg-danger'); pill.classList.add('border-danger'); } 
+                    else if (total >= 3) { badge.classList.add('bg-warning'); pill.classList.add('border-warning'); } 
+                    else { badge.classList.add('bg-info'); pill.classList.add('border-info'); } 
+                }
+            }
+        }
+
+        function sincronizarFechas() {
+            const rows = document.querySelectorAll('.row-data-entity');
+            if (rows.length === 0) return;
+            let minDate = null; let maxDate = null;
+            rows.forEach(row => {
+                const startInput = row.querySelector('.input-inicio'); const endInput = row.querySelector('.input-fin');
+                if (startInput && startInput.value) { let d = new Date(startInput.value); if (!minDate || d < minDate) minDate = d; }
+                if (endInput && endInput.value) { let d = new Date(endInput.value); if (!maxDate || d > maxDate) maxDate = d; }
+            });
+            const gStart = document.getElementById('gFechaInicio'); const gEnd = document.getElementById('gFechaFin');
+            if (minDate) gStart.value = minDate.toISOString().split('T')[0]; if (maxDate) gEnd.value = maxDate.toISOString().split('T')[0];
+            [gStart, gEnd].forEach(el => { const oldBg = el.style.backgroundColor; el.style.backgroundColor = 'rgba(13, 202, 240, 0.4)'; setTimeout(() => el.style.backgroundColor = oldBg, 500); });
+        }
+
+        // ========================================================
+        // 8. BORRADOR (LOCAL STORAGE)
+        // ========================================================
+        function guardarBorradorSilencioso() {
+            const draft = { wrappers: [] };
+            document.querySelectorAll('.subfase-group-wrapper').forEach(wrap => {
+                const sfRow = wrap.querySelector('.subfase-row-container');
+                if (!sfRow) return;
+                const sfData = { 
+                    nombre: sfRow.querySelector('.input-nombre').value, 
+                    fInicio: sfRow.querySelector('.input-inicio').value, 
+                    fFin: sfRow.querySelector('.input-fin').value, 
+                    horas: sfRow.querySelector('.input-horas').value, 
+                    resp: sfRow.querySelector('.user-select').value, 
+                    tareas: [] 
+                };
+                wrap.querySelectorAll('.tarea-row-container').forEach(tRow => { 
+                    sfData.tareas.push({ 
+                        nombre: tRow.querySelector('.input-nombre').value, 
+                        fInicio: tRow.querySelector('.input-inicio').value, 
+                        fFin: tRow.querySelector('.input-fin').value, 
+                        horas: tRow.querySelector('.input-horas').value, 
+                        resp: tRow.querySelector('.user-select').value 
+                    }); 
+                });
+                draft.wrappers.push(sfData);
+            });
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        }
+
+        function restaurarBorrador() {
+            const saved = localStorage.getItem(DRAFT_KEY); if (!saved) return; const draft = JSON.parse(saved);
+            if (draft.wrappers && draft.wrappers.length > 0) {
+                document.getElementById('wbs-container').innerHTML = '';
+                draft.wrappers.forEach(sf => { const w = inyectarFilaSubfase(sf.nombre, sf.fInicio, sf.fFin, sf.resp, sf.horas); if(sf.tareas) sf.tareas.forEach(t => inyectarFilaTarea(w, t.nombre, t.fInicio, t.fFin, t.resp, t.horas)); });
+                actualizarTermometro();
+            }
+            document.getElementById('draftAlert').classList.add('d-none');
+        }
+
+        function descartarBorrador() { localStorage.removeItem(DRAFT_KEY); document.getElementById('draftAlert').classList.add('d-none'); }
+
+        // ========================================================
+        // 9. INICIALIZACIONES AL CARGAR LA PÁGINA
+        // ========================================================
+        document.addEventListener("DOMContentLoaded", function () {
+            
+            const wbsContainer = document.getElementById('wbs-container');
+            if (wbsContainer) {
+                new Sortable(wbsContainer, {
+                    handle: '.drag-handle-sf', 
+                    animation: 150,
+                    ghostClass: 'bg-dark',
+                    onEnd: function() {
+                        reindexAll();
+                        guardarBorradorSilencioso();
+                    }
+                });
+            }
+
+            // Drag and Drop (Pills de usuarios)
+            document.querySelectorAll('.draggable-user').forEach(pill => {
+                pill.addEventListener('dragstart', function(e) { window.currentDraggedUser = this.getAttribute('data-uid'); e.dataTransfer.setData('text/plain', window.currentDraggedUser); e.dataTransfer.effectAllowed = 'copy'; this.style.opacity = '0.5'; });
+                pill.addEventListener('dragend', function(e) { window.currentDraggedUser = null; this.style.opacity = '1'; });
+            });
+            
+            // Listeners globales
+            document.getElementById('selectClienteId').addEventListener('change', function() {
+                const val = this.value; const match = clientesHorarios.find(c => c.id === val);
+                if(match) activeSchedule = match; else activeSchedule = { entradaH: 9, entradaM: 0, salidaNormalH: 18, salidaNormalM: 0, salidaViernesH: 18, salidaViernesM: 0 };
+                document.querySelectorAll('.input-horas').forEach(inp => inp.dispatchEvent(new Event('input')));
+            });
+
+            document.getElementById('btnAddSubfase').addEventListener('click', () => inyectarFilaSubfase());
+
+            document.getElementById('formEditProject').addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                document.querySelectorAll('.input-horas').forEach(inp => {
+                    if(inp.name && inp.value) {
+                        const hidden = document.createElement('input'); hidden.type = 'hidden'; hidden.name = inp.name; hidden.value = inp.value.replace('.', ',');
+                        inp.removeAttribute('name'); inp.parentNode.appendChild(hidden);
+                    }
+                });
+
+                var btn = document.getElementById('btnSubmit'); btn.disabled = true;
+                document.getElementById('spinnerSubmit').classList.remove('d-none'); 
+                document.getElementById('iconSubmit').classList.add('d-none');
+
+                var form = this;
+                var formData = new FormData(form);
+
+                try {
+                    let response = await fetch(form.action, { method: form.method, body: formData });
+
+                    if (response.status === 409) {
+                        let data = await response.json();
+                        toastr.error(data.message, "¡Alerta de Colisión!", { timeOut: 8000 });
+                        
+                        btn.disabled = false;
+                        document.getElementById('spinnerSubmit').classList.add('d-none'); 
+                        document.getElementById('iconSubmit').classList.remove('d-none');
+                    } else if (response.ok) {
+                        localStorage.removeItem(DRAFT_KEY);
+                        window.location.href = response.redirected ? response.url : `/Proyectos/Details/${document.querySelector('input[name="id"]').value}`;
+                    } else {
+                        throw new Error("Error en el servidor");
+                    }
+                } catch (error) {
+                    toastr.error("No se pudo guardar la edición.", "Error Crítico");
+                    btn.disabled = false;
+                    document.getElementById('spinnerSubmit').classList.add('d-none'); 
+                    document.getElementById('iconSubmit').classList.remove('d-none');
+                }
+            });
+
+            // Bind inicial para las filas traídas desde el backend (Static HTML)
+            document.querySelectorAll('.subfase-group-wrapper').forEach(wrapper => {
+                const sfRow = wrapper.querySelector('.subfase-row-container');
+                if(sfRow) {
+                    bindRowEvents(sfRow);
+                    let iIni = sfRow.querySelector('.input-inicio'); 
+                    let iFin = sfRow.querySelector('.input-fin'); 
+                    let iHrs = sfRow.querySelector('.input-horas');
+                    if (iIni && iFin && iHrs && !iHrs.value) {
+                        iHrs.value = calcularHorasDesdeFechas(iIni.value, iFin.value);
+                    }
+                }
+                wrapper.querySelectorAll('.tarea-row-container').forEach(tRow => bindRowEvents(tRow));
+                initSortableTareas(wrapper.querySelector('.tareas-container'));
+            });
+
+            // Borradores
+            const saved = localStorage.getItem(DRAFT_KEY);
+            if (saved) { const draft = JSON.parse(saved); if (draft.wrappers && draft.wrappers.length > 0) document.getElementById('draftAlert').classList.remove('d-none'); }
+            document.getElementById('formEditProject').addEventListener('input', guardarBorradorSilencioso);
+            document.getElementById('wbs-container').addEventListener('DOMSubtreeModified', guardarBorradorSilencioso);
+
+            // Init
+            document.getElementById('selectClienteId').dispatchEvent(new Event('change'));
+            reindexAll();
+            actualizarTermometro();
+            if(document.querySelectorAll('.subfase-group-wrapper').length > 0) {
+                document.getElementById('tray-asignacion').classList.remove('d-none');
+            }
         });
-        draft.wrappers.push(sfData);
-    });
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-}
-
-function restaurarBorrador() {
-    const saved = localStorage.getItem(DRAFT_KEY); if (!saved) return; const draft = JSON.parse(saved);
-    if (draft.wrappers && draft.wrappers.length > 0) {
-        document.getElementById('wbs-container').innerHTML = '';
-        draft.wrappers.forEach(sf => {
-            const w = inyectarFilaSubfase(sf.nombre, sf.fInicio, sf.fFin, sf.resp, sf.horas);
-            if(sf.tareas) sf.tareas.forEach(t => inyectarFilaTarea(w, t.nombre, t.fInicio, t.fFin, t.resp, t.horas));
-        });
-        actualizarTermometro();
-    }
-    document.getElementById('draftAlert').classList.add('d-none');
-}
-
-function descartarBorrador() { localStorage.removeItem(DRAFT_KEY); document.getElementById('draftAlert').classList.add('d-none'); }
-
-document.addEventListener('DOMContentLoaded', () => {
-    const saved = localStorage.getItem(DRAFT_KEY);
-    if (saved) { const draft = JSON.parse(saved); if (draft.wrappers && draft.wrappers.length > 0) document.getElementById('draftAlert').classList.remove('d-none'); }
-    document.getElementById('formEditProject').addEventListener('input', guardarBorradorSilencioso);
-    document.getElementById('wbs-container').addEventListener('DOMSubtreeModified', guardarBorradorSilencioso);
-});
-
-function eliminarProyecto(id) {
-    if (confirm("⚠️ ¡ATENCIÓN! ¿Estás completamente seguro de que deseas ELIMINAR este proyecto?\n\nEsta acción borrará todas sus fases, tareas y bitácoras de forma IRREVERSIBLE.")) {
-        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
-        fetch(`/Proyectos/Delete/${id}`, { method: 'POST', headers: { 'RequestVerificationToken': token, 'Content-Type': 'application/json' } })
-        .then(r => r.json()).then(data => { if (data.success) { toastr.success(data.message, "Eliminado"); setTimeout(() => window.location.href = '/Proyectos/Index', 1500); } else toastr.error(data.message, "Error"); }).catch(() => toastr.error("Error de conexión.", "Fallo Crítico"));
-    }
-}
-</script>
+    </script>
 }
