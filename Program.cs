@@ -103,6 +103,8 @@ builder.Services.AddScoped<NotebookValidator.Web.Services.NotificacionesService>
 
 builder.Services.AddScoped<LegacyJobMigrationService>();
 
+builder.Services.AddScoped<OllamaTestService>();
+
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
