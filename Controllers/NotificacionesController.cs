@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NotebookValidator.Web.Services;
 using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace NotebookValidator.Web.Controllers
 {
@@ -26,7 +27,7 @@ namespace NotebookValidator.Web.Controllers
                 tipo = n.Tipo,
                 titulo = n.Titulo,
                 descripcion = n.Descripcion,
-                // CAMBIO AQUÍ: Generamos la ruta hacia nuestra "ruta puente"
+                leida = n.Leida, // <-- CAMBIO CRÍTICO: Enviamos el estado true/false al frontend
                 url = Url.Action("RedirigirYMarcarLeida", "Notificaciones", new { id = n.Id }) ?? "#",
                 fecha = n.FechaCreacion.ToLocalTime().ToString("dd/MM HH:mm")
             }));
@@ -56,6 +57,19 @@ namespace NotebookValidator.Web.Controllers
             }
 
             return Redirect(urlDestino);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> EliminarNotificacion(int id)
+        {
+            string usuarioId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "usuario_desconocido";
+
+            // SOLUCIÓN AL ERROR: Ahora usamos '_notifService', que es el nombre correcto de tu variable inyectada
+            var resultado = await _notifService.EliminarNotificacionAsync(id, usuarioId);
+
+            if (!resultado) return NotFound();
+
+            return Ok(); // Responde un 200 OK al JavaScript
         }
     }
 }

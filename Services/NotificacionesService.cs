@@ -154,10 +154,11 @@ namespace NotebookValidator.Web.Services
         }
 
         // ── Leer notificaciones de un usuario ─────────────────────
+        // Modificamos este método para que retorne todo el historial reciente
         public async Task<List<NotificacionProyecto>> ObtenerNoLeidasAsync(string usuarioId)
         {
             return await _context.Notificaciones
-                .Where(n => n.UsuarioId == usuarioId && !n.Leida)
+                .Where(n => n.UsuarioId == usuarioId) // <-- Quitamos el filtro "&& !n.Leida"
                 .OrderByDescending(n => n.FechaCreacion)
                 .Take(20)
                 .ToListAsync();
@@ -185,6 +186,19 @@ namespace NotebookValidator.Web.Services
             await _context.SaveChangesAsync();
 
             return notif.Url;
+        }
+
+        // Método para eliminar físicamente la notificación cuando el usuario haga clic en la "X"
+        public async Task<bool> EliminarNotificacionAsync(int notificacionId, string usuarioId)
+        {
+            var notif = await _context.Notificaciones
+                .FirstOrDefaultAsync(n => n.Id == notificacionId && n.UsuarioId == usuarioId);
+
+            if (notif == null) return false;
+
+            _context.Notificaciones.Remove(notif);
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

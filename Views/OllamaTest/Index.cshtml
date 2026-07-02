@@ -3,198 +3,511 @@
 }
 
 <div class="container-fluid px-4 py-4">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
-                    <h5 class="mb-0 m-0 fw-bold">🤖 Módulo de Pruebas: Ollama (Qwen 2.5)</h5>
-                    <span class="badge bg-success px-3 py-2 shadow-sm">RTX 4060 Active</span>
+
+    <div class="row mb-5 mt-2">
+        <div class="col-12 col-xl-10 mx-auto">
+            <div class="stepper-wrapper">
+                <div class="step @(ViewBag.JobId == null ? "active" : "completed")" id="step1">
+                    <div class="step-circle"><i class="bi @(ViewBag.JobId == null ? "bi-gear-fill" : "bi-check-lg")"></i></div>
+                    <div class="step-text">Configuración</div>
                 </div>
-                <div class="card-body p-4">
-                    <form asp-action="Index" method="post" id="ollamaForm" enctype="multipart/form-data">
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-secondary text-uppercase small">Filtro / Enfoque Temporal del Prompt (Opcional):</label>
-                            <input type="text" name="sistemaPrompt" class="form-control border-2" style="border-color: #dee2e6;"
-                                   value="@(ViewBag.SistemaPrompt ?? "Enfócate en la lógica de extracción, las tablas afectadas y la cuadratura de datos.")" />
-                            <div class="form-text text-muted">
-                                <i class="bi bi-shield-lock"></i> El Glosario Corporativo (BCI = Banco de Crédito e Inversiones) se encuentra forzado de manera fija en el backend.
-                            </div>
-                        </div>
-
-                        <div class="mb-3 p-3 bg-light rounded border border-2 border-dashed">
-                            <label class="form-label fw-bold text-dark mb-1">📎 Adjuntar Script o Notebook (.py / .ipynb):</label>
-                            <input type="file" name="archivo" class="form-control" accept=".py,.ipynb,.txt,.sql,.json" />
-                            <div class="form-text text-muted mt-2">
-                                El sistema extraerá el código automáticamente y aplicará las directivas de traducción de BIT Soluciones.
-                            </div>
-                            @if (ViewBag.ArchivoNombre != null)
-                            {
-                                <div class="mt-2 text-success fw-bold small">
-                                    <i class="bi bi-file-earmark-check-fill"></i> Archivo procesado en memoria: @ViewBag.ArchivoNombre
-                                </div>
-                            }
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-secondary text-uppercase small">Tu Prompt / Instrucciones Específicas:</label>
-                            <textarea name="prompt" rows="4" class="form-control border-2" style="border-color: #dee2e6;"
-                                      placeholder="Ej: Explica paso a paso qué tablas modifica este proceso normativo...">@ViewBag.Prompt</textarea>
-                        </div>
-
-                        @if (ViewBag.Error != null)
-                        {
-                            <div class="alert alert-danger shadow-sm">
-                                <i class="bi bi-exclamation-triangle-fill me-2"></i> @ViewBag.Error
-                            </div>
-                        }
-
-                        <button type="submit" class="btn btn-primary px-5 py-2 fw-bold shadow-sm" id="btnSubmit">
-                            <span class="spinner-border spinner-border-sm d-none me-2" id="btnSpinner" role="status" aria-hidden="true"></span>
-                            <span id="btnText">Procesar con IA Local</span>
-                        </button>
-                    </form>
+                <div class="step @(ViewBag.JobId != null ? "active" : "")" id="step2">
+                    <div class="step-circle"><i class="bi bi-cpu-fill"></i></div>
+                    <div class="step-text">Procesamiento</div>
+                </div>
+                <div class="step" id="step3">
+                    <div class="step-circle"><i class="bi bi-file-earmark-check-fill"></i></div>
+                    <div class="step-text">Resultados</div>
                 </div>
             </div>
+            <h2 class="text-center text-white mt-4 fw-bold" style="letter-spacing: 1px;">Módulo de IA: <span class="text-warning">Análisis y Cuadratura</span></h2>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-12">
-            <div class="card shadow border-0 border-start border-4 border-primary">
-                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
-                    <h5 class="mb-0 fw-bold text-dark m-0">📝 Resultado de la Documentación</h5>
-                    @if (ViewBag.Respuesta != null)
-                    {
-                        <button class="btn btn-sm btn-outline-primary fw-bold px-3" onclick="copyToClipboard()">
-                            <i class="bi bi-clipboard"></i> Copiar Texto
-                        </button>
-                    }
-                </div>
-                <div class="card-body p-4 bg-white">
-                    @if (ViewBag.Respuesta != null)
-                    {
-                        <div class="p-4 rounded-3 bg-white border">
-                            <textarea id="resultadoRaw" style="display:none;">@ViewBag.Respuesta</textarea>
+        <div class="col-12 col-xl-11 mx-auto">
 
-                            <div id="resultadoRenderizado" class="markdown-body" style="font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; font-size: 1.12rem; line-height: 1.8; color: #1a1a1a;">
+            @if (ViewBag.JobId == null)
+            {
+                <form asp-action="Index" method="post" id="ollamaForm" enctype="multipart/form-data" onsubmit="prepararEnvio()">
+
+                    <div class="row g-4">
+
+                        <div class="col-md-5 d-flex flex-column gap-4">
+
+                            <div class="config-card">
+                                <label class="config-label"><i class="bi bi-list-stars text-warning me-2"></i>TIPO DE TAREA:</label>
+                                <select id="tipoTareaSelect" class="form-select config-input">
+                                    <option value="documentador" selected>Documentador Técnico (Genera Word)</option>
+                                    <option value="general">Consultas Generales (Análisis Libre)</option>
+                                </select>
+                                <p class="config-hint mt-2 mb-0" id="tareaHint">Solo admite .py o .ipynb y genera un documento final.</p>
+                            </div>
+
+                            <div class="config-card border-warning-subtle">
+                                <label class="config-label"><i class="bi bi-cpu-fill text-warning me-2"></i>MODELO DE IA (MOTOR):</label>
+                                <select id="modeloSelect" name="modeloIA" class="form-select config-input fw-bold">
+                                    <option value="qwen2.5-coder:7b" selected>Qwen 2.5 Coder (7B) - Recomendado</option>
+                                    <option value="qwen2.5:32b">Qwen 2.5 (32B) - Alta Potencia</option>
+                                    <option value="qwen2.5:7b">Qwen 2.5 (7B) - General Ligero</option>
+                                    <option value="phi3:latest">Phi-3 - Ultra Rápido</option>
+                                </select>
+                                <p class="config-hint mt-2 mb-0 fw-bold transition-all" id="modeloHint">
+                                    <i class="bi bi-info-circle-fill text-success"></i> Rápido y altamente preciso para código y SQL.
+                                </p>
+                            </div>
+
+                            <div class="config-card focus-gold">
+                                <label class="config-label"><i class="bi bi-funnel-fill text-warning me-2"></i>FILTRO / ENFOQUE TEMPORAL (OPCIONAL):</label>
+                                <input type="text" name="sistemaPrompt" class="form-control config-input"
+                                       placeholder="Opcional: Define el enfoque del prompt..."
+                                       value="@(ViewBag.SistemaPrompt ?? "Enfócate en la lógica de extracción, las tablas afectadas y la cuadratura de datos.")" />
+                                <p class="config-hint mt-2 mb-0">El Glosario BCI ya está inyectado automáticamente.</p>
                             </div>
                         </div>
-                    }
-                    else
+
+                        <div class="col-md-7 d-flex flex-column gap-4">
+
+                            <div class="config-card flex-grow-1 d-flex flex-column">
+                                <label class="config-label"><i class="bi bi-cloud-upload-fill text-warning me-2"></i>ARCHIVOS DE ORIGEN:</label>
+                                <div id="drop-area" class="drop-zone transition-all flex-grow-1 d-flex flex-column justify-content-center">
+                                    <i class="bi bi-file-earmark-arrow-up text-warning mb-2 d-block" style="font-size: 2.5rem;"></i>
+                                    <h6 class="text-white mb-1">Arrastra o haz clic aquí</h6>
+                                    <p class="text-secondary small mb-0" id="extensionHint">Solo .py, .ipynb</p>
+                                    <input type="file" id="archivosInput" name="archivos" class="d-none" accept=".py,.ipynb" multiple />
+                                </div>
+                                <ul id="file-list" class="list-group mt-3 custom-scrollbar" style="max-height: 120px; overflow-y: auto;"></ul>
+                            </div>
+
+                            <div class="config-card border-warning-subtle">
+                                <label class="config-label"><i class="bi bi-chat-left-text-fill text-warning me-2"></i>TU PROMPT / INSTRUCCIONES:</label>
+                                <textarea name="prompt" rows="5" class="form-control config-input custom-scrollbar"
+                                          placeholder="Ej: Explica el flujo de este script y detalla qué reglas de negocio ejecuta sobre las carteras...">@ViewBag.Prompt</textarea>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    @if (ViewBag.Error != null)
                     {
-                        <div class="text-center py-5 text-muted my-4">
-                            <div class="mb-3" style="font-size: 2.5rem; opacity: 0.3;">📋</div>
-                            <h5 class="fw-bold text-secondary">Sin contenido generado</h5>
-                            <p class="small mb-0 text-secondary" style="max-width: 400px; margin: 0 auto;">Adjunta un archivo o ingresa tus instrucciones para procesar la información con la GPU local.</p>
+                        <div class="alert alert-danger shadow-sm mt-4">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i> @ViewBag.Error
                         </div>
                     }
+
+                    <div class="text-center mt-5">
+                        <button type="submit" class="btn btn-warning btn-lg px-5 py-3 fw-bold text-dark rounded-pill action-button" id="btnSubmit">
+                            <span class="spinner-border spinner-border-sm d-none me-2" id="btnSpinner" role="status"></span>
+                            <span id="btnText">PROCESAR CON IA DE ALTA POTENCIA <i class="bi bi-lightning-charge-fill ms-2"></i></span>
+                        </button>
+                    </div>
+                </form>
+            }
+            else
+            {
+                <div class="card shadow border-0 border-start border-4 border-warning mb-4 bg-dark-panel" id="loadingCard">
+                    <div class="card-body text-center py-5 text-white rounded">
+                        <div class="spinner-border text-warning mb-3" style="width: 3.5rem; height: 3.5rem; border-width: 0.3rem;" role="status"></div>
+                        <h4 class="fw-bold mb-2">🧠 IA Analizando Información...</h4>
+                        <h5 class="fw-bold text-warning mb-3" id="estadoDinamicoText">Iniciando pipeline...</h5>
+                        <p class="text-light mb-1">Hardware Activo: <span class="badge bg-danger shadow-sm">Procesando en Red Local</span></p>
+                        <span class="badge bg-warning text-dark font-monospace mt-3 p-2 px-3">JOB ID: @ViewBag.JobId</span>
+                    </div>
                 </div>
-            </div>
+
+                <div class="card shadow border-0 border-start border-4 border-success d-none bg-dark-panel" id="resultCard">
+                    <div class="card-header bg-dark-panel py-3 d-flex justify-content-between align-items-center border-bottom border-secondary">
+                        <h5 class="mb-0 fw-bold text-success m-0"><i class="bi bi-check-circle-fill me-2"></i> Análisis Finalizado</h5>
+                        <div>
+                            <button class="btn btn-sm btn-primary fw-bold px-3 me-2 shadow-sm" id="btnDescargarWord" onclick="descargarWord()">
+                                <i class="bi bi-file-earmark-word-fill"></i> DESCARGAR WORD
+                            </button>
+                            <button class="btn btn-sm btn-outline-success fw-bold px-3 shadow-sm" onclick="copyToClipboard()">
+                                <i class="bi bi-clipboard"></i> COPIAR
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-subheader px-4 py-3 border-bottom border-secondary d-flex flex-wrap gap-4 small font-monospace" style="background-color: #11131a; color: rgba(255,255,255,0.7);" id="telemetriaBar">
+                        <span><i class="bi bi-clock-fill text-info me-1"></i> INICIO: <strong id="metricInicio" class="text-white">-</strong></span>
+                        <span><i class="bi bi-check-circle-fill text-danger me-1"></i> FIN: <strong id="metricFin" class="text-white">-</strong></span>
+                        <span class="ms-auto"><i class="bi bi-hourglass-split text-warning me-1"></i> DURACIÓN TOTAL: <strong id="metricDuracion" class="text-warning fs-6">-</strong></span>
+                    </div>
+
+                    <div class="card-body p-4 bg-light">
+                        <div class="p-4 rounded-3 bg-white border shadow-sm">
+                            <textarea id="resultadoRaw" style="display:none;"></textarea>
+                            <div id="resultadoRenderizado" class="markdown-body" style="font-size: 1.1rem; line-height: 1.7; color: #1a1a1a;"></div>
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
     </div>
 </div>
 
 <style>
-    .markdown-body ul, .markdown-body ol {
-        padding-left: 2rem;
-        margin-bottom: 1.2rem;
+    :root {
+        --dark-bg: #0b0d16;
+        --panel-bg: #151824;
+        --input-bg: #1e2230;
+        --bci-yellow: #ffc107;
+        --bci-gold: #e0a800;
+        --high-contrast-text: rgba(255, 255, 255, 0.6);
+        --placeholder-text: rgba(255, 255, 255, 0.4);
     }
 
-    .markdown-body li {
-        margin-bottom: 0.5rem;
+    .bg-dark-panel {
+        background-color: var(--panel-bg) !important;
     }
 
-    .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 {
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: var(--dark-bg);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #333;
+        border-radius: 10px;
+    }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: var(--bci-yellow);
+        }
+
+    .stepper-wrapper {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+    }
+
+        .stepper-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 16px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: rgba(255,255,255,0.05);
+            z-index: 0;
+        }
+
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        z-index: 1;
+    }
+
+    .step-circle {
+        width: 36px;
+        height: 32px;
+        border-radius: 50%;
+        background: #1f222e;
+        color: #6c757d;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-weight: bold;
+        border: 2px solid #333;
+        transition: all 0.4s ease;
+    }
+
+    .step.active .step-circle {
+        background: var(--bci-yellow);
+        color: #000;
+        border-color: var(--bci-yellow);
+        box-shadow: 0 0 20px rgba(255,193,7,0.3);
+    }
+
+    .step.completed .step-circle {
+        background: #198754;
+        color: #fff;
+        border-color: #198754;
+    }
+
+    .step-text {
+        font-size: 0.65rem;
+        color: #555;
+        margin-top: 8px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .step.active .step-text {
+        color: var(--bci-yellow);
+    }
+
+    .step.completed .step-text {
+        color: #198754;
+    }
+
+    .config-card {
+        background: var(--panel-bg);
+        border: 1px solid rgba(255,255,255,0.05);
+        padding: 1.5rem;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+    }
+
+        .config-card:hover {
+            border-color: rgba(255,193,7,0.2);
+            background: #1a1d2b;
+        }
+
+    .config-label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #ced4da;
+        margin-bottom: 12px;
+        letter-spacing: 0.5px;
+    }
+
+    .config-input {
+        background-color: var(--input-bg) !important;
+        border: 1px solid #3d4255 !important;
+        color: #fff !important;
+        padding: 0.8rem 1rem !important;
+        border-radius: 8px !important;
+    }
+
+        .config-input:focus {
+            border-color: var(--bci-yellow) !important;
+            box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.1) !important;
+        }
+
+    .config-hint {
+        color: var(--high-contrast-text) !important;
+        font-size: 0.78rem;
+        line-height: 1.4;
+    }
+
+    .config-input::placeholder {
+        color: var(--placeholder-text) !important;
+        opacity: 1;
+    }
+
+    .config-input::-webkit-input-placeholder {
+        color: var(--placeholder-text) !important;
+    }
+
+    .config-input::-moz-placeholder {
+        color: var(--placeholder-text) !important;
+    }
+
+    .drop-zone {
+        border: 2px dashed #3d4255;
+        border-radius: 10px;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        background: rgba(0,0,0,0.15);
+    }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--bci-yellow);
+            background: rgba(255,193,7,0.02);
+        }
+
+    .file-item-li {
+        background: #0b0d16;
+        border: 1px solid #222;
+        margin-bottom: 5px;
+        color: #eee;
+        font-size: 0.8rem;
+    }
+
+    .action-button {
+        transition: all 0.3s ease;
+        border: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255,193,7,0.2);
+            background-color: var(--bci-gold) !important;
+        }
+
+    .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+        color: #004b87;
+        margin-top: 1.5rem;
         font-weight: 700;
-        margin-top: 1.6rem;
-        margin-bottom: 1rem;
-        color: #111111;
-    }
-
-    .markdown-body h1 {
-        font-size: 1.6rem;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 0.3rem;
-    }
-
-    .markdown-body h2 {
-        font-size: 1.4rem;
-    }
-
-    .markdown-body h3 {
-        font-size: 1.2rem;
-    }
-
-    .markdown-body p {
-        margin-bottom: 1rem;
-    }
-
-    .markdown-body strong {
-        color: #000000;
-        font-weight: 700;
-    }
-
-    .markdown-body code {
-        background-color: #f1f3f5;
-        padding: 0.2rem 0.4rem;
-        border-radius: 4px;
-        font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        font-size: 0.9em;
-        color: #d63384;
     }
 
     .markdown-body pre {
-        background-color: #f8f9fa;
-        padding: 1rem;
-        border-radius: 6px;
+        background: #f8f9fa;
         border: 1px solid #e9ecef;
-        overflow-x: auto;
-        margin-bottom: 1.2rem;
+        padding: 1rem;
+        border-radius: 8px;
     }
 
-        .markdown-body pre code {
-            background-color: transparent;
-            padding: 0;
-            color: inherit;
-            font-size: inherit;
-        }
+    .markdown-body code {
+        color: #d63384;
+        font-weight: 600;
+    }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-    var rawElement = document.getElementById('resultadoRaw');
-    if (rawElement) {
-    var rawText = rawElement.value;
-    marked.setOptions({
-    breaks: true,
-    gfm: true
-    });
-    // Traduce la respuesta y renderiza HTML puro eliminando asteriscos literales
-    document.getElementById('resultadoRenderizado').innerHTML = marked.parse(rawText);
+    // --- DICCIONARIO DE ADVERTENCIAS POR MODELO ---
+    const modelWarnings = {
+    'qwen2.5-coder:7b': '<i class="bi bi-info-circle-fill text-success"></i> Recomendado. Rápido y altamente preciso para código y SQL.',
+    'qwen2.5:32b': '<i class="bi bi-exclamation-triangle-fill text-danger"></i> ⚠️ LENTO (30+ min). Podría causar Timeout. Extraordinario para razonamiento.',
+    'qwen2.5:7b': '<i class="bi bi-info-circle-fill text-warning"></i> Modelo equilibrado. Bueno para redacción general y análisis ligero.',
+    'phi3:latest': '<i class="bi bi-info-circle-fill text-info"></i> Ultra rápido. Menor capacidad para múltiples archivos a la vez.'
+    };
+
+    var dropArea = document.getElementById('drop-area');
+    var fileInput = document.getElementById('archivosInput');
+    var fileList = document.getElementById('file-list');
+    var tipoTareaSelect = document.getElementById('tipoTareaSelect');
+    var modeloSelect = document.getElementById('modeloSelect');
+    var dataTransfer = new DataTransfer();
+
+    if (dropArea) {
+
+    // --- EVENTO: CAMBIO DE TAREA ---
+    tipoTareaSelect.addEventListener('change', function() {
+    var hintExt = document.getElementById('extensionHint');
+    var hintTar = document.getElementById('tareaHint');
+
+    if (this.value === 'documentador') {
+    fileInput.accept = ".py,.ipynb";
+    hintExt.textContent = "Solo .py, .ipynb";
+    hintTar.textContent = "Solo admite .py o .ipynb y genera un documento final.";
+
+    // Forzar Qwen Coder y marcar como Recomendado
+    modeloSelect.value = 'qwen2.5-coder:7b';
+    actualizarAdvertenciaModelo();
+    } else {
+    fileInput.accept = ".py,.ipynb,.txt,.sql,.json,.csv";
+    hintExt.textContent = "Permitidos: .py, .ipynb, .txt, .sql, .json, .csv";
+    hintTar.textContent = "Análisis libre. Admite múltiples formatos (txt, csv, sql). No genera Word.";
+
+    // Sugerir Qwen 7B general
+    modeloSelect.value = 'qwen2.5:7b';
+    actualizarAdvertenciaModelo();
     }
     });
 
-    document.getElementById('ollamaForm').addEventListener('submit', function () {
-    var btn = document.getElementById('btnSubmit');
-    var spinner = document.getElementById('btnSpinner');
-    var text = document.getElementById('btnText');
+    // --- EVENTO: CAMBIO DE MODELO ---
+    modeloSelect.addEventListener('change', actualizarAdvertenciaModelo);
 
-    spinner.classList.remove('d-none');
-    text.innerText = 'Generando respuesta en GPU...';
-    btn.classList.remove('btn-primary');
-    btn.classList.add('btn-secondary');
-    btn.disabled = true;
+    function actualizarAdvertenciaModelo() {
+    var hintMod = document.getElementById('modeloHint');
+    hintMod.innerHTML = modelWarnings[modeloSelect.value] || '';
+    }
+
+    // --- LÓGICA DRAG & DROP ---
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => dropArea.addEventListener(e, preventD, false));
+    function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+    function preventD(e) { preventDefaults(e); }
+
+    dropArea.addEventListener('dragover', () => dropArea.classList.add('dragover'));
+    dropArea.addEventListener('dragleave', () => dropArea.classList.remove('dragover'));
+    dropArea.addEventListener('drop', (e) => { dropArea.classList.remove('dragover'); manejarArchivos(e.dataTransfer.files); });
+    dropArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', function() { manejarArchivos(this.files); });
+
+    function manejarArchivos(files) {
+    let allowedExts = tipoTareaSelect.value === 'documentador' ? ['.py', '.ipynb'] : ['.py', '.ipynb', '.txt', '.sql', '.json', '.csv'];
+    for (let file of files) {
+    let ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (allowedExts.includes(ext)) dataTransfer.items.add(file);
+    }
+    fileInput.files = dataTransfer.files;
+    actualizarLista();
+    }
+
+    function actualizarLista() {
+    fileList.innerHTML = '';
+    Array.from(fileInput.files).forEach((file, i) => {
+    let li = document.createElement('li');
+    li.className = 'list-group-item file-item-li d-flex justify-content-between align-items-center rounded-3';
+    li.innerHTML = `<span><i class="bi bi-file-code text-warning me-2"></i>${file.name}</span>
+    <button type="button" class="btn btn-sm text-danger p-0" onclick="removerArchivo(${i})"><i class="bi bi-x-circle-fill"></i></button>`;
+    fileList.appendChild(li);
+    });
+    }
+
+    window.removerArchivo = function(i) {
+    let newDt = new DataTransfer();
+    Array.from(fileInput.files).forEach((f, idx) => { if (idx !== i) newDt.items.add(f); });
+    dataTransfer = newDt;
+    fileInput.files = dataTransfer.files;
+    actualizarLista();
+    };
+
+    window.prepararEnvio = function() {
+    localStorage.setItem("tipoTareaOllama", tipoTareaSelect.value);
+    document.getElementById('btnSpinner').classList.remove('d-none');
+    document.getElementById('btnText').textContent = "INICIANDO PROCESO...";
+    };
+    }
+
+    // --- LÓGICA DE VERIFICACIÓN ASÍNCRONA ---
+    document.addEventListener("DOMContentLoaded", function() {
+    var jobId = '@ViewBag.JobId';
+    if (!jobId) return;
+
+    function verificarEstado() {
+    fetch('/OllamaTest/CheckStatus?jobId=' + jobId)
+    .then(r => r.json())
+    .then(data => {
+    var terminado = data.terminado !== undefined ? data.terminado : data.Terminado;
+    var estadoActual = data.estado !== undefined ? data.estado : data.Estado;
+
+    if (!terminado && estadoActual) {
+    document.getElementById('estadoDinamicoText').textContent = estadoActual;
+    }
+
+    if (terminado) {
+    if (typeof pollingInterval !== 'undefined') clearInterval(pollingInterval);
+
+    document.getElementById('step2').classList.remove('active');
+    document.getElementById('step2').classList.add('completed');
+    document.getElementById('step3').classList.add('active');
+
+    document.getElementById('metricInicio').textContent = data.inicioFormateado || data.InicioFormateado || '-';
+    document.getElementById('metricFin').textContent = data.finFormateado || data.FinFormateado || '-';
+    document.getElementById('metricDuracion').textContent = data.tiempoTranscurrido || data.TiempoTranscurrido || '-';
+
+    document.getElementById('loadingCard').classList.add('d-none');
+    document.getElementById('resultCard').classList.remove('d-none');
+
+    // Si es consulta general, ocultamos la opción del Word
+    if (localStorage.getItem("tipoTareaOllama") === "general") {
+    document.getElementById('btnDescargarWord').style.display = 'none';
+    }
+
+    var res = data.resultado || data.Resultado;
+    document.getElementById('resultadoRenderizado').innerHTML = res ? marked.parse(res) : "Sin respuesta.";
+    document.getElementById('resultadoRaw').value = res || "";
+    }
+    });
+    }
+    var pollingInterval = setInterval(verificarEstado, 3000);
     });
 
     function copyToClipboard() {
-    var text = document.getElementById('resultadoRaw').value;
-    navigator.clipboard.writeText(text).then(function() {
-    alert('¡Texto de la documentación copiado al portapapeles con éxito!');
-    }, function(err) {
-    console.error('Error al copiar el texto: ', err);
-    });
+    navigator.clipboard.writeText(document.getElementById("resultadoRaw").value).then(() => alert("Copiado!"));
+    }
+
+    function descargarWord() {
+    var contenido = document.getElementById('resultadoRenderizado').innerHTML;
+    var header = "<ht" + "ml xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><he" + "ad><meta charset='utf-8'><sty" + "le>body { font-family: 'Segoe UI', serif; } h1, h2 { color: #004b87; } <\/sty" + "le><\/he" + "ad><bo" + "dy>";
+    var footer = "<\/bo" + "dy><\/ht" + "ml>";
+    var blob = new Blob(['\ufeff', header + contenido + footer], { type: 'application/msword' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = 'Documentacion_IA_' + new Date().toISOString().slice(0,10) + '.doc';
+    link.click();
     }
 </script>

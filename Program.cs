@@ -105,6 +105,8 @@ builder.Services.AddScoped<LegacyJobMigrationService>();
 
 builder.Services.AddScoped<OllamaTestService>();
 
+builder.Services.AddSingleton<OllamaBackgroundManager>();
+
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {

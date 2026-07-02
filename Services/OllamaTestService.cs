@@ -16,16 +16,22 @@ namespace NotebookValidator.Web.Services
         public OllamaTestService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
+            // Timeout elevado para modelos pesados (32B)
+            _httpClient.Timeout = TimeSpan.FromMinutes(30);
             _ollamaUrl = configuration["AI:OllamaUrl"] ?? "http://localhost:11434";
         }
 
-        public async Task<string> GenerarTextoAsync(string prompt, string sistemaPromptUsuario)
+        // FIRMA ACTUALIZADA: Ahora recibe 3 parámetros exactos
+        public async Task<string> GenerarTextoAsync(string prompt, string sistemaPromptUsuario, string modeloSeleccionado)
         {
             var url = $"{_ollamaUrl.TrimEnd('/')}/v1/chat/completions";
 
-            // =========================================================================
-            // GLOSARIO CORPORATIVO FIJO Y REGLAS ESTRICTAS DE BIT SOLUCIONES
-            // =========================================================================
+            // Fallback de seguridad por si el modelo llega vacío
+            if (string.IsNullOrEmpty(modeloSeleccionado))
+            {
+                modeloSeleccionado = "qwen2.5-coder:7b";
+            }
+
             string baseSistemaPrompt =
                 "Eres un Ingeniero de Datos Senior y Arquitecto de Software experto en Chile trabajando para la consultora BIT Soluciones.\n" +
                 "Tu único propósito es explicar código, documentar procesos técnicos y analizar scripts o cuadratura de datos de forma ejecutiva.\n\n" +
@@ -33,7 +39,7 @@ namespace NotebookValidator.Web.Services
                 "- BCI significa ÚNICA Y EXCLUSIVAMENTE 'Banco de Crédito e Inversiones'. Prohibido decir 'Bank of Chile' o inventar traducciones.\n" +
                 "- Si detectas tablas con el prefijo 'Tmp_' o variables asociadas a 'tablasProyecto', refiérete a ellas formalmente como 'Tablas Temporales de Cuadratura'.\n" +
                 "- Responde SIEMPRE en un perfecto ESPAÑOL DE CHILE, utilizando un lenguaje formal, claro, limpio y corporativo.\n" +
-                "- Estructura OBLIGATORIAMENTE tus respuestas usando sintaxis Markdown estructurada (Títulos con #, subtítulos, listas con viñetas '-' y palabras clave en negrita).\n" +
+                "- Estructura OBLIGATORIAMENTE tus respuestas usando sintaxis Markdown estructurada (Títulos con ###, subtítulos, listas con viñetas '-' y palabras clave en negrita).\n" +
                 "- Prohibido responder en inglés o generar bloques de pseudocódigo redundantes a menos que se te solicite explícitamente.\n\n" +
                 "Enfoque contextual provisto por la sesión actual:\n";
 
@@ -41,7 +47,7 @@ namespace NotebookValidator.Web.Services
 
             var requestBody = new
             {
-                model = "qwen2.5:7b", // Tu nuevo modelo configurado
+                model = modeloSeleccionado, // Usando la variable dinámica
                 messages = new[]
                 {
                     new { role = "system", content = sistemaPromptFinal },
