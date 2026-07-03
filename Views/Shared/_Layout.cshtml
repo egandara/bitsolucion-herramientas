@@ -1004,184 +1004,192 @@
             </div>
 
             <nav class="sidebar-nav mt-2">
-                <ul class="nav flex-column">
-                    <li class="nav-header-custom"><i class="bi bi-house-door" style="font-size:0.6rem; opacity:0.5;"></i> General</li>
+                @{
+                    var isJobMgmtActive = currentController == "JobConverter" || currentController == "JobVisualizer" || currentController == "LegacyJobMigration";
 
-                    <li class="nav-item">
-                        <a class="nav-link @(isHomePage ? "active" : "")" asp-controller="Home" asp-action="Index"
-                           data-sidebar-label="Inicio">
+                    // Detectar en qué carpeta estamos parados para abrirla automáticamente
+                    bool isOperativaActive = currentController == "Proyectos" || currentController == "Kanban" || currentController == "GestorDashboard" || currentController == "Clientes";
+
+                    bool isMotoresActive = (currentController == "Home" && currentAction == "Validador") || currentController == "ParameterValidator" || currentController == "DataProfiling" || currentController == "Cuadratura" || currentController == "NotebookGenerator" || currentController == "OllamaTest";
+
+                    bool isHerramientasActive = isJobMgmtActive || currentController == "FunctionsAdmin" || currentController == "RegexSandbox" || currentController == "TempTable";
+
+                    bool isSistemaActive = currentController == "AdminDashboard" || currentController == "Calendario" || currentController == "Admin" || currentController == "ValidationRuleAdmin" || currentController == "AuditLog" || currentController == "ParameterAdmin";
+                }
+
+                <ul class="nav flex-column">
+
+                    <li class="nav-item mb-2">
+                        <a class="nav-link @(isHomePage ? "active" : "")" asp-controller="Home" asp-action="Index" data-sidebar-label="Inicio">
                             <i class="bi bi-house-door"></i> <span>Inicio</span>
                         </a>
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link @(currentController == "Proyectos" ? "active" : "")" asp-controller="Proyectos" asp-action="Index"
-                           data-sidebar-label="Gestor de Proyectos">
-                            <i class="bi bi-kanban"></i> <span>Gestor de Proyectos</span>
+                        <a class="nav-link @(isOperativaActive ? "active" : "")" data-bs-toggle="collapse" href="#colOperativa" role="button" aria-expanded="@(isOperativaActive ? "true" : "false")" aria-controls="colOperativa">
+                            <i class="bi bi-briefcase-fill" style="color: #a8b2c1;"></i> <span class="flex-grow-1">Gestión Operativa</span>
+                            <i class="bi bi-chevron-down transition-icon ms-auto" style="font-size: 0.75rem;"></i>
                         </a>
+                        <div class="collapse @(isOperativaActive ? "show" : "")" id="colOperativa">
+                            <ul class="nav flex-column mb-1">
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Proyectos" ? "active text-white" : "")" asp-controller="Proyectos" asp-action="Index" data-sidebar-label="Gestor de Proyectos">
+                                        <i class="bi bi-kanban"></i> <span>Gestor de Proyectos</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "Kanban" ? "active text-white" : "")" asp-controller="Kanban" asp-action="Index" data-sidebar-label="Tablero Kanban">
+                                        <i class="bi bi-layout-three-columns"></i> <span>Tablero Kanban</span>
+                                    </a>
+                                </li>
+                                @if (User.IsInRole("Admin"))
+                                {
+                                    <li class="nav-item">
+                                        <a class="nav-link @(currentController == "GestorDashboard" ? "active text-warning fw-bold" : "")" asp-controller="GestorDashboard" asp-action="Index" data-sidebar-label="Dashboard Gerencial">
+                                            <i class="bi bi-graph-up-arrow"></i> <span>Dashboard Gerencial</span>
+                                        </a>
+                                    </li>
+                                }
+                                @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+                                {
+                                    <li class="nav-item">
+                                        <a class="nav-link @(currentController == "Clientes" ? "active text-white" : "")" asp-controller="Clientes" asp-action="Index" data-sidebar-label="Empresas / Clientes">
+                                            <i class="bi bi-buildings"></i> <span>Empresas / Clientes</span>
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link @(currentController == "Kanban" ? "active" : "")" asp-controller="Kanban" asp-action="Index"
-                           data-sidebar-label="Tablero Kanban">
-                            <i class="bi bi-layout-three-columns"></i> <span>Tablero Kanban</span>
+                        <a class="nav-link @(isMotoresActive ? "active" : "")" data-bs-toggle="collapse" href="#colMotores" role="button" aria-expanded="@(isMotoresActive ? "true" : "false")" aria-controls="colMotores">
+                            <i class="bi bi-cpu-fill" style="color: #0dcaf0;"></i> <span class="flex-grow-1">Motores de Datos e IA</span>
+                            <i class="bi bi-chevron-down transition-icon ms-auto" style="font-size: 0.75rem;"></i>
                         </a>
+                        <div class="collapse @(isMotoresActive ? "show" : "")" id="colMotores">
+                            <ul class="nav flex-column mb-1">
+                                @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+                                {
+                                    <li class="nav-item">
+                                        <a class="nav-link @(currentController == "OllamaTest" ? "active text-info fw-bold" : "")" asp-controller="OllamaTest" asp-action="Index" data-sidebar-label="Bit Solución IA">
+                                            <i class="bi bi-robot"></i> <span>Bit Solución IA</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link @(currentController == "Home" && currentAction == "Validador" ? "active text-white" : "")" asp-controller="Home" asp-action="Validador" data-sidebar-label="Validador Notebooks">
+                                            <i class="bi bi-journal-code"></i> <span>Validador Notebooks</span>
+                                        </a>
+                                    </li>
+                                }
+                                @if (User.IsInRole("Admin") || User.IsInRole("ParameterValidatorUser"))
+                                {
+                                    <li class="nav-item">
+                                        <a class="nav-link @(currentController == "ParameterValidator" ? "active text-white" : "")" asp-controller="ParameterValidator" asp-action="Index" data-sidebar-label="Validador Parámetros">
+                                            <i class="bi bi-filetype-py"></i> <span>Val. Parámetros</span>
+                                        </a>
+                                    </li>
+                                }
+                                @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
+                                {
+                                    <li class="nav-item">
+                                        <a class="nav-link @(currentController == "DataProfiling" ? "active text-white" : "")" asp-controller="DataProfiling" asp-action="Index" data-sidebar-label="Perfilamiento de Datos">
+                                            <i class="bi bi-bar-chart-steps"></i> <span>Perfilamiento</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link @(currentController == "Cuadratura" ? "active text-white" : "")" asp-controller="Cuadratura" asp-action="Index" data-sidebar-label="Cuadratura de Datos">
+                                            <i class="bi bi-table"></i> <span>Cuadratura</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link @(currentController == "NotebookGenerator" ? "active text-white" : "")" asp-controller="NotebookGenerator" asp-action="Index" data-sidebar-label="Gen. Notebooks">
+                                            <i class="bi bi-file-earmark-plus"></i> <span>Gen. Notebooks</span>
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link @(isHerramientasActive ? "active" : "")" data-bs-toggle="collapse" href="#colHerramientas" role="button" aria-expanded="@(isHerramientasActive ? "true" : "false")" aria-controls="colHerramientas">
+                            <i class="bi bi-tools" style="color: #fd7e14;"></i> <span class="flex-grow-1">Herramientas</span>
+                            <i class="bi bi-chevron-down transition-icon ms-auto" style="font-size: 0.75rem;"></i>
+                        </a>
+                        <div class="collapse @(isHerramientasActive ? "show" : "")" id="colHerramientas">
+                            <ul class="nav flex-column mb-1">
+                                <li class="nav-item">
+                                    <a class="nav-link @(isJobMgmtActive ? "active text-white" : "")" asp-controller="JobConverter" asp-action="Index" data-sidebar-label="Suite de Jobs">
+                                        <i class="bi bi-stack"></i> <span>Suite de Jobs</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentController == "FunctionsAdmin" ? "active text-white" : "")" asp-controller="FunctionsAdmin" asp-action="Index" data-sidebar-label="Funciones (Maestro)">
+                                        <i class="bi bi-braces-asterisk"></i> <span>Funciones (Maestro)</span>
+                                    </a>
+                                </li>
+                                @if (User.IsInRole("Admin"))
+                                {
+                                    <li class="nav-item">
+                                        <a class="nav-link @(currentController == "RegexSandbox" ? "active text-white" : "")" asp-controller="RegexSandbox" asp-action="Index" data-sidebar-label="Sandbox de Reglas">
+                                            <i class="bi bi-shield-shaded"></i> <span>Sandbox de Reglas</span>
+                                        </a>
+                                    </li>
+                                }
+                                @if (User.IsInRole("Admin") || User.IsInRole("TempCleanerUser"))
+                                {
+                                    <li class="nav-item">
+                                        <a class="nav-link @(currentController == "TempTable" ? "active text-white" : "")" asp-controller="TempTable" asp-action="Index" data-sidebar-label="Limpieza Temporal">
+                                            <i class="bi bi-trash3"></i> <span>Limpieza Tmp</span>
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
                     </li>
 
                     @if (User.IsInRole("Admin"))
                     {
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "GestorDashboard" ? "active" : "")" asp-controller="GestorDashboard" asp-action="Index"
-                               data-sidebar-label="Salud de Proyectos" style="padding-left: 2.2rem !important; font-size: 0.72rem !important; color: #ffc107 !important; border-left: 2px solid rgba(255,193,7, 0.3) !important; margin-left: 0.8rem;">
-                                <i class="bi bi-graph-up-arrow" style="font-size: 0.85rem !important; margin-right: 0.4rem !important;"></i> <span>Dashboard Gerencial</span>
+                        <li class="nav-item mt-1">
+                            <a class="nav-link @(isSistemaActive ? "active" : "")" data-bs-toggle="collapse" href="#colSistema" role="button" aria-expanded="@(isSistemaActive ? "true" : "false")" aria-controls="colSistema">
+                                <i class="bi bi-shield-lock-fill" style="color: #ffc107;"></i> <span class="flex-grow-1">Administración</span>
+                                <i class="bi bi-chevron-down transition-icon ms-auto" style="font-size: 0.75rem;"></i>
                             </a>
-                        </li>
-                    }
-
-                    @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "Clientes" ? "active" : "")" asp-controller="Clientes" asp-action="Index"
-                               data-sidebar-label="Empresas / Clientes">
-                                <i class="bi bi-buildings"></i> <span>Empresas / Clientes</span>
-                            </a>
-                        </li>
-                    }
-
-                    <li class="nav-header-custom"><i class="bi bi-check2-circle" style="font-size:0.6rem; opacity:0.5;"></i> Validación</li>
-
-                    @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "Home" && currentAction == "Validador" ? "active" : "")" asp-controller="Home" asp-action="Validador"
-                               data-sidebar-label="Validador de Notebooks">
-                                <i class="bi bi-journal-code"></i> <span>Validador de Notebooks</span>
-                            </a>
-                        </li>
-                    }
-
-                    @if (User.IsInRole("Admin") || User.IsInRole("ParameterValidatorUser"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "ParameterValidator" ? "active" : "")" asp-controller="ParameterValidator" asp-action="Index"
-                               data-sidebar-label="Validador de Parámetros">
-                                <i class="bi bi-filetype-py"></i> <span>Validador de Parámetros</span>
-                            </a>
-                        </li>
-                    }
-
-                    @if (User.IsInRole("Admin"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "RegexSandbox" ? "active" : "")" asp-controller="RegexSandbox" asp-action="Index"
-                               data-sidebar-label="Sandbox de Reglas">
-                                <i class="bi bi-shield-shaded"></i> <span>Sandbox de Reglas</span>
-                            </a>
-                        </li>
-                    }
-
-                    <li class="nav-header-custom"><i class="bi bi-database" style="font-size:0.6rem; opacity:0.5;"></i> Datos</li>
-
-                    @if (User.IsInRole("Admin") || User.IsInRole("ValidatorUser"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "DataProfiling" ? "active" : "")" asp-controller="DataProfiling" asp-action="Index"
-                               data-sidebar-label="Perfilamiento de Datos">
-                                <i class="bi bi-bar-chart-steps"></i> <span>Perfilamiento de Datos</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "Cuadratura" ? "active" : "")" asp-controller="Cuadratura" asp-action="Index"
-                               data-sidebar-label="Cuadratura de Datos">
-                                <i class="bi bi-table"></i> <span>Cuadratura de Datos</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "NotebookGenerator" ? "active" : "")" asp-controller="NotebookGenerator" asp-action="Index"
-                               data-sidebar-label="Generador de Notebooks">
-                                <i class="bi bi-file-earmark-plus"></i> <span>Generador de Notebooks</span>
-                            </a>
-                        </li>
-                        <li class="nav-header-custom" style="color: rgba(13, 202, 240, 0.7) !important;">
-                            <i class="bi bi-robot" style="font-size:0.6rem; opacity:0.8; color:#0dcaf0;"></i> Inteligencia Artificial
-                        </li>
-
-                        <li class="nav-item mb-2">
-                            <a class="nav-link @(currentController == "OllamaTest" ? "active" : "")" asp-controller="OllamaTest" asp-action="Index"
-                               data-sidebar-label="Bit Solución IA" style="border-left-color: #0dcaf0 !important;">
-                                <i class="bi bi-cpu-fill" style="color: #0dcaf0;"></i> <span>Bit Solución IA</span>
-                            </a>
-                        </li>
-                    }
-
-                    @{
-                        var isJobMgmtActive = currentController == "JobConverter" || currentController == "JobVisualizer" || currentController == "LegacyJobMigration";
-                    }
-                    <li class="nav-header-custom"><i class="bi bi-tools" style="font-size:0.6rem; opacity:0.5;"></i> Herramientas</li>
-
-                    <li class="nav-item">
-                        <a class="nav-link @(isJobMgmtActive ? "active" : "")" asp-controller="JobConverter" asp-action="Index"
-                           data-sidebar-label="Suite de Jobs">
-                            <i class="bi bi-stack"></i> <span>Suite de Jobs</span>
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link @(currentController == "FunctionsAdmin" ? "active" : "")" asp-controller="FunctionsAdmin" asp-action="Index"
-                           data-sidebar-label="Funciones (Maestro)">
-                            <i class="bi bi-braces-asterisk"></i> <span>Funciones (Maestro)</span>
-                        </a>
-                    </li>
-
-                    @if (User.IsInRole("Admin") || User.IsInRole("TempCleanerUser"))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "TempTable" ? "active" : "")" asp-controller="TempTable" asp-action="Index"
-                               data-sidebar-label="Limpieza Temporal">
-                                <i class="bi bi-trash3"></i> <span>Limpieza Temporal</span>
-                            </a>
-                        </li>
-                    }
-
-                    @if (User.IsInRole("Admin"))
-                    {
-                        <li class="nav-header-custom" style="color: rgba(255, 193, 7, 0.5) !important;"><i class="bi bi-shield-lock-fill" style="font-size:0.6rem; opacity:0.7; color:#ffc107;"></i> Sistema</li>
-
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "AdminDashboard" ? "active" : "")" asp-controller="AdminDashboard" asp-action="Index"
-                               data-sidebar-label="Dashboard Global">
-                                <i class="bi bi-speedometer2"></i> <span>Dashboard Global</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "Calendario" ? "active" : "")" asp-controller="Calendario" asp-action="Index"
-                               data-sidebar-label="Calendario Global">
-                                <i class="bi bi-calendar-range"></i> <span>Calendario Global</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "Admin" ? "active" : "")" asp-controller="Admin" asp-action="Index"
-                               data-sidebar-label="Gestionar Usuarios">
-                                <i class="bi bi-people"></i> <span>Gestionar Usuarios</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "ValidationRuleAdmin" ? "active" : "")" asp-controller="ValidationRuleAdmin" asp-action="Index"
-                               data-sidebar-label="Reglas Validador">
-                                <i class="bi bi-list-check"></i> <span>Reglas Validador</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "AuditLog" ? "active" : "")" asp-controller="AuditLog" asp-action="Index"
-                               data-sidebar-label="Log de Auditoría">
-                                <i class="bi bi-shield-check"></i> <span>Log de Auditoría</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @(currentController == "ParameterAdmin" ? "active" : "")" asp-controller="ParameterAdmin" asp-action="Index"
-                               data-sidebar-label="Admin. Parámetros">
-                                <i class="bi bi-tags-fill"></i> <span>Admin. Parámetros</span>
-                            </a>
+                            <div class="collapse @(isSistemaActive ? "show" : "")" id="colSistema">
+                                <ul class="nav flex-column mb-1">
+                                    <li class="nav-item">
+                                        <a class="nav-link @(currentController == "AdminDashboard" ? "active text-white" : "")" asp-controller="AdminDashboard" asp-action="Index" data-sidebar-label="Dashboard Global">
+                                            <i class="bi bi-speedometer2"></i> <span>Dashboard Global</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link @(currentController == "Calendario" ? "active text-white" : "")" asp-controller="Calendario" asp-action="Index" data-sidebar-label="Calendario Global">
+                                            <i class="bi bi-calendar-range"></i> <span>Calendario Global</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link @(currentController == "Admin" ? "active text-white" : "")" asp-controller="Admin" asp-action="Index" data-sidebar-label="Gestión Usuarios">
+                                            <i class="bi bi-people"></i> <span>Gestión Usuarios</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link @(currentController == "ValidationRuleAdmin" ? "active text-white" : "")" asp-controller="ValidationRuleAdmin" asp-action="Index" data-sidebar-label="Reglas Validador">
+                                            <i class="bi bi-list-check"></i> <span>Reglas Validador</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link @(currentController == "AuditLog" ? "active text-white" : "")" asp-controller="AuditLog" asp-action="Index" data-sidebar-label="Log Auditoría">
+                                            <i class="bi bi-shield-check"></i> <span>Log Auditoría</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link @(currentController == "ParameterAdmin" ? "active text-white" : "")" asp-controller="ParameterAdmin" asp-action="Index" data-sidebar-label="Admin. Parámetros">
+                                            <i class="bi bi-tags-fill"></i> <span>Admin. Parámetros</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
                         </li>
                     }
                 </ul>
