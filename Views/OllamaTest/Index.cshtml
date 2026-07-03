@@ -20,7 +20,7 @@
                     <div class="step-text">Resultados</div>
                 </div>
             </div>
-                <h2 class="text-center text-white mt-4 fw-bold" style="letter-spacing: 1px;">Bit Solución: <span class="text-warning">Copiloto de Consultas y Documentación</span></h2>
+            <h2 class="text-center text-white mt-4 fw-bold" style="letter-spacing: 1px;">Bit Solución: <span class="text-warning">Copiloto de Consultas y Documentación</span></h2>
         </div>
     </div>
 
@@ -39,6 +39,7 @@
                                 <select id="tipoTareaSelect" class="form-select config-input">
                                     <option value="documentador" selected>Documentador Técnico (Genera Word)</option>
                                     <option value="general">Consultas Generales (Análisis Libre)</option>
+                                    <option value="chat">Conversación Libre (Chat Multi-turno)</option>
                                 </select>
                                 <p class="config-hint mt-2 mb-0" id="tareaHint">Solo admite .py o .ipynb y genera un documento final.</p>
                             </div>
@@ -101,6 +102,25 @@
                         </button>
                     </div>
                 </form>
+
+                <div class="card shadow border-0 border-top border-4 border-info d-none bg-dark-panel" id="chatCard">
+                    <div class="card-header bg-dark-panel py-3 d-flex justify-content-between align-items-center border-bottom border-secondary">
+                        <h5 class="mb-0 fw-bold text-info m-0"><i class="bi bi-chat-dots-fill me-2"></i> Copiloto IA - Sesión Activa</h5>
+                        <span class="badge bg-secondary" id="chatModelBadge">Modelo</span>
+                    </div>
+
+                    <div class="card-body p-4 bg-light custom-scrollbar" id="chatWindow" style="height: 500px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
+                        <div class="text-center text-muted small my-2">Inicio de la conversación segura</div>
+                    </div>
+
+                    <div class="card-footer bg-white border-top p-3 d-flex gap-2">
+                        <textarea id="chatInput" class="form-control custom-scrollbar" rows="2" placeholder="Escribe tu mensaje a la IA aquí..." style="resize: none; background-color: #ffffff; color: #1a1a1a !important; font-weight: 500; font-size: 1.05rem; border: 1px solid #ced4da; box-shadow: inset 0 1px 2px rgba(0,0,0,0.075);"></textarea>
+                        <button id="btnSendChat" class="btn btn-info text-white fw-bold px-4 shadow-sm d-flex align-items-center justify-content-center" style="min-width: 120px;">
+                            <span id="chatBtnText"><i class="bi bi-send-fill me-2"></i> Enviar</span>
+                            <div class="spinner-border spinner-border-sm d-none" id="chatSpinner" role="status"></div>
+                        </button>
+                    </div>
+                </div>
             }
             else
             {
@@ -333,23 +353,62 @@
             background-color: var(--bci-gold) !important;
         }
 
-    .markdown-body h1, .markdown-body h2, .markdown-body h3 {
-        color: #004b87;
-        margin-top: 1.5rem;
-        font-weight: 700;
+    /* ── MÁXIMO CONTRASTE PARA EL CONTENIDO DE LA IA ── */
+    .markdown-body {
+        font-size: 1.15rem;
+        line-height: 1.8;
+        color: #000000 !important; /* Negro absoluto para contraste perfecto */
+        font-weight: 500; /* Letra más gruesa */
     }
 
-    .markdown-body pre {
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
-        padding: 1rem;
-        border-radius: 8px;
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+            color: #004b87;
+            margin-top: 1.5rem;
+            font-weight: 700;
+        }
+
+        .markdown-body pre {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+
+        .markdown-body code {
+            color: #d63384;
+            font-weight: 600;
+        }
+
+    /* ESTILOS DEL CHAT BURBUJAS */
+    .chat-bubble {
+        max-width: 85%;
+        padding: 12px 18px;
+        border-radius: 15px;
+        font-size: 1.05rem;
+        line-height: 1.6;
     }
 
-    .markdown-body code {
-        color: #d63384;
-        font-weight: 600;
+    .chat-user {
+        background-color: #004b87;
+        color: white;
+        align-self: flex-end;
+        border-bottom-right-radius: 2px;
     }
+
+    .chat-ai {
+        background-color: #f1f3f5;
+        color: #1a1a1a;
+        align-self: flex-start;
+        border-bottom-left-radius: 2px;
+        border: 1px solid #dee2e6;
+    }
+
+        .chat-ai .markdown-body {
+            color: #1a1a1a !important; /* Forzar legibilidad dentro de burbuja AI */
+            font-size: 1.05rem;
+            background: transparent;
+            padding: 0;
+        }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -380,16 +439,12 @@
     fileInput.accept = ".py,.ipynb";
     hintExt.textContent = "Solo .py, .ipynb";
     hintTar.textContent = "Solo admite .py o .ipynb y genera un documento final.";
-
-    // Forzar Qwen Coder y marcar como Recomendado
     modeloSelect.value = 'qwen2.5-coder:7b';
     actualizarAdvertenciaModelo();
     } else {
     fileInput.accept = ".py,.ipynb,.txt,.sql,.json,.csv";
     hintExt.textContent = "Permitidos: .py, .ipynb, .txt, .sql, .json, .csv";
     hintTar.textContent = "Análisis libre. Admite múltiples formatos (txt, csv, sql). No genera Word.";
-
-    // Sugerir Qwen 7B general
     modeloSelect.value = 'qwen2.5:7b';
     actualizarAdvertenciaModelo();
     }
@@ -480,7 +535,6 @@
     document.getElementById('loadingCard').classList.add('d-none');
     document.getElementById('resultCard').classList.remove('d-none');
 
-    // Si es consulta general, ocultamos la opción del Word
     if (localStorage.getItem("tipoTareaOllama") === "general") {
     document.getElementById('btnDescargarWord').style.display = 'none';
     }
@@ -493,6 +547,99 @@
     }
     var pollingInterval = setInterval(verificarEstado, 3000);
     });
+
+    // --- LÓGICA DEL MOTOR DE CHAT MULTI-TURNO ---
+    let chatHistory = [];
+
+    document.getElementById('ollamaForm').addEventListener('submit', function(e) {
+    if (tipoTareaSelect.value === 'chat') {
+    e.preventDefault();
+    iniciarModoChat();
+    }
+    });
+
+    function iniciarModoChat() {
+    const promptInicial = document.querySelector('textarea[name="prompt"]').value.trim();
+    if(!promptInicial) {
+    alert("Escribe un mensaje inicial para comenzar el chat.");
+    return;
+    }
+
+    // Ocultar formulario, mostrar caja del chat
+    document.getElementById('ollamaForm').classList.add('d-none');
+    document.getElementById('chatCard').classList.remove('d-none');
+    document.getElementById('step2').classList.add('active');
+    document.getElementById('chatModelBadge').textContent = document.getElementById('modeloSelect').options[document.getElementById('modeloSelect').selectedIndex].text;
+
+    enviarMensajeCore(promptInicial);
+    }
+
+    document.getElementById('btnSendChat').addEventListener('click', function() {
+    const input = document.getElementById('chatInput');
+    if(input.value.trim()) {
+    enviarMensajeCore(input.value.trim());
+    input.value = '';
+    }
+    });
+
+    document.getElementById('chatInput').addEventListener('keypress', function(e) {
+    if(e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    document.getElementById('btnSendChat').click();
+    }
+    });
+
+    function enviarMensajeCore(texto) {
+    const chatWindow = document.getElementById('chatWindow');
+    const btnSend = document.getElementById('btnSendChat');
+    const spinner = document.getElementById('chatSpinner');
+    const btnText = document.getElementById('chatBtnText');
+
+    // 1. Burbuja del usuario
+    chatHistory.push({ role: "user", content: texto });
+    chatWindow.innerHTML += `<div class="chat-bubble chat-user shadow-sm mb-3">${texto.replace(/\n/g, '<br>')}</div>`;
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+
+    // 2. Bloquear controles
+    btnSend.disabled = true;
+    btnText.classList.add('d-none');
+    spinner.classList.remove('d-none');
+
+    // 3. Preparar payload
+    const payload = {
+    Historial: chatHistory,
+    ModeloIA: document.getElementById('modeloSelect').value,
+    SistemaPrompt: document.querySelector('input[name="sistemaPrompt"]').value
+    };
+
+    // 4. Consumir endpoint AJAX seguro
+    fetch('/OllamaTest/EnviarMensajeChat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+    if(!data.success) {
+    chatWindow.innerHTML += `<div class="chat-bubble chat-ai shadow-sm mb-3 border-danger"><strong class="text-danger">⚠️ Sistema:</strong> ${data.message}</div>`;
+    chatHistory.pop();
+    } else {
+    chatHistory.push({ role: "assistant", content: data.respuesta });
+    const mdRender = marked.parse(data.respuesta);
+    chatWindow.innerHTML += `<div class="chat-bubble chat-ai shadow-sm mb-3"><div class="markdown-body">${mdRender}</div></div>`;
+    }
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+    })
+    .catch(err => {
+    chatWindow.innerHTML += `<div class="chat-bubble chat-ai shadow-sm mb-3 text-danger">Error de red al conectar con el servidor.</div>`;
+    })
+    .finally(() => {
+    btnSend.disabled = false;
+    btnText.classList.remove('d-none');
+    spinner.classList.add('d-none');
+    document.getElementById('chatInput').focus();
+    });
+    }
 
     function copyToClipboard() {
     navigator.clipboard.writeText(document.getElementById("resultadoRaw").value).then(() => alert("Copiado!"));

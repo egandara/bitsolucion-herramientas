@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -8,6 +9,13 @@ using Microsoft.Extensions.Configuration;
 
 namespace NotebookValidator.Web.Services
 {
+    // NUEVA CLASE PARA MANEJAR EL HISTORIAL DE CHAT
+    public class ChatMessage
+    {
+        public string Role { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+    }
+
     public class OllamaTestService
     {
         private readonly HttpClient _httpClient;
@@ -21,12 +29,13 @@ namespace NotebookValidator.Web.Services
             _ollamaUrl = configuration["AI:OllamaUrl"] ?? "http://localhost:11434";
         }
 
-        // FIRMA ACTUALIZADA: Ahora recibe 3 parámetros exactos
+        // =========================================================================
+        // MÉTÓDO 1: ORIGINAL (Inferencia de un toque para análisis de archivos/Word)
+        // =========================================================================
         public async Task<string> GenerarTextoAsync(string prompt, string sistemaPromptUsuario, string modeloSeleccionado)
         {
             var url = $"{_ollamaUrl.TrimEnd('/')}/v1/chat/completions";
 
-            // Fallback de seguridad por si el modelo llega vacío
             if (string.IsNullOrEmpty(modeloSeleccionado))
             {
                 modeloSeleccionado = "qwen2.5-coder:7b";
@@ -47,7 +56,7 @@ namespace NotebookValidator.Web.Services
 
             var requestBody = new
             {
-                model = modeloSeleccionado, // Usando la variable dinámica
+                model = modeloSeleccionado,
                 messages = new[]
                 {
                     new { role = "system", content = sistemaPromptFinal },
@@ -82,6 +91,69 @@ namespace NotebookValidator.Web.Services
             catch (Exception ex)
             {
                 return $"Error de conexión con el servidor de IA local: {ex.Message}";
+            }
+        }
+
+        // =========================================================================
+        // MÉTÓDO 2: NUEVO (Conversación Libre Multi-turno)
+        // =========================================================================
+        public async Task<string> ConversarAsync(List<ChatMessage> historial, string sistemaPromptUsuario, string modeloSeleccionado)
+        {
+            var url = $"{_ollamaUrl.TrimEnd('/')}/v1/chat/completions";
+
+            if (string.IsNullOrEmpty(modeloSeleccionado))
+            {
+                modeloSeleccionado = "qwen2.5:7b"; // Modelo general por defecto para chat
+            }
+
+            string baseSistemaPrompt =
+                "Eres un Asistente de IA Senior trabajando para BIT Soluciones.\n" +
+                "Responde siempre en un perfecto ESPAÑOL DE CHILE, utilizando un lenguaje formal, claro y corporativo.\n" +
+                "Si te pasan código, formatéalo correctamente en Markdown.\n\n" +
+                "Enfoque de esta sesión:\n" + (sistemaPromptUsuario ?? "Conversación libre.");
+
+            // Armamos el payload final empezando con el prompt de sistema
+            var mensajesCompletos = new List<object>
+            {
+                new { role = "system", content = baseSistemaPrompt }
+            };
+
+            // Inyectamos el historial completo que viene desde el navegador
+            mensajesCompletos.AddRange(historial.Select(m => new { role = m.Role, content = m.Content }));
+
+            var requestBody = new
+            {
+                model = modeloSeleccionado,
+                messages = mensajesCompletos,
+                stream = false // Mantendremos en false por ahora para simplificar el flujo AJAX
+            };
+
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync(url, requestBody);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    return $"Error de Ollama: {errorContent}";
+                }
+
+                var jsonResult = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+                if (jsonResult.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+                {
+                    var firstChoice = choices[0];
+                    if (firstChoice.TryGetProperty("message", out var message) && message.TryGetProperty("content", out var content))
+                    {
+                        return content.GetString() ?? "Sin respuesta.";
+                    }
+                }
+
+                return "No se pudo procesar la respuesta.";
+            }
+            catch (Exception ex)
+            {
+                return $"Error de conexión: {ex.Message}";
             }
         }
     }
