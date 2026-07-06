@@ -4,7 +4,6 @@
 @{
     bool isValidadoWorkspace = Model.EstadoValidacionWorkspace == "Validado";
     bool isRechazadoWorkspace = Model.EstadoValidacionWorkspace == "Rechazado";
-
     var hoy = DateTime.Now.Date;
 
     // Cálculo de posiciones en la barra de tiempo
@@ -42,7 +41,6 @@
         "Completado" => "rgba(25,135,84,0.1)",
         _ => "rgba(13,202,240,0.07)"
     };
-
     string eventosJson = ViewBag.EventosCalendario ?? "[]";
     string mesesJson = ViewBag.MesesConActividad ?? "[]";
 
@@ -59,26 +57,26 @@
     };
 
     var docsSubidosCron = (Model.Comentarios != null ? Model.Comentarios.ToList() : new System.Collections.Generic.List<NotebookValidator.Web.Models.GestorProyectos.ComentarioProyecto>())
-        .Where(c => c.Tipo == "Documento" && !string.IsNullOrEmpty(c.Subcategoria))
-        .GroupBy(c => c.Subcategoria!)
-        .ToDictionary(g => g.Key, g => g.ToList());
+            .Where(c => c.Tipo == "Documento" && !string.IsNullOrEmpty(c.Subcategoria))
+            .GroupBy(c => c.Subcategoria!)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
     bool hayJobsCron = (ViewBag.JobsCount ?? 0) > 0;
     int jobsCountCron = ViewBag.JobsCount ?? 0;
 
     Func<string, List<(string Subcategoria, string? Url)>> getDocsCron =
-        (nombreFase) =>
-        {
-            var res = new List<(string, string?)>();
-            foreach (var kv in mapaSubcatFaseCron)
+            (nombreFase) =>
             {
-                if (kv.Value.Any(kw => nombreFase.Contains(kw, StringComparison.OrdinalIgnoreCase))
-                    && docsSubidosCron.TryGetValue(kv.Key, out var docs))
-                    foreach (var d in docs)
-                        res.Add((kv.Key, d.ArchivoUrl));
-            }
-            return res;
-        };
+                var res = new List<(string, string?)>();
+                foreach (var kv in mapaSubcatFaseCron)
+                {
+                    if (kv.Value.Any(kw => nombreFase.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                        && docsSubidosCron.TryGetValue(kv.Key, out var docs))
+                        foreach (var d in docs)
+                            res.Add((kv.Key, d.ArchivoUrl));
+                }
+                return res;
+            };
 
     // Hitos para la barra de tiempo
     int diasTotalesBar = (Model.FechaInicio.HasValue && Model.FechaFinEstimada.HasValue)
@@ -90,25 +88,25 @@
             : 0;
 
     var hitosLinea = Model.Fases != null
-        ? Model.Fases
-            .Where(f => f.FechaActualizacion.HasValue && f.EstadoFase != "Pendiente")
-            .OrderBy(f => f.FechaActualizacion)
-            .ToList()
-        : new System.Collections.Generic.List<FaseProyecto>();
+            ? Model.Fases
+                .Where(f => f.FechaActualizacion.HasValue && f.EstadoFase != "Pendiente")
+                .OrderBy(f => f.FechaActualizacion)
+                .ToList()
+            : new System.Collections.Generic.List<FaseProyecto>();
 
     var qaHitos = Model.Validaciones != null
-        ? Model.Validaciones
-            .Where(v => v.PasoValidacion)
-            .OrderBy(v => v.FechaValidacion)
-            .Take(2)
-            .ToList()
-        : new System.Collections.Generic.List<NotebookValidacion>();
+            ? Model.Validaciones
+                .Where(v => v.PasoValidacion)
+                .OrderBy(v => v.FechaValidacion)
+                .Take(2)
+                .ToList()
+            : new System.Collections.Generic.List<NotebookValidacion>();
 }
 
 <style>
     .tl-track-wrapper {
         padding: 0 8px;
-        margin-bottom: 56px; /* espacio para labels debajo */
+        margin-bottom: 56px;
     }
 
     .tl-track-bg {
@@ -126,36 +124,35 @@
         transition: width 0.6s ease;
     }
 
-    /* Todos los pins: colocados debajo de la barra para no superponerse */
     .tl-pin {
         position: absolute;
-        top: 100%; /* Los empuja justo debajo del contenedor de la barra */
-        margin-top: 6px; /* Crea un pequeño espacio visual entre la barra y el punto */
+        top: 100%;
+        margin-top: 6px;
         display: flex;
         flex-direction: column;
         align-items: center;
         z-index: 2;
     }
-    /* Centrado en el eje X (eliminamos el -50% del eje Y porque ya están debajo) */
+
     .tl-pin {
         transform: translateX(-50%);
     }
-    /* Inicio: alineado al borde izquierdo */
+
     .tl-pin-start {
         transform: translateX(0%);
         align-items: flex-start;
     }
-    /* Cierre: alineado al borde derecho */
+
     .tl-pin-end {
         transform: translateX(-100%);
         align-items: flex-end;
     }
 
     .tl-pin-dot {
-        width: 16px; /* Hacemos el punto más grande (antes 12px) */
-        height: 16px; /* Hacemos el punto más grande (antes 12px) */
+        width: 16px;
+        height: 16px;
         border-radius: 50%;
-        border: 3px solid #0b0d16; /* Borde oscuro ligeramente más grueso para que resalte más */
+        border: 3px solid #0b0d16;
         flex-shrink: 0;
         transition: transform 0.15s;
     }
@@ -164,11 +161,10 @@
         transform: scale(1.35);
     }
 
-    /* Labels — siempre debajo del dot */
     .tl-pin-label {
         font-size: 0.62rem;
         white-space: nowrap;
-        margin-top: 6px; /* empuja hacia abajo de la barra */
+        margin-top: 6px;
         color: rgba(255,255,255,0.55);
         font-family: monospace;
         line-height: 1.2;
@@ -227,7 +223,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        height: 32px; /* altura fija compacta en lugar de aspect-ratio */
+        height: 32px;
         font-size: 0.68rem;
         border-radius: 4px;
         color: rgba(255,255,255,0.3);
@@ -301,7 +297,6 @@
         padding: 6px 10px;
         font-size: 0.68rem;
         color: white;
-        white-space: nowrap;
         z-index: 20;
         display: none;
         pointer-events: none;
@@ -511,11 +506,9 @@
                             string faseColor = pctFase == 100 ? "#198754"
                                              : pctFase > 0 ? "#0dcaf0"
                                              : "rgba(255,255,255,0.1)";
-
                             string faseTextColor = pctFase == 100 ? "#0ddb78"
                                                                              : pctFase > 0 ? "#0dcaf0"
                                                                              : "rgba(255,255,255,0.3)";
-
                             string badgeEstadoVisual = pctFase == 100 ? "Completado" : (pctFase > 0 ? "En Progreso" : "Pendiente");
 
                             <div class="fase-tl-row p-3">
@@ -548,20 +541,55 @@
                                     </div>
                                 }
 
-                                @* ── NUEVO: Mini-desglose de Subfases en Cronograma ── *@
+                                @* ── NUEVO: Mini-desglose de Subfases y Tareas en Cronograma ── *@
                                 @if (fase.SubFases != null && fase.SubFases.Any())
                                 {
                                     <div class="mt-2 pt-2 border-top border-secondary border-opacity-10">
-                                        <span class="text-white-50 font-monospace d-block mb-1" style="font-size: 0.65rem;">
+                                        <span class="text-white-50 font-monospace d-block mb-2" style="font-size: 0.65rem;">
                                             Subfases: @fase.SubFases.Count(s => s.Estado == "Completado") / @fase.SubFases.Count completadas
                                         </span>
-                                        <div class="d-flex flex-wrap gap-1">
+                                        <div class="d-flex flex-column gap-2">
                                             @foreach (var sub in fase.SubFases)
                                             {
                                                 string subColor = sub.Estado == "Completado" ? "text-success" : (sub.Estado == "En Progreso" ? "text-warning" : "text-secondary");
-                                                <span class="badge bg-dark border border-secondary font-monospace text-white-50" style="font-size: 0.6rem;">
-                                                    <i class="bi bi-circle-fill @subColor me-1" style="font-size: 0.45rem;"></i>@sub.Nombre
-                                                </span>
+                                                string targetId = $"collapseSubfase_{sub.Id}";
+
+                                                <div class="p-2 rounded" style="background-color: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);">
+                                                    <div class="d-flex justify-content-between align-items-center" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#@targetId" aria-expanded="false" aria-controls="@targetId">
+                                                        <span class="font-monospace text-white-50" style="font-size: 0.65rem;">
+                                                            <i class="bi bi-circle-fill @subColor me-2" style="font-size: 0.45rem;"></i>@sub.Nombre
+                                                        </span>
+                                                        <i class="bi bi-chevron-down text-secondary" style="font-size: 0.6rem;"></i>
+                                                    </div>
+
+                                                    @if (sub.Tareas != null && sub.Tareas.Any())
+                                                    {
+                                                        <div class="collapse mt-2" id="@targetId">
+                                                            <div class="ps-3 ms-1 border-start border-secondary border-opacity-25 d-flex flex-column gap-1">
+                                                                @foreach (var tarea in sub.Tareas)
+                                                                {
+                                                                    <div class="d-flex flex-column mb-1">
+                                                                        <span class="text-white font-monospace" style="font-size: 0.65rem;">
+                                                                            <i class="bi bi-check2-square text-info me-1"></i>@tarea.Nombre
+                                                                            <span class="text-white-50 ms-1 opacity-50">(@tarea.HorasEstimadas h)</span>
+                                                                        </span>
+
+                                                                        @* ¡NUEVO! Bloque visual de Dependencia en Detalles *@
+                                                                        @if (tarea.TareaPredecesoraId.HasValue && tarea.TareaPredecesora != null)
+                                                                        {
+                                                                            <div class="mt-1 ms-3">
+                                                                                <span class="badge" style="background-color: rgba(255, 193, 7, 0.08); border: 1px dashed rgba(255, 193, 7, 0.3); color: #ffc107; font-size: 0.55rem; letter-spacing: 0.3px;">
+                                                                                    <i class="bi bi-link-45deg me-1"></i>
+                                                                                    Espera a: @tarea.TareaPredecesora.Nombre
+                                                                                </span>
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
                                             }
                                         </div>
                                     </div>
@@ -569,10 +597,8 @@
 
                                 @{
                                     var docsCronFase = getDocsCron(fase.NombreFase);
-                                    bool esProdCron = fase.NombreFase.Contains("Paso_A_Produccion",
-                                        StringComparison.OrdinalIgnoreCase) ||
-                                        fase.NombreFase.Contains("Paso A Produccion",
-                                        StringComparison.OrdinalIgnoreCase);
+                                    bool esProdCron = fase.NombreFase.Contains("Paso_A_Produccion", StringComparison.OrdinalIgnoreCase) ||
+                                                      fase.NombreFase.Contains("Paso A Produccion", StringComparison.OrdinalIgnoreCase);
                                 }
                                 @if (docsCronFase.Any() || (esProdCron && hayJobsCron))
                                 {
@@ -729,6 +755,7 @@
             // Calcular días del mes
             const primerDia  = new Date(year, month, 1);
             const diasEnMes  = new Date(year, month + 1, 0).getDate();
+
             // Lunes = 0 en nuestro grid
             const offsetInicio = (primerDia.getDay() + 6) % 7;
 
@@ -756,8 +783,6 @@
 
                     // Puntos de eventos (ahora sí, SIEMPRE visible)
                     if (eventos.length > 0) {
-
-                        // Eliminamos la validación if (!esHoy)
                         const dots = document.createElement('div');
                         dots.className = 'cal-dots';
                         eventos.slice(0, 4).forEach(ev => {
@@ -822,6 +847,7 @@
             mesActual = { year: hoyDate.getFullYear(), month: hoyDate.getMonth() };
             renderCalendario(mesActual.year, mesActual.month);
         });
+
         // ── Feed paginado ───────────────────────────────
         const FEED_PER_PAGE = 5;
         const feedEventos = (@Html.Raw(eventosJson))
@@ -881,6 +907,7 @@
         document.getElementById('feed-prev').addEventListener('click', () => {
             if (feedPagina > 0) { feedPagina--; renderFeed(feedPagina); }
         });
+
         document.getElementById('feed-next').addEventListener('click', () => {
             if (feedPagina < feedTotalPags - 1) { feedPagina++; renderFeed(feedPagina); }
         });

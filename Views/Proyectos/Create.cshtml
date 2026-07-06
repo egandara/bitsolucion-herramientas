@@ -155,6 +155,47 @@
         border-radius: 8px;
         transition: box-shadow 0.3s ease;
     }
+
+    /* ============================================================
+           MODO SELECCIÓN DE DEPENDENCIAS (CHAIN LINK)
+           ============================================================ */
+    .linking-mode-active {
+        overflow: hidden;
+    }
+
+        /* Atenúa el WBS y hace palpitar las tareas elegibles */
+        .linking-mode-active .tarea-row-container:not(.linking-target) {
+            animation: taskPulse 1.5s infinite ease-in-out;
+            cursor: cell !important;
+            border: 1px dashed #0dcaf0 !important;
+            transition: transform 0.2s;
+        }
+
+            .linking-mode-active .tarea-row-container:not(.linking-target):hover {
+                transform: scale(1.01);
+                background-color: rgba(13, 202, 240, 0.08) !important;
+            }
+
+        /* La tarea que está buscando predecesora queda deshabilitada de selección */
+        .linking-mode-active .tarea-row-container.linking-target {
+            opacity: 0.4;
+            pointer-events: none;
+            border-left: 3px solid #ffc107 !important;
+        }
+
+    @@keyframes taskPulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.3);
+        }
+
+        70% {
+            box-shadow: 0 0 0 8px rgba(13, 202, 240, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(13, 202, 240, 0);
+        }
+    }
 </style>
 
 <div class="container-fluid mt-3" style="max-width: 1500px !important;">
@@ -333,7 +374,11 @@
         feriadosMap.set(d, f.Motivo);
         });
 
-        const DRAFT_KEY = 'ProyectoDraftWBS';
+        // ========================================================
+        // CONTROL GLOBAL DE DEPENDENCIAS (NUEVO)
+        // ========================================================
+        let currentLinkingTarget = null;
+        const DRAFT_KEY = '@(Model != null ? $"ProyectoEditDraftWBS_{Model.Id}" : "ProyectoDraftWBS")';
         window.currentDraggedUser = null;
 
         const usuariosOptions = `@if (usuariosBanco != null) { foreach (var user in usuariosBanco) {
@@ -450,9 +495,8 @@ document.getElementById('tray-asignacion').classList.remove('d-none');
 return wrapper;
 }
 
-function inyectarFilaTarea(wrapperGroup, nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "") {
+function inyectarFilaTarea(wrapperGroup, nombre = "", fechaIni = "", fechaFin = "", responsableVal = "", horasVal = "", predecesoraId = 0, predecesoraNombre = "") {
 const container = wrapperGroup.querySelector('.tareas-container');
-
 if (!fechaIni && !fechaFin) {
 const tareasExistentes = container.querySelectorAll('.tarea-row-container');
 if (tareasExistentes.length > 0) {
@@ -472,16 +516,40 @@ if (sfInicio) fechaIni = sfInicio;
 }
 }
 
-const row = document.createElement('div'); row.className = 'tarea-row-container row-data-entity';
+// Generamos un ID temporal único para el DOM si es nueva, útil para enlazarlas antes de guardar en BD
+const tempId = "temp_" + Math.random().toString(36).substr(2, 9);
+
+const row = document.createElement('div');
+row.className = 'tarea-row-container row-data-entity';
+row.setAttribute('data-t-id', tempId); // Atributo clave para identificarla en el DOM
+
+// Renderizamos el badge si ya viene con dependencia (ej: restaurando borrador)
+let badgeHtml = "";
+if (predecesoraId && predecesoraNombre) {
+badgeHtml = `
+<span class="badge bg-dark border border-info text-info small d-inline-flex align-items-center gap-1" style="font-size: 0.65rem; padding: 4px 8px;">
+<i class="bi bi-link-45deg"></i> ↳ Depende de: ${predecesoraNombre}
+<i class="bi bi-x btn-remove-dependency text-danger font-bold" style="cursor: pointer; font-size: 0.8rem;" title="Eliminar dependencia"></i>
+</span>
+`;
+}
+
 row.innerHTML = `
 <div class="drag-handle-t" title="Arrastrar para reordenar"><i class="bi bi-list"></i></div>
 <input type="hidden" class="input-tarea-id" value="0" />
-<div class="form-group-grid"><label class="text-info"><i class="bi bi-check2-square me-1"></i>Nombre de la Tarea</label><input type="text" class="form-control text-white border-info input-nombre" value="${nombre}" required /></div>
+<input type="hidden" class="input-predecesora-id" value="${predecesoraId}" />
+
+<div class="form-group-grid">
+<label class="text-info"><i class="bi bi-check2-square me-1"></i>Nombre de la Tarea</label>
+<input type="text" class="form-control text-white border-info input-nombre" value="${nombre}" required />
+<div class="dependency-badge-container mt-1">${badgeHtml}</div>
+</div>
 <div class="form-group-grid"><label>Inicio (Hora)</label><input type="datetime-local" class="form-control text-white border-secondary input-inicio" value="${fechaIni}" /></div>
 <div class="form-group-grid"><label class="text-info">Horas</label><input type="number" step="0.5" class="form-control text-info border-secondary input-horas" min="0.5" value="${horasVal}" /></div>
 <div class="form-group-grid"><label>Fin Estimado</label><input type="datetime-local" class="form-control text-white border-secondary input-fin" value="${fechaFin}" /></div>
 <div class="form-group-grid"><label>Responsable</label><div class="d-flex align-items-center gap-1 w-100"><select class="form-select text-white border-secondary user-select" style="flex-grow: 1;"><option value="">-- Sin asignar --</option>${usuariosOptions}</select><button type="button" class="btn btn-sm btn-outline-info btn-ver-agenda" title="Ver disponibilidad" style="min-width: 32px; height: 32px;"><i class="bi bi-calendar3"></i></button><div class="paint-zone rounded d-flex align-items-center justify-content-center" title="Desliza para pintar" style="min-width: 32px; height: 32px; border: 2px dashed rgba(13, 202, 240, 0.4); cursor: crosshair;"><i class="bi bi-brush-fill text-info opacity-75"></i></div></div></div>
 <div class="actions-group">
+<button type="button" class="btn btn-sm btn-outline-info border-0 btn-link-dependency" title="Vincular Dependencia (Predecesora)"><i class="bi bi-link-45deg"></i></button>
 <button type="button" class="btn btn-sm btn-outline-secondary border-0 btn-promote-t" title="Convertir a Subfase"><i class="bi bi-arrow-left"></i></button>
 <button type="button" class="btn btn-sm btn-outline-danger border-0 btn-remove-tarea"><i class="bi bi-x-circle"></i></button>
 </div>
@@ -549,29 +617,63 @@ function aplicarCascadaSubfase(wrapperGroup) {
 try {
 if (!wrapperGroup) return;
 const sfRow = wrapperGroup.querySelector('.subfase-row-container');
-let currentStartStr = sfRow.querySelector('.input-inicio').value;
+let sfStartStr = sfRow.querySelector('.input-inicio').value;
+if (!sfStartStr) return;
 
-if (!currentStartStr) return;
+function formatDatetimeLocal(d) {
+let tzoffset = (new Date()).getTimezoneOffset() * 60000;
+return (new Date(d - tzoffset)).toISOString().slice(0, 16);
+}
 
+const lastEndPerResource = {};
 const tareas = wrapperGroup.querySelectorAll('.tarea-row-container');
 
 tareas.forEach(tRow => {
 const tIni = tRow.querySelector('.input-inicio');
 const tFin = tRow.querySelector('.input-fin');
 const tHoras = tRow.querySelector('.input-horas');
+const selectResp = tRow.querySelector('.user-select');
+const userId = selectResp ? selectResp.value : "";
+const predId = tRow.querySelector('.input-predecesora-id').value;
 
-if(tIni.value !== currentStartStr) {
-tIni.value = currentStartStr;
+let baseStart = new Date(sfStartStr);
+
+// 1. Hereda el último bloque de tiempo de SU desarrollador
+if (userId && lastEndPerResource[userId]) {
+baseStart = new Date(lastEndPerResource[userId]);
 }
 
+// 2. Compara con el tiempo de su tarea Predecesora (Toma el Max Time)
+if (predId && predId !== "0") {
+const predRow = document.querySelector(`[data-t-id="${predId}"]`);
+if (predRow) {
+const predFinStr = predRow.querySelector('.input-fin').value;
+if (predFinStr) {
+const predFinDate = new Date(predFinStr);
+if (predFinDate > baseStart) {
+baseStart = predFinDate;
+}
+}
+}
+}
+
+// 3. ¡CORRECCIÓN! Respeta si el usuario la movió manualmente hacia el futuro
+let currentManualStart = tIni.value ? new Date(tIni.value) : null;
+if (currentManualStart && currentManualStart > baseStart) {
+baseStart = currentManualStart;
+}
+
+let snappedStart = snapToWorkingHours(baseStart);
 let horasVal = parseFloat(tHoras.value) || 1;
-let dEnd = calcularFechaFinLogica(new Date(currentStartStr), horasVal);
+let dEnd = calcularFechaFinLogica(snappedStart, horasVal);
 
 if (dEnd) {
-let tzoffset = dEnd.getTimezoneOffset() * 60000;
-let endStr = new Date(dEnd - tzoffset).toISOString().slice(0, 16);
-tFin.value = endStr;
-currentStartStr = endStr;
+tIni.value = formatDatetimeLocal(snappedStart);
+tFin.value = formatDatetimeLocal(dEnd);
+
+if (userId) {
+lastEndPerResource[userId] = formatDatetimeLocal(dEnd);
+}
 }
 
 tRow.style.boxShadow = 'inset 0 0 15px rgba(13, 202, 240, 0.4)';
@@ -580,7 +682,7 @@ setTimeout(() => tRow.style.boxShadow = '', 600);
 
 validarLimitesPadreHijo();
 guardarBorradorSilencioso();
-} catch(e) { console.error("Error en cascada:", e); }
+} catch(e) { console.error("Error en cascada multirecurso:", e); }
 }
 
 // ========================================================
@@ -667,32 +769,73 @@ const sfIniDate = (sfIniInput && sfIniInput.value) ? new Date(sfIniInput.value) 
 const sfFinDate = (sfFinInput && sfFinInput.value) ? new Date(sfFinInput.value) : null;
 const sfHorasVal = (sfHorasInput && sfHorasInput.value) ? parseFloat(sfHorasInput.value) : 0;
 
-let sumaHorasHijas = 0;
 const tareas = wrapper.querySelectorAll('.tarea-row-container');
+const lineasTiempoRecursos = {};
+
+// ¡CORRECCIÓN! Contenedores para rastrear el Lapso/Span calendario
+let minTaskStartStr = null;
+let maxTaskEndStr = null;
+let minTaskStart = null;
+let maxTaskEnd = null;
 
 tareas.forEach(tRow => {
 const tIniInput = tRow.querySelector('.input-inicio');
 const tFinInput = tRow.querySelector('.input-fin');
-const tHorasInput = tRow.querySelector('.input-horas');
+const selectResp = tRow.querySelector('.user-select');
+const userId = selectResp ? selectResp.value : "";
+const predId = tRow.querySelector('.input-predecesora-id').value;
 
 const tIniDate = (tIniInput && tIniInput.value) ? new Date(tIniInput.value) : null;
 const tFinDate = (tFinInput && tFinInput.value) ? new Date(tFinInput.value) : null;
-const tHorasVal = (tHorasInput && tHorasInput.value) ? parseFloat(tHorasInput.value) : 0;
+let errorDetectado = false;
 
-sumaHorasHijas += tHorasVal;
-let errorFechas = false;
+// Rastrear inicio y fin extremos
+if (tIniDate && (!minTaskStart || tIniDate < minTaskStart)) {
+minTaskStart = tIniDate; minTaskStartStr = tIniInput.value;
+}
+if (tFinDate && (!maxTaskEnd || tFinDate > maxTaskEnd)) {
+maxTaskEnd = tFinDate; maxTaskEndStr = tFinInput.value;
+}
 
-if (sfIniDate && tIniDate && tIniDate < sfIniDate) errorFechas = true;
-if (sfFinDate && tFinDate && tFinDate > sfFinDate) errorFechas = true;
+// Alerta 1: Tareas que desbordan los límites estrictos del padre (si se especifican)
+if (sfIniDate && tIniDate && tIniDate < sfIniDate) errorDetectado = true;
+if (sfFinDate && tFinDate && tFinDate > sfFinDate) errorDetectado = true;
 
-setInputError(tIniInput, errorFechas);
-setInputError(tFinInput, errorFechas);
-setInputError(tHorasInput, sumaHorasHijas > sfHorasVal);
+// Alerta 2: Tarea predecesora violada
+if (predId && predId !== "0" && tIniDate) {
+const predRow = document.querySelector(`[data-t-id="${predId}"]`);
+if (predRow) {
+const predFinStr = predRow.querySelector('.input-fin').value;
+if (predFinStr && tIniDate < new Date(predFinStr)) {
+errorDetectado = true;
+}
+}
+}
 
-if (sumaHorasHijas > sfHorasVal || errorFechas) hayErrores = true;
+// Alerta 3: Clonación de Recurso (Solapamiento)
+if (userId && tIniDate && tFinDate) {
+if (!lineasTiempoRecursos[userId]) lineasTiempoRecursos[userId] = [];
+for (let bloque of lineasTiempoRecursos[userId]) {
+if (tIniDate < bloque.end && tFinDate > bloque.start) {
+errorDetectado = true;
+}
+}
+lineasTiempoRecursos[userId].push({ start: tIniDate, end: tFinDate });
+}
+
+setInputError(tIniInput, errorDetectado);
+setInputError(tFinInput, errorDetectado);
+if (errorDetectado) hayErrores = true;
 });
 
-setInputError(sfHorasInput, sumaHorasHijas > sfHorasVal && tareas.length > 0);
+// ¡CORRECCIÓN! Validación del Lapso vs Horas estimadas
+let spanHorasHabiles = 0;
+if (minTaskStartStr && maxTaskEndStr) {
+spanHorasHabiles = parseFloat(calcularHorasDesdeFechas(minTaskStartStr, maxTaskEndStr));
+}
+
+// Permitimos un mini gap de 0.1 por milisegundos perdidos en el redondeo
+setInputError(sfHorasInput, spanHorasHabiles > (sfHorasVal + 0.1) && tareas.length > 0);
 });
 
 const btnSubmit = document.getElementById('btnSubmit');
@@ -734,6 +877,8 @@ const tIni = tRow.querySelector('.input-inicio'); if(tIni) tIni.name = `Subfases
 const tFin = tRow.querySelector('.input-fin'); if(tFin) tFin.name = `Subfases[${sIdx}].Tareas[${tIdx}].FechaFinPlanificada`;
 const tHrs = tRow.querySelector('.input-horas'); if(tHrs) tHrs.name = `Subfases[${sIdx}].Tareas[${tIdx}].HorasEstimadas`;
 const tRes = tRow.querySelector('.user-select'); if(tRes) tRes.name = `Subfases[${sIdx}].Tareas[${tIdx}].UsuarioAsignadoId`;
+// ¡NUEVO! Mapeo dinámico hacia el modelo de la Base de Datos
+const tPred = tRow.querySelector('.input-predecesora-id'); if(tPred) tPred.name = `Subfases[${sIdx}].Tareas[${tIdx}].TareaPredecesoraId`;
 });
 });
 
@@ -779,14 +924,23 @@ setTimeout(() => inpFin.style.backgroundColor = '', 400);
 guardarBorradorSilencioso();
 }
 }
+
+// ¡CORRECCIÓN! Disparamos la cascada para que empuje a las dependientes de inmediato
+const wrapper = row.closest('.subfase-group-wrapper');
+if (wrapper) {
+aplicarCascadaSubfase(wrapper);
+} else {
 validarLimitesPadreHijo();
+}
 } catch(e) { console.error("Error calculando fechas:", e); }
 }
 
+// Listeners de cambio de valores
 if (inpInicio) inpInicio.addEventListener('change', actualizarUnaFila);
 if (inpHoras) inpHoras.addEventListener('input', actualizarUnaFila);
 if (inpFin) inpFin.addEventListener('change', validarLimitesPadreHijo);
 
+// Drag and Drop y Pinto de Recursos
 if (paintZone && selectResp) {
 paintZone.addEventListener('dragenter', function(e) {
 e.preventDefault();
@@ -797,6 +951,9 @@ setTimeout(() => { row.style.boxShadow = ''; }, 500);
 const globalCb = document.getElementById('user_' + window.currentDraggedUser);
 if (globalCb) globalCb.checked = true;
 actualizarTermometro();
+// Dispara cascada si cambia por drag/drop
+const wrapper = row.closest('.subfase-group-wrapper');
+if (wrapper) aplicarCascadaSubfase(wrapper);
 }
 });
 paintZone.addEventListener('dragover', e => e.preventDefault());
@@ -809,7 +966,17 @@ selectResp.value = uid;
 const globalCb = document.getElementById('user_' + uid);
 if (globalCb) globalCb.checked = true;
 actualizarTermometro();
+const wrapper = row.closest('.subfase-group-wrapper');
+if (wrapper) aplicarCascadaSubfase(wrapper);
 }
+});
+}
+
+if (selectResp) {
+selectResp.addEventListener('change', function() {
+reindexAll();
+const wrapper = row.closest('.subfase-group-wrapper');
+if (wrapper) aplicarCascadaSubfase(wrapper);
 });
 }
 }
@@ -823,11 +990,8 @@ if (btnDemote) { demoteSubfaseToTarea(btnDemote.closest('.subfase-group-wrapper'
 const btnPromote = e.target.closest('.btn-promote-t');
 if (btnPromote) { promoteTareaToSubfase(btnPromote.closest('.tarea-row-container')); }
 
-// 💡 NUEVO: Escuchar el botón del Mini-Calendario flotante
 const btnAgenda = e.target.closest('.btn-ver-agenda');
-if (btnAgenda) {
-verAgendaUsuario(btnAgenda.closest('.d-flex').querySelector('.user-select'));
-}
+if (btnAgenda) { verAgendaUsuario(btnAgenda.closest('.d-flex').querySelector('.user-select')); }
 
 const btnRemoveSf = e.target.closest('.btn-remove-subfase');
 if (btnRemoveSf) {
@@ -841,7 +1005,65 @@ if (btnRemoveT) {
 btnRemoveT.closest('.tarea-row-container').remove();
 reindexAll(); actualizarTermometro(); guardarBorradorSilencioso();
 }
+
+// 🔗 ¡NUEVO! Botón para activar el modo Enlace de Dependencia
+const btnLink = e.target.closest('.btn-link-dependency');
+if (btnLink) {
+const rowTarget = btnLink.closest('.tarea-row-container');
+const targetId = rowTarget.getAttribute('data-t-id');
+
+currentLinkingTarget = targetId;
+document.body.classList.add('linking-mode-active');
+rowTarget.classList.add('linking-target');
+
+toastr.info("Modo Enlace Activo: Selecciona la tarea predecesora haciendo clic sobre ella.");
+return;
+}
+
+// ❌ ¡NUEVO! Botón para remover una dependencia existente
+const btnRemoveDep = e.target.closest('.btn-remove-dependency');
+if (btnRemoveDep) {
+const row = btnRemoveDep.closest('.tarea-row-container');
+row.querySelector('.input-predecesora-id').value = "0";
+btnRemoveDep.closest('.dependency-badge-container').innerHTML = "";
+
+reindexAll();
+aplicarCascadaSubfase(row.closest('.subfase-group-wrapper'));
+return;
+}
 });
+
+// 🔗 ¡NUEVO! Capturador secundario para amarrar el vínculo al hacer clic en la predecesora
+document.getElementById('wbs-container').addEventListener('click', function(e) {
+if (!currentLinkingTarget) return;
+
+const rowPredecesora = e.target.closest('.tarea-row-container');
+if (!rowPredecesora || rowPredecesora.classList.contains('linking-target')) return;
+
+e.stopPropagation(); // Evitamos ejecuciones colaterales
+
+const predId = rowPredecesora.getAttribute('data-t-id');
+const predNombre = rowPredecesora.querySelector('.input-nombre').value || "Tarea sin nombre";
+
+const rowTarget = document.querySelector(`[data-t-id="${currentLinkingTarget}"]`);
+if (rowTarget) {
+rowTarget.querySelector('.input-predecesora-id').value = predId;
+rowTarget.querySelector('.dependency-badge-container').innerHTML = `
+<span class="badge bg-dark border border-info text-info small d-inline-flex align-items-center gap-1" style="font-size: 0.65rem; padding: 4px 8px;">
+<i class="bi bi-link-45deg"></i> ↳ Depende de: ${predNombre}
+<i class="bi bi-x btn-remove-dependency text-danger font-bold" style="cursor: pointer; font-size: 0.8rem;" title="Eliminar dependencia"></i>
+</span>
+`;
+toastr.success("¡Vínculo de dependencia establecido!");
+aplicarCascadaSubfase(rowTarget.closest('.subfase-group-wrapper'));
+}
+
+// Salimos del modo selección limpiando clases CSS
+document.body.classList.remove('linking-mode-active');
+const activeTargetRow = document.querySelector('.linking-target');
+if (activeTargetRow) activeTargetRow.classList.remove('linking-target');
+currentLinkingTarget = null;
+}, true); // Fase de captura activa obligatoria
 
 // ========================================================
 // 7. FUNCIONES ADICIONALES (DOMINÓ, PEGADO, ETC)

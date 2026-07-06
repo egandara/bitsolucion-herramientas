@@ -432,11 +432,24 @@ namespace NotebookValidator.Web.Controllers
         public async Task<IActionResult> Edit(int id)
         {
             var proyecto = await _context.Proyectos
-                .Include(p => p.UsuariosAsignados)
+                .Include(p => p.Cliente)
+                .Include(p => p.Fases.OrderBy(f => f.Orden))
+                    .ThenInclude(f => f.SubFases)
+                        .ThenInclude(s => s.Responsable)
                 .Include(p => p.Fases.OrderBy(f => f.Orden))
                     .ThenInclude(f => f.SubFases)
                         .ThenInclude(s => s.Tareas)
                             .ThenInclude(t => t.UsuarioAsignado)
+                // ¡NUEVO! Carga de la dependencia para la vista
+                .Include(p => p.Fases.OrderBy(f => f.Orden))
+                    .ThenInclude(f => f.SubFases)
+                        .ThenInclude(s => s.Tareas)
+                            .ThenInclude(t => t.TareaPredecesora)
+                .Include(p => p.UsuariosAsignados).ThenInclude(ua => ua.Usuario)
+                .Include(p => p.Validaciones.OrderByDescending(v => v.FechaValidacion))
+                .Include(p => p.TablasCatalogo).ThenInclude(tc => tc.TablaMaestra)
+                .Include(p => p.Comentarios.OrderByDescending(c => c.FechaCreacion))
+                .AsNoTracking()
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(p => p.Id == id);
 

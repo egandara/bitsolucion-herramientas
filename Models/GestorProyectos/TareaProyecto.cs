@@ -26,6 +26,15 @@ namespace NotebookValidator.Web.Models.GestorProyectos
 
         public string? UsuarioAsignadoId { get; set; }
         [ForeignKey(nameof(UsuarioAsignadoId))]
+
+        // ==========================================
+        // DEPENDENCIA DE TAREAS (Finish-to-Start)
+        // ==========================================
+        public int? TareaPredecesoraId { get; set; }
+
+        [ForeignKey(nameof(TareaPredecesoraId))]
+        public virtual TareaProyecto? TareaPredecesora { get; set; }
+
         public virtual ApplicationUser? UsuarioAsignado { get; set; }
 
         // ==========================================
