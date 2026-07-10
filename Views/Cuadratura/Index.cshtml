@@ -7,7 +7,7 @@
     .stepper {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 50px;
+        margin-bottom: 30px;
         position: relative;
         padding: 0 10%;
     }
@@ -82,6 +82,104 @@
         text-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
     }
 
+    /* === SWITCH ESTILO MULTI-AMBIENTE === */
+    .mode-switch-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 40px;
+    }
+
+    .btn-switch {
+        padding: 12px 30px;
+        font-weight: 700;
+        font-size: 1.05rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 260px;
+    }
+
+    .btn-switch-datos {
+        border-radius: 8px 0 0 8px;
+        border: 1px solid #ffc107;
+        background-color: rgba(11, 13, 22, 0.6);
+        color: #ffc107;
+    }
+
+        .btn-switch-datos.active {
+            background-color: #ffc107;
+            color: #000;
+            box-shadow: 0 0 15px rgba(255, 193, 7, 0.2);
+            z-index: 2;
+        }
+
+    .btn-switch-estruct {
+        border-radius: 0 8px 8px 0;
+        border: 1px solid #0dcaf0;
+        background-color: rgba(11, 13, 22, 0.6);
+        color: #0dcaf0;
+        margin-left: -1px;
+    }
+
+        .btn-switch-estruct.active {
+            background-color: #0dcaf0;
+            color: #000;
+            box-shadow: 0 0 15px rgba(13, 202, 240, 0.2);
+            z-index: 2;
+        }
+
+    /* === RECUADROS INFORMATIVOS (NUEVO) === */
+    .info-box {
+        background-color: rgba(11, 13, 22, 0.6);
+        border-radius: 8px;
+        padding: 20px;
+        margin-top: 20px;
+        font-size: 0.85rem;
+        color: #adb5bd;
+    }
+
+    .info-box-datos {
+        border: 1px solid rgba(255, 193, 7, 0.6);
+    }
+
+    .info-box-estruct {
+        border: 1px solid rgba(13, 202, 240, 0.6);
+    }
+
+    .info-box-title {
+        font-weight: 700;
+        font-size: 1rem;
+        margin-bottom: 12px;
+    }
+
+    .info-box-datos .info-box-title {
+        color: #ffc107;
+    }
+
+    .info-box-estruct .info-box-title {
+        color: #0dcaf0;
+    }
+
+    .info-box ol {
+        margin-bottom: 15px;
+        padding-left: 20px;
+    }
+
+    .info-box li {
+        margin-bottom: 6px;
+    }
+
+    .info-important {
+        background-color: rgba(255, 193, 7, 0.05);
+        border: 1px solid rgba(255, 193, 7, 0.3);
+        border-radius: 6px;
+        padding: 10px 15px;
+        color: #ffc107;
+        font-size: 0.8rem;
+    }
+
     /* DRAG & DROP */
     .drop-zone {
         border: 2px dashed #495057;
@@ -143,14 +241,25 @@
 
 <div class="container py-4">
     <div class="stepper mb-4">
-        <div class="step active"><div class="step-circle">1</div><div class="step-label">Carga</div></div>
-        <div class="step"><div class="step-circle">2</div><div class="step-label">Mapeo</div></div>
-        <div class="step"><div class="step-circle">3</div><div class="step-label">Resultados</div></div>
+        <div class="step active"><div class="step-circle">1</div><div class="step-label" id="lblStepCarga">Carga</div></div>
+        <div class="step" id="stepMapeo"><div class="step-circle">2</div><div class="step-label">Mapeo</div></div>
+        <div class="step" id="stepResultados"><div class="step-circle">3</div><div class="step-label">Resultados</div></div>
     </div>
 
     <h2 class="text-white mb-4 text-center fw-bold">Nueva Cuadratura de Archivos</h2>
 
-    <form id="formCargaArchivos" asp-action="CargarArchivos" method="post" enctype="multipart/form-data">
+    <div class="mode-switch-container">
+        <button type="button" class="btn-switch btn-switch-datos active" id="btnModoDatos" onclick="cambiarModo('Datos')">
+            <i class="bi bi-table me-2"></i>Cuadratura de Datos
+        </button>
+        <button type="button" class="btn-switch btn-switch-estruct" id="btnModoEstructura" onclick="cambiarModo('Estructura')">
+            <i class="bi bi-layout-text-window me-2"></i>Validación de Estructura
+        </button>
+    </div>
+
+    <form id="formCargaArchivos" action="@Url.Action("CargarArchivos", "Cuadratura")" method="post" enctype="multipart/form-data">
+        <input type="hidden" id="modoAnalisis" name="modoAnalisis" value="Datos" />
+
         <div class="row g-4">
             <div class="col-md-6">
                 <div class="card bg-dark border-secondary h-100 shadow">
@@ -203,8 +312,33 @@
             </div>
         </div>
 
+        <!-- RECUADROS INFORMATIVOS DINÁMICOS -->
+        <div id="infoBoxDatos" class="info-box info-box-datos">
+            <div class="info-box-title"><i class="bi bi-lightbulb-fill me-2"></i>¿Qué hace la Cuadratura de Datos?</div>
+            <ol>
+                <li>Compara <strong>fila por fila</strong> la información de dos archivos distintos.</li>
+                <li>Requiere que definas "Llaves Primarias" en el siguiente paso para cruzar los registros de forma precisa.</li>
+                <li>Identifica diferencias exactas en los valores, coincidencias y registros huérfanos (faltantes).</li>
+            </ol>
+            <div class="info-important">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>CASO DE USO:</strong> Ideal para validación de ETLs, migraciones de plataformas o conciliación de saldos donde el contenido de cada celda debe ser idéntico.
+            </div>
+        </div>
+
+        <div id="infoBoxEstructura" class="info-box info-box-estruct" style="display: none;">
+            <div class="info-box-title"><i class="bi bi-lightbulb-fill me-2"></i>¿Qué hace la Validación de Estructura?</div>
+            <ol>
+                <li>Analiza únicamente el <strong>esqueleto (metadata)</strong> de los archivos, ignorando los datos fila por fila.</li>
+                <li>Infiere y compara los tipos de datos (Entero, Decimal, Fecha, Texto), delimitadores y codificación.</li>
+                <li>Detecta columnas faltantes, sobrantes o cambios de formato de datos (ej. precisiones decimales).</li>
+            </ol>
+            <div class="info-important">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>CASO DE USO:</strong> Ideal para Contratos de Datos (Data Contracts) y para asegurar que un archivo origen cumple con el esquema estructural esperado antes de procesarlo.
+            </div>
+        </div>
+
         <div class="text-center mt-5">
-            <button type="submit" class="btn btn-warning btn-lg px-5 fw-bold shadow text-dark">
+            <button type="submit" id="btnSubmitForm" class="btn btn-warning btn-lg px-5 fw-bold shadow text-dark">
                 Analizar y Mapear <i class="bi bi-arrow-right-circle ms-2"></i>
             </button>
         </div>
@@ -213,11 +347,64 @@
 
 <div id="loadingOverlay">
     <div class="spinner-border text-warning mb-3" style="width: 4rem; height: 4rem;" role="status"></div>
-    <h3 class="text-white fw-bold">Analizando archivos...</h3>
-    <p class="text-light">Infiriendo similitudes. Por favor espera.</p>
+    <h3 class="text-white fw-bold" id="loadingTitle">Analizando archivos...</h3>
+    <p class="text-light" id="loadingSub">Infiriendo similitudes. Por favor espera.</p>
 </div>
 
 <script>
+    // === LÓGICA DE CAMBIO DE MODO ===
+    function cambiarModo(modo) {
+        document.getElementById('modoAnalisis').value = modo;
+        const btnDatos = document.getElementById('btnModoDatos');
+        const btnEstructura = document.getElementById('btnModoEstructura');
+        const form = document.getElementById('formCargaArchivos');
+        const btnSubmit = document.getElementById('btnSubmitForm');
+
+        const stepMapeo = document.getElementById('stepMapeo');
+        const stepResultados = document.getElementById('stepResultados');
+        const loadingTitle = document.getElementById('loadingTitle');
+        const loadingSub = document.getElementById('loadingSub');
+
+        const boxDatos = document.getElementById('infoBoxDatos');
+        const boxEstruct = document.getElementById('infoBoxEstructura');
+
+        if (modo === 'Datos') {
+            btnDatos.classList.add('active');
+            btnEstructura.classList.remove('active');
+
+            boxDatos.style.display = 'block';
+            boxEstruct.style.display = 'none';
+
+            btnSubmit.innerHTML = 'Analizar y Mapear <i class="bi bi-arrow-right-circle ms-2"></i>';
+            btnSubmit.className = 'btn btn-warning btn-lg px-5 fw-bold shadow text-dark';
+            form.action = '@Url.Action("CargarArchivos", "Cuadratura")';
+
+            stepMapeo.style.display = 'flex';
+            stepResultados.querySelector('.step-circle').innerText = '3';
+
+            loadingTitle.innerText = 'Analizando archivos...';
+            loadingSub.innerText = 'Infiriendo similitudes. Por favor espera.';
+
+        } else {
+            btnEstructura.classList.add('active');
+            btnDatos.classList.remove('active');
+
+            boxEstruct.style.display = 'block';
+            boxDatos.style.display = 'none';
+
+            btnSubmit.innerHTML = 'Analizar Estructuras <i class="bi bi-cpu ms-2"></i>';
+            btnSubmit.className = 'btn btn-info btn-lg px-5 fw-bold shadow text-dark';
+            form.action = '@Url.Action("ValidarEstructuras", "Cuadratura")';
+
+            stepMapeo.style.display = 'none';
+            stepResultados.querySelector('.step-circle').innerText = '2';
+
+            loadingTitle.innerText = 'Validando Esquemas...';
+            loadingSub.innerText = 'Extrayendo metadatos e infiriendo tipos de datos.';
+        }
+    }
+
+    // === LÓGICA ORIGINAL DRAG & DROP ===
     function setupDropZone(inputId, zoneId, displayId, selectContainerId, selectId) {
         const input = document.getElementById(inputId);
         const zone = document.getElementById(zoneId);
@@ -242,7 +429,6 @@
                 display.style.display = 'block';
                 zone.querySelector('p').style.display = 'none';
 
-                // AJAX: Buscamos las hojas del Excel
                 const formData = new FormData();
                 formData.append("archivo", file);
 
@@ -260,7 +446,6 @@
                         hojas.forEach(h => {
                             select.innerHTML += `<option value="${h}">${h}</option>`;
                         });
-                        // Mostramos el selector con un pequeño efecto visual
                         container.style.display = 'block';
                         container.classList.add('animate__animated', 'animate__fadeInDown');
                     } else {

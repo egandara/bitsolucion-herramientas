@@ -1,0 +1,360 @@
+@model NotebookValidator.Web.Services.ResultadoEstructura
+@{
+    ViewData["Title"] = "Resultados de Validación Estructural";
+}
+
+<style>
+    /* Estilos Stepper heredados */
+    .stepper {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 50px;
+        position: relative;
+        padding: 0 10%;
+    }
+
+        .stepper::before {
+            content: "";
+            position: absolute;
+            top: 22px;
+            left: 10%;
+            width: 80%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 1;
+            border-radius: 5px;
+        }
+
+    .step {
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: transparent !important;
+        width: 120px;
+    }
+
+    .step-circle {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #1e293b;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
+        font-weight: bold;
+        font-size: 1.2rem;
+        border: 6px solid #0f172a;
+        transition: all 0.3s ease;
+    }
+
+    .step-label {
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+    }
+
+    .step.completed .step-circle {
+        background: #0dcaf0;
+        color: #000;
+        border-color: #0f172a;
+        box-shadow: 0 0 15px rgba(13, 202, 240, 0.3);
+    }
+
+    .step.completed .step-label {
+        color: #0dcaf0;
+    }
+
+    .step.active .step-circle {
+        background: #ffc107;
+        color: #000;
+        border-color: #0f172a;
+        box-shadow: 0 0 20px rgba(255, 193, 7, 0.4);
+        transform: scale(1.15);
+    }
+
+    .step.active .step-label {
+        color: #ffc107;
+        text-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
+    }
+
+    .card-meta {
+        background-color: #111424;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+    }
+
+    .badge-estado-match {
+        background-color: rgba(25, 135, 84, 0.15);
+        color: #0ddb78;
+        border: 1px solid rgba(25, 135, 84, 0.4);
+    }
+
+    .badge-estado-faltante {
+        background-color: rgba(255, 193, 7, 0.15);
+        color: #ffc107;
+        border: 1px solid rgba(255, 193, 7, 0.4);
+    }
+
+    .badge-estado-conflicto {
+        background-color: rgba(220, 53, 69, 0.15);
+        color: #ff6b7a;
+        border: 1px solid rgba(220, 53, 69, 0.4);
+    }
+
+    .format-badge {
+        font-family: monospace;
+        font-size: 0.68rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        display: inline-block;
+        margin-bottom: 2px;
+    }
+
+    .fmt-fijo {
+        background-color: rgba(13, 202, 240, 0.1);
+        color: #0dcaf0;
+        border: 1px solid rgba(13, 202, 240, 0.3);
+    }
+
+    .fmt-var {
+        background-color: rgba(255, 255, 255, 0.05);
+        color: #adb5bd;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .fmt-zero {
+        background-color: rgba(255, 193, 7, 0.1);
+        color: #ffc107;
+        border: 1px solid rgba(255, 193, 7, 0.3);
+    }
+
+    .fmt-null-ok {
+        background-color: rgba(25, 135, 84, 0.1);
+        color: #0ddb78;
+        border: 1px solid rgba(25, 135, 84, 0.3);
+    }
+
+    .fmt-null-warn {
+        background-color: rgba(220, 53, 69, 0.15);
+        color: #ff6b7a;
+        border: 1px solid rgba(220, 53, 69, 0.4);
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="stepper mb-5">
+        <div class="step completed"><div class="step-circle"><i class="bi bi-check-lg"></i></div><div class="step-label">Carga</div></div>
+        <div class="step active"><div class="step-circle">2</div><div class="step-label">Resultados</div></div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-white fw-bold"><i class="bi bi-layout-text-window me-2 text-info"></i>Reporte de Estructura y Metadatos</h2>
+        <div class="d-flex gap-2">
+            <!-- BOTÓN EXPORTAR EXCEL NUEVO -->
+            <form asp-action="ExportarExcelEstructura" method="post">
+                <input type="hidden" name="exportId" value="@ViewBag.ExportId" />
+                <button type="submit" class="btn btn-success fw-bold"><i class="bi bi-file-excel me-1"></i> Exportar Reporte</button>
+            </form>
+            <a asp-action="Index" class="btn btn-outline-info fw-bold">Nuevo Proceso</a>
+        </div>
+    </div>
+
+    <!-- ALERTAS FÍSICAS (CRLF, Separadores, etc) -->
+    @if (Model.AdvertenciasFisicas.Any())
+    {
+        <div class="alert alert-warning border-0 shadow-sm mb-4" style="background-color: rgba(255, 193, 7, 0.1); border-left: 5px solid #ffc107 !important;">
+            <h6 class="fw-bold text-warning mb-2"><i class="bi bi-exclamation-octagon-fill me-2"></i>¡Peligro en la Integración Física!</h6>
+            <ul class="mb-0 text-white-50 small font-monospace">
+                @foreach (var adv in Model.AdvertenciasFisicas)
+                {
+                    <li>@adv</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <!-- SEMÁFORO GLOBAL -->
+    @if (Model.EstructurasCoinciden)
+    {
+        <div class="alert alert-success border-0 shadow-sm d-flex align-items-center mb-4" style="background-color: rgba(25, 135, 84, 0.1); border-left: 5px solid #198754 !important;">
+            <i class="bi bi-shield-check fs-1 text-success me-3"></i>
+            <div>
+                <h5 class="text-success fw-bold mb-1">¡Esquema Lógico Exitoso!</h5>
+                <span class="text-white-50 small">Ambos archivos comparten exactamente las mismas columnas y tipos de datos inferidos.</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center mb-4" style="background-color: rgba(220, 53, 69, 0.1); border-left: 5px solid #dc3545 !important;">
+            <i class="bi bi-exclamation-triangle fs-1 text-danger me-3"></i>
+            <div>
+                <h5 class="text-danger fw-bold mb-1">Diferencias Estructurales Detectadas</h5>
+                <span class="text-white-50 small">Se encontraron @Model.ColumnasFaltantes columnas faltantes y @Model.TiposDiferentes conflictos de tipo de datos.</span>
+            </div>
+        </div>
+    }
+
+    <!-- METADATOS SIDE-BY-SIDE -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="card card-meta h-100 p-3 shadow-sm">
+                <h6 class="text-info fw-bold mb-3 border-bottom border-secondary pb-2">@Model.Archivo1.Alias</h6>
+                <div class="d-flex justify-content-between text-white-50 small mb-2"><span>Archivo:</span> <strong class="text-white">@Model.Archivo1.NombreArchivo</strong></div>
+                <div class="d-flex justify-content-between text-white-50 small mb-2"><span>Peso / Ext:</span> <strong class="text-white">@Model.Archivo1.PesoArchivo | @Model.Archivo1.Extension</strong></div>
+                <div class="d-flex justify-content-between text-white-50 small mb-2"><span>Codificación:</span> <strong class="text-info">@Model.Archivo1.Encoding</strong></div>
+                <div class="d-flex justify-content-between text-white-50 small mb-2"><span>Separador / Salto:</span> <strong class="text-warning">@Model.Archivo1.Separador | @Model.Archivo1.SaltoLinea</strong></div>
+                <div class="d-flex justify-content-between text-white-50 small mb-2"><span>Total Columnas:</span> <strong class="text-white">@Model.Archivo1.TotalColumnas</strong></div>
+                <div class="d-flex justify-content-between text-white-50 small"><span>Muestra analizada:</span> <strong class="text-white">@Model.Archivo1.TotalFilasMuestra filas</strong></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card card-meta h-100 p-3 shadow-sm">
+                <h6 class="text-info fw-bold mb-3 border-bottom border-secondary pb-2">@Model.Archivo2.Alias</h6>
+                <div class="d-flex justify-content-between text-white-50 small mb-2"><span>Archivo:</span> <strong class="text-white">@Model.Archivo2.NombreArchivo</strong></div>
+                <div class="d-flex justify-content-between text-white-50 small mb-2"><span>Peso / Ext:</span> <strong class="text-white">@Model.Archivo2.PesoArchivo | @Model.Archivo2.Extension</strong></div>
+                <div class="d-flex justify-content-between text-white-50 small mb-2"><span>Codificación:</span> <strong class="text-info">@Model.Archivo2.Encoding</strong></div>
+                <div class="d-flex justify-content-between text-white-50 small mb-2"><span>Separador / Salto:</span> <strong class="text-warning">@Model.Archivo2.Separador | @Model.Archivo2.SaltoLinea</strong></div>
+                <div class="d-flex justify-content-between text-white-50 small mb-2"><span>Total Columnas:</span> <strong class="text-white">@Model.Archivo2.TotalColumnas</strong></div>
+                <div class="d-flex justify-content-between text-white-50 small"><span>Muestra analizada:</span> <strong class="text-white">@Model.Archivo2.TotalFilasMuestra filas</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLA DE COMPARACIÓN LÓGICA -->
+    <div class="card bg-dark border-secondary p-3 rounded shadow">
+        <h6 class="text-white fw-bold mb-3"><i class="bi bi-list-columns-reverse text-warning me-2"></i>Mapeo de Columnas y Patrones (Profiling)</h6>
+        <div class="table-responsive">
+            <table class="table table-dark table-hover table-sm w-100 align-middle" id="tablaEsquema">
+                <thead>
+                    <tr class="text-white-50">
+                        <th>Columna</th>
+                        <th class="text-center">Tipo en @Model.Archivo1.Alias</th>
+                        <th class="text-center">Formato en @Model.Archivo1.Alias</th>
+                        <th class="text-center">Tipo en @Model.Archivo2.Alias</th>
+                        <th class="text-center">Formato en @Model.Archivo2.Alias</th>
+                        <th class="text-center">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var comp in Model.ComparacionColumnas)
+                    {
+                        string badgeClase = comp.Estado == "Match" ? "badge-estado-match" : (comp.Estado == "Conflicto de Tipo" ? "badge-estado-conflicto" : "badge-estado-faltante");
+                        string iconClase = comp.Estado == "Match" ? "bi-check-circle-fill" : (comp.Estado == "Conflicto de Tipo" ? "bi-x-circle-fill" : "bi-exclamation-circle-fill");
+
+                        <tr>
+                            <td class="text-white fw-bold font-monospace small">@comp.NombreColumna</td>
+
+                            <!-- ARCHIVO A -->
+                            <td class="text-center text-white-50 small">@(comp.TipoArchivo1 == "N/A" ? "-" : comp.TipoArchivo1)</td>
+                            <td class="text-center">
+                                @if (comp.MetadatosColumnaA != null && comp.TipoArchivo1 != "N/A")
+                                {
+                                    var mA = comp.MetadatosColumnaA;
+                                    <div class="d-flex flex-column align-items-center gap-1">
+                                        @if (mA.LongitudMinima == mA.LongitudMaxima && mA.LongitudMaxima > 0)
+                                        {
+                                            <span class="format-badge fmt-fijo">Largo Fijo: @mA.LongitudMaxima</span>
+                                        }
+                                        else
+                                        {
+
+                                            <span class="format-badge fmt-var">Var: @mA.LongitudMinima-@mA.LongitudMaxima</span>
+                                        }
+
+                                        @if (mA.TieneCerosALaIzquierda)
+                                        {
+                                            <span class="format-badge fmt-zero">Zero-Padded</span>
+                                        }
+
+                                        @if (mA.PorcentajeNulos > 50)
+                                        {
+                                            <span class="format-badge fmt-null-warn">Nulos: @mA.PorcentajeNulos%</span>
+                                        }
+                                        else
+                                        {
+
+                                            <span class="format-badge fmt-null-ok">Nulos: @mA.PorcentajeNulos%</span>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+
+                                    <span class="text-white-50">-</span>
+                                }
+                            </td>
+
+                            <!-- ARCHIVO B -->
+                            <td class="text-center text-white-50 small">@(comp.TipoArchivo2 == "N/A" ? "-" : comp.TipoArchivo2)</td>
+                            <td class="text-center">
+                                @if (comp.MetadatosColumnaB != null && comp.TipoArchivo2 != "N/A")
+                                {
+                                    var mB = comp.MetadatosColumnaB;
+                                    <div class="d-flex flex-column align-items-center gap-1">
+                                        @if (mB.LongitudMinima == mB.LongitudMaxima && mB.LongitudMaxima > 0)
+                                        {
+                                            <span class="format-badge fmt-fijo">Largo Fijo: @mB.LongitudMaxima</span>
+                                        }
+                                        else
+                                        {
+
+                                            <span class="format-badge fmt-var">Var: @mB.LongitudMinima-@mB.LongitudMaxima</span>
+                                        }
+
+                                        @if (mB.TieneCerosALaIzquierda)
+                                        {
+                                            <span class="format-badge fmt-zero">Zero-Padded</span>
+                                        }
+
+                                        @if (mB.PorcentajeNulos > 50)
+                                        {
+                                            <span class="format-badge fmt-null-warn">Nulos: @mB.PorcentajeNulos%</span>
+                                        }
+                                        else
+                                        {
+
+                                            <span class="format-badge fmt-null-ok">Nulos: @mB.PorcentajeNulos%</span>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+
+                                    <span class="text-white-50">-</span>
+                                }
+                            </td>
+
+                            <!-- ESTADO -->
+                            <td class="text-center">
+                                <span class="badge @badgeClase px-2 py-1"><i class="bi @iconClase me-1"></i>@comp.Estado</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+        $('#tablaEsquema').DataTable({
+        "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" },
+        "pageLength": 25,
+        "order": [[ 5, "asc" ], [0, "asc"]] // Ordena por estado para ver los errores arriba
+        });
+        });
+    </script>
+}
