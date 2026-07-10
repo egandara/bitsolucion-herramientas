@@ -231,6 +231,7 @@ namespace NotebookValidator.Web.Controllers
             resultado.Archivo1.NombreArchivo = archivo1.FileName;
             resultado.Archivo2.NombreArchivo = archivo2.FileName;
 
+            // --- REGISTRO DE AUDITORÍA DETALLADO Y HERMOSO ---
             var userId = _userManager.GetUserId(User);
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -238,16 +239,29 @@ namespace NotebookValidator.Web.Controllers
             {
                 Modulo = "Cuadratura de Datos",
                 Accion = "Validación Estructural Ejecutada",
-                Archivos = new { Origen1 = resultado.Archivo1.Alias, Origen2 = resultado.Archivo2.Alias },
-                Resultado = new { Coinciden = resultado.EstructurasCoinciden }
+                Analisis = new
+                {
+                    ArchivoA = new { Alias = resultado.Archivo1.Alias, Archivo = resultado.Archivo1.NombreArchivo, Extension = resultado.Archivo1.Extension, Columnas = resultado.Archivo1.TotalColumnas },
+                    ArchivoB = new { Alias = resultado.Archivo2.Alias, Archivo = resultado.Archivo2.NombreArchivo, Extension = resultado.Archivo2.Extension, Columnas = resultado.Archivo2.TotalColumnas }
+                },
+                MetadatosFisicos = new
+                {
+                    DiferenciasEncontradas = resultado.AdvertenciasFisicas.Count,
+                    ListaDiferencias = resultado.AdvertenciasFisicas
+                },
+                ResultadoLogico = new
+                {
+                    EsquemasCoinciden = resultado.EstructurasCoinciden,
+                    ColumnasFaltantes = resultado.ColumnasFaltantes,
+                    ConflictosDeTipo = resultado.TiposDiferentes
+                }
             };
 
-            await _auditService.LogActionAsync(userId, "Cuadratura: Validación Estructural", JsonSerializer.Serialize(auditDetails), ip);
+            await _auditService.LogActionAsync(userId, "Cuadratura: Validación Estructural", JsonSerializer.Serialize(auditDetails, new JsonSerializerOptions { WriteIndented = true }), ip);
 
             if (System.IO.File.Exists(tempPath1)) System.IO.File.Delete(tempPath1);
             if (System.IO.File.Exists(tempPath2)) System.IO.File.Delete(tempPath2);
 
-            // Almacenar en un archivo temporal JSON para exportar luego
             string exportId = Guid.NewGuid().ToString();
             string tempJsonPath = Path.Combine(Path.GetTempPath(), exportId + "_estruct.json");
             System.IO.File.WriteAllText(tempJsonPath, JsonSerializer.Serialize(resultado));
@@ -257,7 +271,7 @@ namespace NotebookValidator.Web.Controllers
         }
 
         [HttpPost]
-        public IActionResult ExportarExcelEstructura(string exportId)
+        public async Task<IActionResult> ExportarExcelEstructura(string exportId)
         {
             if (string.IsNullOrEmpty(exportId)) return RedirectToAction("Index");
             string tempJsonPath = Path.Combine(Path.GetTempPath(), exportId + "_estruct.json");
@@ -269,6 +283,12 @@ namespace NotebookValidator.Web.Controllers
                 var resultado = JsonSerializer.Deserialize<ResultadoEstructura>(jsonResultado);
                 var archivo = _cuadraturaService.GenerarExcelReporteEstructura(resultado);
                 System.IO.File.Delete(tempJsonPath);
+
+                // --- LOG AUDITORÍA EXPORTACIÓN ---
+                var userId = _userManager.GetUserId(User);
+                var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+                var exportAudit = new { Modulo = "Cuadratura de Datos", Accion = "Descarga Excel", Archivos = $"{resultado.Archivo1.Alias} vs {resultado.Archivo2.Alias}" };
+                await _auditService.LogActionAsync(userId, "Cuadratura: Exportación Excel Estructura", JsonSerializer.Serialize(exportAudit), ip);
 
                 return File(archivo, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Reporte_Estructura_{DateTime.Now:yyyyMMddHHmm}.xlsx");
             }

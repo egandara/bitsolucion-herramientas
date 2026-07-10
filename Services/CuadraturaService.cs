@@ -46,10 +46,8 @@ namespace NotebookValidator.Web.Services
             DataTable dt = new DataTable();
             if (ds.Tables.Count > 0)
             {
-                if (!string.IsNullOrEmpty(nombreHoja) && ds.Tables.Contains(nombreHoja))
-                    dt = ds.Tables[nombreHoja];
-                else
-                    dt = ds.Tables[0];
+                if (!string.IsNullOrEmpty(nombreHoja) && ds.Tables.Contains(nombreHoja)) dt = ds.Tables[nombreHoja];
+                else dt = ds.Tables[0];
             }
 
             if (!tieneEncabezados && dt.Columns.Count > 0)
@@ -105,7 +103,6 @@ namespace NotebookValidator.Web.Services
             var sugerencias = new List<SugerenciaMapeo>();
             var cols1 = dt1.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
             var cols2 = dt2.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
-
             var exclusionKeywords = new List<string> { "seg_", "tramo", "clasificacion", "banco", "prestamo", "periodo", "matriz", "fecha", "estado", "tipo", "id", "sucursal", "rut", "dv" };
 
             foreach (var c1 in cols1)
@@ -128,10 +125,7 @@ namespace NotebookValidator.Web.Services
                     string c2Lower = c2.ToLower();
                     if (exclusionKeywords.Any(k => c2Lower.Contains(k))) continue;
 
-                    int distancia = CalcularLevenshtein(c1Lower, c2Lower);
-                    int maxLen = Math.Max(c1.Length, c2.Length);
-                    int similitud = maxLen == 0 ? 100 : (int)((1.0 - (double)distancia / maxLen) * 100);
-
+                    int similitud = CalcularSimilitud(c1Lower, c2Lower);
                     if (similitud >= 85 && similitud > maxSimilitud)
                     {
                         maxSimilitud = similitud;
@@ -139,10 +133,7 @@ namespace NotebookValidator.Web.Services
                     }
                 }
 
-                if (bestMatch != null)
-                {
-                    sugerencias.Add(new SugerenciaMapeo { ColumnaArchivo1 = c1, ColumnaArchivo2 = bestMatch, PorcentajeSimilitud = maxSimilitud });
-                }
+                if (bestMatch != null) sugerencias.Add(new SugerenciaMapeo { ColumnaArchivo1 = c1, ColumnaArchivo2 = bestMatch, PorcentajeSimilitud = maxSimilitud });
             }
             return sugerencias.OrderByDescending(s => s.PorcentajeSimilitud).ToList();
         }
@@ -185,75 +176,40 @@ namespace NotebookValidator.Web.Services
                                 diffNum = n1 - n2;
                             }
 
-                            resultado.RegistrosConDiferencias.Add(new DiferenciaRegistro
-                            {
-                                LlaveIdentificadora = key1,
-                                ColumnaConFalla = columnasAComparar1[i],
-                                ValorArchivo1 = val1,
-                                ValorArchivo2 = val2,
-                                Diferencia = (diffNum != 0) ? diffNum.ToString("N4") : "Distinto",
-                                DiferenciaNumerica = diffNum
-                            });
+                            resultado.RegistrosConDiferencias.Add(new DiferenciaRegistro { LlaveIdentificadora = key1, ColumnaConFalla = columnasAComparar1[i], ValorArchivo1 = val1, ValorArchivo2 = val2, Diferencia = (diffNum != 0) ? diffNum.ToString("N4") : "Distinto", DiferenciaNumerica = diffNum });
                             hayDiferencia = true;
                         }
-                        else
-                        {
-                            detallesFila.Add($"{columnasAComparar1[i]}: {val1}");
-                        }
+                        else { detallesFila.Add($"{columnasAComparar1[i]}: {val1}"); }
                     }
 
                     if (!hayDiferencia)
                     {
                         resultado.TotalCoincidenciasExactas++;
-                        resultado.RegistrosCuadrados.Add(new RegistroCuadrado
-                        {
-                            LlaveIdentificadora = key1,
-                            DetalleValores = string.Join(" | ", detallesFila)
-                        });
+                        resultado.RegistrosCuadrados.Add(new RegistroCuadrado { LlaveIdentificadora = key1, DetalleValores = string.Join(" | ", detallesFila) });
                     }
                 }
-                else
-                {
-                    resultado.HuerfanosArchivo1.Add(key1);
-                }
+                else { resultado.HuerfanosArchivo1.Add(key1); }
             }
 
-            foreach (var key2 in dict2.Keys)
-            {
-                if (!llavesProcesadasArchivo2.Contains(key2))
-                {
-                    resultado.HuerfanosArchivo2.Add(key2);
-                }
-            }
-
+            foreach (var key2 in dict2.Keys) { if (!llavesProcesadasArchivo2.Contains(key2)) resultado.HuerfanosArchivo2.Add(key2); }
             return resultado;
         }
 
         public byte[] GenerarExcelReporte(ResultadoCuadratura resultado)
         {
             using var workbook = new XLWorkbook();
-
             var ws1 = workbook.Worksheets.Add("Diferencias");
-            ws1.Cell(1, 1).Value = "Llave Primaria";
-            ws1.Cell(1, 2).Value = "Columna";
-            ws1.Cell(1, 3).Value = resultado.AliasArchivo1;
-            ws1.Cell(1, 4).Value = resultado.AliasArchivo2;
-            ws1.Cell(1, 5).Value = "Diferencia";
+            ws1.Cell(1, 1).Value = "Llave Primaria"; ws1.Cell(1, 2).Value = "Columna"; ws1.Cell(1, 3).Value = resultado.AliasArchivo1; ws1.Cell(1, 4).Value = resultado.AliasArchivo2; ws1.Cell(1, 5).Value = "Diferencia";
 
             for (int i = 0; i < resultado.RegistrosConDiferencias.Count; i++)
             {
                 var reg = resultado.RegistrosConDiferencias[i];
-                ws1.Cell(i + 2, 1).Value = reg.LlaveIdentificadora;
-                ws1.Cell(i + 2, 2).Value = reg.ColumnaConFalla;
-                ws1.Cell(i + 2, 3).Value = reg.ValorArchivo1;
-                ws1.Cell(i + 2, 4).Value = reg.ValorArchivo2;
-                ws1.Cell(i + 2, 5).Value = reg.Diferencia;
+                ws1.Cell(i + 2, 1).Value = reg.LlaveIdentificadora; ws1.Cell(i + 2, 2).Value = reg.ColumnaConFalla; ws1.Cell(i + 2, 3).Value = reg.ValorArchivo1; ws1.Cell(i + 2, 4).Value = reg.ValorArchivo2; ws1.Cell(i + 2, 5).Value = reg.Diferencia;
             }
             ws1.Columns().AdjustToContents();
 
             var ws2 = workbook.Worksheets.Add("Huérfanos");
-            ws2.Cell(1, 1).Value = "Origen";
-            ws2.Cell(1, 2).Value = "Llave Primaria";
+            ws2.Cell(1, 1).Value = "Origen"; ws2.Cell(1, 2).Value = "Llave Primaria";
             int rowH = 2;
             foreach (var h in resultado.HuerfanosArchivo1) { ws2.Cell(rowH, 1).Value = resultado.AliasArchivo1; ws2.Cell(rowH, 2).Value = h; rowH++; }
             foreach (var h in resultado.HuerfanosArchivo2) { ws2.Cell(rowH, 1).Value = resultado.AliasArchivo2; ws2.Cell(rowH, 2).Value = h; rowH++; }
@@ -268,19 +224,9 @@ namespace NotebookValidator.Web.Services
         {
             if (val1 == val2) return true;
             if (string.IsNullOrEmpty(val1) || string.IsNullOrEmpty(val2)) return false;
-
-            string numParse1 = val1.Replace(",", ".");
-            string numParse2 = val2.Replace(",", ".");
-
-            if (double.TryParse(numParse1, NumberStyles.Any, CultureInfo.InvariantCulture, out double n1) &&
-                double.TryParse(numParse2, NumberStyles.Any, CultureInfo.InvariantCulture, out double n2))
-            {
-                return Math.Abs(n1 - n2) <= tolerancia;
-            }
-
-            if (DateTime.TryParse(val1, out DateTime fecha1) && DateTime.TryParse(val2, out DateTime fecha2))
-                return fecha1.Date == fecha2.Date;
-
+            string numParse1 = val1.Replace(",", "."); string numParse2 = val2.Replace(",", ".");
+            if (double.TryParse(numParse1, NumberStyles.Any, CultureInfo.InvariantCulture, out double n1) && double.TryParse(numParse2, NumberStyles.Any, CultureInfo.InvariantCulture, out double n2)) return Math.Abs(n1 - n2) <= tolerancia;
+            if (DateTime.TryParse(val1, out DateTime fecha1) && DateTime.TryParse(val2, out DateTime fecha2)) return fecha1.Date == fecha2.Date;
             return false;
         }
 
@@ -303,6 +249,13 @@ namespace NotebookValidator.Web.Services
             return v1[t.Length];
         }
 
+        private int CalcularSimilitud(string s1, string s2)
+        {
+            int distancia = CalcularLevenshtein(s1.ToLower(), s2.ToLower());
+            int maxLen = Math.Max(s1.Length, s2.Length);
+            return maxLen == 0 ? 100 : (int)((1.0 - (double)distancia / maxLen) * 100);
+        }
+
         // ==========================================
         // MOTOR DE VALIDACIÓN ESTRUCTURAL Y METADATOS
         // ==========================================
@@ -319,7 +272,7 @@ namespace NotebookValidator.Web.Services
             resultado.MuestraArchivo2 = ExtraerMuestraAleatoria(dt2, 10);
 
             if (resultado.Archivo1.SaltoLinea != resultado.Archivo2.SaltoLinea)
-                resultado.AdvertenciasFisicas.Add($"Diferente salto de línea detectado: {resultado.Archivo1.Alias} usa [{resultado.Archivo1.SaltoLinea}] mientras que {resultado.Archivo2.Alias} usa [{resultado.Archivo2.SaltoLinea}].");
+                resultado.AdvertenciasFisicas.Add($"Diferente salto de línea detectado: {resultado.Archivo1.Alias} usa [{resultado.Archivo1.SaltoLinea}] y {resultado.Archivo2.Alias} usa [{resultado.Archivo2.SaltoLinea}].");
 
             if (resultado.Archivo1.Separador != resultado.Archivo2.Separador && resultado.Archivo1.Separador != "N/A (Excel)" && resultado.Archivo2.Separador != "N/A (Excel)")
                 resultado.AdvertenciasFisicas.Add($"Diferente delimitador de columnas: {resultado.Archivo1.Alias} usa [{resultado.Archivo1.Separador}] y {resultado.Archivo2.Alias} usa [{resultado.Archivo2.Separador}].");
@@ -327,59 +280,92 @@ namespace NotebookValidator.Web.Services
             if (resultado.Archivo1.Encoding != resultado.Archivo2.Encoding)
                 resultado.AdvertenciasFisicas.Add($"Diferente codificación (Encoding): {resultado.Archivo1.Alias} está en [{resultado.Archivo1.Encoding}] y {resultado.Archivo2.Alias} en [{resultado.Archivo2.Encoding}].");
 
-            var todasLasColumnas = resultado.Archivo1.Columnas.Select(c => c.Nombre)
-                .Union(resultado.Archivo2.Columnas.Select(c => c.Nombre))
-                .Distinct()
-                .ToList();
+            // CRUCE DE NOMBRES INTELIGENTE
+            var colsA = resultado.Archivo1.Columnas.ToList();
+            var colsB = resultado.Archivo2.Columnas.ToList();
+            var comparaciones = new List<ComparacionColumna>();
 
-            foreach (var colName in todasLasColumnas)
+            // 1. Match Exacto (Sensible a Mayúsculas)
+            for (int i = colsA.Count - 1; i >= 0; i--)
             {
-                var col1 = resultado.Archivo1.Columnas.FirstOrDefault(c => c.Nombre.Equals(colName, StringComparison.OrdinalIgnoreCase));
-                var col2 = resultado.Archivo2.Columnas.FirstOrDefault(c => c.Nombre.Equals(colName, StringComparison.OrdinalIgnoreCase));
-
-                var comp = new ComparacionColumna
+                var cA = colsA[i];
+                var cB = colsB.FirstOrDefault(c => c.Nombre == cA.Nombre);
+                if (cB != null)
                 {
-                    NombreColumna = col1?.Nombre ?? col2?.Nombre,
-                    TipoArchivo1 = col1?.TipoInferido ?? "N/A",
-                    TipoArchivo2 = col2?.TipoInferido ?? "N/A",
-                    MetadatosColumnaA = col1,
-                    MetadatosColumnaB = col2
-                };
-
-                if (col1 == null) { comp.Estado = "Faltante en A"; resultado.ColumnasFaltantes++; }
-                else if (col2 == null) { comp.Estado = "Faltante en B"; resultado.ColumnasFaltantes++; }
-                else if (col1.TipoInferido != col2.TipoInferido && col1.TipoInferido != "Nulo/Vacío" && col2.TipoInferido != "Nulo/Vacío")
-                { comp.Estado = "Conflicto de Tipo"; resultado.TiposDiferentes++; }
-                else { comp.Estado = "Match"; }
-
-                resultado.ComparacionColumnas.Add(comp);
+                    comparaciones.Add(CrearComparacion(cA, cB, "Match Exacto"));
+                    colsA.RemoveAt(i); colsB.Remove(cB);
+                }
             }
 
-            resultado.EstructurasCoinciden = (resultado.ColumnasFaltantes == 0 && resultado.TiposDiferentes == 0);
+            // 2. Match Case Insensitive (Diferencia de Casing)
+            for (int i = colsA.Count - 1; i >= 0; i--)
+            {
+                var cA = colsA[i];
+                var cB = colsB.FirstOrDefault(c => c.Nombre.Equals(cA.Nombre, StringComparison.OrdinalIgnoreCase));
+                if (cB != null)
+                {
+                    comparaciones.Add(CrearComparacion(cA, cB, "Diferencia Casing"));
+                    resultado.AdvertenciasFisicas.Add($"Cambio de Casing: '{cA.Nombre}' vs '{cB.Nombre}'");
+                    colsA.RemoveAt(i); colsB.Remove(cB);
+                }
+            }
+
+            // 3. Posible Renombre (Levenshtein > 80%)
+            for (int i = colsA.Count - 1; i >= 0; i--)
+            {
+                var cA = colsA[i];
+                var cB = colsB.OrderByDescending(c => CalcularSimilitud(cA.Nombre, c.Nombre)).FirstOrDefault();
+                if (cB != null && CalcularSimilitud(cA.Nombre, cB.Nombre) >= 80)
+                {
+                    comparaciones.Add(CrearComparacion(cA, cB, "Posible Renombre"));
+                    colsA.RemoveAt(i); colsB.Remove(cB);
+                }
+            }
+
+            // 4. Faltantes en uno u otro
+            foreach (var cA in colsA) { comparaciones.Add(CrearComparacion(cA, null, "Faltante en B")); resultado.ColumnasFaltantes++; }
+            foreach (var cB in colsB) { comparaciones.Add(CrearComparacion(null, cB, "Faltante en A")); resultado.ColumnasFaltantes++; }
+
+            // Evaluar Choques de Tipos para los emparejados
+            foreach (var comp in comparaciones)
+            {
+                if (comp.MetadatosColumnaA != null && comp.MetadatosColumnaB != null)
+                {
+                    if (comp.TipoArchivo1 != comp.TipoArchivo2 && comp.TipoArchivo1 != "Nulo/Vacío" && comp.TipoArchivo2 != "Nulo/Vacío")
+                    {
+                        comp.Estado += " (Conflicto Tipo)";
+                        resultado.TiposDiferentes++;
+                    }
+                }
+            }
+
+            resultado.ComparacionColumnas = comparaciones;
+            resultado.EstructurasCoinciden = (resultado.ColumnasFaltantes == 0 && resultado.TiposDiferentes == 0 && resultado.AdvertenciasFisicas.Count == 0);
             return resultado;
+        }
+
+        private ComparacionColumna CrearComparacion(ColumnaInfo cA, ColumnaInfo cB, string estadoInicial)
+        {
+            return new ComparacionColumna
+            {
+                NombreColumnaA = cA?.Nombre ?? "-",
+                NombreColumnaB = cB?.Nombre ?? "-",
+                TipoArchivo1 = cA?.TipoInferido ?? "-",
+                TipoArchivo2 = cB?.TipoInferido ?? "-",
+                MetadatosColumnaA = cA,
+                MetadatosColumnaB = cB,
+                Estado = estadoInicial
+            };
         }
 
         private MetadatosArchivo AnalizarEsquema(DataTable dt, string alias, string rutaArchivo)
         {
-            var meta = new MetadatosArchivo
-            {
-                Alias = string.IsNullOrWhiteSpace(alias) ? "Archivo" : alias,
-                Extension = Path.GetExtension(rutaArchivo).ToUpper(),
-                TotalColumnas = dt.Columns.Count,
-                TotalFilasMuestra = Math.Min(dt.Rows.Count, 150)
-            };
-
+            var meta = new MetadatosArchivo { Alias = string.IsNullOrWhiteSpace(alias) ? "Archivo" : alias, Extension = Path.GetExtension(rutaArchivo).ToUpper(), TotalColumnas = dt.Columns.Count, TotalFilasMuestra = Math.Min(dt.Rows.Count, 150) };
             ExtraerMetadatosFisicos(rutaArchivo, meta);
 
             foreach (DataColumn col in dt.Columns)
             {
-                var info = new ColumnaInfo
-                {
-                    Nombre = col.ColumnName,
-                    LongitudMaxima = 0,
-                    LongitudMinima = int.MaxValue,
-                    NulosDetectados = 0
-                };
+                var info = new ColumnaInfo { Nombre = col.ColumnName, LongitudMaxima = 0, LongitudMinima = int.MaxValue, NulosDetectados = 0 };
                 var tiposDetectados = new Dictionary<string, int>();
 
                 for (int i = 0; i < meta.TotalFilasMuestra; i++)
@@ -393,8 +379,7 @@ namespace NotebookValidator.Web.Services
                     if (len > 1 && valor.StartsWith("0") && valor.All(char.IsDigit)) info.TieneCerosALaIzquierda = true;
 
                     string tipo = InferirTipoDato(valor);
-                    if (tiposDetectados.ContainsKey(tipo)) tiposDetectados[tipo]++;
-                    else tiposDetectados[tipo] = 1;
+                    if (tiposDetectados.ContainsKey(tipo)) tiposDetectados[tipo]++; else tiposDetectados[tipo] = 1;
                 }
 
                 if (info.LongitudMinima == int.MaxValue) info.LongitudMinima = 0;
@@ -407,7 +392,6 @@ namespace NotebookValidator.Web.Services
                     else if (tiposDetectados.ContainsKey("Decimal")) info.TipoInferido = "Decimal";
                     else info.TipoInferido = tiposDetectados.OrderByDescending(x => x.Value).First().Key;
                 }
-
                 meta.Columnas.Add(info);
             }
             return meta;
@@ -437,11 +421,7 @@ namespace NotebookValidator.Web.Services
                 if (isFlat)
                 {
                     string primeraLinea = chunk.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
-                    var separadores = new Dictionary<string, int>
-                    {
-                        { "Coma (,)", primeraLinea.Count(c => c == ',') }, { "Punto y coma (;)", primeraLinea.Count(c => c == ';') },
-                        { "Tabulador (\\t)", primeraLinea.Count(c => c == '\t') }, { "Pipe (|)", primeraLinea.Count(c => c == '|') }
-                    };
+                    var separadores = new Dictionary<string, int> { { "Coma (,)", primeraLinea.Count(c => c == ',') }, { "Punto y coma (;)", primeraLinea.Count(c => c == ';') }, { "Tabulador (\\t)", primeraLinea.Count(c => c == '\t') }, { "Pipe (|)", primeraLinea.Count(c => c == '|') } };
                     var mejor = separadores.OrderByDescending(x => x.Value).First();
                     meta.Separador = mejor.Value > 0 ? mejor.Key : "No detectado";
                 }
@@ -462,7 +442,6 @@ namespace NotebookValidator.Web.Services
         {
             var muestra = new MuestraDatos();
             foreach (DataColumn col in dt.Columns) muestra.Encabezados.Add(col.ColumnName);
-
             var rnd = new Random();
             var indices = Enumerable.Range(0, dt.Rows.Count).OrderBy(x => rnd.Next()).Take(cantidad).ToList();
 
@@ -479,14 +458,11 @@ namespace NotebookValidator.Web.Services
         {
             if (bool.TryParse(valor, out _)) return "Booleano";
             if (int.TryParse(valor, out _)) return "Entero";
-
             string parseDec = valor.Replace(",", ".");
             if (double.TryParse(parseDec, NumberStyles.Any, CultureInfo.InvariantCulture, out _)) return "Decimal";
-
             string[] formatosFecha = { "yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy", "yyyy/MM/dd", "dd-MM-yyyy", "yyyyMMdd", "dd-MM-yyyy HH:mm:ss" };
             if (DateTime.TryParseExact(valor, formatosFecha, CultureInfo.InvariantCulture, DateTimeStyles.None, out _)) return "Fecha";
             if (DateTime.TryParse(valor, out _)) return "Fecha";
-
             return "Texto";
         }
 
@@ -496,166 +472,117 @@ namespace NotebookValidator.Web.Services
 
             // ── HOJA 1: REPORTE DE ESTRUCTURAS ──
             var ws1 = workbook.Worksheets.Add("Mapeo de Estructuras");
-            ws1.ShowGridLines = false; // Sin cuadrícula general
+            ws1.ShowGridLines = false;
 
-            // Título Principal
             ws1.Cell("A1").Value = "REPORTE DE VALIDACIÓN ESTRUCTURAL";
-            var titleRange = ws1.Range("A1:F2");
+            var titleRange = ws1.Range("A1:G2");
             titleRange.Merge().Style.Font.SetFontSize(16).Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(11, 13, 22)).Font.SetFontColor(XLColor.White).Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center).Alignment.SetVertical(XLAlignmentVerticalValues.Center);
 
-            // Resumen de Metadatos (Filas separadas)
             ws1.Cell("B4").Value = "METADATOS";
-            ws1.Cell("C4").Value = resultado.Archivo1.Alias;
-            ws1.Cell("D4").Value = resultado.Archivo2.Alias;
-            ws1.Range("B4:D4").Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(13, 202, 240)).Font.SetFontColor(XLColor.Black).Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
+            ws1.Cell("C4").Value = resultado.Archivo1.Alias; ws1.Range("C4:D4").Merge();
+            ws1.Cell("E4").Value = resultado.Archivo2.Alias; ws1.Range("E4:F4").Merge();
+            ws1.Range("B4:F4").Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(13, 202, 240)).Font.SetFontColor(XLColor.Black).Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center);
 
-            ws1.Cell("B5").Value = "Nombre del Archivo"; ws1.Cell("C5").Value = resultado.Archivo1.NombreArchivo; ws1.Cell("D5").Value = resultado.Archivo2.NombreArchivo;
-            ws1.Cell("B6").Value = "Codificación"; ws1.Cell("C6").Value = resultado.Archivo1.Encoding; ws1.Cell("D6").Value = resultado.Archivo2.Encoding;
-            ws1.Cell("B7").Value = "Separador"; ws1.Cell("C7").Value = resultado.Archivo1.Separador; ws1.Cell("D7").Value = resultado.Archivo2.Separador;
-            ws1.Cell("B8").Value = "Salto de Línea"; ws1.Cell("C8").Value = resultado.Archivo1.SaltoLinea; ws1.Cell("D8").Value = resultado.Archivo2.SaltoLinea;
-            ws1.Cell("B9").Value = "Total Columnas"; ws1.Cell("C9").Value = resultado.Archivo1.TotalColumnas; ws1.Cell("D9").Value = resultado.Archivo2.TotalColumnas;
+            ws1.Cell("B5").Value = "Nombre del Archivo"; ws1.Cell("C5").Value = resultado.Archivo1.NombreArchivo; ws1.Range("C5:D5").Merge(); ws1.Cell("E5").Value = resultado.Archivo2.NombreArchivo; ws1.Range("E5:F5").Merge();
+            ws1.Cell("B6").Value = "Codificación"; ws1.Cell("C6").Value = resultado.Archivo1.Encoding; ws1.Range("C6:D6").Merge(); ws1.Cell("E6").Value = resultado.Archivo2.Encoding; ws1.Range("E6:F6").Merge();
+            ws1.Cell("B7").Value = "Separador"; ws1.Cell("C7").Value = resultado.Archivo1.Separador; ws1.Range("C7:D7").Merge(); ws1.Cell("E7").Value = resultado.Archivo2.Separador; ws1.Range("E7:F7").Merge();
+            ws1.Cell("B8").Value = "Salto de Línea"; ws1.Cell("C8").Value = resultado.Archivo1.SaltoLinea; ws1.Range("C8:D8").Merge(); ws1.Cell("E8").Value = resultado.Archivo2.SaltoLinea; ws1.Range("E8:F8").Merge();
+            ws1.Cell("B9").Value = "Total Columnas"; ws1.Cell("C9").Value = resultado.Archivo1.TotalColumnas; ws1.Range("C9:D9").Merge(); ws1.Cell("E9").Value = resultado.Archivo2.TotalColumnas; ws1.Range("E9:F9").Merge();
 
             ws1.Range("B5:B9").Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.LightGray).Font.SetFontColor(XLColor.Black);
-            ws1.Range("B4:D9").Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin).Border.SetInsideBorder(XLBorderStyleValues.Thin);
+            ws1.Range("B4:F9").Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin).Border.SetInsideBorder(XLBorderStyleValues.Thin);
 
-            // Evaluación de coincidencia en Metadatos (Verde suave = coinciden, Rojo suave = diferencia)
             for (int r = 6; r <= 9; r++)
             {
-                if (ws1.Cell(r, 3).Value.ToString() == ws1.Cell(r, 4).Value.ToString())
+                if (ws1.Cell(r, 3).Value.ToString() == ws1.Cell(r, 5).Value.ToString())
                 {
-                    ws1.Range(r, 3, r, 4).Style.Fill.SetBackgroundColor(XLColor.FromArgb(226, 239, 218)); // Verde Pastel
-                    ws1.Range(r, 3, r, 4).Style.Font.SetFontColor(XLColor.FromArgb(55, 86, 35));
+                    ws1.Range(r, 3, r, 6).Style.Fill.SetBackgroundColor(XLColor.FromArgb(226, 239, 218)).Font.SetFontColor(XLColor.FromArgb(55, 86, 35));
                 }
                 else
                 {
-                    ws1.Range(r, 3, r, 4).Style.Fill.SetBackgroundColor(XLColor.FromArgb(252, 228, 214)); // Naranja Pastel
-                    ws1.Range(r, 3, r, 4).Style.Font.SetFontColor(XLColor.FromArgb(192, 0, 0)).Font.SetBold();
+                    ws1.Range(r, 3, r, 6).Style.Fill.SetBackgroundColor(XLColor.FromArgb(252, 228, 214)).Font.SetFontColor(XLColor.FromArgb(192, 0, 0)).Font.SetBold();
                 }
             }
 
-            // Tabla de Mapeo
             int startRow = 11;
-            ws1.Cell(startRow, 1).Value = "Columna (Atributo)";
-            ws1.Range(startRow, 1, startRow + 1, 1).Merge();
+            ws1.Cell(startRow, 1).Value = $"Análisis: {resultado.Archivo1.Alias}"; ws1.Range(startRow, 1, startRow, 3).Merge();
+            ws1.Cell(startRow + 1, 1).Value = "Columna A"; ws1.Cell(startRow + 1, 2).Value = "Tipo Inferido"; ws1.Cell(startRow + 1, 3).Value = "Formato y Nulos";
 
-            ws1.Cell(startRow, 2).Value = $"Análisis: {resultado.Archivo1.Alias}";
-            ws1.Range(startRow, 2, startRow, 3).Merge();
-            ws1.Cell(startRow + 1, 2).Value = "Tipo Inferido";
-            ws1.Cell(startRow + 1, 3).Value = "Formato y Nulos";
+            ws1.Cell(startRow, 4).Value = $"Análisis: {resultado.Archivo2.Alias}"; ws1.Range(startRow, 4, startRow, 6).Merge();
+            ws1.Cell(startRow + 1, 4).Value = "Columna B"; ws1.Cell(startRow + 1, 5).Value = "Tipo Inferido"; ws1.Cell(startRow + 1, 6).Value = "Formato y Nulos";
 
-            ws1.Cell(startRow, 4).Value = $"Análisis: {resultado.Archivo2.Alias}";
-            ws1.Range(startRow, 4, startRow, 5).Merge();
-            ws1.Cell(startRow + 1, 4).Value = "Tipo Inferido";
-            ws1.Cell(startRow + 1, 5).Value = "Formato y Nulos";
+            ws1.Cell(startRow, 7).Value = "Estado de Validación"; ws1.Range(startRow, 7, startRow + 1, 7).Merge();
 
-            ws1.Cell(startRow, 6).Value = "Estado de Validación";
-            ws1.Range(startRow, 6, startRow + 1, 6).Merge();
-
-            var tableHeader = ws1.Range(startRow, 1, startRow + 1, 6);
+            var tableHeader = ws1.Range(startRow, 1, startRow + 1, 7);
             tableHeader.Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(11, 13, 22)).Font.SetFontColor(XLColor.White).Alignment.SetHorizontal(XLAlignmentHorizontalValues.Center).Alignment.SetVertical(XLAlignmentVerticalValues.Center);
             tableHeader.Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin).Border.SetInsideBorder(XLBorderStyleValues.Thin);
 
-            // Llenado de Datos (con colores sutiles diferenciadores)
             int row = startRow + 2;
             foreach (var comp in resultado.ComparacionColumnas)
             {
-                ws1.Cell(row, 1).Value = comp.NombreColumna;
-                ws1.Cell(row, 1).Style.Fill.SetBackgroundColor(XLColor.White);
-
-                // Colores para Archivo 1 (Azul muy claro)
-                ws1.Range(row, 2, row, 3).Style.Fill.SetBackgroundColor(XLColor.AliceBlue);
+                ws1.Range(row, 1, row, 3).Style.Fill.SetBackgroundColor(XLColor.AliceBlue);
+                ws1.Cell(row, 1).Value = comp.NombreColumnaA;
                 ws1.Cell(row, 2).Value = comp.TipoArchivo1;
                 if (comp.MetadatosColumnaA != null)
                 {
                     var ma = comp.MetadatosColumnaA;
                     string lenA = ma.LongitudMinima == ma.LongitudMaxima ? $"Fijo: {ma.LongitudMaxima}" : $"Var: {ma.LongitudMinima}-{ma.LongitudMaxima}";
-                    string zA = ma.TieneCerosALaIzquierda ? " | Zero-Padded" : "";
-                    ws1.Cell(row, 3).Value = $"{lenA} | Nulls: {ma.PorcentajeNulos}%{zA}";
+                    ws1.Cell(row, 3).Value = $"{lenA} | Nulls: {ma.PorcentajeNulos}%{(ma.TieneCerosALaIzquierda ? " | Zero-Padded" : "")}";
                 }
 
-                // Colores para Archivo 2 (Crema / Amarillo muy claro)
-                ws1.Range(row, 4, row, 5).Style.Fill.SetBackgroundColor(XLColor.FloralWhite);
-                ws1.Cell(row, 4).Value = comp.TipoArchivo2;
+                ws1.Range(row, 4, row, 6).Style.Fill.SetBackgroundColor(XLColor.FloralWhite);
+                ws1.Cell(row, 4).Value = comp.NombreColumnaB;
+                ws1.Cell(row, 5).Value = comp.TipoArchivo2;
                 if (comp.MetadatosColumnaB != null)
                 {
                     var mb = comp.MetadatosColumnaB;
                     string lenB = mb.LongitudMinima == mb.LongitudMaxima ? $"Fijo: {mb.LongitudMaxima}" : $"Var: {mb.LongitudMinima}-{mb.LongitudMaxima}";
-                    string zB = mb.TieneCerosALaIzquierda ? " | Zero-Padded" : "";
-                    ws1.Cell(row, 5).Value = $"{lenB} | Nulls: {mb.PorcentajeNulos}%{zB}";
+                    ws1.Cell(row, 6).Value = $"{lenB} | Nulls: {mb.PorcentajeNulos}%{(mb.TieneCerosALaIzquierda ? " | Zero-Padded" : "")}";
                 }
 
-                ws1.Cell(row, 6).Value = comp.Estado;
-
-                // Formato Condicional para Estado
-                if (comp.Estado == "Match")
-                {
-                    ws1.Cell(row, 6).Style.Font.SetFontColor(XLColor.ForestGreen).Font.SetBold().Fill.SetBackgroundColor(XLColor.LightGreen);
-                }
-                else
-                {
-                    ws1.Cell(row, 6).Style.Font.SetFontColor(XLColor.DarkRed).Font.SetBold().Fill.SetBackgroundColor(XLColor.LightPink);
-                }
+                ws1.Cell(row, 7).Value = comp.Estado;
+                if (comp.Estado.StartsWith("Match Exacto")) ws1.Cell(row, 7).Style.Font.SetFontColor(XLColor.ForestGreen).Font.SetBold().Fill.SetBackgroundColor(XLColor.LightGreen);
+                else if (comp.Estado.Contains("Renombre") || comp.Estado.Contains("Casing")) ws1.Cell(row, 7).Style.Font.SetFontColor(XLColor.DarkGoldenrod).Font.SetBold().Fill.SetBackgroundColor(XLColor.LightYellow);
+                else ws1.Cell(row, 7).Style.Font.SetFontColor(XLColor.DarkRed).Font.SetBold().Fill.SetBackgroundColor(XLColor.LightPink);
 
                 row++;
             }
 
-            var dataRange = ws1.Range(startRow + 2, 1, row - 1, 6);
+            var dataRange = ws1.Range(startRow + 2, 1, row - 1, 7);
             dataRange.Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin).Border.SetInsideBorder(XLBorderStyleValues.Thin);
-            ws1.Range(startRow + 1, 1, row - 1, 6).SetAutoFilter();
+            ws1.Range(startRow + 1, 1, row - 1, 7).SetAutoFilter();
             ws1.Columns().AdjustToContents();
 
             // ── HOJA 2: MUESTRAS DE DATOS EN UNA SOLA HOJA ──
             var wsM = workbook.Worksheets.Add("Muestras de Datos");
-            wsM.ShowGridLines = false; // Sin cuadrícula general
+            wsM.ShowGridLines = false;
             int rM = 1;
 
-            // Bloque Muestra 1
             if (resultado.MuestraArchivo1.Encabezados.Any())
             {
                 wsM.Cell(rM, 1).Value = $"MUESTRA ALEATORIA: {resultado.Archivo1.Alias} ({resultado.Archivo1.NombreArchivo})";
                 wsM.Range(rM, 1, rM, resultado.MuestraArchivo1.Encabezados.Count).Merge().Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(13, 202, 240)).Font.SetFontColor(XLColor.Black);
                 rM++;
-
-                for (int c = 0; c < resultado.MuestraArchivo1.Encabezados.Count; c++)
-                {
-                    wsM.Cell(rM, c + 1).Value = resultado.MuestraArchivo1.Encabezados[c];
-                    wsM.Cell(rM, c + 1).Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.LightGray);
-                }
+                for (int c = 0; c < resultado.MuestraArchivo1.Encabezados.Count; c++) { wsM.Cell(rM, c + 1).Value = resultado.MuestraArchivo1.Encabezados[c]; wsM.Cell(rM, c + 1).Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.LightGray); }
                 rM++;
-
                 for (int i = 0; i < resultado.MuestraArchivo1.Filas.Count; i++)
                 {
-                    for (int c = 0; c < resultado.MuestraArchivo1.Filas[i].Count; c++)
-                    {
-                        wsM.Cell(rM, c + 1).Value = resultado.MuestraArchivo1.Filas[i][c];
-                        wsM.Cell(rM, c + 1).Style.Fill.SetBackgroundColor(XLColor.White);
-                    }
+                    for (int c = 0; c < resultado.MuestraArchivo1.Filas[i].Count; c++) { wsM.Cell(rM, c + 1).Value = resultado.MuestraArchivo1.Filas[i][c]; wsM.Cell(rM, c + 1).Style.Fill.SetBackgroundColor(XLColor.White); }
                     rM++;
                 }
-                rM += 2; // Espacio entre muestras
+                rM += 2;
             }
 
-            // Bloque Muestra 2
             if (resultado.MuestraArchivo2.Encabezados.Any())
             {
                 wsM.Cell(rM, 1).Value = $"MUESTRA ALEATORIA: {resultado.Archivo2.Alias} ({resultado.Archivo2.NombreArchivo})";
                 wsM.Range(rM, 1, rM, resultado.MuestraArchivo2.Encabezados.Count).Merge().Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(255, 193, 7)).Font.SetFontColor(XLColor.Black);
                 rM++;
-
-                for (int c = 0; c < resultado.MuestraArchivo2.Encabezados.Count; c++)
-                {
-                    wsM.Cell(rM, c + 1).Value = resultado.MuestraArchivo2.Encabezados[c];
-                    wsM.Cell(rM, c + 1).Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.LightGray);
-                }
+                for (int c = 0; c < resultado.MuestraArchivo2.Encabezados.Count; c++) { wsM.Cell(rM, c + 1).Value = resultado.MuestraArchivo2.Encabezados[c]; wsM.Cell(rM, c + 1).Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.LightGray); }
                 rM++;
-
                 for (int i = 0; i < resultado.MuestraArchivo2.Filas.Count; i++)
                 {
-                    for (int c = 0; c < resultado.MuestraArchivo2.Filas[i].Count; c++)
-                    {
-                        wsM.Cell(rM, c + 1).Value = resultado.MuestraArchivo2.Filas[i][c];
-                        wsM.Cell(rM, c + 1).Style.Fill.SetBackgroundColor(XLColor.White);
-                    }
+                    for (int c = 0; c < resultado.MuestraArchivo2.Filas[i].Count; c++) { wsM.Cell(rM, c + 1).Value = resultado.MuestraArchivo2.Filas[i][c]; wsM.Cell(rM, c + 1).Style.Fill.SetBackgroundColor(XLColor.White); }
                     rM++;
                 }
             }
@@ -667,9 +594,6 @@ namespace NotebookValidator.Web.Services
         }
     }
 
-    // ==========================================
-    // MODELOS PARA VALIDACIÓN ESTRUCTURAL
-    // ==========================================
     public class ResultadoEstructura
     {
         public MetadatosArchivo Archivo1 { get; set; } = new MetadatosArchivo();
@@ -716,7 +640,8 @@ namespace NotebookValidator.Web.Services
 
     public class ComparacionColumna
     {
-        public string NombreColumna { get; set; }
+        public string NombreColumnaA { get; set; }
+        public string NombreColumnaB { get; set; }
         public string TipoArchivo1 { get; set; }
         public string TipoArchivo2 { get; set; }
         public string Estado { get; set; }
