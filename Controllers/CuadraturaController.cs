@@ -170,7 +170,6 @@ namespace NotebookValidator.Web.Controllers
             resultados.TotalAgrupado1 = dt1.Rows.Count;
             resultados.TotalAgrupado2 = dt2.Rows.Count;
 
-            // --- REGISTRO DE AUDITORÍA ---
             var userId = _userManager.GetUserId(User);
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -178,37 +177,11 @@ namespace NotebookValidator.Web.Controllers
             {
                 Modulo = "Cuadratura de Datos",
                 Accion = "Comparación Ejecutada",
-                Archivos = new
-                {
-                    Origen1 = resultados.AliasArchivo1,
-                    Origen2 = resultados.AliasArchivo2,
-                    Hoja1 = HojaArchivo1,
-                    Hoja2 = HojaArchivo2
-                },
-                Metadatos = new
-                {
-                    FilasOriginal1 = resultados.TotalOriginal1,
-                    FilasOriginal2 = resultados.TotalOriginal2,
-                    FilasComparadas1 = resultados.TotalAgrupado1,
-                    FilasComparadas2 = resultados.TotalAgrupado2,
-                    ColumnasComparadas = validCols1.Count,
-                    CeldasEvaluadas = (long)resultados.TotalAgrupado1 * validCols1.Count,
-                    Modo = ModoAgrupacion ? "Agrupación (Sumarizada)" : "Registro a Registro"
-                },
-                ResultadoCuadratura = new
-                {
-                    CoincidenciasExactas = resultados.TotalCoincidenciasExactas,
-                    RegistrosConDiferencias = resultados.RegistrosConDiferencias.Count,
-                    HuerfanosArchivo1 = resultados.HuerfanosArchivo1.Count,
-                    HuerfanosArchivo2 = resultados.HuerfanosArchivo2.Count
-                }
+                Archivos = new { Origen1 = resultados.AliasArchivo1, Origen2 = resultados.AliasArchivo2 },
+                Metadatos = new { FilasComparadas = resultados.TotalAgrupado1, ColumnasComparadas = validCols1.Count }
             };
 
-            await _auditService.LogActionAsync(
-                userId,
-                "Cuadratura: Comparación Ejecutada",
-                JsonSerializer.Serialize(auditDetails),
-                ip);
+            await _auditService.LogActionAsync(userId, "Cuadratura: Comparación Ejecutada", JsonSerializer.Serialize(auditDetails), ip);
 
             if (System.IO.File.Exists(TempPathArchivo1)) System.IO.File.Delete(TempPathArchivo1);
             if (System.IO.File.Exists(TempPathArchivo2)) System.IO.File.Delete(TempPathArchivo2);
@@ -236,6 +209,68 @@ namespace NotebookValidator.Web.Controllers
                 System.IO.File.Delete(tempJsonPath);
 
                 return File(archivo, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Reporte_Cuadratura_{DateTime.Now:yyyyMMddHHmm}.xlsx");
+            }
+            catch { return RedirectToAction("Index"); }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ValidarEstructuras(IFormFile archivo1, IFormFile archivo2, string alias1, string alias2, bool tieneEncabezados1 = false, bool tieneEncabezados2 = false, string hoja1 = null, string hoja2 = null)
+        {
+            if (archivo1 == null || archivo2 == null) return View("Index");
+
+            var ext1 = Path.GetExtension(archivo1.FileName);
+            var ext2 = Path.GetExtension(archivo2.FileName);
+            var tempPath1 = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ext1);
+            var tempPath2 = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ext2);
+
+            using (var stream = new FileStream(tempPath1, FileMode.Create)) await archivo1.CopyToAsync(stream);
+            using (var stream = new FileStream(tempPath2, FileMode.Create)) await archivo2.CopyToAsync(stream);
+
+            var resultado = _cuadraturaService.ValidarEstructuras(tempPath1, tempPath2, alias1, alias2, tieneEncabezados1, tieneEncabezados2, hoja1, hoja2);
+
+            resultado.Archivo1.NombreArchivo = archivo1.FileName;
+            resultado.Archivo2.NombreArchivo = archivo2.FileName;
+
+            var userId = _userManager.GetUserId(User);
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            var auditDetails = new
+            {
+                Modulo = "Cuadratura de Datos",
+                Accion = "Validación Estructural Ejecutada",
+                Archivos = new { Origen1 = resultado.Archivo1.Alias, Origen2 = resultado.Archivo2.Alias },
+                Resultado = new { Coinciden = resultado.EstructurasCoinciden }
+            };
+
+            await _auditService.LogActionAsync(userId, "Cuadratura: Validación Estructural", JsonSerializer.Serialize(auditDetails), ip);
+
+            if (System.IO.File.Exists(tempPath1)) System.IO.File.Delete(tempPath1);
+            if (System.IO.File.Exists(tempPath2)) System.IO.File.Delete(tempPath2);
+
+            // Almacenar en un archivo temporal JSON para exportar luego
+            string exportId = Guid.NewGuid().ToString();
+            string tempJsonPath = Path.Combine(Path.GetTempPath(), exportId + "_estruct.json");
+            System.IO.File.WriteAllText(tempJsonPath, JsonSerializer.Serialize(resultado));
+            ViewBag.ExportId = exportId;
+
+            return View("ResultadosEstructura", resultado);
+        }
+
+        [HttpPost]
+        public IActionResult ExportarExcelEstructura(string exportId)
+        {
+            if (string.IsNullOrEmpty(exportId)) return RedirectToAction("Index");
+            string tempJsonPath = Path.Combine(Path.GetTempPath(), exportId + "_estruct.json");
+            if (!System.IO.File.Exists(tempJsonPath)) return RedirectToAction("Index");
+
+            try
+            {
+                var jsonResultado = System.IO.File.ReadAllText(tempJsonPath);
+                var resultado = JsonSerializer.Deserialize<ResultadoEstructura>(jsonResultado);
+                var archivo = _cuadraturaService.GenerarExcelReporteEstructura(resultado);
+                System.IO.File.Delete(tempJsonPath);
+
+                return File(archivo, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Reporte_Estructura_{DateTime.Now:yyyyMMddHHmm}.xlsx");
             }
             catch { return RedirectToAction("Index"); }
         }
