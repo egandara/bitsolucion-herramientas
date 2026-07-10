@@ -156,7 +156,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="text-white fw-bold"><i class="bi bi-layout-text-window me-2 text-info"></i>Reporte de Estructura y Metadatos</h2>
         <div class="d-flex gap-2">
-            <!-- BOTÓN EXPORTAR EXCEL NUEVO -->
+            <!-- BOTÓN EXPORTAR EXCEL -->
             <form asp-action="ExportarExcelEstructura" method="post">
                 <input type="hidden" name="exportId" value="@ViewBag.ExportId" />
                 <button type="submit" class="btn btn-success fw-bold"><i class="bi bi-file-excel me-1"></i> Exportar Reporte</button>
@@ -233,55 +233,53 @@
         <div class="table-responsive">
             <table class="table table-dark table-hover table-sm w-100 align-middle" id="tablaEsquema">
                 <thead>
-                    <tr class="text-white-50">
+                    <tr class="text-white-50 text-center">
+                        <th colspan="3" class="border-end border-secondary">@Model.Archivo1.Alias</th>
+                        <th colspan="3" class="border-end border-secondary">@Model.Archivo2.Alias</th>
+                        <th rowspan="2" class="align-middle">Estado</th>
+                    </tr>
+                    <tr class="text-white-50 text-center">
                         <th>Columna</th>
-                        <th class="text-center">Tipo en @Model.Archivo1.Alias</th>
-                        <th class="text-center">Formato en @Model.Archivo1.Alias</th>
-                        <th class="text-center">Tipo en @Model.Archivo2.Alias</th>
-                        <th class="text-center">Formato en @Model.Archivo2.Alias</th>
-                        <th class="text-center">Estado</th>
+                        <th>Tipo</th>
+                        <th class="border-end border-secondary">Formato</th>
+                        <th>Columna</th>
+                        <th>Tipo</th>
+                        <th class="border-end border-secondary">Formato</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var comp in Model.ComparacionColumnas)
                     {
-                        string badgeClase = comp.Estado == "Match" ? "badge-estado-match" : (comp.Estado == "Conflicto de Tipo" ? "badge-estado-conflicto" : "badge-estado-faltante");
-                        string iconClase = comp.Estado == "Match" ? "bi-check-circle-fill" : (comp.Estado == "Conflicto de Tipo" ? "bi-x-circle-fill" : "bi-exclamation-circle-fill");
+                        string badgeClase = "badge-estado-faltante";
+                        string iconClase = "bi-exclamation-circle-fill";
+
+                        if (comp.Estado.StartsWith("Match Exacto")) { badgeClase = "badge-estado-match"; iconClase = "bi-check-circle-fill"; }
+                        else if (comp.Estado.Contains("Renombre") || comp.Estado.Contains("Casing")) { badgeClase = "bg-warning text-dark"; iconClase = "bi-info-circle-fill"; }
+                        else if (comp.Estado.Contains("Conflicto")) { badgeClase = "badge-estado-conflicto"; iconClase = "bi-x-circle-fill"; }
 
                         <tr>
-                            <td class="text-white fw-bold font-monospace small">@comp.NombreColumna</td>
-
                             <!-- ARCHIVO A -->
+                            <td class="text-white fw-bold font-monospace small">@comp.NombreColumnaA</td>
                             <td class="text-center text-white-50 small">@(comp.TipoArchivo1 == "N/A" ? "-" : comp.TipoArchivo1)</td>
-                            <td class="text-center">
+                            <td class="text-center border-end border-secondary">
                                 @if (comp.MetadatosColumnaA != null && comp.TipoArchivo1 != "N/A")
                                 {
                                     var mA = comp.MetadatosColumnaA;
                                     <div class="d-flex flex-column align-items-center gap-1">
                                         @if (mA.LongitudMinima == mA.LongitudMaxima && mA.LongitudMaxima > 0)
                                         {
-                                            <span class="format-badge fmt-fijo">Largo Fijo: @mA.LongitudMaxima</span>
+                                            <span class="format-badge fmt-fijo">Fijo: @mA.LongitudMaxima</span>
                                         }
                                         else
                                         {
 
                                             <span class="format-badge fmt-var">Var: @mA.LongitudMinima-@mA.LongitudMaxima</span>
                                         }
-
                                         @if (mA.TieneCerosALaIzquierda)
                                         {
                                             <span class="format-badge fmt-zero">Zero-Padded</span>
                                         }
-
-                                        @if (mA.PorcentajeNulos > 50)
-                                        {
-                                            <span class="format-badge fmt-null-warn">Nulos: @mA.PorcentajeNulos%</span>
-                                        }
-                                        else
-                                        {
-
-                                            <span class="format-badge fmt-null-ok">Nulos: @mA.PorcentajeNulos%</span>
-                                        }
+                                        <span class="format-badge @(mA.PorcentajeNulos > 50 ? "fmt-null-warn" : "fmt-null-ok")">Nulls: @mA.PorcentajeNulos%</span>
                                     </div>
                                 }
                                 else
@@ -292,36 +290,27 @@
                             </td>
 
                             <!-- ARCHIVO B -->
+                            <td class="text-white fw-bold font-monospace small">@comp.NombreColumnaB</td>
                             <td class="text-center text-white-50 small">@(comp.TipoArchivo2 == "N/A" ? "-" : comp.TipoArchivo2)</td>
-                            <td class="text-center">
+                            <td class="text-center border-end border-secondary">
                                 @if (comp.MetadatosColumnaB != null && comp.TipoArchivo2 != "N/A")
                                 {
                                     var mB = comp.MetadatosColumnaB;
                                     <div class="d-flex flex-column align-items-center gap-1">
                                         @if (mB.LongitudMinima == mB.LongitudMaxima && mB.LongitudMaxima > 0)
                                         {
-                                            <span class="format-badge fmt-fijo">Largo Fijo: @mB.LongitudMaxima</span>
+                                            <span class="format-badge fmt-fijo">Fijo: @mB.LongitudMaxima</span>
                                         }
                                         else
                                         {
 
                                             <span class="format-badge fmt-var">Var: @mB.LongitudMinima-@mB.LongitudMaxima</span>
                                         }
-
                                         @if (mB.TieneCerosALaIzquierda)
                                         {
                                             <span class="format-badge fmt-zero">Zero-Padded</span>
                                         }
-
-                                        @if (mB.PorcentajeNulos > 50)
-                                        {
-                                            <span class="format-badge fmt-null-warn">Nulos: @mB.PorcentajeNulos%</span>
-                                        }
-                                        else
-                                        {
-
-                                            <span class="format-badge fmt-null-ok">Nulos: @mB.PorcentajeNulos%</span>
-                                        }
+                                        <span class="format-badge @(mB.PorcentajeNulos > 50 ? "fmt-null-warn" : "fmt-null-ok")">Nulls: @mB.PorcentajeNulos%</span>
                                     </div>
                                 }
                                 else
@@ -333,7 +322,7 @@
 
                             <!-- ESTADO -->
                             <td class="text-center">
-                                <span class="badge @badgeClase px-2 py-1"><i class="bi @iconClase me-1"></i>@comp.Estado</span>
+                                <span class="badge @badgeClase px-2 py-1 shadow-sm"><i class="bi @iconClase me-1"></i>@comp.Estado</span>
                             </td>
                         </tr>
                     }
@@ -353,7 +342,7 @@
         $('#tablaEsquema').DataTable({
         "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" },
         "pageLength": 25,
-        "order": [[ 5, "asc" ], [0, "asc"]] // Ordena por estado para ver los errores arriba
+        "order": [[ 6, "asc" ], [0, "asc"]] // Ordena por estado (índice 6 en la tabla de 7 columnas) para ver los errores arriba
         });
         });
     </script>
