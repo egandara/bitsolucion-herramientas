@@ -385,6 +385,11 @@ namespace NotebookValidator.Web.Services
                 if (info.LongitudMinima == int.MaxValue) info.LongitudMinima = 0;
                 info.PorcentajeNulos = meta.TotalFilasMuestra > 0 ? Math.Round((double)info.NulosDetectados / meta.TotalFilasMuestra * 100, 2) : 100;
 
+                // --- LÓGICA SMART PROFILING ---
+                string nLower = info.Nombre.ToLower();
+                bool esPalabraClave = nLower.Contains("id") || nLower.Contains("cod") || nLower.Contains("rut") || nLower.Contains("key");
+                info.EsPosibleLlave = (info.PorcentajeNulos == 0 && esPalabraClave);
+
                 if (tiposDetectados.Count == 0) info.TipoInferido = "Nulo/Vacío";
                 else
                 {
@@ -473,6 +478,7 @@ namespace NotebookValidator.Web.Services
             // ── HOJA 1: REPORTE DE ESTRUCTURAS ──
             var ws1 = workbook.Worksheets.Add("Mapeo de Estructuras");
             ws1.ShowGridLines = false;
+            ws1.SheetView.FreezeRows(12);
 
             ws1.Cell("A1").Value = "REPORTE DE VALIDACIÓN ESTRUCTURAL";
             var titleRange = ws1.Range("A1:G2");
@@ -567,7 +573,13 @@ namespace NotebookValidator.Web.Services
                 rM++;
                 for (int i = 0; i < resultado.MuestraArchivo1.Filas.Count; i++)
                 {
-                    for (int c = 0; c < resultado.MuestraArchivo1.Filas[i].Count; c++) { wsM.Cell(rM, c + 1).Value = resultado.MuestraArchivo1.Filas[i][c]; wsM.Cell(rM, c + 1).Style.Fill.SetBackgroundColor(XLColor.White); }
+                    for (int c = 0; c < resultado.MuestraArchivo1.Filas[i].Count; c++)
+                    {
+                        var celda = wsM.Cell(rM, c + 1);
+                        celda.Style.NumberFormat.Format = "@"; // <-- CAMBIO A FORMATO TEXTO CRUDO
+                        celda.Value = resultado.MuestraArchivo1.Filas[i][c];
+                        celda.Style.Fill.SetBackgroundColor(XLColor.White);
+                    }
                     rM++;
                 }
                 rM += 2;
@@ -582,7 +594,13 @@ namespace NotebookValidator.Web.Services
                 rM++;
                 for (int i = 0; i < resultado.MuestraArchivo2.Filas.Count; i++)
                 {
-                    for (int c = 0; c < resultado.MuestraArchivo2.Filas[i].Count; c++) { wsM.Cell(rM, c + 1).Value = resultado.MuestraArchivo2.Filas[i][c]; wsM.Cell(rM, c + 1).Style.Fill.SetBackgroundColor(XLColor.White); }
+                    for (int c = 0; c < resultado.MuestraArchivo2.Filas[i].Count; c++)
+                    {
+                        var celda = wsM.Cell(rM, c + 1);
+                        celda.Style.NumberFormat.Format = "@"; // <-- CAMBIO A FORMATO TEXTO CRUDO
+                        celda.Value = resultado.MuestraArchivo2.Filas[i][c];
+                        celda.Style.Fill.SetBackgroundColor(XLColor.White);
+                    }
                     rM++;
                 }
             }
@@ -636,6 +654,7 @@ namespace NotebookValidator.Web.Services
         public bool TieneCerosALaIzquierda { get; set; }
         public int NulosDetectados { get; set; }
         public double PorcentajeNulos { get; set; }
+        public bool EsPosibleLlave { get; set; }
     }
 
     public class ComparacionColumna
