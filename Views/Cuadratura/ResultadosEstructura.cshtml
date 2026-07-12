@@ -227,9 +227,25 @@
         </div>
     </div>
 
+    @{
+        int totalCols = Model.ComparacionColumnas.Count;
+        int matchesCols = Model.ComparacionColumnas.Count(c => c.Estado.StartsWith("Match Exacto"));
+        int conflictosCols = totalCols - matchesCols;
+    }
+
     <!-- TABLA DE COMPARACIÓN LÓGICA -->
     <div class="card bg-dark border-secondary p-3 rounded shadow">
-        <h6 class="text-white fw-bold mb-3"><i class="bi bi-list-columns-reverse text-warning me-2"></i>Mapeo de Columnas y Patrones (Profiling)</h6>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="text-white fw-bold mb-0"><i class="bi bi-list-columns-reverse text-warning me-2"></i>Mapeo de Columnas y Patrones (Profiling)</h6>
+
+            <!-- PILLS DE FILTRADO -->
+            <div class="btn-group shadow-sm" role="group">
+                <button type="button" class="btn btn-outline-info btn-filter active" data-filter="todos">Todos (@totalCols)</button>
+                <button type="button" class="btn btn-outline-danger btn-filter" data-filter="conflictos">Avisos/Conflictos (@conflictosCols)</button>
+                <button type="button" class="btn btn-outline-success btn-filter" data-filter="matches">Coincidencias (@matchesCols)</button>
+            </div>
+        </div>
+
         <div class="table-responsive">
             <table class="table table-dark table-hover table-sm w-100 align-middle" id="tablaEsquema">
                 <thead>
@@ -259,7 +275,13 @@
 
                         <tr>
                             <!-- ARCHIVO A -->
-                            <td class="text-white fw-bold font-monospace small">@comp.NombreColumnaA</td>
+                            <td class="text-white fw-bold font-monospace small">
+                                @comp.NombreColumnaA
+                                @if (comp.MetadatosColumnaA?.EsPosibleLlave == true)
+                                {
+                                    <i class="bi bi-key-fill text-warning ms-1" data-bs-toggle="tooltip" title="Posible Llave Primaria (0% nulos + Patrón de ID)"></i>
+                                }
+                            </td>
                             <td class="text-center text-white-50 small">@(comp.TipoArchivo1 == "N/A" ? "-" : comp.TipoArchivo1)</td>
                             <td class="text-center border-end border-secondary">
                                 @if (comp.MetadatosColumnaA != null && comp.TipoArchivo1 != "N/A")
@@ -272,7 +294,6 @@
                                         }
                                         else
                                         {
-
                                             <span class="format-badge fmt-var">Var: @mA.LongitudMinima-@mA.LongitudMaxima</span>
                                         }
                                         @if (mA.TieneCerosALaIzquierda)
@@ -284,13 +305,18 @@
                                 }
                                 else
                                 {
-
                                     <span class="text-white-50">-</span>
                                 }
                             </td>
 
                             <!-- ARCHIVO B -->
-                            <td class="text-white fw-bold font-monospace small">@comp.NombreColumnaB</td>
+                            <td class="text-white fw-bold font-monospace small">
+                                @comp.NombreColumnaB
+                                @if (comp.MetadatosColumnaB?.EsPosibleLlave == true)
+                                {
+                                    <i class="bi bi-key-fill text-warning ms-1" data-bs-toggle="tooltip" title="Posible Llave Primaria (0% nulos + Patrón de ID)"></i>
+                                }
+                            </td>
                             <td class="text-center text-white-50 small">@(comp.TipoArchivo2 == "N/A" ? "-" : comp.TipoArchivo2)</td>
                             <td class="text-center border-end border-secondary">
                                 @if (comp.MetadatosColumnaB != null && comp.TipoArchivo2 != "N/A")
@@ -303,7 +329,6 @@
                                         }
                                         else
                                         {
-
                                             <span class="format-badge fmt-var">Var: @mB.LongitudMinima-@mB.LongitudMaxima</span>
                                         }
                                         @if (mB.TieneCerosALaIzquierda)
@@ -315,7 +340,6 @@
                                 }
                                 else
                                 {
-
                                     <span class="text-white-50">-</span>
                                 }
                             </td>
@@ -339,10 +363,40 @@
 
     <script>
         $(document).ready(function() {
-        $('#tablaEsquema').DataTable({
+        // Inicializar DataTables
+        let tablaEsquema = $('#tablaEsquema').DataTable({
         "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" },
         "pageLength": 25,
-        "order": [[ 6, "asc" ], [0, "asc"]] // Ordena por estado (índice 6 en la tabla de 7 columnas) para ver los errores arriba
+        "order": [[ 6, "asc" ], [0, "asc"]] // Ordena por estado (índice 6) para ver los errores arriba
+        });
+
+        // Lógica Custom para filtrar la tabla con los Pills
+        $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+        if (settings.nTable.id !== 'tablaEsquema') return true;
+
+        var filtro = $('.btn-filter.active').data('filter');
+        if (filtro === 'todos') return true;
+
+        var estado = data[6] || "";
+        var esMatch = estado.indexOf("Match Exacto") !== -1;
+
+        if (filtro === 'matches') return esMatch;
+        if (filtro === 'conflictos') return !esMatch;
+
+        return true;
+        });
+
+        // Evento click de los Pills
+        $('.btn-filter').on('click', function() {
+        $('.btn-filter').removeClass('active');
+        $(this).addClass('active');
+        tablaEsquema.draw();
+        });
+
+        // Inicializar Tooltips de Bootstrap (para el ícono de llave)
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
         });
         });
     </script>
