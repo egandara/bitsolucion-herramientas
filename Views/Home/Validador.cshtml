@@ -264,6 +264,16 @@
         background-color: #0f111a;
         border: 1px solid #495057;
     }
+
+    /* Ajustes visuales para el Modal de Cotización */
+    #cotizacionModal .text-muted {
+        color: #c9d1d9 !important; /* Gris mucho más claro y legible */
+    }
+
+    #cotizacionModal ::placeholder {
+        color: #8b949e !important; /* Gris claro para los placeholders "Ej. Generar..." */
+        opacity: 1;
+    }
 </style>
 
 <div class="text-center">
@@ -320,9 +330,16 @@
                 <button type="button" id="btn-download-fixed" class="btn btn-outline-warning fw-bold" style="display: none;" onclick="downloadCorrectedNotebook()">
                     <i class="bi bi-magic me-1"></i> Descargar Versión Corregida
                 </button>
-                <a asp-action="ExportToExcel" asp-controller="Home" id="export-button" class="btn btn-success fw-bold" style="display: none;">
-                    <i class="bi bi-file-earmark-excel me-1"></i> Exportar a Excel
-                </a>
+                <div class="d-flex align-items-center gap-2">
+                    <!-- BOTÓN QUE ABRE EL MODAL -->
+                    <button type="button" id="export-cotizacion-button" class="btn btn-outline-info fw-bold" style="display: none;" data-bs-toggle="modal" data-bs-target="#cotizacionModal" onclick="abrirModalCotizacion()">
+                        <i class="bi bi-briefcase-fill me-1"></i> Configurar Cotización
+                    </button>
+
+                    <a asp-action="ExportToExcel" asp-controller="Home" id="export-button" class="btn btn-success fw-bold" style="display: none;">
+                        <i class="bi bi-file-earmark-excel me-1"></i> Exportar a Excel
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -391,6 +408,234 @@
         </div>
     </div>
 </div>
+
+<!-- MODAL DE COTIZACIÓN -->
+<div class="modal fade" id="cotizacionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="background-color: #0d1117; border: 1px solid #ffc107;">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-warning fw-bold"><i class="bi bi-calculator-fill me-2"></i>Calculadora de Esfuerzo (Unity Catalog)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-white">
+                <div class="row g-4">
+                    <!-- FASE 1: CÓDIGO -->
+                    <div class="col-12">
+                        <h6 class="text-info border-bottom border-secondary pb-2">Fase 1: Refactorización de Notebooks</h6>
+                        <label class="form-label small text-muted">Dificultad del Código Fuente</label>
+                        <div class="btn-group w-100 shadow-sm" role="group">
+                            <input type="radio" class="btn-check btn-dif" name="difRadio" id="d1" value="0.5" data-label="Muy Fácil" onchange="recalcularLive()">
+                            <label class="btn btn-outline-success" for="d1">Muy Fácil</label>
+
+                            <input type="radio" class="btn-check btn-dif" name="difRadio" id="d2" value="0.8" data-label="Fácil" onchange="recalcularLive()">
+                            <label class="btn btn-outline-info" for="d2">Fácil</label>
+
+                            <input type="radio" class="btn-check btn-dif" name="difRadio" id="d3" value="1.0" data-label="Medio" checked onchange="recalcularLive()">
+                            <label class="btn btn-outline-primary" for="d3">Medio</label>
+
+                            <input type="radio" class="btn-check btn-dif" name="difRadio" id="d4" value="1.5" data-label="Difícil" onchange="recalcularLive()">
+                            <label class="btn btn-outline-warning" for="d4">Difícil</label>
+
+                            <input type="radio" class="btn-check btn-dif" name="difRadio" id="d5" value="2.0" data-label="Muy Difícil" onchange="recalcularLive()">
+                            <label class="btn btn-outline-danger" for="d5">Muy Difícil</label>
+                        </div>
+                        <div class="text-end mt-1"><small class="text-warning fw-bold" id="lbl-horas-refactor">0.0 hrs</small></div>
+                    </div>
+
+                    <!-- FASE 2 y 3: ORQUESTACIÓN Y QA -->
+                    <div class="col-md-6">
+                        <h6 class="text-info border-bottom border-secondary pb-2">Fase 2: Orquestación</h6>
+                        <label class="form-label small text-muted">Cantidad de Jobs (Databricks)</label>
+                        <input type="number" id="cotiz-jobs" class="form-control bg-dark text-white border-secondary mb-2" value="0" min="0" oninput="recalcularLive()">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="cotiz-cicd" onchange="recalcularLive()">
+                            <label class="form-check-label small text-muted">Incluir YAMLs de CI/CD</label>
+                        </div>
+                        <div class="text-end mt-1"><small class="text-warning fw-bold" id="lbl-horas-orq">0.0 hrs</small></div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h6 class="text-info border-bottom border-secondary pb-2">Fase 3: QA y Cuadratura</h6>
+                        <label class="form-label small text-muted">Tablas Finales a Cuadrar</label>
+                        <input type="number" id="cotiz-tablas" class="form-control bg-dark text-white border-secondary" value="0" min="0" oninput="recalcularLive()">
+                        <div class="text-end mt-1"><small class="text-warning fw-bold" id="lbl-horas-qa">0.0 hrs</small></div>
+                    </div>
+
+                    <!-- FASE 4: CUSTOM -->
+                    <div class="col-12">
+                        <h6 class="text-info border-bottom border-secondary pb-2 d-flex justify-content-between align-items-center">
+                            Fase 4: Tareas Adicionales
+                            <button type="button" class="btn btn-sm btn-outline-light py-0" onclick="agregarTareaCustom()">+ Agregar</button>
+                        </h6>
+                        <div id="custom-tasks-container"></div>
+                        <div class="text-end mt-1"><small class="text-warning fw-bold" id="lbl-horas-custom">0.0 hrs</small></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary d-flex justify-content-between bg-dark">
+                <div>
+                    <span class="text-muted small d-block">Esfuerzo Total Estimado</span>
+                    <h3 class="text-success fw-bold mb-0" id="lbl-horas-total">0.0 hrs</h3>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-outline-light me-2" data-bs-dismiss="modal">Cancelar</button>
+                    <!-- BOTÓN ANIMADO -->
+                    <button type="button" id="btn-generar-cotizacion" class="btn btn-warning fw-bold" onclick="descargarCotizacion()">
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true" id="spinner-cotizacion"></span>
+                        <i class="bi bi-file-excel me-1" id="icon-cotizacion"></i>
+                        <span id="text-cotizacion">Generar Excel</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let baseRefactorHrs = 0;
+
+    function abrirModalCotizacion() {
+        if (!window.currentFindings) return;
+
+        let configReglas = {
+            "Celdas con Print": { costo: 0.1, global: true }, "Import no usado": { costo: 0.1, global: true },
+            "Variable de Widget no usada": { costo: 0.1, global: true }, "Header Incorrecto": { costo: 0.1, global: true },
+            "Footer Incorrecto": { costo: 0.1, global: true }, "Código después de Mensaje Final": { costo: 0.1, global: true },
+            "Uso de lenguaje mixto": { costo: 0.5, global: true }, "SQL:": { costo: 1.0, global: false },
+            "SELECT *": { costo: 0.5, global: false }, "Bases de Datos Hardcodeadas": { costo: 1.0, global: false },
+            "Definición local de sqlsafe": { costo: 1.0, global: false }, "Función declarada localmente": { costo: 0.5, global: false }
+        };
+
+        let cobrosGlobales = new Set();
+        baseRefactorHrs = 0;
+
+        window.currentFindings.forEach(f => {
+            let type = f.FindingType || f.findingType;
+            let file = f.FileName || f.fileName;
+            let matchedKey = Object.keys(configReglas).find(k => type.startsWith(k) || type.includes(k));
+            let config = matchedKey ? configReglas[matchedKey] : { costo: 0.2, global: false };
+
+            if(config.global) {
+                let track = file + "_" + type;
+                if(!cobrosGlobales.has(track)) { cobrosGlobales.add(track); baseRefactorHrs += config.costo; }
+            } else { baseRefactorHrs += config.costo; }
+        });
+
+        recalcularLive();
+    }
+
+    function agregarTareaCustom() {
+        const div = document.createElement('div');
+        div.className = 'd-flex gap-2 mb-2 custom-task-row';
+        div.innerHTML = `
+            <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary custom-task-name" placeholder="Ej. Generar archivo plano">
+            <input type="number" class="form-control form-control-sm bg-dark text-white border-secondary custom-task-hrs" placeholder="Horas" style="width: 100px;" oninput="recalcularLive()">
+            <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove(); recalcularLive()"><i class="bi bi-trash"></i></button>
+        `;
+        document.getElementById('custom-tasks-container').appendChild(div);
+    }
+
+    function recalcularLive() {
+        let multRadio = document.querySelector('.btn-dif:checked');
+        let refactor = baseRefactorHrs * parseFloat(multRadio.value);
+
+        let jobs = parseInt(document.getElementById('cotiz-jobs').value) || 0;
+        let cicd = document.getElementById('cotiz-cicd').checked;
+        let orquestacion = (jobs * 2.0) + (cicd && jobs > 0 ? (jobs * 1.0) + 4.0 : 0);
+
+        let qa = (parseInt(document.getElementById('cotiz-tablas').value) || 0) * 3.0;
+
+        let custom = 0;
+        document.querySelectorAll('.custom-task-hrs').forEach(inp => custom += parseFloat(inp.value) || 0);
+
+        document.getElementById('lbl-horas-refactor').innerText = refactor.toFixed(1) + ' hrs';
+        document.getElementById('lbl-horas-orq').innerText = orquestacion.toFixed(1) + ' hrs';
+        document.getElementById('lbl-horas-qa').innerText = qa.toFixed(1) + ' hrs';
+        document.getElementById('lbl-horas-custom').innerText = custom.toFixed(1) + ' hrs';
+        document.getElementById('lbl-horas-total').innerText = (refactor + orquestacion + qa + custom).toFixed(1) + ' hrs';
+    }
+
+    function descargarCotizacion() {
+        // 1. Armar el objeto de petición
+        let req = {
+            AnalysisId: 0,
+            DificultadLabel: document.querySelector('.btn-dif:checked').dataset.label,
+            Multiplicador: parseFloat(document.querySelector('.btn-dif:checked').value),
+            CantidadJobs: parseInt(document.getElementById('cotiz-jobs').value) || 0,
+            CantidadTablas: parseInt(document.getElementById('cotiz-tablas').value) || 0,
+            IncluirCicd: document.getElementById('cotiz-cicd').checked,
+            CustomTasks: []
+        };
+
+        document.querySelectorAll('.custom-task-row').forEach(row => {
+            let n = row.querySelector('.custom-task-name').value;
+            let h = parseFloat(row.querySelector('.custom-task-hrs').value) || 0;
+            if(n && h > 0) req.CustomTasks.push({ Nombre: n, Horas: h });
+        });
+
+        // 2. Animar el botón
+        const btn = document.getElementById('btn-generar-cotizacion');
+        const spinner = document.getElementById('spinner-cotizacion');
+        const icon = document.getElementById('icon-cotizacion');
+        const text = document.getElementById('text-cotizacion');
+
+        btn.disabled = true;
+        spinner.classList.remove('d-none');
+        icon.classList.add('d-none');
+        text.innerText = ' Generando...';
+
+        if (typeof toastr !== 'undefined') toastr.info("Calculando presupuesto y generando Excel...");
+
+        // 3. Ejecutar la petición Fetch
+        const formData = new FormData();
+        formData.append('cotizacionDataJson', JSON.stringify(req));
+
+        fetch('/Home/ExportToCotizacionExcel', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("Error al generar el documento");
+
+            // Intentar extraer el nombre que envía el servidor
+            const disposition = res.headers.get('Content-Disposition');
+            let filename = `Presupuesto_UC_${Date.now()}.xlsx`;
+            if (disposition && disposition.indexOf('attachment') !== -1) {
+                var matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+                if (matches != null && matches[1]) { filename = matches[1].replace(/['"]/g, ''); }
+            }
+            return res.blob().then(blob => ({ blob, filename }));
+        })
+        .then(({ blob, filename }) => {
+            // Gatillar la descarga
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+
+            if (typeof toastr !== 'undefined') toastr.success("¡Cotización generada exitosamente!");
+
+            // Cerrar el modal suavemente después de la descarga
+            setTimeout(() => {
+                bootstrap.Modal.getInstance(document.getElementById('cotizacionModal')).hide();
+            }, 1000);
+        })
+        .catch(err => {
+            if (typeof toastr !== 'undefined') toastr.error("Ocurrió un error al generar la cotización.");
+        })
+        .finally(() => {
+            // Restaurar el botón
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+            icon.classList.remove('d-none');
+            text.innerText = 'Generar Excel';
+        });
+    }
+</script>
 
 @section Scripts {
     <script src="~/js/home-index.js" asp-append-version="true"></script>

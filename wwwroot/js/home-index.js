@@ -169,6 +169,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.getElementById('summary-card').style.display = 'none';
         document.getElementById('export-button').style.display = 'none';
+        document.getElementById('export-cotizacion-button').style.display = 'none';
 
         const bulkBtn = document.getElementById('btn-bulk-fix');
         if (bulkBtn) bulkBtn.style.display = 'none';
@@ -195,12 +196,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 window.detectedVars = data.fileVariables;
+                window.currentFindings = data.findings; // <-- NUEVA LÍNEA PARA EL MODAL
 
                 renderSummary(data.summary);
                 renderResultsTable(data.findings);
 
                 if (data.hasResults) {
                     document.getElementById('export-button').style.display = 'inline-block';
+                    document.getElementById('export-cotizacion-button').style.display = 'inline-block';
 
                     const hasCleanable = data.findings.some(f =>
                         f.findingType.includes("Librerias") || f.findingType.includes("Widgets")

@@ -659,6 +659,202 @@ namespace NotebookValidator.Web.Services
             return ms.ToArray();
         }
 
+        // ===================================================================================
+        // MOTOR DE ESTIMACIÓN DE ESFUERZO AVANZADO (FASES MACRO Y CUSTOM)
+        // ===================================================================================
+        public byte[] GenerateCotizacionExcelBytes(List<Finding> findings, AnalysisRun runInfo, string logoPath, CotizacionRequest req)
+        {
+            var configReglas = new Dictionary<string, (double Costo, bool EsGlobal)>
+            {
+                { "Celdas con Print", (0.1, true) },
+                { "Import no usado", (0.1, true) },
+                { "Variable de Widget no usada", (0.1, true) },
+                { "Header Incorrecto", (0.1, true) },
+                { "Footer Incorrecto", (0.1, true) },
+                { "Código después de Mensaje Final", (0.1, true) },
+                { "Uso de lenguaje mixto", (0.5, true) },
+                { "SQL:", (1.0, false) },
+                { "SELECT *", (0.5, false) },
+                { "Bases de Datos Hardcodeadas", (1.0, false) },
+                { "Definición local de sqlsafe", (1.0, false) },
+                { "Función declarada localmente", (0.5, false) }
+            };
+
+            var hallazgosConCosto = new List<dynamic>();
+            var cobrosGlobalesAplicados = new HashSet<string>();
+
+            foreach (var f in findings)
+            {
+                var matchedKey = configReglas.Keys.FirstOrDefault(k => f.FindingType.StartsWith(k, StringComparison.OrdinalIgnoreCase) || f.FindingType.Contains(k));
+                var config = matchedKey != null ? configReglas[matchedKey] : (Costo: 0.2, EsGlobal: false);
+                double costoAplicado = config.Costo;
+
+                if (config.EsGlobal)
+                {
+                    string trackingKey = $"{f.FileName}_{f.FindingType}";
+                    if (cobrosGlobalesAplicados.Contains(trackingKey)) costoAplicado = 0;
+                    else cobrosGlobalesAplicados.Add(trackingKey);
+                }
+
+                hallazgosConCosto.Add(new { Original = f, CostoAplicado = costoAplicado, ModoCobro = config.EsGlobal ? "Por Notebook" : "Por Ocurrencia" });
+            }
+
+            // MATEMÁTICA DE LAS 4 FASES
+            double horasRefactorBase = hallazgosConCosto.Sum(x => (double)x.CostoAplicado);
+            double horasRefactor = horasRefactorBase * req.Multiplicador;
+
+            double horasOrqJobs = req.CantidadJobs * 2.0;
+            double horasOrqCicd = req.IncluirCicd && req.CantidadJobs > 0 ? (req.CantidadJobs * 1.0) + 4.0 : 0;
+            double horasOrquestacion = horasOrqJobs + horasOrqCicd;
+
+            double horasQa = req.CantidadTablas * 3.0;
+            double horasCustom = req.CustomTasks?.Sum(t => t.Horas) ?? 0;
+
+            double horasTotalProyecto = horasRefactor + horasOrquestacion + horasQa + horasCustom;
+
+            using var workbook = new XLWorkbook();
+
+            // ─────────────────────────────────────────────────────────────
+            // HOJA 1: RESUMEN EJECUTIVO (EL PRESUPUESTO)
+            // ─────────────────────────────────────────────────────────────
+            var ws1 = workbook.Worksheets.Add("Resumen Ejecutivo");
+            ws1.ShowGridLines = false;
+
+            // Cabecera oscura corporativa
+            ws1.Range("A1:H4").Style.Fill.SetBackgroundColor(XLColor.FromArgb(11, 13, 22));
+            if (!string.IsNullOrEmpty(logoPath) && File.Exists(logoPath)) ws1.AddPicture(logoPath).MoveTo(ws1.Cell("B2")).Scale(0.45);
+
+            ws1.Cell("D3").Value = "PRESUPUESTO ESTIMADO DE MIGRACIÓN (UNITY CATALOG)";
+            ws1.Range("D3:H3").Merge().Style.Font.SetBold().Font.SetFontSize(15).Font.SetFontColor(XLColor.White).Alignment.SetVertical(XLAlignmentVerticalValues.Center);
+
+            // Bloque Izquierdo: Parámetros Base
+            ws1.Cell("B6").Value = "PARÁMETROS DEL PROYECTO";
+            ws1.Range("B6:C6").Merge().Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(13, 202, 240)).Font.SetFontColor(XLColor.Black);
+
+            ws1.Cell("B7").Value = "Total Notebooks Analizados:"; ws1.Cell("C7").Value = findings.Select(f => f.FileName).Distinct().Count();
+            ws1.Cell("B8").Value = "Complejidad de Refactorización:"; ws1.Cell("C8").Value = $"{req.DificultadLabel} ({req.Multiplicador}x)";
+            ws1.Cell("B9").Value = "Jobs a Orquestar:"; ws1.Cell("C9").Value = req.CantidadJobs;
+            ws1.Cell("B10").Value = "Tablas a Cuadrar (QA):"; ws1.Cell("C10").Value = req.CantidadTablas;
+
+            ws1.Range("B7:B10").Style.Font.SetBold();
+            ws1.Range("B6:C10").Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin).Border.SetInsideBorder(XLBorderStyleValues.Thin);
+
+            // Bloque Derecho: Desglose de Fases
+            ws1.Cell("E6").Value = "DESGLOSE DE ESFUERZO (Horas)";
+            ws1.Range("E6:F6").Merge().Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(11, 13, 22)).Font.SetFontColor(XLColor.White);
+
+            ws1.Cell("E7").Value = "Fase 1: Refactorización de Código"; ws1.Cell("F7").Value = Math.Round(horasRefactor, 1);
+            ws1.Cell("E8").Value = "Fase 2: Orquestación y CI/CD"; ws1.Cell("F8").Value = Math.Round(horasOrquestacion, 1);
+            ws1.Cell("E9").Value = "Fase 3: Calidad y Cuadratura (QA)"; ws1.Cell("F9").Value = Math.Round(horasQa, 1);
+            ws1.Cell("E10").Value = "Fase 4: Tareas Adicionales"; ws1.Cell("F10").Value = Math.Round(horasCustom, 1);
+
+            ws1.Cell("E11").Value = "ESFUERZO TOTAL DEL PROYECTO:"; ws1.Cell("F11").Value = Math.Round(horasTotalProyecto, 1);
+
+            ws1.Range("E7:F10").Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin).Border.SetInsideBorder(XLBorderStyleValues.Thin);
+            ws1.Range("E11:F11").Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(255, 193, 7)).Border.SetOutsideBorder(XLBorderStyleValues.Medium);
+
+            // Tabla inferior elegante para Custom Tasks
+            if (req.CustomTasks != null && req.CustomTasks.Any())
+            {
+                ws1.Cell("B13").Value = "Detalle de Tareas Adicionales (Fase 4)";
+                ws1.Range("B13:C13").Merge().Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(11, 13, 22)).Font.SetFontColor(XLColor.White);
+
+                ws1.Cell("B14").Value = "Descripción de la Tarea";
+                ws1.Cell("C14").Value = "Horas Estimadas";
+                ws1.Range("B14:C14").Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.LightGray);
+
+                int row = 15;
+                foreach (var t in req.CustomTasks)
+                {
+                    ws1.Cell(row, 2).Value = t.Nombre;
+                    ws1.Cell(row, 3).Value = Math.Round(t.Horas, 1);
+                    row++;
+                }
+                ws1.Range($"B14:C{row - 1}").Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin).Border.SetInsideBorder(XLBorderStyleValues.Thin);
+            }
+            ws1.Columns().AdjustToContents();
+
+            // ─────────────────────────────────────────────────────────────
+            // HOJA 2: MATRIZ DE ESFUERZO UNIFICADA (TODAS LAS FASES)
+            // ─────────────────────────────────────────────────────────────
+            var ws2 = workbook.Worksheets.Add("Matriz de Esfuerzo");
+            ws2.Cell("A1").Value = "JUSTIFICACIÓN DETALLADA DE HORAS (TODAS LAS FASES)";
+            ws2.Range("A1:E1").Merge().Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(11, 13, 22)).Font.SetFontColor(XLColor.White);
+
+            var matrizUnificada = new List<dynamic>();
+
+            // Agregamos métricas de la Fase 1 (Código ajustado por multiplicador)
+            var matrizReglas = hallazgosConCosto.GroupBy(x => x.Original.FindingType)
+                .Select(g => new {
+                    Fase = "1. Refactorización",
+                    Tarea = (string)g.Key,
+                    Ocurrencias = g.Count().ToString(),
+                    Modalidad = (string)g.First().ModoCobro,
+                    HorasTotales = Math.Round(g.Sum(x => (double)x.CostoAplicado) * req.Multiplicador, 1)
+                });
+            matrizUnificada.AddRange(matrizReglas);
+
+            // Agregamos métricas de la Fase 2 (Orquestación)
+            if (req.CantidadJobs > 0)
+                matrizUnificada.Add(new { Fase = "2. Orquestación", Tarea = "Configuración y migración de Jobs", Ocurrencias = req.CantidadJobs.ToString(), Modalidad = "Por Job", HorasTotales = Math.Round(horasOrqJobs, 1) });
+
+            if (req.IncluirCicd && req.CantidadJobs > 0)
+                matrizUnificada.Add(new { Fase = "2. Orquestación", Tarea = "Implementación CI/CD (YAMLs)", Ocurrencias = $"Global + {req.CantidadJobs}", Modalidad = "Fijo + Por Job", HorasTotales = Math.Round(horasOrqCicd, 1) });
+
+            // Agregamos métricas de la Fase 3 (QA)
+            if (req.CantidadTablas > 0)
+                matrizUnificada.Add(new { Fase = "3. Calidad (QA)", Tarea = "Cuadratura y Certificación de Tablas", Ocurrencias = req.CantidadTablas.ToString(), Modalidad = "Por Tabla", HorasTotales = Math.Round(horasQa, 1) });
+
+            // Agregamos métricas de la Fase 4 (Custom)
+            if (req.CustomTasks != null)
+            {
+                foreach (var ct in req.CustomTasks)
+                    matrizUnificada.Add(new { Fase = "4. Tareas Custom", Tarea = ct.Nombre, Ocurrencias = "1", Modalidad = "Manual", HorasTotales = Math.Round(ct.Horas, 1) });
+            }
+
+            ws2.Cell(3, 1).InsertTable(matrizUnificada).Theme = XLTableTheme.TableStyleMedium9;
+            ws2.Columns().AdjustToContents();
+
+            // ─────────────────────────────────────────────────────────────
+            // HOJA 3: BACKLOG TÉCNICO (EL RECUPERADO)
+            // ─────────────────────────────────────────────────────────────
+            var ws3 = workbook.Worksheets.Add("Backlog Técnico (Código)");
+            var backlogData = hallazgosConCosto.Select(x => new
+            {
+                Archivo = (string)x.Original.FileName,
+                Problema = (string)x.Original.FindingType,
+                Severidad = (string)x.Original.Severity,
+                Ubicacion = $"Celda {x.Original.CellNumber}, Lín {x.Original.LineNumber}",
+                Detalle = (string)x.Original.Details,
+                HorasBaseAsignadas = Math.Round((double)x.CostoAplicado, 2)
+            }).ToList();
+
+            ws3.Cell(1, 1).InsertTable(backlogData).Theme = XLTableTheme.TableStyleLight10;
+            ws3.Columns().AdjustToContents();
+
+            using var ms = new MemoryStream();
+            workbook.SaveAs(ms);
+            return ms.ToArray();
+        }
+
+        // CLASES DTO PARA RECIBIR DATOS DEL MODAL
+        public class CotizacionRequest
+        {
+            public int AnalysisId { get; set; }
+            public string DificultadLabel { get; set; }
+            public double Multiplicador { get; set; }
+            public int CantidadJobs { get; set; }
+            public int CantidadTablas { get; set; }
+            public bool IncluirCicd { get; set; }
+            public List<CotizacionCustomTask> CustomTasks { get; set; } = new List<CotizacionCustomTask>();
+        }
+
+        public class CotizacionCustomTask
+        {
+            public string Nombre { get; set; }
+            public double Horas { get; set; }
+        }
+
         public AnalysisSummary CreateSummary(List<Finding> findings, int analysisRunId, DateTime timestamp)
         {
             var summary = new AnalysisSummary

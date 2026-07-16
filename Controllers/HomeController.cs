@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using NotebookValidator.Web.Data;
 using NotebookValidator.Web.Models;
 using NotebookValidator.Web.Services;
@@ -13,7 +14,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+using static NotebookValidator.Web.Services.NotebookValidatorService;
 
 namespace NotebookValidator.Web.Controllers
 {
@@ -309,6 +310,28 @@ namespace NotebookValidator.Web.Controllers
             string logoPath = Path.Combine(_hostEnvironment.WebRootPath, "img", "Bit-solucion-logo-menu.png");
             byte[] excelFile = _validatorService.GenerateExcelReportBytes(findings, run, logoPath);
             return File(excelFile, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Reporte_{DateTime.Now:yyyyMMdd}.xlsx");
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ExportToCotizacionExcel([FromForm] string cotizacionDataJson)
+        {
+            var json = HttpContext.Session.GetString("ValidationResults");
+            if (string.IsNullOrEmpty(json) || string.IsNullOrEmpty(cotizacionDataJson)) return RedirectToAction("Validador");
+
+            var findings = JsonSerializer.Deserialize<List<Finding>>(json);
+            var req = JsonSerializer.Deserialize<CotizacionRequest>(cotizacionDataJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            var runId = req.AnalysisId > 0 ? req.AnalysisId : HttpContext.Session.GetInt32("LastRunId") ?? 0;
+            var run = await _context.AnalysisRuns.Include(r => r.User).FirstOrDefaultAsync(r => r.Id == runId);
+
+            string logoPath = Path.Combine(_hostEnvironment.WebRootPath, "img", "Bit-solucion-logo-menu.png");
+            byte[] excelFile = _validatorService.GenerateCotizacionExcelBytes(findings, run, logoPath, req);
+
+            var user = await _userManager.GetUserAsync(User);
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+            await _auditService.LogActionAsync(user.Id, "VALIDACIÓN: COTIZACIÓN AVANZADA EXPORTADA", JsonSerializer.Serialize(new { Notebooks = findings.Select(f => f.FileName).Distinct().Count(), HorasTotales = "Calculadas" }), ip);
+
+            return File(excelFile, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Presupuesto_UC_{DateTime.Now:yyyyMMdd}.xlsx");
         }
 
         [HttpPost]
