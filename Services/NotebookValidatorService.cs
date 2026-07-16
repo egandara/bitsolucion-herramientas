@@ -711,6 +711,7 @@ namespace NotebookValidator.Web.Services
             double horasCustom = req.CustomTasks?.Sum(t => t.Horas) ?? 0;
 
             double horasTotalProyecto = horasRefactor + horasOrquestacion + horasQa + horasCustom;
+            double diasHabilesEstimados = horasTotalProyecto / 6.0; // Asumiendo 6 horas productivas/día
 
             using var workbook = new XLWorkbook();
 
@@ -720,14 +721,14 @@ namespace NotebookValidator.Web.Services
             var ws1 = workbook.Worksheets.Add("Resumen Ejecutivo");
             ws1.ShowGridLines = false;
 
-            // Cabecera oscura corporativa
-            ws1.Range("A1:H4").Style.Fill.SetBackgroundColor(XLColor.FromArgb(11, 13, 22));
+            // Cabecera oscura corporativa ampliada
+            ws1.Range("A1:J4").Style.Fill.SetBackgroundColor(XLColor.FromArgb(11, 13, 22));
             if (!string.IsNullOrEmpty(logoPath) && File.Exists(logoPath)) ws1.AddPicture(logoPath).MoveTo(ws1.Cell("B2")).Scale(0.45);
 
             ws1.Cell("D3").Value = "PRESUPUESTO ESTIMADO DE MIGRACIÓN (UNITY CATALOG)";
-            ws1.Range("D3:H3").Merge().Style.Font.SetBold().Font.SetFontSize(15).Font.SetFontColor(XLColor.White).Alignment.SetVertical(XLAlignmentVerticalValues.Center);
+            ws1.Range("D3:J3").Merge().Style.Font.SetBold().Font.SetFontSize(15).Font.SetFontColor(XLColor.White).Alignment.SetVertical(XLAlignmentVerticalValues.Center);
 
-            // Bloque Izquierdo: Parámetros Base
+            // ── BLOQUE IZQUIERDO: PARÁMETROS BASE ──
             ws1.Cell("B6").Value = "PARÁMETROS DEL PROYECTO";
             ws1.Range("B6:C6").Merge().Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(13, 202, 240)).Font.SetFontColor(XLColor.Black);
 
@@ -736,10 +737,13 @@ namespace NotebookValidator.Web.Services
             ws1.Cell("B9").Value = "Jobs a Orquestar:"; ws1.Cell("C9").Value = req.CantidadJobs;
             ws1.Cell("B10").Value = "Tablas a Cuadrar (QA):"; ws1.Cell("C10").Value = req.CantidadTablas;
 
-            ws1.Range("B7:B10").Style.Font.SetBold();
-            ws1.Range("B6:C10").Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin).Border.SetInsideBorder(XLBorderStyleValues.Thin);
+            ws1.Cell("B11").Value = "Duración Estimada (Días):"; ws1.Cell("C11").Value = Math.Round(diasHabilesEstimados, 1);
+            ws1.Cell("C11").Style.Font.SetBold().Font.SetFontColor(XLColor.SeaGreen);
 
-            // Bloque Derecho: Desglose de Fases
+            ws1.Range("B7:B11").Style.Font.SetBold();
+            ws1.Range("B6:C11").Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin).Border.SetInsideBorder(XLBorderStyleValues.Thin);
+
+            // ── BLOQUE CENTRAL: DESGLOSE DE ESFUERZO (CON BARRAS DE DATOS) ──
             ws1.Cell("E6").Value = "DESGLOSE DE ESFUERZO (Horas)";
             ws1.Range("E6:F6").Merge().Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(11, 13, 22)).Font.SetFontColor(XLColor.White);
 
@@ -753,25 +757,63 @@ namespace NotebookValidator.Web.Services
             ws1.Range("E7:F10").Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin).Border.SetInsideBorder(XLBorderStyleValues.Thin);
             ws1.Range("E11:F11").Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(255, 193, 7)).Border.SetOutsideBorder(XLBorderStyleValues.Medium);
 
-            // Tabla inferior elegante para Custom Tasks
+            // Gráfico In-Cell (Barras de Datos) para las fases
+            ws1.Range("F7:F10").AddConditionalFormat().DataBar(XLColor.FromArgb(13, 202, 240));
+
+            // ── BLOQUE DERECHO: TOP NOTEBOOKS PROBLEMÁTICOS ──
+            var topNotebooks = hallazgosConCosto
+                .GroupBy(x => x.Original.FileName)
+                .Select(g => new {
+                    Notebook = (string)g.Key,
+                    Horas = Math.Round(g.Sum(x => (double)x.CostoAplicado) * req.Multiplicador, 1)
+                })
+                .OrderByDescending(x => x.Horas)
+                .Take(10)
+                .ToList();
+
+            if (topNotebooks.Any())
+            {
+                ws1.Cell("H6").Value = "TOP NOTEBOOKS MÁS COMPLEJOS";
+                ws1.Range("H6:I6").Merge().Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(220, 53, 69)).Font.SetFontColor(XLColor.White);
+
+                ws1.Cell("H7").Value = "Nombre del Archivo";
+                ws1.Cell("I7").Value = "Horas";
+                ws1.Range("H7:I7").Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.LightGray);
+
+                int rowTop = 8;
+                foreach (var tn in topNotebooks)
+                {
+                    ws1.Cell(rowTop, 8).Value = tn.Notebook;
+                    ws1.Cell(rowTop, 9).Value = tn.Horas;
+                    rowTop++;
+                }
+
+                ws1.Range($"H7:I{rowTop - 1}").Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin).Border.SetInsideBorder(XLBorderStyleValues.Thin);
+
+                // Gráfico In-Cell (Barras de Datos) Rojo para identificar el peligro
+                ws1.Range($"I8:I{rowTop - 1}").AddConditionalFormat().DataBar(XLColor.FromArgb(255, 99, 71));
+            }
+
+            // ── TABLA INFERIOR: CUSTOM TASKS ──
             if (req.CustomTasks != null && req.CustomTasks.Any())
             {
-                ws1.Cell("B13").Value = "Detalle de Tareas Adicionales (Fase 4)";
-                ws1.Range("B13:C13").Merge().Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(11, 13, 22)).Font.SetFontColor(XLColor.White);
+                ws1.Cell("B14").Value = "Detalle de Tareas Adicionales (Fase 4)";
+                ws1.Range("B14:C14").Merge().Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.FromArgb(11, 13, 22)).Font.SetFontColor(XLColor.White);
 
-                ws1.Cell("B14").Value = "Descripción de la Tarea";
-                ws1.Cell("C14").Value = "Horas Estimadas";
-                ws1.Range("B14:C14").Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.LightGray);
+                ws1.Cell("B15").Value = "Descripción de la Tarea";
+                ws1.Cell("C15").Value = "Horas Estimadas";
+                ws1.Range("B15:C15").Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.LightGray);
 
-                int row = 15;
+                int rowCustom = 16;
                 foreach (var t in req.CustomTasks)
                 {
-                    ws1.Cell(row, 2).Value = t.Nombre;
-                    ws1.Cell(row, 3).Value = Math.Round(t.Horas, 1);
-                    row++;
+                    ws1.Cell(rowCustom, 2).Value = t.Nombre;
+                    ws1.Cell(rowCustom, 3).Value = Math.Round(t.Horas, 1);
+                    rowCustom++;
                 }
-                ws1.Range($"B14:C{row - 1}").Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin).Border.SetInsideBorder(XLBorderStyleValues.Thin);
+                ws1.Range($"B15:C{rowCustom - 1}").Style.Border.SetOutsideBorder(XLBorderStyleValues.Thin).Border.SetInsideBorder(XLBorderStyleValues.Thin);
             }
+
             ws1.Columns().AdjustToContents();
 
             // ─────────────────────────────────────────────────────────────
@@ -783,7 +825,6 @@ namespace NotebookValidator.Web.Services
 
             var matrizUnificada = new List<dynamic>();
 
-            // Agregamos métricas de la Fase 1 (Código ajustado por multiplicador)
             var matrizReglas = hallazgosConCosto.GroupBy(x => x.Original.FindingType)
                 .Select(g => new {
                     Fase = "1. Refactorización",
@@ -794,18 +835,15 @@ namespace NotebookValidator.Web.Services
                 });
             matrizUnificada.AddRange(matrizReglas);
 
-            // Agregamos métricas de la Fase 2 (Orquestación)
             if (req.CantidadJobs > 0)
                 matrizUnificada.Add(new { Fase = "2. Orquestación", Tarea = "Configuración y migración de Jobs", Ocurrencias = req.CantidadJobs.ToString(), Modalidad = "Por Job", HorasTotales = Math.Round(horasOrqJobs, 1) });
 
             if (req.IncluirCicd && req.CantidadJobs > 0)
                 matrizUnificada.Add(new { Fase = "2. Orquestación", Tarea = "Implementación CI/CD (YAMLs)", Ocurrencias = $"Global + {req.CantidadJobs}", Modalidad = "Fijo + Por Job", HorasTotales = Math.Round(horasOrqCicd, 1) });
 
-            // Agregamos métricas de la Fase 3 (QA)
             if (req.CantidadTablas > 0)
                 matrizUnificada.Add(new { Fase = "3. Calidad (QA)", Tarea = "Cuadratura y Certificación de Tablas", Ocurrencias = req.CantidadTablas.ToString(), Modalidad = "Por Tabla", HorasTotales = Math.Round(horasQa, 1) });
 
-            // Agregamos métricas de la Fase 4 (Custom)
             if (req.CustomTasks != null)
             {
                 foreach (var ct in req.CustomTasks)
