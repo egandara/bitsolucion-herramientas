@@ -399,6 +399,17 @@ namespace NotebookValidator.Web.Services
 
                 var currentMTasks = Regex.Match(cleanYaml, @"(^[ \t]*tasks:[\s\S]*?)(?=(^[ \t]*job_clusters:))", RegexOptions.Multiline | RegexOptions.IgnoreCase);
                 string currentTasksBody = currentMTasks.Success ? currentMTasks.Groups[1].Value.TrimEnd() : "";
+                // --- INICIO LIMPIEZA AUTOMÁTICA DEL ARCHIVO FUENTE ---
+                if (!string.IsNullOrEmpty(currentTasksBody))
+                {
+                    // 1. Borrar el sufijo '-tasks' de la variable nombreJob si el archivo original lo trae por error
+                    currentTasksBody = Regex.Replace(currentTasksBody, @"(\$\{var\.jobName_[a-zA-Z0-9_]+)-tasks\}", "$1}");
+
+                    // 2. Aprovechamos para forzar el cambio de nombre al nuevo estándar por si el YAML original tiene el antiguo
+                    currentTasksBody = Regex.Replace(currentTasksBody, @"task_key:\s*auto_certification_bigdata", "task_key: certification_bigdata");
+                    currentTasksBody = Regex.Replace(currentTasksBody, @"nombreTarea:\s*""?Auto_Certificacion_BigData""?", "nombreTarea: \"certification_bigdata\"");
+                }
+                // --- FIN LIMPIEZA AUTOMÁTICA ---
                 string baseTasksBody = currentTasksBody;
 
                 bool requiresAutocertTask = (devAutocerts.Count > i && devAutocerts[i]) ||
@@ -453,7 +464,7 @@ namespace NotebookValidator.Web.Services
 
                     var autocertTaskBlock = new StringBuilder();
                     autocertTaskBlock.AppendLine();
-                    autocertTaskBlock.AppendLine("        - task_key: auto_certification_bigdata");
+                    autocertTaskBlock.AppendLine("        - task_key: certification_bigdata");
 
                     if (!string.IsNullOrEmpty(lastTaskKey))
                     {
@@ -466,7 +477,7 @@ namespace NotebookValidator.Web.Services
                     autocertTaskBlock.AppendLine("            base_parameters:");
                     autocertTaskBlock.AppendLine("              ejecutarAutocertificacion: \"${var.flagAutocertificacion}\"");
                     autocertTaskBlock.AppendLine($"              nombreJob: \"${{var.jobName_{jCleanName}}}\"");
-                    autocertTaskBlock.AppendLine("              nombreTarea: \"Auto_Certificacion_BigData\"");
+                    autocertTaskBlock.AppendLine("              nombreTarea: \"certification_bigdata\"");
                     autocertTaskBlock.AppendLine("              tipo: \"A\"");
                     autocertTaskBlock.AppendLine("              schemaBitacora: \"catalog_bcidigital_dsr_001.sch_ida\"");
 
@@ -648,6 +659,36 @@ namespace NotebookValidator.Web.Services
                 }
 
                 var resourceYml = new StringBuilder();
+
+                // --- INICIO BLOQUE ANCLA DE PERMISOS ---
+                resourceYml.AppendLine("common_permissions: &permissions");
+                resourceYml.AppendLine("  permissions:");
+                if (permissionLevels != null && permissionLevels.Count > 0)
+                {
+                    for (int p = 0; p < permissionLevels.Count; p++)
+                    {
+                        resourceYml.AppendLine($"    - level: {permissionLevels[p]}");
+
+                        // Si el usuario tiene '@', es un user_name. Si no, asumimos que es un group_name corporativo
+                        if (permissionUsers[p].Contains("@"))
+                        {
+                            resourceYml.AppendLine($"      user_name: {permissionUsers[p]}");
+                        }
+                        else
+                        {
+                            resourceYml.AppendLine($"      group_name: {permissionUsers[p]}");
+                        }
+                    }
+                }
+                else
+                {
+                    // Fallback por defecto en caso de que venga vacío
+                    resourceYml.AppendLine("    - level: CAN_MANAGE");
+                    resourceYml.AppendLine("      user_name: dbricksdeploy@bci.cl");
+                }
+                resourceYml.AppendLine();
+                // --- FIN BLOQUE ANCLA DE PERMISOS ---
+
                 resourceYml.AppendLine("resources:");
                 resourceYml.AppendLine("  jobs:");
                 resourceYml.AppendLine($"    {jCleanName}:");
@@ -672,6 +713,10 @@ namespace NotebookValidator.Web.Services
                     string idIndex = (i + 1).ToString("D3");
                     resourceYml.AppendLine($"      tasks: ${{var.Tasks{idIndex}}}");
 
+                    // 1. Limpiamos la línea "tasks:" inicial asegurando que se mantenga la indentación de los guiones
+                    string v2PreProdTasksBody = Regex.Replace(currentTasksBody, @"^[ \t]*tasks:[ \t]*\r?\n", "", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+                    string v2ProdTasksBody = Regex.Replace(baseTasksBody, @"^[ \t]*tasks:[ \t]*\r?\n", "", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+
                     var tasksYml = new StringBuilder();
                     tasksYml.AppendLine("variables:");
 
@@ -679,13 +724,15 @@ namespace NotebookValidator.Web.Services
                     tasksYml.AppendLine($"  pre_produccion_{idIndex}:");
                     tasksYml.AppendLine("    type: \"complex\"");
                     tasksYml.AppendLine("    default:");
-                    tasksYml.AppendLine(currentTasksBody);
+                    // Se inserta el texto ya limpio, sin la cabecera 'tasks:'
+                    tasksYml.AppendLine(v2PreProdTasksBody);
 
                     // Bloque Producción (Usando el respaldo limpio sin autocertificación)
                     tasksYml.AppendLine($"  produccion_{idIndex}:");
                     tasksYml.AppendLine("    type: \"complex\"");
                     tasksYml.AppendLine("    default:");
-                    tasksYml.AppendLine(baseTasksBody);
+                    // Se inserta el texto ya limpio, sin la cabecera 'tasks:'
+                    tasksYml.AppendLine(v2ProdTasksBody);
 
                     outputFiles.Add($"resources/tasks/{jCleanName}-tasks.yml", tasksYml.ToString());
                 }
@@ -706,7 +753,7 @@ namespace NotebookValidator.Web.Services
                         resourceYml.AppendLine($"          default: \"${{var.{param.Key}}}\"");
                     }
                 }
-                resourceYml.AppendLine("      permissions: \"${var.jobPermissions}\"");
+                resourceYml.AppendLine("      <<: *permissions");
 
                 outputFiles.Add($"resources/{jCleanName}.yml", resourceYml.ToString());
             }

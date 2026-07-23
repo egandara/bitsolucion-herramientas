@@ -429,17 +429,26 @@ namespace NotebookValidator.Web.Controllers
                                 {
                                     string fileNameWithoutExt = Path.GetFileNameWithoutExtension(path);
                                     string cleanJobName = Regex.Replace(fileNameWithoutExt, @"^\d{3}-(?:qa|noqa)-(?:run|norun)-", "");
-                                    string variableKeyName = Regex.Replace(cleanJobName, @"(?i)_aprovisionamiento$", "");
 
-                                    content = Regex.Replace(content, $@"([ \t]+){Regex.Escape(fileNameWithoutExt)}:\s*\n", $"$1{cleanJobName}:\n");
+                                    // CORRECCIÓN 1: Eliminamos el sufijo "-tasks" de la variable base para que no contamine las referencias
+                                    string variableKeyName = Regex.Replace(cleanJobName.Replace("-tasks", ""), @"(?i)_aprovisionamiento$", "");
 
-                                    var nameRegex = new Regex(@"name:\s*""?[^""\n]+""?");
-                                    content = nameRegex.Replace(content, $"name: ${{var.jobName_{variableKeyName}}}", 1);
+                                    // CORRECCIÓN 2: Separar la lógica para no afectar la estructura del archivo de tareas
+                                    if (!path.Contains("/tasks/"))
+                                    {
+                                        content = Regex.Replace(content, $@"([ \t]+){Regex.Escape(fileNameWithoutExt)}:\s*\n", $"$1{cleanJobName}:\n");
+
+                                        // CORRECCIÓN 3: Expresión anclada a inicio de línea para NO destruir 'user_name:' ni 'group_name:'
+                                        var nameRegex = new Regex(@"^[ \t]+name:\s*""?[^""\n]+""?", RegexOptions.Multiline);
+                                        content = nameRegex.Replace(content, $"      name: ${{var.jobName_{variableKeyName}}}", 1);
+                                    }
 
                                     string badTaskRegex = @"[ \t]+-[ \t]+task_key:\s*Auto_Certificacion\s*\r?\n(?:[ \t]+.*?\r?\n)*?(?=[ \t]+-[ \t]+task_key:|$)";
                                     content = Regex.Replace(content, badTaskRegex, "");
 
                                     content = Regex.Replace(content, @"(notebook_path:.*?)\d{3}-(?:qa|noqa)-(?:run|norun)-", "$1");
+
+                                    // Ahora variableKeyName se inyecta siempre limpio (sin el -tasks)
                                     content = Regex.Replace(content, @"(nombreJob:\s*""\$\{?var\.jobName_)[^""\}]+(\}?"")", $"$1{variableKeyName}$2");
                                 }
 
