@@ -423,9 +423,26 @@
                             <span class="d-block fw-bold text-white">¿Todo listo?</span>
                             <span style="font-size: 0.75rem;">Haz clic para empaquetar el flujo final en un ZIP.</span>
                         </div>
-                        <button type="submit" class="btn btn-success px-5 py-2 fw-bold d-flex align-items-center gap-2 shadow-sm" style="border-radius: 6px; font-size: 0.95rem;">
-                            <i class="bi bi-cloud-arrow-down-fill fs-5"></i> Descargar Estructuras ZIP
-                        </button>
+                        <!-- Input oculto para definir la arquitectura -->
+                        <input type="hidden" id="conTasksParam" name="conTasks" value="false" />
+
+                        <div class="btn-group shadow-sm" style="border-radius: 6px;">
+                            <!-- Botón Principal: Formato V2 (Con Tasks) -->
+                            <button type="button" class="btn btn-success px-4 py-2 fw-bold d-flex align-items-center gap-2" id="btnDownloadV2" style="font-size: 0.95rem;">
+                                <i class="bi bi-cloud-arrow-down-fill fs-5"></i> Descargar ZIP (V2 - Con Tasks)
+                            </button>
+                            <button type="button" class="btn btn-success dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span class="visually-hidden">Toggle Dropdown</span>
+                            </button>
+                            <!-- Opción secundaria: Formato Clásico -->
+                            <ul class="dropdown-menu dropdown-menu-end bg-dark border-secondary">
+                                <li>
+                                    <button type="button" class="dropdown-item text-white" id="btnDownloadV1">
+                                        <i class="bi bi-file-earmark-zip me-2 text-warning"></i> Descargar ZIP (Clásico - Sin Tasks)
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1075,6 +1092,18 @@
                 });
 
                 return true; // Permite el envío del formulario
+            });
+
+            // Lógica para descargar Formato V2 (Con Tasks)
+            $('#btnDownloadV2').on('click', function() {
+                $('#conTasksParam').val('true');
+                $('#package-form').trigger('submit');
+            });
+
+            // Lógica para descargar Formato V1 (Sin Tasks)
+            $('#btnDownloadV1').on('click', function() {
+                $('#conTasksParam').val('false');
+                $('#package-form').trigger('submit');
             });
 
             // 3. CAPTURAR EL CLIC DEL BOTÓN "SÍ, DESCARGAR" EN EL MODAL

@@ -290,7 +290,8 @@ namespace NotebookValidator.Web.Controllers
             List<string> sourceTables,
             List<string> targetTables,
             string bundleName,
-            string? globalSchemaBitacora = null)
+            string? globalSchemaBitacora = null,
+            bool conTasks = false)
         {
             string token = TempData.Peek("JobAnalysisToken")?.ToString();
             if (string.IsNullOrEmpty(token)) return BadRequest("La sesión de configuración de Jobs ha expirado.");
@@ -376,7 +377,7 @@ namespace NotebookValidator.Web.Controllers
                                 yamlContents, yamlDevNames, yamlCertNames, yamlProdNames,
                                 permLevels, permUsers,
                                 yamlDevAutocerts, yamlCertAutocerts, yamlProdAutocerts,
-                                yamlSourceTables, yamlTargetTables, bundleName);
+                                yamlSourceTables, yamlTargetTables, bundleName, conTasks);
 
                             foreach (var config in bundleConfigs)
                             {

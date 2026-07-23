@@ -176,7 +176,8 @@ namespace NotebookValidator.Web.Services
             List<bool> prodAutocerts,
             List<string> sourceTables,
             List<string> targetTables,
-            string bundleName)
+            string bundleName,
+            bool conTasks = false)
         {
             var outputFiles = new Dictionary<string, string>();
             var databricksYml = new StringBuilder();
@@ -245,11 +246,24 @@ namespace NotebookValidator.Web.Services
                 databricksYml.AppendLine($"  jobName_{jCleanName}:");
                 databricksYml.AppendLine($"    description: nombre del job {jCleanName}");
                 databricksYml.AppendLine($"    default: \"{devNames[i]}\"");
+
+                if (conTasks)
+                {
+                    string idIndex = (i + 1).ToString("D3");
+                    databricksYml.AppendLine($"  Tasks{idIndex}:");
+                    databricksYml.AppendLine("    type: complex");
+                    databricksYml.AppendLine($"    default: ${{var.pre_produccion_{idIndex}}}");
+                }
             }
 
             databricksYml.AppendLine();
             databricksYml.AppendLine("include:");
             databricksYml.AppendLine("  - resources/*.yml");
+            if (conTasks) databricksYml.AppendLine("  - resources/tasks/*.yml");
+            if (conTasks)
+            {
+                databricksYml.AppendLine("  - resources/tasks/*.yml"); // Nueva ruta
+            }
             databricksYml.AppendLine();
             databricksYml.AppendLine("targets:");
 
@@ -322,6 +336,12 @@ namespace NotebookValidator.Web.Services
             {
                 string jCleanName = devNames[i].Replace(" ", "_");
                 databricksYml.AppendLine($"      jobName_{jCleanName}: \"{prodNames[i]}\"");
+
+                if (conTasks)
+                {
+                    string idIndex = (i + 1).ToString("D3");
+                    databricksYml.AppendLine($"      Tasks{idIndex}: ${{var.produccion_{idIndex}}}");
+                }
             }
             bool prodAutoCombined = prodAutocerts.Count > 0 ? prodAutocerts[0] : false;
             databricksYml.AppendLine($"      flagAutocertificacion: {prodAutoCombined.ToString().ToLower()}");
@@ -379,6 +399,7 @@ namespace NotebookValidator.Web.Services
 
                 var currentMTasks = Regex.Match(cleanYaml, @"(^[ \t]*tasks:[\s\S]*?)(?=(^[ \t]*job_clusters:))", RegexOptions.Multiline | RegexOptions.IgnoreCase);
                 string currentTasksBody = currentMTasks.Success ? currentMTasks.Groups[1].Value.TrimEnd() : "";
+                string baseTasksBody = currentTasksBody;
 
                 bool requiresAutocertTask = (devAutocerts.Count > i && devAutocerts[i]) ||
                                             (certAutocerts.Count > i && certAutocerts[i]) ||
@@ -441,7 +462,7 @@ namespace NotebookValidator.Web.Services
                     }
 
                     autocertTaskBlock.AppendLine("          notebook_task:");
-                    autocertTaskBlock.AppendLine($"            notebook_path: /Repos/${{var.path}}/${{bundle.name}}/notebooks/Notebooks/validaciones/{scalaNotebookName}");
+                    autocertTaskBlock.AppendLine($"            notebook_path: /Repos/${{var.path}}/${{bundle.name}}/notebooks/validaciones/{scalaNotebookName}");
                     autocertTaskBlock.AppendLine("            base_parameters:");
                     autocertTaskBlock.AppendLine("              ejecutarAutocertificacion: \"${var.flagAutocertificacion}\"");
                     autocertTaskBlock.AppendLine($"              nombreJob: \"${{var.jobName_{jCleanName}}}\"");
@@ -623,7 +644,7 @@ namespace NotebookValidator.Web.Services
 
                     string finalScalaCode = scalaContent.ToString().Replace("\r\n", "\n");
 
-                    outputFiles[$"notebooks/Notebooks/validaciones/{scalaNotebookName}.scala"] = finalScalaCode;
+                    outputFiles[$"notebooks/validaciones/{scalaNotebookName}.scala"] = finalScalaCode;
                 }
 
                 var resourceYml = new StringBuilder();
@@ -646,7 +667,29 @@ namespace NotebookValidator.Web.Services
                 resourceYml.AppendLine("              min_workers: 1");
                 resourceYml.AppendLine("              max_workers: 4");
 
-                if (!string.IsNullOrEmpty(currentTasksBody))
+                if (conTasks && !string.IsNullOrEmpty(currentTasksBody))
+                {
+                    string idIndex = (i + 1).ToString("D3");
+                    resourceYml.AppendLine($"      tasks: ${{var.Tasks{idIndex}}}");
+
+                    var tasksYml = new StringBuilder();
+                    tasksYml.AppendLine("variables:");
+
+                    // Bloque Pre-Producción
+                    tasksYml.AppendLine($"  pre_produccion_{idIndex}:");
+                    tasksYml.AppendLine("    type: \"complex\"");
+                    tasksYml.AppendLine("    default:");
+                    tasksYml.AppendLine(currentTasksBody);
+
+                    // Bloque Producción (Usando el respaldo limpio sin autocertificación)
+                    tasksYml.AppendLine($"  produccion_{idIndex}:");
+                    tasksYml.AppendLine("    type: \"complex\"");
+                    tasksYml.AppendLine("    default:");
+                    tasksYml.AppendLine(baseTasksBody);
+
+                    outputFiles.Add($"resources/tasks/{jCleanName}-tasks.yml", tasksYml.ToString());
+                }
+                else if (!string.IsNullOrEmpty(currentTasksBody))
                 {
                     resourceYml.AppendLine(currentTasksBody);
                 }
