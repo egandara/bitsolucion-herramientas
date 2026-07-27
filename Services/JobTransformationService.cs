@@ -660,35 +660,6 @@ namespace NotebookValidator.Web.Services
 
                 var resourceYml = new StringBuilder();
 
-                // --- INICIO BLOQUE ANCLA DE PERMISOS ---
-                resourceYml.AppendLine("common_permissions: &permissions");
-                resourceYml.AppendLine("  permissions:");
-                if (permissionLevels != null && permissionLevels.Count > 0)
-                {
-                    for (int p = 0; p < permissionLevels.Count; p++)
-                    {
-                        resourceYml.AppendLine($"    - level: {permissionLevels[p]}");
-
-                        // Si el usuario tiene '@', es un user_name. Si no, asumimos que es un group_name corporativo
-                        if (permissionUsers[p].Contains("@"))
-                        {
-                            resourceYml.AppendLine($"      user_name: {permissionUsers[p]}");
-                        }
-                        else
-                        {
-                            resourceYml.AppendLine($"      group_name: {permissionUsers[p]}");
-                        }
-                    }
-                }
-                else
-                {
-                    // Fallback por defecto en caso de que venga vacío
-                    resourceYml.AppendLine("    - level: CAN_MANAGE");
-                    resourceYml.AppendLine("      user_name: dbricksdeploy@bci.cl");
-                }
-                resourceYml.AppendLine();
-                // --- FIN BLOQUE ANCLA DE PERMISOS ---
-
                 resourceYml.AppendLine("resources:");
                 resourceYml.AppendLine("  jobs:");
                 resourceYml.AppendLine($"    {jCleanName}:");
@@ -707,6 +678,9 @@ namespace NotebookValidator.Web.Services
                 resourceYml.AppendLine("            autoscale:");
                 resourceYml.AppendLine("              min_workers: 1");
                 resourceYml.AppendLine("              max_workers: 4");
+
+                // NUEVA LÍNEA DE PERMISOS
+                resourceYml.AppendLine("      permissions: \"${var.jobPermissions}\"");
 
                 if (conTasks && !string.IsNullOrEmpty(currentTasksBody))
                 {
@@ -753,7 +727,6 @@ namespace NotebookValidator.Web.Services
                         resourceYml.AppendLine($"          default: \"${{var.{param.Key}}}\"");
                     }
                 }
-                resourceYml.AppendLine("      <<: *permissions");
 
                 outputFiles.Add($"resources/{jCleanName}.yml", resourceYml.ToString());
             }
