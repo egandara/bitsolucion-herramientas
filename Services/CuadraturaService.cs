@@ -16,7 +16,7 @@ namespace NotebookValidator.Web.Services
         public DataTable AgruparDataTable(DataTable dt, List<string> llaves, List<string> columnasValores);
         public List<SugerenciaMapeo> InferirColumnas(DataTable dt1, DataTable dt2);
         public ResultadoCuadratura CompararDatos(DataTable dt1, DataTable dt2, List<string> llavesCol1, List<string> llavesCol2, List<string> columnasAComparar1, List<string> columnasAComparar2, List<double> tolerancias);
-        public byte[] GenerarExcelReporte(ResultadoCuadratura resultado);
+        public byte[] GenerarExcelReporte(ResultadoCuadratura resultado, DataTable dt1, DataTable dt2, string base64Image);
 
         public ResultadoEstructura ValidarEstructuras(string ruta1, string ruta2, string alias1, string alias2, bool tieneEncabezados1, bool tieneEncabezados2, string hoja1 = null, string hoja2 = null);
         public byte[] GenerarExcelReporteEstructura(ResultadoEstructura resultado);
@@ -195,25 +195,83 @@ namespace NotebookValidator.Web.Services
             return resultado;
         }
 
-        public byte[] GenerarExcelReporte(ResultadoCuadratura resultado)
+        public byte[] GenerarExcelReporte(ResultadoCuadratura resultado, DataTable dt1, DataTable dt2, string base64Image)
         {
             using var workbook = new XLWorkbook();
-            var ws1 = workbook.Worksheets.Add("Diferencias");
-            ws1.Cell(1, 1).Value = "Llave Primaria"; ws1.Cell(1, 2).Value = "Columna"; ws1.Cell(1, 3).Value = resultado.AliasArchivo1; ws1.Cell(1, 4).Value = resultado.AliasArchivo2; ws1.Cell(1, 5).Value = "Diferencia";
+            var ws = workbook.Worksheets.Add("Sheet1");
+            ws.ShowGridLines = false;
 
-            for (int i = 0; i < resultado.RegistrosConDiferencias.Count; i++)
+            // ==========================================
+            // 1. INSERTAR LA CAPTURA DE PANTALLA (WEB APP)
+            // ==========================================
+            if (!string.IsNullOrEmpty(base64Image))
             {
-                var reg = resultado.RegistrosConDiferencias[i];
-                ws1.Cell(i + 2, 1).Value = reg.LlaveIdentificadora; ws1.Cell(i + 2, 2).Value = reg.ColumnaConFalla; ws1.Cell(i + 2, 3).Value = reg.ValorArchivo1; ws1.Cell(i + 2, 4).Value = reg.ValorArchivo2; ws1.Cell(i + 2, 5).Value = reg.Diferencia;
-            }
-            ws1.Columns().AdjustToContents();
+                try
+                {
+                    // Limpiar el encabezado Base64 de HTML si lo trae
+                    var base64Data = base64Image.Contains(",") ? base64Image.Split(',')[1] : base64Image;
+                    byte[] imageBytes = Convert.FromBase64String(base64Data);
+                    using var msImg = new MemoryStream(imageBytes);
 
-            var ws2 = workbook.Worksheets.Add("Huérfanos");
-            ws2.Cell(1, 1).Value = "Origen"; ws2.Cell(1, 2).Value = "Llave Primaria";
-            int rowH = 2;
-            foreach (var h in resultado.HuerfanosArchivo1) { ws2.Cell(rowH, 1).Value = resultado.AliasArchivo1; ws2.Cell(rowH, 2).Value = h; rowH++; }
-            foreach (var h in resultado.HuerfanosArchivo2) { ws2.Cell(rowH, 1).Value = resultado.AliasArchivo2; ws2.Cell(rowH, 2).Value = h; rowH++; }
-            ws2.Columns().AdjustToContents();
+                    var picture = ws.AddPicture(msImg);
+
+                    // 1. Alinear desde la columna A, fila 1
+                    picture.MoveTo(ws.Cell("A1"));
+
+                    // 2. Ajuste dinámico de escala
+                    // Una fila de Excel mide por defecto 15 puntos. 27 filas * 15 = 405 de alto.
+                    double targetHeight = 405.0;
+                    if (picture.Height > 0)
+                    {
+                        // Calculamos la escala exacta para que mida 405 de alto y conserve la proporción a lo ancho
+                        double scaleFactor = targetHeight / picture.Height;
+                        picture.Scale(scaleFactor);
+                    }
+                }
+                catch { /* Si la imagen falla por algo, continua insertando datos */ }
+            }
+
+            // ==========================================
+            // 2. DATOS EN CRUDO (Desde Fila 29)
+            // ==========================================
+            int startRow = 29;
+
+            // --- Archivo 1 (Desarrollo / Izquierda) ---
+            ws.Cell(startRow, 1).Value = resultado.AliasArchivo1;
+            ws.Cell(startRow, 1).Style.Font.SetBold().Font.SetFontSize(11);
+
+            if (dt1 != null && dt1.Columns.Count > 0)
+            {
+                // Encabezados dt1
+                for (int c = 0; c < dt1.Columns.Count; c++)
+                {
+                    ws.Cell(startRow + 1, c + 1).Value = dt1.Columns[c].ColumnName;
+                    ws.Cell(startRow + 1, c + 1).Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.LightGray);
+                }
+                // Datos dt1
+                ws.Cell(startRow + 2, 1).InsertData(dt1.AsEnumerable());
+            }
+
+            // --- Archivo 2 (Producción / Derecha) ---
+            // Calculamos en qué columna debe empezar la segunda tabla (dejamos 1 columna en blanco de margen)
+            int colOffset = (dt1 != null ? dt1.Columns.Count : 0) + 2;
+
+            ws.Cell(startRow, colOffset).Value = resultado.AliasArchivo2;
+            ws.Cell(startRow, colOffset).Style.Font.SetBold().Font.SetFontSize(11);
+
+            if (dt2 != null && dt2.Columns.Count > 0)
+            {
+                // Encabezados dt2
+                for (int c = 0; c < dt2.Columns.Count; c++)
+                {
+                    ws.Cell(startRow + 1, colOffset + c).Value = dt2.Columns[c].ColumnName;
+                    ws.Cell(startRow + 1, colOffset + c).Style.Font.SetBold().Fill.SetBackgroundColor(XLColor.LightGray);
+                }
+                // Datos dt2
+                ws.Cell(startRow + 2, colOffset).InsertData(dt2.AsEnumerable());
+            }
+
+            ws.Columns().AdjustToContents();
 
             using var ms = new MemoryStream();
             workbook.SaveAs(ms);

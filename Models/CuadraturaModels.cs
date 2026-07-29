@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using NotebookValidator.Web.Services; // <-- IMPORTANTE: Agregar este using para acceder a ResultadoEstructura
 
 namespace NotebookValidator.Web.Models
 {
@@ -18,6 +19,9 @@ namespace NotebookValidator.Web.Models
         public int TotalAgrupado1 { get; set; }
         public int TotalAgrupado2 { get; set; }
         public List<string> LlavesAgrupacion { get; set; } = new();
+
+        // --- NUEVO: Propiedad para almacenar la validación de estructura conjunta ---
+        public ResultadoEstructura Estructura { get; set; }
     }
 
     public class RegistroCuadrado
@@ -47,11 +51,8 @@ namespace NotebookValidator.Web.Models
     {
         public string AliasArchivo1 { get; set; } = "Archivo 1";
         public string AliasArchivo2 { get; set; } = "Archivo 2";
-
-        // NUEVAS: Guardan la hoja seleccionada por el usuario
         public string HojaArchivo1 { get; set; }
         public string HojaArchivo2 { get; set; }
-
         public List<string> ColumnasArchivo1 { get; set; } = new();
         public List<string> ColumnasArchivo2 { get; set; } = new();
         public List<SugerenciaMapeo> Sugerencias { get; set; } = new();
@@ -59,7 +60,6 @@ namespace NotebookValidator.Web.Models
         public string TempPathArchivo2 { get; set; } = string.Empty;
         public bool TieneEncabezados1 { get; set; }
         public bool TieneEncabezados2 { get; set; }
-
         public Dictionary<string, int> DistinctCountsArchivo1 { get; set; } = new();
         public Dictionary<string, int> DistinctCountsArchivo2 { get; set; } = new();
     }

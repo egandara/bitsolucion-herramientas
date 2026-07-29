@@ -193,7 +193,6 @@
         gap: 8px;
     }
 
-    /* NUEVO BADGE: Etiqueta color Cyan para la agrupación */
     .badge-agrupacion {
         background-color: #0dcaf0;
         color: #000;
@@ -220,62 +219,68 @@
         <div class="step active"><div class="step-circle">3</div><div class="step-label">Resultados</div></div>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="text-white fw-bold"><i class="bi bi-file-earmark-bar-graph me-2 text-warning"></i>Informe de Validación</h2>
-        <div class="d-flex gap-2">
-            <form asp-action="ExportarExcel" method="post">
-                <input type="hidden" name="exportId" value="@ViewBag.ExportId" />
-                <button type="submit" class="btn btn-success fw-bold"><i class="bi bi-file-excel me-1"></i> Exportar</button>
-            </form>
-            <a asp-action="Index" class="btn btn-outline-warning fw-bold">Nuevo Proceso</a>
-        </div>
+    <!-- BOTONES DE EXPORTACIÓN (Fuera de la zona de captura para que no salgan en el Excel) -->
+    <div class="d-flex justify-content-end mb-3 gap-2">
+        <form asp-action="ExportarExcel" method="post" id="formExportar">
+            <input type="hidden" name="exportId" value="@ViewBag.ExportId" />
+            <input type="hidden" name="base64Image" id="base64Image" value="" />
+            <button type="button" onclick="capturarYExportar()" class="btn btn-success fw-bold" id="btnExportar">
+                <i class="bi bi-file-excel me-1"></i> Exportar
+            </button>
+        </form>
+        <a asp-action="Index" class="btn btn-outline-warning fw-bold">Nuevo Proceso</a>
     </div>
 
-    @if (Model.EsModoAgrupacion)
-    {
-        <div class="row g-3 mb-4">
-            <div class="col-md-6">
-                <div class="card bg-dark border-info text-info">
-                    <div class="card-body py-2 d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-layers me-2"></i> <strong>@Model.AliasArchivo1:</strong> @Model.TotalOriginal1 registros resumidos en <strong>@Model.TotalAgrupado1</strong></span>
+    <!-- ZONA QUE SERÁ CAPTURADA COMO IMAGEN PARA EL EXCEL -->
+    <div id="captureArea" style="background-color: #111424; padding: 25px; border-radius: 12px; border: 1px solid #495057; margin-bottom: 25px;">
+        <h2 class="text-white fw-bold mb-4"><i class="bi bi-file-earmark-bar-graph me-2 text-warning"></i>Informe de Validación</h2>
+
+        @if (Model.EsModoAgrupacion)
+        {
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="card bg-dark border-info text-info">
+                        <div class="card-body py-2 d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-layers me-2"></i> <strong>@Model.AliasArchivo1:</strong> @Model.TotalOriginal1 registros resumidos en <strong>@Model.TotalAgrupado1</strong></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card bg-dark border-info text-info">
+                        <div class="card-body py-2 d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-layers me-2"></i> <strong>@Model.AliasArchivo2:</strong> @Model.TotalOriginal2 registros resumidos en <strong>@Model.TotalAgrupado2</strong></span>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="card bg-dark border-info text-info">
-                    <div class="card-body py-2 d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-layers me-2"></i> <strong>@Model.AliasArchivo2:</strong> @Model.TotalOriginal2 registros resumidos en <strong>@Model.TotalAgrupado2</strong></span>
+        }
+
+        <div class="row mb-0">
+            <div class="col-md-5">
+                <div class="card bg-dark border-secondary h-100 shadow-sm">
+                    <div class="card-header border-secondary text-white small">Distribución de Cuadratura</div>
+                    <div class="card-body d-flex justify-content-center align-items-center" style="min-height: 250px;">
+                        <canvas id="chartResultados" style="max-height: 200px;"></canvas>
                     </div>
                 </div>
             </div>
-        </div>
-    }
-
-    <div class="row mb-4">
-        <div class="col-md-5">
-            <div class="card bg-dark border-secondary h-100 shadow-sm">
-                <div class="card-header border-secondary text-white small">Distribución de Cuadratura</div>
-                <div class="card-body d-flex justify-content-center align-items-center" style="min-height: 250px;">
-                    <canvas id="chartResultados" style="max-height: 200px;"></canvas>
+            <div class="col-md-7 d-flex flex-column justify-content-between">
+                <div class="stat-bar stat-bar-green flex-grow-1">
+                    <div class="stat-bar-left"><h2>@totalCuadrados</h2><span>Registros cuadrados exactos</span></div>
+                    <div class="stat-bar-right"><h2>@pctCuadrados.ToString("0.##")%</h2></div>
+                </div>
+                <div class="stat-bar stat-bar-yellow flex-grow-1">
+                    <div class="stat-bar-left"><h2>@totalDiferencias</h2><span>Match de llave con diferencias</span></div>
+                    <div class="stat-bar-right"><h2>@pctDiferencias.ToString("0.##")%</h2></div>
+                </div>
+                <div class="stat-bar stat-bar-red flex-grow-1 mb-0">
+                    <div class="stat-bar-left"><h2>@totalHuerfanos</h2><span>Registros huérfanos</span></div>
+                    <div class="stat-bar-right"><h2>@pctHuerfanos.ToString("0.##")%</h2></div>
                 </div>
             </div>
         </div>
-        <div class="col-md-7 d-flex flex-column justify-content-between">
-            <div class="stat-bar stat-bar-green flex-grow-1">
-                <div class="stat-bar-left"><h2>@totalCuadrados</h2><span>Registros cuadrados exactos</span></div>
-                <div class="stat-bar-right"><h2>@pctCuadrados.ToString("0.##")%</h2></div>
-            </div>
-            <div class="stat-bar stat-bar-yellow flex-grow-1">
-                <div class="stat-bar-left"><h2>@totalDiferencias</h2><span>Match de llave con diferencias</span></div>
-                <div class="stat-bar-right"><h2>@pctDiferencias.ToString("0.##")%</h2></div>
-            </div>
-            <div class="stat-bar stat-bar-red flex-grow-1 mb-0">
-                <div class="stat-bar-left"><h2>@totalHuerfanos</h2><span>Registros huérfanos</span></div>
-                <div class="stat-bar-right"><h2>@pctHuerfanos.ToString("0.##")%</h2></div>
-            </div>
-        </div>
     </div>
-
+    <!-- FIN ZONA CAPTURA -->
     @if (Model.EsModoAgrupacion && Model.LlavesAgrupacion.Any())
     {
         <div class="card bg-dark border-info mb-3 shadow-sm" style="border-width: 1px;">
@@ -396,38 +401,65 @@
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
+    <!-- html2canvas para capturar el div y enviarlo al Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <script>
+        function capturarYExportar() {
+        var btn = document.getElementById('btnExportar');
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
+        btn.disabled = true;
+
+        // html2canvas toma "foto" del div con id "captureArea"
+        html2canvas(document.getElementById('captureArea'), {
+        backgroundColor: '#111424', // Mismo fondo oscuro de tu web
+        scale: 2 // Mayor calidad para que se vea nítida en el Excel
+        }).then(function(canvas) {
+        // Guarda la imagen en base64 en el input oculto
+        document.getElementById('base64Image').value = canvas.toDataURL("image/png");
+
+        // Envía el formulario
+        document.getElementById('formExportar').submit();
+
+        // Restaura el botón después de unos segundos
+        setTimeout(() => {
+        btn.innerHTML = '<i class="bi bi-file-excel me-1"></i> Exportar';
+        btn.disabled = false;
+        }, 3000);
+        });
+        }
+
         $(document).ready(function() {
-            $('.table-diferencias, #tableCuadrados').DataTable({
-                "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" },
-                "pageLength": 10
-            });
+        $('.table-diferencias, #tableCuadrados').DataTable({
+        "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" },
+        "pageLength": 10
+        });
 
-            $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function () { $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust(); });
-            $('.accordion-button').on('click', function() { setTimeout(() => { $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust(); }, 200); });
+        $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function () { $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust(); });
+        $('.accordion-button').on('click', function() { setTimeout(() => { $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust(); }, 200); });
 
-            $.fn.dataTable.ext.search.push(function(settings, data, dataIndex, rowData, counter) {
-                if (!settings.nTable.classList.contains('table-diferencias')) return true;
-                let tolStr = $('#globalTolerance').val();
-                if (!tolStr) return true;
-                let tol = parseFloat(tolStr);
-                let tr = settings.aoData[dataIndex].nTr;
-                let diffStr = tr.getAttribute('data-diff');
-                if (!diffStr) return true;
-                let diff = Math.abs(parseFloat(diffStr.replace(',', '.')));
-                return diff > tol;
-            });
+        $.fn.dataTable.ext.search.push(function(settings, data, dataIndex, rowData, counter) {
+        if (!settings.nTable.classList.contains('table-diferencias')) return true;
+        let tolStr = $('#globalTolerance').val();
+        if (!tolStr) return true;
+        let tol = parseFloat(tolStr);
+        let tr = settings.aoData[dataIndex].nTr;
+        let diffStr = tr.getAttribute('data-diff');
+        if (!diffStr) return true;
+        let diff = Math.abs(parseFloat(diffStr.replace(',', '.')));
+        return diff > tol;
+        });
 
-            $('#globalTolerance').on('keyup change', function() { $('.table-diferencias').DataTable().draw(); });
+        $('#globalTolerance').on('keyup change', function() { $('.table-diferencias').DataTable().draw(); });
 
-            new Chart(document.getElementById('chartResultados').getContext('2d'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Cuadrados', 'Diferencias', 'Huérfanos'],
-                    datasets: [{ data: [@totalCuadrados, @totalDiferencias, @totalHuerfanos], backgroundColor: ['#198754', '#ffc107', '#dc3545'], borderWidth: 0 }]
-                },
-                options: { cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: '#fff', padding: 20 } } }, maintainAspectRatio: false }
-            });
+        new Chart(document.getElementById('chartResultados').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+        labels: ['Cuadrados', 'Diferencias', 'Huérfanos'],
+        datasets: [{ data: [@totalCuadrados, @totalDiferencias, @totalHuerfanos], backgroundColor: ['#198754', '#ffc107', '#dc3545'], borderWidth: 0 }]
+        },
+        options: { cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: '#fff', padding: 20 } } }, maintainAspectRatio: false }
+        });
         });
     </script>
 }

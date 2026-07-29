@@ -14,6 +14,7 @@ using System;
 using System.Text.Json;
 using System.Globalization;
 using ExcelDataReader;
+using System.IO.Compression;
 
 namespace NotebookValidator.Web.Controllers
 {
@@ -141,7 +142,6 @@ namespace NotebookValidator.Web.Controllers
                     {
                         validCols1.Add(ColsComparar1[i]);
                         validCols2.Add(ColsComparar2[i]);
-
                         double tol = 0.0001;
                         if (Tolerancias != null && Tolerancias.Count > i && !string.IsNullOrWhiteSpace(Tolerancias[i]))
                         {
@@ -160,7 +160,6 @@ namespace NotebookValidator.Web.Controllers
             }
 
             var resultados = _cuadraturaService.CompararDatos(dt1, dt2, LlaveArchivo1, LlaveArchivo2, validCols1, validCols2, validTols);
-
             resultados.AliasArchivo1 = string.IsNullOrWhiteSpace(AliasArchivo1) ? "Archivo 1" : AliasArchivo1;
             resultados.AliasArchivo2 = string.IsNullOrWhiteSpace(AliasArchivo2) ? "Archivo 2" : AliasArchivo2;
             resultados.EsModoAgrupacion = ModoAgrupacion;
@@ -172,43 +171,79 @@ namespace NotebookValidator.Web.Controllers
 
             var userId = _userManager.GetUserId(User);
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-
-            var auditDetails = new
-            {
-                Modulo = "Cuadratura de Datos",
-                Accion = "Comparación Ejecutada",
-                Archivos = new { Origen1 = resultados.AliasArchivo1, Origen2 = resultados.AliasArchivo2 },
-                Metadatos = new { FilasComparadas = resultados.TotalAgrupado1, ColumnasComparadas = validCols1.Count }
-            };
-
+            var auditDetails = new { Modulo = "Cuadratura", Accion = "Comparación Ejecutada", Archivos = new { Origen1 = resultados.AliasArchivo1, Origen2 = resultados.AliasArchivo2 } };
             await _auditService.LogActionAsync(userId, "Cuadratura: Comparación Ejecutada", JsonSerializer.Serialize(auditDetails), ip);
+
+            // ========================================================
+            // GUARDADO TEMPORAL PARA QUE EXPORTAR LO LEA DESPUÉS
+            // ========================================================
+            string exportId = Guid.NewGuid().ToString();
+
+            // 1. Estructura
+            var resultadoEstructura = _cuadraturaService.ValidarEstructuras(TempPathArchivo1, TempPathArchivo2, resultados.AliasArchivo1, resultados.AliasArchivo2, TieneEncabezados1, TieneEncabezados2, HojaArchivo1, HojaArchivo2);
+            resultadoEstructura.Archivo1.NombreArchivo = resultados.AliasArchivo1;
+            resultadoEstructura.Archivo2.NombreArchivo = resultados.AliasArchivo2;
+
+            // 2. Guardar JSONs (¡CORREGIDO EL PUNTO FALTANTE AQUÍ!)
+            System.IO.File.WriteAllText(Path.Combine(Path.GetTempPath(), exportId + ".json"), JsonSerializer.Serialize(resultados));
+            System.IO.File.WriteAllText(Path.Combine(Path.GetTempPath(), exportId + "_estruct.json"), JsonSerializer.Serialize(resultadoEstructura));
+
+            // 3. Guardar las tablas crudas para pegarlas en la fila 29
+            dt1.TableName = "dt1"; dt2.TableName = "dt2";
+            dt1.WriteXml(Path.Combine(Path.GetTempPath(), exportId + "_dt1.xml"), XmlWriteMode.WriteSchema);
+            dt2.WriteXml(Path.Combine(Path.GetTempPath(), exportId + "_dt2.xml"), XmlWriteMode.WriteSchema);
 
             if (System.IO.File.Exists(TempPathArchivo1)) System.IO.File.Delete(TempPathArchivo1);
             if (System.IO.File.Exists(TempPathArchivo2)) System.IO.File.Delete(TempPathArchivo2);
 
-            string exportId = Guid.NewGuid().ToString();
-            string tempJsonPath = Path.Combine(Path.GetTempPath(), exportId + ".json");
-            System.IO.File.WriteAllText(tempJsonPath, JsonSerializer.Serialize(resultados));
             ViewBag.ExportId = exportId;
-
             return View("Resultados", resultados);
         }
 
         [HttpPost]
-        public IActionResult ExportarExcel(string exportId)
+        public IActionResult ExportarExcel(string exportId, string base64Image)
         {
             if (string.IsNullOrEmpty(exportId)) return RedirectToAction("Index");
-            string tempJsonPath = Path.Combine(Path.GetTempPath(), exportId + ".json");
-            if (!System.IO.File.Exists(tempJsonPath)) return RedirectToAction("Index");
+
+            string jsonPath = Path.Combine(Path.GetTempPath(), exportId + ".json");
+            string estructPath = Path.Combine(Path.GetTempPath(), exportId + "_estruct.json");
+            string xml1 = Path.Combine(Path.GetTempPath(), exportId + "_dt1.xml");
+            string xml2 = Path.Combine(Path.GetTempPath(), exportId + "_dt2.xml");
+
+            if (!System.IO.File.Exists(jsonPath) || !System.IO.File.Exists(xml1)) return RedirectToAction("Index");
 
             try
             {
-                var jsonResultado = System.IO.File.ReadAllText(tempJsonPath);
-                var resultado = JsonSerializer.Deserialize<ResultadoCuadratura>(jsonResultado);
-                var archivo = _cuadraturaService.GenerarExcelReporte(resultado);
-                System.IO.File.Delete(tempJsonPath);
+                var resultados = JsonSerializer.Deserialize<ResultadoCuadratura>(System.IO.File.ReadAllText(jsonPath));
+                var resultadoEstructura = JsonSerializer.Deserialize<ResultadoEstructura>(System.IO.File.ReadAllText(estructPath));
 
-                return File(archivo, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Reporte_Cuadratura_{DateTime.Now:yyyyMMddHHmm}.xlsx");
+                DataTable dt1 = new DataTable(); dt1.ReadXml(xml1);
+                DataTable dt2 = new DataTable(); dt2.ReadXml(xml2);
+
+                // Pasamos la imagen generada en la web app al reporteador
+                var excelCuadratura = _cuadraturaService.GenerarExcelReporte(resultados, dt1, dt2, base64Image);
+                var excelEstructura = _cuadraturaService.GenerarExcelReporteEstructura(resultadoEstructura);
+
+                string zipPath = Path.Combine(Path.GetTempPath(), exportId + ".zip");
+                using (var fileStream = new FileStream(zipPath, FileMode.Create))
+                {
+                    using (var archive = new ZipArchive(fileStream, ZipArchiveMode.Create, true))
+                    {
+                        var entry1 = archive.CreateEntry($"Reporte_Cuadratura_Datos_{DateTime.Now:yyyyMMddHHmm}.xlsx");
+                        using (var entryStream = entry1.Open()) { entryStream.Write(excelCuadratura, 0, excelCuadratura.Length); }
+
+                        var entry2 = archive.CreateEntry($"Reporte_Validacion_Estructura_{DateTime.Now:yyyyMMddHHmm}.xlsx");
+                        using (var entryStream = entry2.Open()) { entryStream.Write(excelEstructura, 0, excelEstructura.Length); }
+                    }
+                }
+
+                var zipBytes = System.IO.File.ReadAllBytes(zipPath);
+
+                // Limpieza
+                System.IO.File.Delete(jsonPath); System.IO.File.Delete(estructPath);
+                System.IO.File.Delete(xml1); System.IO.File.Delete(xml2); System.IO.File.Delete(zipPath);
+
+                return File(zipBytes, "application/zip", $"Reportes_Cuadratura_{DateTime.Now:yyyyMMddHHmm}.zip");
             }
             catch { return RedirectToAction("Index"); }
         }
