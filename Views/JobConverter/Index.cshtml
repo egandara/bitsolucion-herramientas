@@ -161,6 +161,16 @@
         border: 1px solid rgba(255,255,255,0.05);
         word-break: break-all;
     }
+
+    .perm-user-name {
+        color: #ffffff !important;
+        font-weight: 600;
+    }
+
+        .perm-user-name::placeholder {
+            color: rgba(255, 255, 255, 0.4) !important;
+            font-weight: normal;
+        }
 </style>
 
 <div class="container-fluid dashboard-xl-container mt-4 mb-5">
@@ -286,7 +296,12 @@
                                 </td>
                                 <td>
                                     <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control font-monospace bg-dark text-white border-secondary perm-user-name" placeholder="usuario" style="font-size: 0.72rem; height: 26px;" />
+                                        <!-- NUEVO: Selector de Tipo -->
+                                        <select class="form-select form-select-sm font-monospace bg-dark text-white border-secondary perm-type-select" style="font-size: 0.72rem; height: 26px; max-width: 90px;">
+                                            <option value="user">Usuario</option>
+                                            <option value="group">Grupo</option>
+                                        </select>
+                                        <input type="text" class="form-control font-monospace bg-dark text-white border-secondary perm-user-name" placeholder="nombre.apellido / GRP_..." style="font-size: 0.72rem; height: 26px;" />
                                         <input type="text" class="form-control font-monospace bg-dark text-white-50 border-secondary perm-user-domain" value="@@bci.cl" style="font-size: 0.72rem; height: 26px; max-width: 90px;" />
                                     </div>
                                 </td>
@@ -335,6 +350,20 @@
                                     </ul>
                                 </div>
                             </div>
+
+                            <!-- NUEVA SECCIÓN DE POLÍTICAS DE CLÚSTER -->
+                            <div class="row mt-3 pt-2 border-top border-secondary border-opacity-25">
+                                <div class="col-12">
+                                    <strong class="text-white d-block mb-1" style="font-size: 0.75rem;"><i class="bi bi-server text-info me-1"></i> Especificaciones de Políticas de Clúster (Spot ON, Standard LTS)</strong>
+                                    <ul class="mb-0 ps-3" style="list-style-type: square; font-size: 0.7rem;">
+                                        <li class="mb-1"><strong class="text-info">XS:</strong> Single Node, Standard_D4a_v4, 4 Core, 16 GB RAM.</li>
+                                        <li class="mb-1"><strong class="text-info">M:</strong> Single Node, Standard_E8s_v3, 8 Core, 64 GB RAM.</li>
+                                        <li class="mb-1"><strong class="text-info">L:</strong> Multi Node, Standard_E4ds_v4, 4 Core, 32 GB RAM, 1 Drive (Autoscale 1 - 2 Workers).</li>
+                                        <li class="mb-1"><strong class="text-info">XL:</strong> Multi Node, Standard_E8s_v3, 8 Core, 64 GB RAM, 1 Drive (Autoscale 1 - 2 Workers).</li>
+                                    </ul>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -357,42 +386,58 @@
                     </div>
                 </div>
 
-                @* ── Banner global: schemaBitacora + agregar tabla masiva ── *@
-                <div id="bannerGlobal" class="p-3 mb-3 rounded border border-secondary border-opacity-25" style="background-color:#0b0d16;">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-12 col-md-5">
+                @* ── Banner global: schemaBitacora + agregar tabla masiva + Tipo Autocertificación ── *@
+                <div id="bannerGlobal" class="p-3 mb-3 rounded border border-secondary border-opacity-25 shadow-sm" style="background-color:#111424;">
+                    <!-- Fila 1: Configuraciones Globales -->
+                    <div class="row g-3 mb-3 pb-3 border-bottom border-secondary border-opacity-50">
+                        <div class="col-md-7">
                             <label class="text-white fw-bold mb-1 d-block" style="font-size:0.72rem;">
-                                <i class="bi bi-journal-bookmark me-1 text-warning"></i>
-                                <span class="text-warning">schemaBitacora</span>
-                                <span class="text-white ms-1">— se aplica a todos los jobs</span>
+                                <i class="bi bi-journal-bookmark me-1 text-warning"></i> <span class="text-warning">schemaBitacora</span>
                             </label>
-                            <input type="text" id="globalSchemaBitacora" name="globalSchemaBitacora"
-                                   class="form-control form-control-sm font-monospace bg-dark border-secondary custom-placeholder shadow-sm"
-                                   placeholder="catalog_bcidigital_dsr_001.sch_ida"
-                                   style="font-size:0.78rem; color:#fff !important;" />
+                            <input type="text" id="globalSchemaBitacora" name="globalSchemaBitacora" class="form-control form-control-sm font-monospace bg-dark border-secondary custom-placeholder shadow-sm" placeholder="catalog_bcidigital_dsr_001.sch_ida" style="font-size:0.78rem; color:#fff !important;" />
                         </div>
-                        <div class="col-12 col-md-7">
-                            <label class="text-white fw-bold mb-1 d-block" style="font-size:0.72rem;">
-                                <i class="bi bi-table me-1 text-info"></i>
-                                <span class="text-info">Agregar tabla masiva</span>
-                                <span class="text-white ms-1">— agrega a todos los jobs visibles</span>
+                        <div class="col-md-5">
+                            <label class="text-white fw-bold mb-1 d-block" style="font-size: 0.72rem;">
+                                <i class="bi bi-funnel me-1 text-info"></i> <span class="text-info">Tipo (Autocertificación)</span>
                             </label>
-                            <div class="d-flex gap-2 align-items-center flex-wrap">
-                                <select id="globalMassType" class="form-select form-select-sm bg-dark text-white border-secondary font-monospace" style="width:110px; font-size:0.72rem;">
+                            <select id="autocertTipo" name="autocertTipo" class="form-select form-select-sm font-monospace bg-dark text-white border-secondary shadow-sm" style="font-size: 0.78rem;">
+                                <option value="ADLS">ADLS</option>
+                                <option value="Delta" selected>Delta</option>
+                                <option value="HDI">HDI</option>
+                                <option value="Files">Files</option>
+                                <option value="Confluent">Confluent</option>
+                                <option value="Mongo">Mongo</option>
+                                <option value="Teradata">Teradata</option>
+                                <option value="API">API</option>
+                                <option value="MSSQL">MSSQL</option>
+                                <option value="POSTGRESQL">POSTGRESQL</option>
+                                <option value="ORACLE">ORACLE</option>
+                                <option value="ADLS FeatureStore">ADLS FeatureStore</option>
+                                <option value="Marketing Cloud">Marketing Cloud</option>
+                                <option value="Splunk">Splunk</option>
+                                <option value="Otros">Otros</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Fila 2: Agregar Tabla Masiva -->
+                    <div class="row g-3 align-items-end">
+                        <div class="col-12">
+                            <label class="text-white fw-bold mb-2 d-block" style="font-size:0.72rem;">
+                                <i class="bi bi-table me-1 text-success"></i> <span class="text-success">Agregar tabla masiva</span>
+                            </label>
+                            <div class="d-flex gap-3 align-items-center flex-wrap">
+                                <select id="globalMassType" class="form-select form-select-sm bg-dark text-white border-secondary font-monospace shadow-sm" style="max-width: 150px; font-size:0.72rem;">
                                     <option value="source">Origen</option>
                                     <option value="target">Destino</option>
                                 </select>
-                                <select id="globalMassParam" class="form-select form-select-sm bg-dark text-white border-secondary font-monospace" style="width:160px; font-size:0.72rem;">
-                                    <option value="">-- Sin Variable --</option>
+                                <select id="globalMassParam" class="form-select form-select-sm bg-dark text-white border-secondary font-monospace shadow-sm" style="max-width: 200px; font-size:0.72rem;">
+                                    <option value="">-- Variable --</option>
                                 </select>
                                 <span class="text-white fw-bold">.</span>
-                                <input type="text" id="globalMassTable"
-                                       class="form-control form-control-sm bg-dark border-secondary font-monospace custom-placeholder shadow-sm"
-                                       placeholder="nombre_tabla"
-                                       style="width:180px; font-size:0.72rem; color:#fff !important;" />
-                                <button type="button" class="btn btn-sm btn-info fw-bold px-3"
-                                        onclick="addMassiveTable()" title="Agregar esta tabla a todos los jobs">
-                                    <i class="bi bi-plus-lg me-1"></i>Agregar a todos
+                                <input type="text" id="globalMassTable" class="form-control form-control-sm bg-dark border-secondary font-monospace custom-placeholder shadow-sm" placeholder="nombre_tabla" style="flex-grow: 1; max-width: 300px; font-size:0.72rem; color:#fff !important;" />
+                                <button type="button" class="btn btn-sm btn-success fw-bold px-4 shadow-sm" onclick="addMassiveTable()">
+                                    <i class="bi bi-plus-lg me-1"></i> Agregar
                                 </button>
                             </div>
                         </div>
@@ -535,6 +580,17 @@
 
 @section Scripts {
     <script>
+
+        $(document).on('change', '.perm-type-select', function() {
+                    if ($(this).val() === 'group') {
+                        $(this).siblings('.perm-user-domain').css('visibility', 'hidden');
+                        $(this).siblings('.perm-user-name').attr('placeholder', 'GRP_AZURE_...');
+                    } else {
+                        $(this).siblings('.perm-user-domain').css('visibility', 'visible');
+                        $(this).siblings('.perm-user-name').attr('placeholder', 'nombre.apellido / GRP_...');
+                    }
+                });
+
         window.jobParametersMap = {};
 
         // Variable para controlar si el usuario ya aprobó omitir la validación de tablas
@@ -731,7 +787,11 @@
                     </td>
                     <td>
                         <div class="input-group input-group-sm">
-                            <input type="text" class="form-control font-monospace bg-dark text-white border-secondary perm-user-name" placeholder="usuario" style="font-size: 0.72rem; height: 26px;" />
+                            <select class="form-select form-select-sm font-monospace bg-dark text-white border-secondary perm-type-select" style="font-size: 0.72rem; height: 26px; max-width: 90px;">
+                                <option value="user">Usuario</option>
+                                <option value="group">Grupo</option>
+                            </select>
+                            <input type="text" class="form-control font-monospace bg-dark text-white border-secondary perm-user-name" placeholder="nombre.apellido / GRP_..." style="font-size: 0.72rem; height: 26px;" />
                             <input type="text" class="form-control font-monospace bg-dark text-white-50 border-secondary perm-user-domain" value="@@bci.cl" style="font-size: 0.72rem; height: 26px; max-width: 90px;" />
                         </div>
                     </td>
@@ -855,44 +915,63 @@
                                 const noRunCheckedAttr = job.isProvisioning ? "" : "checked";
 
                                 if (job.isYaml) {
-                                    mainRow = `
-                                    <tr class="main-job-row" data-row-idx="${index}" data-is-prov="${job.isProvisioning}" data-suggested-name="${cleanBaseDesc}" data-is-yaml="true" style="border-bottom: transparent !important;">
-                                        <td class="small fw-bold text-wrap" style="color: #ffffff !important; max-width:240px; padding: 12px 6px;">
-                                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                                <span>${badgeType}${job.originalFileName}</span>
-                                            </div>
-                                            <input type="hidden" name="fileKeys" value="${job.fileKey}" />
-                                        </td>
-                                        <td>
-                                            <div class="d-flex flex-column gap-2 mb-2">
-                                                <label class="text-white-50 mb-0 fw-bold" style="font-size: 0.65rem;">Descripción Base BCI (Sin prefijos/flags):</label>
-                                                <input type="text" id="baseDesc_${index}" class="form-control form-control-sm font-monospace bg-dark text-warning border-secondary shadow-sm" value="${cleanBaseDesc}" style="font-size:0.75rem;" oninput="updateJobFileName(${index})" title="Edita el nombre base del Job." />
-
-                                                <div class="d-flex align-items-center gap-3 p-2 border border-secondary rounded mt-1 shadow-inner" style="background-color: #111424;">
-                                                    <div class="radio-dot-container">
-                                                        <span class="text-warning fw-bold" style="font-size:0.68rem; letter-spacing:0.3px;">Autocert QA:</span>
-                                                        <label class="radio-dot-label"><input type="radio" class="radio-dot-input qa-check" name="dev_radio_${index}" value="qa" checked onchange="updateJobFileName(${index})"> qa</label>
-                                                        <label class="radio-dot-label"><input type="radio" class="radio-dot-input qa-check" name="dev_radio_${index}" value="noqa" onchange="updateJobFileName(${index})"> noqa</label>
+                                            mainRow = `
+                                            <tr class="main-job-row" data-row-idx="${index}" data-is-prov="${job.isProvisioning}" data-suggested-name="${cleanBaseDesc}" data-is-yaml="true" style="border-bottom: transparent !important;">
+                                                <td class="p-3" style="vertical-align: top; border-right: 1px solid rgba(255,255,255,0.05); width: 28%;">
+                                                    <div class="mb-3">
+                                                        <span class="d-block mb-1">${badgeType}</span>
+                                                        <span class="small fw-bold text-white" style="word-break: break-all;">${job.originalFileName}</span>
                                                     </div>
-                                                    <div class="radio-dot-container border-start border-secondary ps-3">
-                                                        <span class="text-info fw-bold" style="font-size:0.68rem; letter-spacing:0.3px;">Producción:</span>
-                                                        <label class="radio-dot-label"><input type="radio" class="radio-dot-input run-check" name="radRunProd_${index}" value="norun" ${noRunCheckedAttr} onchange="updateJobFileName(${index})"> norun</label>
-                                                        <label class="radio-dot-label"><input type="radio" class="radio-dot-input run-check" name="radRunProd_${index}" value="run" ${runCheckedAttr} onchange="updateJobFileName(${index})"> run</label>
+                                                    <input type="hidden" name="fileKeys" value="${job.fileKey}" />
+
+                                                    <div class="mb-2">
+                                                        <label class="text-white-50 mb-1 fw-bold" style="font-size: 0.65rem;"><i class="bi bi-cpu text-primary"></i> AppId:</label>
+                                                        <input type="text" name="appIds" class="form-control form-control-sm font-monospace bg-dark text-white border-secondary shadow-sm" value="finops" style="font-size:0.75rem;" />
                                                     </div>
-                                                </div>
+                                                    <div>
+                                                        <label class="text-white-50 mb-1 fw-bold" style="font-size: 0.65rem;"><i class="bi bi-server text-info"></i> Política de Clúster:</label>
+                                                        <select name="clusterPolicies" class="form-select form-select-sm font-monospace bg-dark text-white border-secondary shadow-sm" style="font-size:0.7rem;" title="Posiciona el cursor sobre las opciones para ver el detalle de RAM y Cores">
+                                                            <option value="bci_STD_jobcluster_XS" title="XS: Single Node, Standard_D4a_v4, 4 Core, 16 GB RAM, Spot ON">XS (Single Node)</option>
+                                                            <option value="bci_STD_jobcluster_M" title="M: Single Node, Standard_E8s_v3, 8 Core, 64 GB RAM, Spot ON">M (Single Node)</option>
+                                                            <option value="bci_STD_jobcluster_L" title="L: Multi Node, Standard_E4ds_v4, 4 Core, 32 GB RAM, 1 Drive, Autoscale 1-2 Worker, Spot ON">L (Multi Node)</option>
+                                                            <option value="bci_STD_jobcluster_XL" title="XL: Multi Node, Standard_E8s_v3, 8 Core, 64 GB RAM, 1 Drive, Autoscale 1-2 Worker, Spot ON">XL (Multi Node)</option>
+                                                        </select>
+                                                        <p class="text-info mt-1 mb-0" style="font-size: 0.6rem; line-height: 1.2; opacity: 0.8;">
+                                                            <i class="bi bi-info-circle me-1"></i>Deja el cursor sobre la opción para ver el detalle técnico.
+                                                        </p>
+                                                    </div>
+                                                </td>
+                                                <td colspan="3" class="p-3" style="vertical-align: top;">
+                                                    <div class="row g-2 mb-2">
+                                                        <div class="col-12">
+                                                            <label class="text-white-50 mb-0 fw-bold" style="font-size: 0.65rem;">Descripción Base BCI:</label>
+                                                            <input type="text" id="baseDesc_${index}" class="form-control form-control-sm font-monospace bg-dark text-warning border-secondary shadow-sm" value="${cleanBaseDesc}" style="font-size:0.75rem;" oninput="updateJobFileName(${index})" />
+                                                        </div>
+                                                    </div>
 
-                                                <div class="filename-live-badge text-warning d-inline-block px-3 py-1 mt-1 text-center" id="badgeDev_${index}" style="font-size: 0.8rem; font-weight: bold;">Calculando...</div>
-                                            </div>
+                                                    <div class="d-flex align-items-center gap-3 p-2 border border-secondary rounded mt-1 shadow-inner" style="background-color: #111424;">
+                                                        <div class="radio-dot-container">
+                                                            <span class="text-warning fw-bold" style="font-size:0.68rem; letter-spacing:0.3px;">Autocert QA:</span>
+                                                            <label class="radio-dot-label"><input type="radio" class="radio-dot-input qa-check" name="dev_radio_${index}" value="qa" checked onchange="updateJobFileName(${index})"> qa</label>
+                                                            <label class="radio-dot-label"><input type="radio" class="radio-dot-input qa-check" name="dev_radio_${index}" value="noqa" onchange="updateJobFileName(${index})"> noqa</label>
+                                                        </div>
+                                                        <div class="radio-dot-container border-start border-secondary ps-3">
+                                                            <span class="text-info fw-bold" style="font-size:0.68rem; letter-spacing:0.3px;">Producción:</span>
+                                                            <label class="radio-dot-label"><input type="radio" class="radio-dot-input run-check" name="radRunProd_${index}" value="norun" ${noRunCheckedAttr} onchange="updateJobFileName(${index})"> norun</label>
+                                                            <label class="radio-dot-label"><input type="radio" class="radio-dot-input run-check" name="radRunProd_${index}" value="run" ${runCheckedAttr} onchange="updateJobFileName(${index})"> run</label>
+                                                        </div>
+                                                    </div>
 
-                                            <input type="hidden" id="devNames_${index}" name="devNames" value="" />
-                                            <input type="hidden" id="certNames_${index}" name="certNames" value="" />
-                                            <input type="hidden" id="prodNames_${index}" name="prodNames" value="" />
+                                                    <div class="filename-live-badge text-warning d-inline-block px-3 py-1 mt-2 text-center w-100" id="badgeDev_${index}" style="font-size: 0.8rem; font-weight: bold;">Calculando...</div>
 
-                                            <input type="hidden" id="devAutocert_${index}" name="devAutocert" value="true" />
-                                            <input type="hidden" id="certAutocert_${index}" name="certAutocert" value="false" />
-                                            <input type="hidden" id="prodAutocert_${index}" name="prodAutocert" value="false" />
-                                        </td>
-                                    </tr>`;
+                                                    <input type="hidden" id="devNames_${index}" name="devNames" value="" />
+                                                    <input type="hidden" id="certNames_${index}" name="certNames" value="" />
+                                                    <input type="hidden" id="prodNames_${index}" name="prodNames" value="" />
+                                                    <input type="hidden" id="devAutocert_${index}" name="devAutocert" value="true" />
+                                                    <input type="hidden" id="certAutocert_${index}" name="certAutocert" value="false" />
+                                                    <input type="hidden" id="prodAutocert_${index}" name="prodAutocert" value="false" />
+                                                </td>
+                                            </tr>`;
 
                                     govRow = `
                                     <tr id="govRow_${index}" class="${isGovRowHidden} gov-row">
@@ -944,14 +1023,27 @@
                                 }
 
                                 if (job.isYaml && masterAutoCert) {
-                                    if (job.autoSources && job.autoSources.length > 0) {
-                                        job.autoSources.forEach(src => addTableMappingRow(index, 'source', src.param, src.table));
-                                    } else addTableMappingRow(index, 'source');
+                                            const processTables = (tableArray, type) => {
+                                                if (!tableArray || tableArray.length === 0) {
+                                                    addTableMappingRow(index, type); return;
+                                                }
+                                                tableArray.sort((a, b) => a.param.localeCompare(b.param) || a.table.localeCompare(b.table));
 
-                                    if (job.autoTargets && job.autoTargets.length > 0) {
-                                        job.autoTargets.forEach(tgt => addTableMappingRow(index, 'target', tgt.param, tgt.table));
-                                    } else addTableMappingRow(index, 'target');
-                                }
+                                                let grouped = {};
+                                                tableArray.forEach(t => {
+                                                    let key = `${t.param}|${t.table}`;
+                                                    grouped[key] = (grouped[key] || 0) + 1;
+                                                });
+
+                                                Object.entries(grouped).forEach(([key, count]) => {
+                                                    let [p, t] = key.split('|');
+                                                    addTableMappingRow(index, type, p, t, count);
+                                                });
+                                            };
+
+                                            processTables(job.autoSources, 'source');
+                                            processTables(job.autoTargets, 'target');
+                                        }
                             });
 
                             // Resetear la confirmación del usuario para cada nueva carga de fase 1
@@ -1047,9 +1139,14 @@
                 $(hiddenContainer).append(`<input type="hidden" name="bundleName" value="${bundleNameVal}" />`);
 
                 const schemaBitacora = document.getElementById('globalSchemaBitacora').value.trim();
-                if (schemaBitacora) {
-                    $(hiddenContainer).append(`<input type="hidden" name="globalSchemaBitacora" value="${schemaBitacora}" />`);
-                }
+                        if (schemaBitacora) {
+                            $(hiddenContainer).append(`<input type="hidden" name="globalSchemaBitacora" value="${schemaBitacora}" />`);
+                        }
+
+                        const autocertTipo = document.getElementById('autocertTipo').value;
+                        if (autocertTipo) {
+                            $(hiddenContainer).append(`<input type="hidden" name="autocertTipo" value="${autocertTipo}" />`);
+                        }
 
                 $('#permissions-tbody tr').each(function() {
                     const level = $(this).find('select').val();
@@ -1157,25 +1254,29 @@
             }
         });
 
-        window.addTableMappingRow = function(index, type, prefillParam = '', prefillTable = '') {
-            const container = document.getElementById(`${type}TablesContainer_${index}`);
-            const params = window.jobParametersMap[index] || [];
-            let optionsHtml = '<option value="">-- Sin Variable (Texto Libre) --</option>';
-            params.forEach(p => {
-                const isSelected = (p === prefillParam) ? "selected" : "";
-                optionsHtml += `<option value="${p}" ${isSelected}>${p}</option>`;
-            });
-            const rowHtml = `
-                <div class="d-flex align-items-center gap-2 mb-1 mapping-row">
-                    <select class="form-select form-select-sm bg-dark text-white border-secondary font-monospace" style="width: 48%; font-size: 0.7rem;">
-                        ${optionsHtml}
-                    </select>
-                    <span class="text-white-50" style="font-weight:bold;">.</span>
-                    <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace custom-placeholder" placeholder="nombre_tabla" style="width: 48%; font-size: 0.7rem; color:#fff !important;" value="${prefillTable}" />
-                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" onclick="this.parentElement.remove()" style="font-size: 0.75rem;"><i class="bi bi-trash"></i></button>
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', rowHtml);
-        }
+        window.addTableMappingRow = function(index, type, prefillParam = '', prefillTable = '', count = 1) {
+                    const container = document.getElementById(`${type}TablesContainer_${index}`);
+                    const params = window.jobParametersMap[index] || [];
+                    let optionsHtml = '<option value="">-- Sin Variable --</option>';
+                    params.forEach(p => {
+                        const isSelected = (p === prefillParam) ? "selected" : "";
+                        optionsHtml += `<option value="${p}" ${isSelected}>${p}</option>`;
+                    });
+
+                    let countBadge = count > 1 ? `<span class="badge bg-info text-dark position-absolute" style="right: 35px; top: 8px; font-size:0.6rem;" title="Aparece en ${count} notebooks distintos">x${count}</span>` : '';
+
+                    const rowHtml = `
+                        <div class="d-flex align-items-center gap-2 mb-1 mapping-row position-relative">
+                            <select class="form-select form-select-sm bg-dark text-white border-secondary font-monospace" style="width: 48%; font-size: 0.7rem;">
+                                ${optionsHtml}
+                            </select>
+                            <span class="text-white-50" style="font-weight:bold;">.</span>
+                            <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace custom-placeholder" placeholder="nombre_tabla" style="width: 48%; font-size: 0.7rem; color:#fff !important;" value="${prefillTable}" />
+                            ${countBadge}
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" onclick="this.parentElement.remove()" style="font-size: 0.75rem;"><i class="bi bi-trash"></i></button>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('beforeend', rowHtml);
+                }
     </script>
 }

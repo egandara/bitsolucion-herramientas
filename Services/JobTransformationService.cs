@@ -165,21 +165,25 @@ namespace NotebookValidator.Web.Services
         // ARQUITECTURA BUNDLE MULTI-JOB: Desacoplamiento de nombres, variables base y carpetas relativas
         // =========================================================================================
         public Dictionary<string, string> GenerateBundleConfigs(
-            List<string> yamlContents,
-            List<string> devNames,
-            List<string> certNames,
-            List<string> prodNames,
-            List<string> permissionLevels,
-            List<string> permissionUsers,
-            List<bool> devAutocerts,
-            List<bool> certAutocerts,
-            List<bool> prodAutocerts,
-            List<string> sourceTables,
-            List<string> targetTables,
-            string bundleName,
-            bool conTasks = false)
+                    List<string> yamlContents,
+                    List<string> devNames,
+                    List<string> certNames,
+                    List<string> prodNames,
+                    List<string> permissionLevels,
+                    List<string> permissionUsers,
+                    List<bool> devAutocerts,
+                    List<bool> certAutocerts,
+                    List<bool> prodAutocerts,
+                    List<string> sourceTables,
+                    List<string> targetTables,
+                    List<string> appIds,
+                    List<string> clusterPolicies,
+                    string bundleName,
+                    string autocertTipo = "Delta",
+                    bool conTasks = false)
         {
             var outputFiles = new Dictionary<string, string>();
+            string appId = (appIds != null && appIds.Count > 0) ? appIds[0] : "finops";
             var databricksYml = new StringBuilder();
 
             databricksYml.AppendLine("bundle:");
@@ -194,6 +198,11 @@ namespace NotebookValidator.Web.Services
             databricksYml.AppendLine("  path: ");
             databricksYml.AppendLine("    description: \"\"");
             databricksYml.AppendLine("    default: \"Develop\"");
+
+            // NUEVO BLOQUE APPID
+            databricksYml.AppendLine("  AppId:");
+            databricksYml.AppendLine("    description: Valor del AppId");
+            databricksYml.AppendLine($"    default: \"{appId}\"");
 
             databricksYml.AppendLine("  jobPermissions:");
             databricksYml.AppendLine("    description: Set de permisos de gobernanza asignados desde la celula");
@@ -273,6 +282,7 @@ namespace NotebookValidator.Web.Services
             databricksYml.AppendLine("    workspace:");
             databricksYml.AppendLine("      root_path: /Users/${workspace.current_user.userName}/.bundles/${bundle.name}/${bundle.target}");
             databricksYml.AppendLine("    variables:");
+            databricksYml.AppendLine($"      AppId: \"{appId}\"");
             databricksYml.AppendLine("      path: \"Develop\"");
             foreach (var param in allParametersList)
             {
@@ -300,6 +310,7 @@ namespace NotebookValidator.Web.Services
             databricksYml.AppendLine("    workspace:");
             databricksYml.AppendLine("      root_path: /Shared/.bundles/certification/${bundle.name}");
             databricksYml.AppendLine("    variables:");
+            databricksYml.AppendLine($"      AppId: \"{appId}\"");
             databricksYml.AppendLine("      path: \"Certification\"");
             foreach (var param in allParametersList)
             {
@@ -327,6 +338,7 @@ namespace NotebookValidator.Web.Services
             databricksYml.AppendLine("    workspace:");
             databricksYml.AppendLine("      root_path: /Shared/.bundles/production/${bundle.name}");
             databricksYml.AppendLine("    variables:");
+            databricksYml.AppendLine($"      AppId: \"{appId}\"");
             databricksYml.AppendLine("      path: \"Production\"");
             foreach (var param in allParametersList)
             {
@@ -362,6 +374,35 @@ namespace NotebookValidator.Web.Services
                 string dataSecurityMode = "SINGLE_USER";
                 string runtimeEngine = "STANDARD";
                 string clusterKey = "bci_v3_cluster";
+
+                string minWorkers = "1";
+                string maxWorkers = "4";
+                bool isSingleNode = true;
+
+                string policySeleccionada = (clusterPolicies != null && clusterPolicies.Count > i) ? clusterPolicies[i] : "bci_STD_jobcluster_XS";
+                switch (policySeleccionada)
+                {
+                    case "bci_STD_jobcluster_XS":
+                        nodeTypeId = "Standard_D4a_v4";
+                        isSingleNode = true;
+                        break;
+                    case "bci_STD_jobcluster_M":
+                        nodeTypeId = "Standard_E8s_v3";
+                        isSingleNode = true;
+                        break;
+                    case "bci_STD_jobcluster_L":
+                        nodeTypeId = "Standard_E4ds_v4";
+                        minWorkers = "1"; maxWorkers = "2";
+                        isSingleNode = false;
+                        break;
+                    case "bci_STD_jobcluster_XL":
+                        nodeTypeId = "Standard_E8s_v3";
+                        minWorkers = "1"; maxWorkers = "2";
+                        isSingleNode = false;
+                        break;
+                }
+
+                string jobAppId = (appIds != null && appIds.Count > i) ? appIds[i] : "finops";
 
                 var mVersion = Regex.Match(cleanYaml, @"spark_version:\s*([^\r\n]+)");
                 if (mVersion.Success) sparkVersion = mVersion.Groups[1].Value.Trim().Trim('"').Trim('\'');
@@ -478,7 +519,7 @@ namespace NotebookValidator.Web.Services
                     autocertTaskBlock.AppendLine("              ejecutarAutocertificacion: \"${var.flagAutocertificacion}\"");
                     autocertTaskBlock.AppendLine($"              nombreJob: \"${{var.jobName_{jCleanName}}}\"");
                     autocertTaskBlock.AppendLine("              nombreTarea: \"certification_bigdata\"");
-                    autocertTaskBlock.AppendLine("              tipo: \"A\"");
+                    autocertTaskBlock.AppendLine($"              tipo: \"{autocertTipo}\"");
                     autocertTaskBlock.AppendLine("              schemaBitacora: \"catalog_bcidigital_dsr_001.sch_ida\"");
 
                     foreach (var kvp in sourceYamlParams)
@@ -673,11 +714,26 @@ namespace NotebookValidator.Web.Services
                 resourceYml.AppendLine("            enable_elastic_disk: true");
                 resourceYml.AppendLine($"            data_security_mode: {dataSecurityMode}");
                 resourceYml.AppendLine($"            runtime_engine: {runtimeEngine}");
-                resourceYml.AppendLine("            custom_tags:");
-                resourceYml.AppendLine("              clusterSource: dops-datosriesgo");
-                resourceYml.AppendLine("            autoscale:");
-                resourceYml.AppendLine("              min_workers: 1");
-                resourceYml.AppendLine("              max_workers: 4");
+
+                if (isSingleNode)
+                {
+                    resourceYml.AppendLine("            custom_tags:");
+                    resourceYml.AppendLine("              clusterSource: dops-datosriesgo");
+                    resourceYml.AppendLine("              ResourceClass: SingleNode");
+                    resourceYml.AppendLine($"              AppId: \"{jobAppId}\"");
+                    resourceYml.AppendLine("            spark_conf:");
+                    resourceYml.AppendLine("              spark.databricks.cluster.profile: singleNode");
+                    resourceYml.AppendLine("              spark.master: local[*, 4]");
+                }
+                else
+                {
+                    resourceYml.AppendLine("            custom_tags:");
+                    resourceYml.AppendLine("              clusterSource: dops-datosriesgo");
+                    resourceYml.AppendLine($"              AppId: \"{jobAppId}\"");
+                    resourceYml.AppendLine("            autoscale:");
+                    resourceYml.AppendLine($"              min_workers: {minWorkers}");
+                    resourceYml.AppendLine($"              max_workers: {maxWorkers}");
+                }
 
                 // NUEVA LÍNEA DE PERMISOS
                 resourceYml.AppendLine("      permissions: \"${var.jobPermissions}\"");

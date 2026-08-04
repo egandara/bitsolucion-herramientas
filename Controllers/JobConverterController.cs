@@ -289,8 +289,11 @@ namespace NotebookValidator.Web.Controllers
             List<string> prodAutocert,
             List<string> sourceTables,
             List<string> targetTables,
+            List<string> appIds,
+            List<string> clusterPolicies,
             string bundleName,
             string? globalSchemaBitacora = null,
+            string autocertTipo = "Delta",
             bool conTasks = false)
         {
             string token = TempData.Peek("JobAnalysisToken")?.ToString();
@@ -374,10 +377,10 @@ namespace NotebookValidator.Web.Controllers
                         if (yamlContents.Count > 0)
                         {
                             var bundleConfigs = _transformationService.GenerateBundleConfigs(
-                                yamlContents, yamlDevNames, yamlCertNames, yamlProdNames,
-                                permLevels, permUsers,
-                                yamlDevAutocerts, yamlCertAutocerts, yamlProdAutocerts,
-                                yamlSourceTables, yamlTargetTables, bundleName, conTasks);
+                                                            yamlContents, yamlDevNames, yamlCertNames, yamlProdNames,
+                                                            permLevels, permUsers,
+                                                            yamlDevAutocerts, yamlCertAutocerts, yamlProdAutocerts,
+                                                            yamlSourceTables, yamlTargetTables, appIds, clusterPolicies, bundleName, autocertTipo, conTasks);
 
                             foreach (var config in bundleConfigs)
                             {
@@ -400,13 +403,23 @@ namespace NotebookValidator.Web.Controllers
                                     {
                                         for (int p = 0; p < permLevels.Count; p++)
                                         {
-                                            string key = permUsers[p].Contains("GRP") ? "group_name" : "user_name";
+                                            // Si tiene '@', es un usuario. Si no, asumimos que seleccionaron Grupo.
+                                            string key = permUsers[p].Contains("@") ? "user_name" : "group_name";
                                             devPermsStr += $"        - level: {permLevels[p]}\n          {key}: {permUsers[p]}\n";
                                         }
                                     }
 
+                                    // PERMISOS OBLIGATORIOS POR DEFECTO PARA DEVELOP
+                                    devPermsStr += "        - level: CAN_MANAGE\n          group_name: GRP_AZURE_DATABRICKS_UDINGBGDATA_MODELOSYDATOSNOM_DSR\n";
+                                    devPermsStr += "        - level: CAN_MANAGE\n          group_name: GRP_AZURE_DATABRICKS_EQ_DES_MANT_RGO_AUT_DSR\n";
+
                                     string certPermsStr = "jobPermissions:\n        - level: CAN_MANAGE\n          user_name: cmoreab@bci.cl\n        - level: CAN_MANAGE\n          user_name: mcordof@bci.cl\n";
-                                    string prodPermsStr = "jobPermissions:\n        - level: CAN_MANAGE\n          group_name: GRP_AZURE_DATABRICKS_PRODUCCION_BIGDATA_PRD\n";
+
+                                    string prodPermsStr = "jobPermissions:\n" +
+                                                          "        - level: CAN_MANAGE\n          group_name: GRP_AZURE_DATABRICKS_PRODUCCION_BIGDATA_PRD\n" +
+                                                          "        - level: CAN_MANAGE\n          group_name: GRP_AZURE_DATABRICKS_EQ_DES_MANT_RGO_AUT_PRD\n" +
+                                                          "        - level: CAN_MANAGE\n          group_name: GRP_AZURE_DATABRICKS_DES_RIESGONORMATIVO_PRD\n" +
+                                                          "        - level: CAN_MANAGE\n          group_name: GRP_AZURE_DATABRICKS_EQ_CONT_MODATNORMCAP_FULL_PRD\n";
 
                                     content = UpdatePermissions(content, "develop", devPermsStr);
                                     content = UpdatePermissions(content, "certification", certPermsStr);

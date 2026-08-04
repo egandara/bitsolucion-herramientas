@@ -72,6 +72,8 @@ namespace NotebookValidator.Web.Services.GestorProyectos
                     new List<string> { permLevel }, new List<string> { permUser },
                     new List<bool> { autocert }, new List<bool> { autocert }, new List<bool> { autocert },
                     new List<string> { sourceStr }, new List<string> { targetStr },
+                    new List<string> { "finops" },
+                    new List<string> { "bci_STD_jobcluster_XS" },
                     bundleName
                 );
 
