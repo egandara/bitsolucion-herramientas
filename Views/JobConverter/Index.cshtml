@@ -628,9 +628,9 @@
                     cardAutocert.classList.remove('d-none');
                     accordionCheatsheet.classList.remove('d-none');
                     btnGuideModal.classList.remove('d-none');
-                    fileUpload.accept = ".yml,.yaml,.zip";
-                    dropZoneBtnText.innerText = "Elegir Archivos (YAML / ZIP)";
-                    dropZoneDesc.innerText = "Arrastra aquí tus YAML de configuración y el ZIP con los notebooks del proceso";
+                    fileUpload.accept = ".yml,.yaml,.json,.zip"; // <-- AÑADIDO .json
+                    dropZoneBtnText.innerText = "Elegir Archivos (YAML / JSON / ZIP)"; // <-- TEXTO ACTUALIZADO
+                    dropZoneDesc.innerText = "Arrastra aquí tus archivos YAML/JSON de configuración y el ZIP con los notebooks"; // <-- TEXTO ACTUALIZADO
                 } else {
                     cardSpark.classList.remove('d-none');
                     cardPerms.classList.add('d-none');
@@ -687,8 +687,9 @@
                 btnProcesarFase1.disabled = true;
                 for (const file of files) {
                     const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-                    if (modeUC.checked && ext !== '.yml' && ext !== '.yaml' && ext !== '.zip') {
-                        toastr.warning(`En Modo UC solo se admiten: .yml, .yaml, .zip`);
+                    // SE AGREGA LA EXCEPCIÓN PARA PERMITIR .json EN MODO UC
+                    if (modeUC.checked && ext !== '.yml' && ext !== '.yaml' && ext !== '.json' && ext !== '.zip') {
+                        toastr.warning(`En Modo UC solo se admiten: .yml, .yaml, .json, .zip`);
                         continue;
                     }
                     if (modeLegacy.checked && ext !== '.json') {
