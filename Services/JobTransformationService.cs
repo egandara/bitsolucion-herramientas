@@ -736,7 +736,7 @@ namespace NotebookValidator.Web.Services
                     resourceYml.AppendLine("            custom_tags:");
                     resourceYml.AppendLine("              clusterSource: dops-datosriesgo");
                     resourceYml.AppendLine("              ResourceClass: SingleNode");
-                    resourceYml.AppendLine($"              AppId: \"{jobAppId}\"");
+                    resourceYml.AppendLine("              AppId: ${var.AppId}");
                     resourceYml.AppendLine("            spark_conf:");
                     resourceYml.AppendLine("              spark.databricks.cluster.profile: singleNode");
                     resourceYml.AppendLine("              spark.master: local[*, 4]");
@@ -745,7 +745,7 @@ namespace NotebookValidator.Web.Services
                 {
                     resourceYml.AppendLine("            custom_tags:");
                     resourceYml.AppendLine("              clusterSource: dops-datosriesgo");
-                    resourceYml.AppendLine($"              AppId: \"{jobAppId}\"");
+                    resourceYml.AppendLine("              AppId: ${var.AppId}");
                     resourceYml.AppendLine("            autoscale:");
                     resourceYml.AppendLine($"              min_workers: {minWorkers}");
                     resourceYml.AppendLine($"              max_workers: {maxWorkers}");
