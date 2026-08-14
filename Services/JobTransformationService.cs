@@ -459,12 +459,25 @@ namespace NotebookValidator.Web.Services
 
                 if (requiresAutocertTask && !string.IsNullOrEmpty(currentTasksBody))
                 {
-                    var taskKeyMatches = Regex.Matches(currentTasksBody, @"task_key:\s*[""']?([A-Za-z0-9_-]+)[""']?");
-                    string lastTaskKey = "";
-                    if (taskKeyMatches.Count > 0)
+                    // 1. Detectar TODAS las tareas definidas en el Job
+                    var allTasks = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var definedTasksMatches = Regex.Matches(currentTasksBody, @"^[ \t]*-[ \t]*task_key:\s*[""']?([A-Za-z0-9_-]+)[""']?", RegexOptions.Multiline);
+                    foreach (Match m in definedTasksMatches) allTasks.Add(m.Groups[1].Value);
+
+                    // 2. Detectar qué tareas ya están siendo usadas como dependencias por otras
+                    var dependedTasks = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var depMatches = Regex.Matches(currentTasksBody, @"depends_on:\s*\r?\n(?:[ \t]*-[ \t]*task_key:\s*[""']?[A-Za-z0-9_-]+[""']?\s*\r?\n?)+");
+                    foreach (Match block in depMatches)
                     {
-                        lastTaskKey = taskKeyMatches[taskKeyMatches.Count - 1].Groups[1].Value;
+                        var keys = Regex.Matches(block.Value, @"-[ \t]*task_key:\s*[""']?([A-Za-z0-9_-]+)[""']?");
+                        foreach (Match k in keys) dependedTasks.Add(k.Groups[1].Value);
                     }
+
+                    // 3. Obtener las tareas "hoja" (las que van al final del flujo)
+                    var leafTasks = allTasks.Except(dependedTasks)
+                        .Where(t => !t.Equals("certification_bigdata", StringComparison.OrdinalIgnoreCase) &&
+                                    !t.Equals("Auto_Certificacion_BigData", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
 
                     string rawSources = (sourceTables != null && sourceTables.Count > i && sourceTables[i] != null) ? sourceTables[i] : "";
                     string rawTargets = (targetTables != null && targetTables.Count > i && targetTables[i] != null) ? targetTables[i] : "";
@@ -507,10 +520,13 @@ namespace NotebookValidator.Web.Services
                     autocertTaskBlock.AppendLine();
                     autocertTaskBlock.AppendLine("        - task_key: certification_bigdata");
 
-                    if (!string.IsNullOrEmpty(lastTaskKey))
+                    if (leafTasks.Count > 0)
                     {
                         autocertTaskBlock.AppendLine("          depends_on:");
-                        autocertTaskBlock.AppendLine($"            - task_key: {lastTaskKey}");
+                        foreach (var leaf in leafTasks)
+                        {
+                            autocertTaskBlock.AppendLine($"            - task_key: {leaf}");
+                        }
                     }
 
                     autocertTaskBlock.AppendLine("          notebook_task:");

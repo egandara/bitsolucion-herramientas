@@ -82,6 +82,7 @@ namespace NotebookValidator.Web.Controllers
                 return low.Contains("tmp") || low.Contains("temp") || low.Contains("vista") ||
                        low.StartsWith("v_") || low.StartsWith("vw_") || low.StartsWith("vt_") ||
                        low.Equals("dual") || low.Length <= 3 || !Regex.IsMatch(low, "[a-z]") ||
+                       low.StartsWith("pyspark.") || low.StartsWith("org.apache.") || low.StartsWith("java.") || low.StartsWith("dbutils.") ||
                        !(s.Contains(".") || s.Contains("{") || s.Contains("$"));
             };
 
@@ -156,12 +157,20 @@ namespace NotebookValidator.Web.Controllers
 
                 if (masterAutocert && zipBytes != null)
                 {
-                    string folderKey = "";
-                    var nbPathMatches = Regex.Matches(content, @"/Notebooks/([^/\r\n]+)/");
-                    if (nbPathMatches.Count > 0)
-                        folderKey = nbPathMatches[0].Groups[1].Value.Trim();
+                    var notebookNames = new List<string>();
+                    // Extraer los nombres exactos de los notebooks desde las rutas del YAML
+                    // Usamos [^\r\n]*/ para obligar a que lea hasta la ÚLTIMA barra (/) de la ruta.
+                    var nbPathMatches = Regex.Matches(content, @"notebook_path:\s*[""']?(?:[^\r\n]*/)?([^/""'\s\r\n]+)[""']?");
+                    foreach (Match m in nbPathMatches)
+                    {
+                        string nbName = m.Groups[1].Value.Trim();
+                        if (!string.IsNullOrEmpty(nbName) && !notebookNames.Contains(nbName))
+                        {
+                            notebookNames.Add(nbName);
+                        }
+                    }
 
-                    var (jobSrcs, jobTgts) = await ExtractTablesForFolderAsync(zipBytes, folderKey, isTempOrJunk);
+                    var (jobSrcs, jobTgts) = await ExtractTablesForFolderAsync(zipBytes, notebookNames, isTempOrJunk);
 
                     foreach (var s in jobSrcs)
                     {
@@ -218,15 +227,17 @@ namespace NotebookValidator.Web.Controllers
             return Json(new { success = true, token = token, jobs = stagedJobs });
         }
 
-        private static async Task<(List<string> srcs, List<string> tgts)> ExtractTablesForFolderAsync(byte[] zipData, string folderKey, Func<string, bool> isJunk)
+        private static async Task<(List<string> srcs, List<string> tgts)> ExtractTablesForFolderAsync(byte[] zipData, List<string> notebookNames, Func<string, bool> isJunk)
         {
             var rSrc = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var rTgt = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             using var arc = new ZipArchive(new MemoryStream(zipData), ZipArchiveMode.Read);
             foreach (var entry in arc.Entries)
             {
-                bool inFolder = string.IsNullOrEmpty(folderKey) || entry.FullName.Split('/').Any(seg => seg.Equals(folderKey, StringComparison.OrdinalIgnoreCase));
-                if (!inFolder) continue;
+                // Solo analizar el notebook si su nombre coincide con alguno referenciado en el YAML del Job
+                string entryFileName = Path.GetFileNameWithoutExtension(entry.FullName);
+                bool isReferenced = notebookNames.Any(n => entryFileName.Equals(n, StringComparison.OrdinalIgnoreCase));
+                if (!isReferenced) continue;
                 if (!entry.FullName.EndsWith(".py", StringComparison.OrdinalIgnoreCase) &&
                     !entry.FullName.EndsWith(".sql", StringComparison.OrdinalIgnoreCase) &&
                     !entry.FullName.EndsWith(".scala", StringComparison.OrdinalIgnoreCase)) continue;
@@ -251,6 +262,10 @@ namespace NotebookValidator.Web.Controllers
                     if (!string.IsNullOrWhiteSpace(v)) rTgt.Add(v);
                 }
             }
+
+            // Si una tabla se genera en el proceso (es Destino), la eliminamos de los Orígenes para no redundar
+            rSrc.ExceptWith(rTgt);
+
             return (rSrc.Where(x => !isJunk(x)).ToList(), rTgt.Where(x => !isJunk(x)).ToList());
         }
 

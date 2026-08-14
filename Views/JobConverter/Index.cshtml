@@ -171,6 +171,38 @@
             color: rgba(255, 255, 255, 0.4) !important;
             font-weight: normal;
         }
+
+    .job-separator-row td {
+        height: 28px;
+        padding: 0 !important;
+        background-color: #07091e !important;
+        border-top: 2px dashed rgba(255, 193, 7, 0.4) !important;
+        border-bottom: 2px dashed rgba(255, 193, 7, 0.4) !important;
+        position: relative;
+    }
+
+        .job-separator-row td::after {
+            content: "▼ SIGUIENTE JOB ▼";
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.65rem;
+            color: #ffc107;
+            font-weight: bold;
+            letter-spacing: 2px;
+            opacity: 0.8;
+        }
+
+    #staging-tbody .job-separator-row:first-child {
+        display: none !important;
+    }
+
+    .dragging-item {
+        opacity: 0.4;
+        border: 2px dashed #0dcaf0 !important;
+        background-color: #111424 !important;
+    }
 </style>
 
 <div class="container-fluid dashboard-xl-container mt-4 mb-5">
@@ -442,6 +474,15 @@
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- NUEVO: PANEL DE ORDENAMIENTO -->
+                <div id="reorder-container" class="p-3 mb-4 rounded border border-info border-opacity-25 shadow-sm d-none" style="background-color:#0b1021;">
+                    <label class="text-white fw-bold mb-2 d-block" style="font-size:0.75rem;">
+                        <i class="bi bi-arrows-expand me-1 text-info"></i> <span class="text-info">Orden de Ejecución (Arrastra los elementos para reordenar los Jobs)</span>
+                    </label>
+                    <ul id="sortable-job-list" class="list-group gap-1" style="font-size: 0.75rem;">
+                    </ul>
                 </div>
 
                 <div class="table-responsive border border-secondary border-opacity-25 rounded mb-4">
@@ -841,30 +882,36 @@
 
             $('.json-linter-input').on('input', function() { evalProcesarBtnState(); });
 
-            window.updateJobFileName = function(index) {
-                const qaFlag = document.querySelector(`input[name="dev_radio_${index}"]:checked`)?.value || 'qa';
-                const runFlag = document.querySelector(`input[name="radRunProd_${index}"]:checked`)?.value || 'norun';
-                let baseDesc = document.getElementById(`baseDesc_${index}`).value.trim() || 'descripcion';
+        window.updateJobFileName = function(index) {
+                        const qaFlag = document.querySelector(`input[name="dev_radio_${index}"]:checked`)?.value || 'qa';
+                        const runFlag = document.querySelector(`input[name="radRunProd_${index}"]:checked`)?.value || 'norun';
+                        let baseDesc = document.getElementById(`baseDesc_${index}`).value.trim() || 'descripcion';
 
-                const seqStr = String(index + 1).padStart(3, '0');
-                const finalFileName = `${seqStr}-${qaFlag}-${runFlag}-${baseDesc}`;
+                        // NUEVO: Calcular orden visual dinámico en la tabla
+                        const mainRow = document.querySelector(`.main-job-row[data-row-idx="${index}"]`);
+                        if (!mainRow) return;
 
-                document.getElementById(`devNames_${index}`).value = finalFileName;
-                document.getElementById(`certNames_${index}`).value = finalFileName;
-                document.getElementById(`prodNames_${index}`).value = finalFileName;
+                        const allRows = Array.from(document.querySelectorAll('.main-job-row'));
+                        const visualPosition = allRows.indexOf(mainRow) + 1;
+                        const seqStr = String(visualPosition).padStart(3, '0');
 
-                const badge = document.getElementById(`badgeDev_${index}`);
-                if (badge) badge.innerText = finalFileName + ".yml";
+                        const finalFileName = `${seqStr}-${qaFlag}-${runFlag}-${baseDesc}`;
 
-                const mainRow = document.querySelector(`.main-job-row[data-row-idx="${index}"]`);
-                const isProv = mainRow ? mainRow.getAttribute('data-is-prov') === 'true' : false;
+                        document.getElementById(`devNames_${index}`).value = finalFileName;
+                        document.getElementById(`certNames_${index}`).value = finalFileName;
+                        document.getElementById(`prodNames_${index}`).value = finalFileName;
 
-                const govRow = document.getElementById(`govRow_${index}`);
-                if (govRow) {
-                    if (qaFlag === 'qa' && !isProv) govRow.classList.remove('d-none');
-                    else govRow.classList.add('d-none');
-                }
-            };
+                        const badge = document.getElementById(`badgeDev_${index}`);
+                        if (badge) badge.innerText = finalFileName + ".yml";
+
+                        const isProv = mainRow.getAttribute('data-is-prov') === 'true';
+
+                        const govRow = document.getElementById(`govRow_${index}`);
+                        if (govRow) {
+                            if (qaFlag === 'qa' && !isProv) govRow.classList.remove('d-none');
+                            else govRow.classList.add('d-none');
+                        }
+                    };
 
             $('#btnProcesarFase1').on('click', function(e) {
                 e.preventDefault();
@@ -894,13 +941,22 @@
                             $('#staging-tbody').empty();
                             window.jobParametersMap = {};
 
-                            if(modeUC.checked) {
-                                $('#staging-table thead').html(`<tr><th style="width: 30%;">Archivo Cargado</th><th style="width: 70%;">Configuración Final del Job (DABs)</th></tr>`);
-                            } else {
-                                $('#staging-table thead').html(`<tr><th style="width: 28%;">Archivo Cargado</th><th style="width: 24%;">Nombre Desarrollo</th><th style="width: 24%;">Nombre Certificación</th><th style="width: 24%;">Nombre Producción</th></tr>`);
-                            }
+                        if(modeUC.checked) {
+                                        $('#staging-table thead').html(`<tr><th style="width: 30%;">Archivo Cargado</th><th style="width: 70%;">Configuración Final del Job (DABs)</th></tr>`);
+                                    } else {
+                                        $('#staging-table thead').html(`<tr><th style="width: 28%;">Archivo Cargado</th><th style="width: 24%;">Nombre Desarrollo</th><th style="width: 24%;">Nombre Certificación</th><th style="width: 24%;">Nombre Producción</th></tr>`);
+                                    }
 
-                            response.jobs.forEach((job, index) => {
+                                    // Preparar lista de reordenamiento
+                                    const sortableList = document.getElementById('sortable-job-list');
+                                    sortableList.innerHTML = '';
+                                    if (response.jobs.length > 1 && modeUC.checked) {
+                                        document.getElementById('reorder-container').classList.remove('d-none');
+                                    } else {
+                                        document.getElementById('reorder-container').classList.add('d-none');
+                                    }
+
+                                response.jobs.forEach((job, index) => {
                                 window.jobParametersMap[index] = job.parameters || [];
 
                                 var badgeType = job.isYaml ? '<span class="badge bg-warning text-dark me-1" style="font-size:0.6rem;">YAML BUNDLE</span>' : '<span class="badge bg-info text-dark me-1" style="font-size:0.6rem;">JSON PLANO</span>';
@@ -1016,12 +1072,27 @@
                                         </td>
                                     </tr>`;
                                 }
-                                $('#staging-tbody').append(mainRow);
-                                if(govRow) $('#staging-tbody').append(govRow);
 
-                                if (job.isYaml) {
-                                    updateJobFileName(index);
-                                }
+                                // Insertar separador y filas a la tabla
+                                const separatorHtml = `<tr class="job-separator-row" id="separator_${index}"><td colspan="4"></td></tr>`;
+                                        $('#staging-tbody').append(separatorHtml);
+                                        $('#staging-tbody').append(mainRow);
+                                        if(govRow) $('#staging-tbody').append(govRow);
+
+                                        // Insertar item arrastrable
+                                        if (job.isYaml && modeUC.checked) {
+                                            const listItem = document.createElement('li');
+                                            listItem.className = 'list-group-item d-flex align-items-center bg-dark text-white border-secondary p-2 shadow-sm';
+                                            listItem.style.cursor = 'grab';
+                                            listItem.setAttribute('draggable', 'true');
+                                            listItem.setAttribute('data-idx', index);
+                                            listItem.innerHTML = `<i class="bi bi-grid-3x3-gap-fill text-white-50 me-3 fs-5"></i> <span class="badge bg-warning text-dark me-3 order-number" style="font-size: 0.8rem;">${String(index + 1).padStart(3, '0')}</span> <span class="fw-bold font-monospace">${job.originalFileName}</span>`;
+                                            sortableList.appendChild(listItem);
+                                        }
+
+                                        if (job.isYaml) {
+                                            updateJobFileName(index);
+                                        }
 
                                 if (job.isYaml && masterAutoCert) {
                                             const processTables = (tableArray, type) => {
@@ -1046,6 +1117,8 @@
                                             processTables(job.autoTargets, 'target');
                                         }
                             });
+
+                            if (modeUC.checked) enableDragAndDrop();
 
                             // Resetear la confirmación del usuario para cada nueva carga de fase 1
                             userApprovedMissingTargets = false;
@@ -1279,5 +1352,64 @@
                     `;
                     container.insertAdjacentHTML('beforeend', rowHtml);
                 }
+
+                window.enableDragAndDrop = function() {
+            const list = document.getElementById('sortable-job-list');
+            let draggedItem = null;
+
+            list.addEventListener('dragstart', function(e) {
+                if(e.target.tagName === 'LI') {
+                    draggedItem = e.target;
+                    e.target.classList.add('dragging-item');
+                }
+            });
+
+            list.addEventListener('dragend', function(e) {
+                if(e.target.tagName === 'LI') {
+                    e.target.classList.remove('dragging-item');
+                    draggedItem = null;
+                    applyNewOrder();
+                }
+            });
+
+            list.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                const targetLi = e.target.closest('li');
+                if (targetLi && targetLi !== draggedItem && draggedItem !== null) {
+                    const bounding = targetLi.getBoundingClientRect();
+                    const offset = e.clientY - bounding.top;
+                    if (offset > bounding.height / 2) {
+                        targetLi.after(draggedItem);
+                    } else {
+                        targetLi.before(draggedItem);
+                    }
+                }
+            });
+        };
+
+        window.applyNewOrder = function() {
+            const listItems = document.querySelectorAll('#sortable-job-list li');
+            const tbody = document.getElementById('staging-tbody');
+
+            listItems.forEach((item, i) => {
+                const idx = item.getAttribute('data-idx');
+                const mainRow = document.querySelector(`.main-job-row[data-row-idx="${idx}"]`);
+                const govRow = document.getElementById(`govRow_${idx}`);
+                const separator = document.getElementById(`separator_${idx}`);
+
+                // Mover físicamente en el DOM (esto arregla el backend automáticamente)
+                if (separator) tbody.appendChild(separator);
+                if (mainRow) tbody.appendChild(mainRow);
+                if (govRow) tbody.appendChild(govRow);
+
+                // Actualizar número en el panel de reorden
+                item.querySelector('.order-number').innerText = String(i + 1).padStart(3, '0');
+            });
+
+            // Recalcular los nombres de los YAML (001, 002, etc.)
+            listItems.forEach(item => {
+                updateJobFileName(item.getAttribute('data-idx'));
+            });
+        };
     </script>
 }
