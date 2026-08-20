@@ -464,13 +464,34 @@ namespace NotebookValidator.Web.Services
                     var definedTasksMatches = Regex.Matches(currentTasksBody, @"^[ \t]*-[ \t]*task_key:\s*[""']?([A-Za-z0-9_-]+)[""']?", RegexOptions.Multiline);
                     foreach (Match m in definedTasksMatches) allTasks.Add(m.Groups[1].Value);
 
-                    // 2. Detectar qué tareas ya están siendo usadas como dependencias por otras
+                    // 2. Detectar qué tareas ya están siendo usadas como dependencias por otras (Versión Optimizada sin Regex pesados)
                     var dependedTasks = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    var depMatches = Regex.Matches(currentTasksBody, @"depends_on:\s*\r?\n(?:[ \t]*-[ \t]*task_key:\s*[""']?[A-Za-z0-9_-]+[""']?\s*\r?\n?)+");
-                    foreach (Match block in depMatches)
+                    string[] blocks = currentTasksBody.Split(new[] { "depends_on:" }, StringSplitOptions.None);
+
+                    // Ignoramos el bloque 0 porque es todo lo que está antes del primer depends_on
+                    for (int b = 1; b < blocks.Length; b++)
                     {
-                        var keys = Regex.Matches(block.Value, @"-[ \t]*task_key:\s*[""']?([A-Za-z0-9_-]+)[""']?");
-                        foreach (Match k in keys) dependedTasks.Add(k.Groups[1].Value);
+                        using (var reader = new StringReader(blocks[b]))
+                        {
+                            string line;
+                            while ((line = reader.ReadLine()) != null)
+                            {
+                                string trimmedLine = line.Trim();
+                                if (string.IsNullOrEmpty(trimmedLine)) continue;
+
+                                // Si la línea empieza con un guion, extraemos la tarea
+                                var mTask = Regex.Match(trimmedLine, @"^-\s*task_key:\s*[""']?([A-Za-z0-9_-]+)[""']?");
+                                if (mTask.Success)
+                                {
+                                    dependedTasks.Add(mTask.Groups[1].Value);
+                                }
+                                else if (!trimmedLine.StartsWith("-"))
+                                {
+                                    // Si llegamos a una línea que no es un elemento de lista, se acabó este depends_on
+                                    break;
+                                }
+                            }
+                        }
                     }
 
                     // 3. Obtener las tareas "hoja" (las que van al final del flujo)

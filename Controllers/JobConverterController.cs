@@ -471,7 +471,8 @@ namespace NotebookValidator.Web.Controllers
                                         content = nameRegex.Replace(content, $"      name: ${{var.jobName_{variableKeyName}}}", 1);
                                     }
 
-                                    string badTaskRegex = @"[ \t]+-[ \t]+task_key:\s*Auto_Certificacion\s*\r?\n(?:[ \t]+.*?\r?\n)*?(?=[ \t]+-[ \t]+task_key:|$)";
+                                    // Regex lineal ultra-rápido para evitar Catastrophic Backtracking
+                                    string badTaskRegex = @"(?i)(?m)^[ \t]*-[ \t]*task_key:\s*Auto_Certificacion.*(?:\r?\n(?![ \t]*-[ \t]*task_key:).*)*\r?\n?";
                                     content = Regex.Replace(content, badTaskRegex, "");
 
                                     content = Regex.Replace(content, @"(notebook_path:.*?)\d{3}-(?:qa|noqa)-(?:run|norun)-", "$1");
@@ -535,7 +536,8 @@ namespace NotebookValidator.Web.Controllers
             return Regex.Replace(content, envPattern, m =>
             {
                 string block = m.Groups[1].Value;
-                string permPattern = @"jobPermissions:\s*\n(?:[ \t]+-[^\n]+\n(?:[ \t]+(?:user_name|group_name):[^\n]+\n)*)*";
+                // Regex lineal anclado por espacios para consumo instantáneo sin retroceso
+                string permPattern = @"jobPermissions:[ \t]*\r?\n(?:[ \t]{8,}.*\r?\n?)*";
 
                 if (Regex.IsMatch(block, permPattern))
                 {
