@@ -125,15 +125,14 @@ namespace NotebookValidator.Web.Services
             notebook.cells.Add(CreateMarkdownCell("## Captura de Variables"));
             notebook.cells.Add(CreateCodeCell($"dbutils.widgets.removeAll()\ndbutils.widgets.text(\"platinum_temp_dbW\", \"{platinumTempDb}\", \"01 DB Platinum Temp:\")\ndbutils.widgets.text(\"db_location_platinum_tempW\", \"{dbLocationPlatinumTemp}\", \"02 Location Platinum Temp DB:\")"));
             notebook.cells.Add(CreateCodeCell("platinum_temp_dbX = dbutils.widgets.get(\"platinum_temp_dbW\")\nspark.conf.set(\"bci.platinum_temp_dbX\", platinum_temp_dbX)\ndb_location_platinum_temp_X = dbutils.widgets.get(\"db_location_platinum_tempW\")\nspark.conf.set(\"bci.db_location_platinum_temp_X\", db_location_platinum_temp_X)"));
-            notebook.cells.Add(CreateMarkdownCell("## Funciones"));
-            notebook.cells.Add(CreateCodeCell("def sql_safe(query):\n  try:\n    print (\"sqlSafe: query -> \" + query)\n    return spark.sql(query)\n  except Exception as e:\n    dbutils.notebook.exit(\"{\\\"coderror\\\":\\\"20001\\\", \\\"msgerror\\\":\\\"Error grave procesado consulta -> \"+str(e)+\"\\\"}\")"));
+            notebook.cells.Add(CreateCodeCell("%run ../Funciones"));
 
             foreach (var tableName in tableNames)
             {
-                var safeName = new string(tableName.Where(char.IsLetterOrDigit).ToArray());
-                var varName = $"paso_tb_del_{safeName.Substring(0, Math.Min(safeName.Length, 15))}";
                 notebook.cells.Add(CreateMarkdownCell($"### Tabla {tableName}"));
-                notebook.cells.Add(CreateCodeCell($"{varName} = \"\"\"DROP TABLE IF EXISTS \"\"\" + platinum_temp_dbX + \".{tableName}\"\"\"\nsql_safe({varName})\ndbutils.fs.rm(db_location_platinum_temp_X+\"{tableName}\", True)"));
+
+                // Llamada limpia a la nueva función
+                notebook.cells.Add(CreateCodeCell($"clean_temp_table(\"{tableName}\", platinum_temp_dbX, db_location_platinum_temp_X)"));
             }
 
             notebook.cells.Add(CreateMarkdownCell("## Mensaje Final"));
