@@ -82,8 +82,7 @@ namespace NotebookValidator.Web.Controllers
                 return low.Contains("tmp") || low.Contains("temp") || low.Contains("vista") ||
                        low.StartsWith("v_") || low.StartsWith("vw_") || low.StartsWith("vt_") ||
                        low.Equals("dual") || low.Length <= 3 || !Regex.IsMatch(low, "[a-z]") ||
-                       low.StartsWith("pyspark.") || low.StartsWith("org.apache.") || low.StartsWith("java.") || low.StartsWith("dbutils.") ||
-                       !(s.Contains(".") || s.Contains("{") || s.Contains("$"));
+                       low.StartsWith("pyspark.") || low.StartsWith("org.apache.") || low.StartsWith("java.") || low.StartsWith("dbutils.");
             };
 
             var provisioningKeywords = new[] { "creacion", "create", "tablas", "aprovisionamiento", "despliegue", "tables" };
@@ -158,15 +157,43 @@ namespace NotebookValidator.Web.Controllers
                 if (masterAutocert && zipBytes != null)
                 {
                     var notebookNames = new List<string>();
-                    // Extraer los nombres exactos de los notebooks desde las rutas del YAML
-                    // Usamos [^\r\n]*/ para obligar a que lea hasta la ÚLTIMA barra (/) de la ruta.
-                    var nbPathMatches = Regex.Matches(content, @"notebook_path:\s*[""']?(?:[^\r\n]*/)?([^/""'\s\r\n]+)[""']?");
-                    foreach (Match m in nbPathMatches)
+
+                    // Procesamiento seguro de rutas YAML (Soporta Multiline Folding y Asset Bundles)
+                    var lines = content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                    for (int nIdx = 0; nIdx < lines.Length; nIdx++)
                     {
-                        string nbName = m.Groups[1].Value.Trim();
-                        if (!string.IsNullOrEmpty(nbName) && !notebookNames.Contains(nbName))
+                        string line = lines[nIdx];
+                        var m = Regex.Match(line, @"(?i)^\s*(?:notebook_path|file_path|python_file|path)\s*:\s*(.*)");
+                        if (m.Success)
                         {
-                            notebookNames.Add(nbName);
+                            string yamlPath = m.Groups[1].Value.Trim();
+
+                            // Resolver YAML Line Folding (si la ruta se cortó en múltiples líneas)
+                            int nextIdx = nIdx + 1;
+                            while (nextIdx < lines.Length && Regex.IsMatch(lines[nextIdx], @"^\s+[^:]+$") && !lines[nextIdx].Trim().StartsWith("-"))
+                            {
+                                yamlPath += lines[nextIdx].Trim();
+                                nextIdx++;
+                            }
+
+                            yamlPath = yamlPath.Trim('"', '\'');
+                            int lastSlash = yamlPath.LastIndexOf('/');
+                            string nbName = lastSlash >= 0 ? yamlPath.Substring(lastSlash + 1) : yamlPath;
+                            nbName = nbName.Trim();
+
+                            // Remover extensiones para match exacto con el ZIP
+                            if (nbName.EndsWith(".py", StringComparison.OrdinalIgnoreCase) ||
+                                nbName.EndsWith(".scala", StringComparison.OrdinalIgnoreCase) ||
+                                nbName.EndsWith(".sql", StringComparison.OrdinalIgnoreCase) ||
+                                nbName.EndsWith(".ipynb", StringComparison.OrdinalIgnoreCase))
+                            {
+                                nbName = Path.GetFileNameWithoutExtension(nbName);
+                            }
+
+                            if (!string.IsNullOrEmpty(nbName) && !notebookNames.Contains(nbName))
+                            {
+                                notebookNames.Add(nbName);
+                            }
                         }
                     }
 
@@ -252,10 +279,14 @@ namespace NotebookValidator.Web.Controllers
                     string v = m.Groups[1].Value.Replace("`", "").Trim();
                     if (!v.Equals("SELECT", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(v)) rSrc.Add(v);
                 }
-                foreach (Match m in Regex.Matches(nb, @"(?i)spark\.(?:read\.)?table\s*\(\s*f?[""'](  [^""']+)[""'  ]\s*\)"))
-                    rSrc.Add(m.Groups[1].Value);
-                foreach (Match m in Regex.Matches(nb, @"(?i)(?:saveAsTable|insertInto)\s*\(\s*f?[""'](  [^""']+)[""'  ]\s*\)"))
-                    rTgt.Add(m.Groups[1].Value);
+
+                // Corrección de los espacios erróneos en las expresiones regulares
+                foreach (Match m in Regex.Matches(nb, @"(?i)spark\.(?:read\.)?table\s*\(\s*f?[""']([^""']+)[""']\s*\)"))
+                    rSrc.Add(m.Groups[1].Value.Trim());
+
+                foreach (Match m in Regex.Matches(nb, @"(?i)(?:saveAsTable|insertInto)\s*\(\s*f?[""']([^""']+)[""']\s*\)"))
+                    rTgt.Add(m.Groups[1].Value.Trim());
+
                 foreach (Match m in Regex.Matches(nb, @"(?i)(?:INSERT\s+(?:INTO|OVERWRITE)|MERGE\s+INTO|CREATE\s+(?:OR\s+REPLACE\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS)?)\s+([`a-zA-Z0-9_.{}$]+)"))
                 {
                     string v = m.Groups[1].Value.Replace("`", "").Trim();
@@ -475,7 +506,8 @@ namespace NotebookValidator.Web.Controllers
                                     string badTaskRegex = @"(?i)(?m)^[ \t]*-[ \t]*task_key:\s*Auto_Certificacion.*(?:\r?\n(?![ \t]*-[ \t]*task_key:).*)*\r?\n?";
                                     content = Regex.Replace(content, badTaskRegex, "");
 
-                                    content = Regex.Replace(content, @"(notebook_path:.*?)\d{3}-(?:qa|noqa)-(?:run|norun)-", "$1");
+                                    // Limpiamos prefijos de ejecuciones anteriores en cualquier parte de la ruta (a prueba de YAML folding)
+                                    content = Regex.Replace(content, @"(?i)(/)\d{3}-(?:qa|noqa)-(?:run|norun)-", "$1");
 
                                     // Ahora variableKeyName se inyecta siempre limpio (sin el -tasks)
                                     content = Regex.Replace(content, @"(nombreJob:\s*""\$\{?var\.jobName_)[^""\}]+(\}?"")", $"$1{variableKeyName}$2");
